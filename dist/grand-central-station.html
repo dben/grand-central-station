@@ -1,0 +1,3045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grand Central Station</title>
+<style>
+:root {
+  --bg: #14161c; --panel: #1d2028; --panel2: #262a34; --line: #343946; --text: #e6e8ee; --muted: #9aa0b0;
+  --accent: #f0b24f; --good: #6cc46c; --bad: #f05a7e; --blue: #4fa3e0;
+  --t1: #6cc46c; --t2: #4fa3e0; --t3: #b98cf0; --t4: #f0b24f; --t5: #f05a7e;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
+button.primary { background: var(--accent); color: #1a1a1a; font-weight: 600; border-color: transparent; }
+button.danger { border-color: var(--bad); color: var(--bad); }
+button.small { padding: 3px 8px; font-size: 12px; }
+small { color: var(--muted); }
+.hidden { display: none !important; }
+#app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+#topbar { display: flex; align-items: center; gap: 18px; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; transition: background 0.6s; position: relative; }
+#topbar.gold { background: linear-gradient(100deg, #6b4f12 0%, #b8892a 30%, #f5d67a 50%, #b8892a 70%, #6b4f12 100%); background-size: 300% 100%; animation: glint 3s linear infinite; color: #1a1408; }
+#topbar.gold .lbl, #topbar.gold .title { color: #3a2c0a; }
+@keyframes glint { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.val.blocky { font-family: "Courier New", Courier, ui-monospace, monospace; font-weight: 800; font-size: 24px; letter-spacing: 1px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+button.toggle { padding: 0 6px; font-size: 12px; line-height: 20px; border-color: transparent; color: var(--muted); background: transparent; }
+#side { position: relative; }
+#btn-side-toggle { position: absolute; top: 4px; right: 6px; }
+#side-tab { position: fixed; right: 0; top: 50%; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-right: none; border-radius: 6px 0 0 6px; padding: 10px 4px; }
+#main.side-collapsed { grid-template-columns: 1fr; }
+#main.side-collapsed #side { display: none; }
+#wallet { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 4px; }
+.roller { font-family: "Courier New", Courier, ui-monospace, monospace; font-weight: 800; font-size: 22px; letter-spacing: 2px; color: #ffcf5a; background: linear-gradient(180deg, #0c0e12 0%, #2b2f3a 45%, #0c0e12 100%); border: 2px solid #4a4f5c; border-radius: 6px; padding: 4px 12px; min-width: 120px; text-align: right; box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08); text-shadow: 0 0 6px rgba(255,207,90,0.6); }
+#ap-pips { display: flex; gap: 5px; }
+.pip { width: 14px; height: 14px; border: 2px solid var(--accent); border-radius: 3px; background: var(--accent); box-shadow: 0 0 6px rgba(240,178,79,0.6); }
+.pip.empty { background: transparent; box-shadow: none; opacity: 0.6; }
+.card.k-transport { background: linear-gradient(180deg, #2b3d6b, #1d2a48); }
+.card.k-amenity { background: linear-gradient(180deg, #5a4025, #3a2a18); }
+.card.k-utility { background: linear-gradient(180deg, #3a3f4c, #262a34); }
+.card.k-lounge { background: linear-gradient(180deg, #56532e, #36341c); }
+.card.k-upgrade { background: linear-gradient(180deg, #5a4a14, #3a300c); }
+.card.k-bonus { background: linear-gradient(180deg, #4a2f5e, #2e1d3b); }
+.card.k-structure { background: linear-gradient(180deg, #5a4230, #3a2a1e); }
+#modal-box.event { animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1), glow 1.8s ease-in-out infinite; border-color: var(--accent); text-align: center; max-width: 560px; }
+#modal-box.event h2 { font-size: 30px; margin: 8px 0; }
+#modal-box.event .event-mult { font-size: 20px; color: var(--accent); font-weight: 700; }
+@keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 12px rgba(240,178,79,0.25); } 50% { box-shadow: 0 0 34px rgba(240,178,79,0.7); } }
+.boss-star { display: inline-block; animation: spin 2.4s linear infinite; font-size: 34px; color: var(--accent); }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.brand { display: flex; align-items: center; gap: 8px; margin-right: 8px; }
+.logo { background: var(--accent); color: #1a1a1a; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px; }
+.title { font-weight: 600; }
+.stat { display: flex; flex-direction: column; line-height: 1.1; }
+.stat .lbl, .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat .val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+#playback { display: flex; align-items: center; gap: 4px; }
+#playback .speed.active { border-color: var(--accent); color: var(--accent); }
+#main { display: grid; grid-template-columns: 1fr 320px; min-height: 0; }
+#board-wrap { position: relative; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px; }
+#board { max-width: 100%; max-height: 100%; background: #0f1116; border-radius: 6px; touch-action: none; }
+#board-hint { position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); pointer-events: none; }
+#side { border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; display: flex; flex-direction: column; }
+.panel { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+#log-body { font-size: 12px; color: var(--muted); max-height: 160px; overflow-y: auto; }
+#log-body div { padding: 1px 0; }
+#shop { display: flex; gap: 10px; padding: 10px 28px 12px 12px; background: var(--panel); border-top: 1px solid var(--line); align-items: stretch; overflow-x: auto; position: relative; }
+#btn-shop-toggle { position: absolute; top: 2px; right: 6px; }
+#shop-collapsed { display: none; }
+#shop.collapsed { padding: 4px 12px; }
+#shop.collapsed #shop-cards, #shop.collapsed #shop-actions, #shop.collapsed #btn-shop-toggle { display: none; }
+#shop.collapsed #shop-collapsed { display: flex; align-items: center; gap: 12px; width: 100%; }
+#shop-collapsed .roller { font-size: 14px; padding: 2px 8px; min-width: 0; }
+#shop-cards { display: flex; gap: 8px; flex: 1; }
+.card { width: 112px; height: 180px; background: linear-gradient(180deg, var(--panel2), #20242e); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; flex-shrink: 0; text-align: center; gap: 2px; }
+.card:hover { border-color: var(--accent); transform: translateY(-3px); transition: transform 0.1s; }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.card.unaffordable { opacity: 0.5; }
+.card .slot { font-size: 9px; height: 12px; line-height: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; }
+.card .name { font-weight: 600; font-size: 11.5px; line-height: 1.15; height: 30px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.card canvas { margin: 0; flex-shrink: 0; }
+.card .icon { font-size: 30px; line-height: 76px; height: 76px; color: var(--accent); }
+.card .sub { font-size: 10px; color: var(--muted); }
+.card .cost { margin-top: auto; font-weight: 700; color: var(--accent); font-size: 13px; }
+.card .tier { font-weight: 700; }
+.tier1 { color: var(--t1); } .tier2 { color: var(--t2); } .tier3 { color: var(--t3); } .tier4 { color: var(--t4); } .tier5 { color: var(--t5); }
+#shop-actions { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+#shop-actions button { min-width: 120px; line-height: 1.2; }
+#modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+#modal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; max-width: 900px; width: 100%; max-height: 92vh; overflow-y: auto; }
+#modal-box h2 { margin: 0 0 8px; }
+#modal-box h3 { margin: 14px 0 6px; font-size: 13px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.mode { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; cursor: pointer; }
+.mode:hover { border-color: var(--accent); }
+.mode.locked { opacity: 0.5; cursor: default; }
+.mode .name { font-weight: 700; margin-bottom: 4px; }
+.mode .desc { font-size: 12px; color: var(--muted); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btnrow { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
+table.stats { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+table.stats th, table.stats td { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: right; }
+table.stats th:first-child, table.stats td:first-child { text-align: left; }
+table.stats th { color: var(--muted); font-weight: 500; }
+.scorebar { height: 14px; background: var(--panel2); border-radius: 7px; overflow: hidden; margin: 6px 0; position: relative; }
+.scorebar .fill { height: 100%; background: var(--good); }
+.scorebar .fill.fail { background: var(--bad); }
+.scorebar .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.big { font-size: 22px; font-weight: 700; }
+.good { color: var(--good); } .bad { color: var(--bad); } .accent { color: var(--accent); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+.kv .k { color: var(--muted); }
+.chain { font-size: 12px; }
+.chain div { padding: 2px 0; border-bottom: 1px dashed var(--line); }
+.choices { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.event-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--panel2); font-size: 11px; margin-right: 4px; }
+.warn { color: var(--accent); }
+select { font: inherit; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+@media (max-width: 900px) {
+  #main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  #side { border-left: none; border-top: 1px solid var(--line); max-height: 40vh; flex-direction: row; overflow-x: auto; }
+  .panel { min-width: 240px; border-bottom: none; border-right: 1px solid var(--line); }
+  .card { width: 150px; }
+}
+
+#popup { position: fixed; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; max-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font-size: 13px; pointer-events: none; }
+#popup.sticky { pointer-events: auto; }
+#popup h4 { margin: 0 0 4px; font-size: 14px; }
+#popup .desc { color: var(--muted); font-size: 12px; margin-top: 4px; }
+#popup .kv { font-size: 12px; }
+#chart { width: 100%; height: 190px; display: block; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 6px; }
+
+#run-wrap { padding: 10px 12px 6px; }
+#btn-run { width: 100%; padding: 10px; font-size: 15px; }
+#btn-run-big { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 22px; padding: 16px 32px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); animation: breathe 1.6s ease-in-out infinite; z-index: 3; }
+@keyframes breathe { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.06); } }
+#timeline { position: relative; padding-left: 18px; }
+#timeline::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.tl-row { position: relative; padding: 6px 8px; margin: 3px 0; border-radius: 6px; font-size: 13px; }
+.tl-row::before { content: ''; position: absolute; left: -17px; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.tl-row .wk { font-weight: 700; }
+.tl-row .q { color: var(--muted); font-size: 11px; margin-left: 6px; }
+.tl-row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tl-row.past { color: var(--muted); }
+.tl-row.past.ok::before { background: var(--good); }
+.tl-row.past.fail::before { background: var(--bad); }
+.tl-row.current { background: var(--panel2); border: 1px solid var(--accent); color: var(--text); }
+.tl-row.current::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.tl-row.event { background: rgba(240,178,79,0.14); }
+.tl-row.event::before { background: var(--accent); }
+.tl-row.event .tag { color: var(--accent); font-weight: 700; }
+.tl-row.ordinance { background: rgba(185,140,240,0.14); }
+.tl-row.ordinance::before { background: var(--t3); }
+.tl-row.ordinance .tag { color: var(--t3); font-weight: 700; }
+.tl-row.last { opacity: 0.45; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand"><span class="logo">GCS</span><span class="title">Grand Central Station</span></div>
+    <div class="stat"><span class="lbl">Week</span><span id="st-week" class="val blocky">1</span></div>
+    <div class="stat"><span class="lbl">Quota</span><span id="st-quota" class="val blocky">5,000</span></div>
+    <span id="st-proj" class="sr-only"></span>
+    <div class="spacer"></div>
+    <div id="playback" class="hidden">
+      <span id="pb-tick" class="lbl">tick 0/20</span>
+      <button data-speed="1" class="speed active">1×</button>
+      <button data-speed="2" class="speed">2×</button>
+      <button data-speed="4" class="speed">4×</button>
+      <button data-speed="skip" class="speed">Skip</button>
+    </div>
+    <button id="btn-menu" title="Menu">☰</button>
+  </header>
+
+  <main id="main">
+    <div id="board-wrap">
+      <canvas id="board"></canvas>
+      <div id="board-hint"></div>
+      <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
+    </div>
+    <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
+    <aside id="side">
+      <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
+      <div id="run-wrap"><button id="btn-run" class="primary">Run Week ▶</button></div>
+      <section id="info-panel" class="panel hidden">
+        <h3 id="info-title">Placing</h3>
+        <div id="info-body"></div>
+      </section>
+      <section id="timeline-panel" class="panel">
+        <h3>Timeline</h3>
+        <div id="timeline"></div>
+      </section>
+      <section id="rules-panel" class="panel hidden">
+        <h3>Ordinances &amp; effects</h3>
+        <div id="rules-body"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer id="shop">
+    <button id="btn-shop-toggle" class="toggle" title="Collapse shop">⌄</button>
+    <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
+    <div id="shop-cards"></div>
+    <div id="shop-actions">
+      <div id="wallet">
+        <div id="st-money" class="roller">$220</div>
+        <div id="ap-pips" title="Action points"></div>
+        <span id="st-ap" class="sr-only">2</span>
+      </div>
+      <button id="btn-reroll">Reroll<br><small>1 AP · $10</small></button>
+      <button id="btn-wait">Wait<br><small>all AP · +interest</small></button>
+    </div>
+  </footer>
+</div>
+
+<div id="popup" class="hidden"></div>
+<div id="modal" class="hidden"><div id="modal-box"></div></div>
+<script>
+"use strict";
+// ---- src/config.js
+const __m_src_config_js = (() => {
+// ============================================================================
+// Grand Central Station - central tuning file.
+// Every number that a designer might want to nudge lives here. The simulator,
+// shop and UI read from this object; nothing else hardcodes balance values.
+// Values marked "(doc: X)" differ from the original design document after
+// harness testing; the original value is listed for reference.
+// ============================================================================
+
+const CONFIG = {
+  // ---------------------------------------------------------------- run flow
+  run: {
+    startMoney: 220,            // (was 150) a comfortable first two weeks, then income is tight            // cash at week 1
+    startAP: 2,
+    apMilestones: { 6: 3, 12: 4, 20: 5 },   // week -> AP per week from then on
+    winWeek: 16,                // win screen fires here; play continues (endless)
+    eventEvery: 4,              // every Nth week is an event week
+    ordinanceWeeks: [5, 12, 20],
+    ordinanceChoices: 3,
+    pickpocketsFromWeek: 8,
+    rareTilesFromWeek: 10,
+    apUpgradeFromWeek: 20,
+    apUpgradeCost: 400,
+  },
+
+  // ------------------------------------------------------------------- quota
+  quota: {
+    base: 5000,                 // (doc: 3000) raised after harness testing
+    growth: 1.28,               // (doc: 1.25) per-week multiplier
+    // Quota(week) = base * growth^(week-1) * eventMultiplier * ordinanceMultiplier
+  },
+
+  // ----------------------------------------------------------------- economy
+  economy: {
+    rerollFees: [10, 25, 60, 150, 350],   // escalating, resets weekly; last value repeats
+    waitInterestRate: 0.08,
+    waitInterestCap: 100,
+    tileCostScalePerTile: 0.06,           // (doc: 0.04) cost * (1 + this * tilesOnBoard)
+    revenueScale: 0.35,                   // global multiplier on amenity revenue (doc values were far too generous)
+    fareScale: 0.35,                      // global multiplier on fares (doc: 1.0)
+    upgradeCosts: [60, 140, 300, 650],    // level 1->2, 2->3, 3->4, 4->5
+    maxLevel: 5,
+    deleteRefund: 0,                      // fraction of base cost refunded on delete
+    strandedMultiplier: 0.5,              // stranded travellers bank value * this
+  },
+
+  // --------------------------------------------------------------- simulation
+  sim: {
+    ticks: 20,
+    spawnTicks: 16,
+    lastCallDeparture: true,   // every transport fires a final departure on the last tick; only walkers are stranded
+    walkwaySpeed: 2,            // cells per tick while on a moving walkway
+    waypointCount: 2,
+    waypointSigma: 1.5,         // gaussian spread (cells) around the straight line
+    sameTileWanderSigma: 2.5,   // spread when destination == origin (a wander)
+    tierMatchExitBonus: 1.5,    // transport exit bonus when traveller tier == transport tier
+    gateBudgetBonus: 2,         // extra stop budget for travellers who pass a security gate
+    // Tier of a spawned traveller relative to the transport's tier
+    tierSpread: { same: 0.78, down: 0.12, up: 0.10 },
+    // Service roll: P = base * tierMatch * radiusFalloff * budgetFactor * (wifi bonus)
+    tierMatch: [1.0, 0.6, 0.25, 0.05],     // by |tier gap|; last value repeats
+    radiusFalloffMin: 0.4,                 // falloff at radius edge (1.0 when adjacent)
+    // Waiting areas
+    waitingStackValue: 0.10,               // final_multiplier = 1 + stacks * this
+    frequentFlierStackValue: 0.16,
+    frequentFlierMinTier: 3,
+    // Bad actors
+    pickpocketRate: 0.05,                  // share of spawns that are pickpockets (from week 8)
+    pickpocketSteal: 0.15,                 // share of banked chain value stolen
+    kioskPickpocketReduction: 0.25,        // each information kiosk reduces pickpocket rate by this (multiplicative floor 0)
+    // WiFi hotspot
+    wifiBonus: 0.10,
+    wifiCap: 0.20,
+    // Green space
+    greenSpaceBudgetRestore: 1,
+  },
+
+  // --------------------------------------------------------------- travellers
+  tiers: [
+    // index = tier-1
+    { symbol: '$',     base: 100,  fare: 2,  budget: 3, waitCap: 2, color: '#6cc46c' },
+    { symbol: '$$',    base: 180,  fare: 5,  budget: 4, waitCap: 3, color: '#4fa3e0' },
+    { symbol: '$$$',   base: 320,  fare: 12, budget: 5, waitCap: 4, color: '#b98cf0' },
+    { symbol: '$$$$',  base: 600,  fare: 30, budget: 6, waitCap: 5, color: '#f0b24f' },
+    { symbol: '$$$$$', base: 1200, fare: 75, budget: 8, waitCap: 6, color: '#f05a7e' },
+  ],
+
+  // Destination weight by tier gap (traveller tier - transport tier)
+  destinationWeights: {
+    same: 1.0, down1: 0.70, up1: 0.45, down2: 0.35, up2: 0.15, far: 0.05,
+  },
+
+  // ---------------------------------------------------------------- upgrades
+  upgrades: {
+    amenity:   { mult: 0.12, capacity: 0.25, revenue: 0.20, rate: 0.03 },  // per level
+    transport: { batch: 0.15, mult: 0.08 },
+  },
+
+  // ------------------------------------------------------------------- shop
+  shop: {
+    slots: 5,
+    // wildcard slot contents weights
+    wildcard: { card: 3, rare: 2, bridge: 0, upgrade: 2, apUpgrade: 1, namedUpgrade: 2 },   // bridge: 0 = pulled from the shop for now (confusing to use)
+    // Rarity: prefer tiles whose cost is close to targetCost(week)
+    targetCostBase: 32,
+    targetCostGrowth: 1.14,
+    targetCostSigma: 0.75,     // in log-space
+    bridgeCost: 80,
+    roadReach: 4,              // road tiles may sit this many cells inland
+  },
+
+  // -------------------------------------------------------------- placement
+  placement: {
+    previewSeeds: 4,           // sims per estimate (with and without)
+  },
+};
+
+function quotaForWeek(week, mode, extraMult = 1) {
+  const growth = (mode && mode.quotaGrowth) || CONFIG.quota.growth;
+  return Math.round(CONFIG.quota.base * Math.pow(growth, week - 1) * extraMult);
+}
+
+function apForWeek(week, mode) {
+  let ap = (mode && mode.startAP) || CONFIG.run.startAP;
+  for (const [w, v] of Object.entries(CONFIG.run.apMilestones)) {
+    if (week >= Number(w)) ap = Math.max(ap, v);
+  }
+  return ap;
+}
+
+return { CONFIG, quotaForWeek, apForWeek };
+})();
+// ---- src/data/tiles.js
+const __m_src_data_tiles_js = (() => {
+// ============================================================================
+// Tile catalogue. Pure data - the simulator interprets it.
+// Transport fields: shape, terrain, tier, arr (arrival cadence), batch,
+//   dep (departure cadence), dwell, mult, flat, cost, minWeek, rare.
+// Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
+//   cost, minWeek, tags, special.
+// Terrain: road | rail | water | apron | corridor | free
+// attach: 'tip' = only the tip of the L (top of the stem) may touch the edge; the foot points inland.
+// ============================================================================
+
+const TRANSPORTS = {
+  bus_stop:        { name: 'Bus Stop',         shape: 'I2', terrain: 'road',     tier: 1, arr: 4,  batch: 14, dep: 4,  dwell: 1, mult: 1.10, flat: 40,  cost: 30,  minWeek: 1 },
+  parking_lot:     { name: 'Parking Lot',      shape: 'O4', terrain: 'road',     tier: 1, arr: 1,  batch: 3,  dep: 1,  dwell: 0, mult: 1.05, flat: 100, cost: 25,  minWeek: 1 },
+  bike_rental:     { name: 'Bike Rental',      shape: 'I2', terrain: 'road',     tier: 1, arr: 2,  batch: 4,  dep: 2,  dwell: 0, mult: 1.10, flat: 25,  cost: 20,  minWeek: 1 },
+  taxi_stand:      { name: 'Taxi Stand',       shape: 'I2', terrain: 'road',     tier: 2, arr: 2,  batch: 3,  dep: 2,  dwell: 0, mult: 1.20, flat: 30,  cost: 45,  minWeek: 1 },
+  rideshare:       { name: 'Rideshare Zone',   shape: 'L3', terrain: 'road',     tier: 2, arr: 1,  batch: 3,  dep: 1,  dwell: 0, mult: 1.15, flat: 35,  cost: 40,  minWeek: 1 },
+  car_rental:      { name: 'Car Rental',       shape: 'O4', terrain: 'road',     tier: 2, arr: 3,  batch: 7,  dep: 3,  dwell: 2, mult: 1.20, flat: 60,  cost: 70,  minWeek: 2 },
+  limo:            { name: 'Limo Service',     shape: 'I3', terrain: 'road',     tier: 4, arr: 5,  batch: 2,  dep: 5,  dwell: 1, mult: 1.60, flat: 40,  cost: 120, minWeek: 4 },
+  tram_stop:       { name: 'Tram Stop',        shape: 'I3', terrain: 'corridor', tier: 2, arr: 4,  batch: 12, dep: 4,  dwell: 1, mult: 1.25, flat: 50,  cost: 65,  minWeek: 2 },
+  train_station:   { name: 'Train Station',    shape: 'I4', terrain: 'rail',     tier: 2, arr: 6,  batch: 18, dep: 6,  dwell: 2, mult: 1.30, flat: 60,  cost: 90,  minWeek: 2 },
+  express_train:   { name: 'Express Train',    shape: 'I5', terrain: 'rail',     tier: 3, arr: 8,  batch: 26, dep: 8,  dwell: 3, mult: 1.45, flat: 80,  cost: 160, minWeek: 5 },
+  monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 14, dep: 5,  dwell: 2, mult: 1.40, flat: 70,  cost: 140, minWeek: 5 },
+  ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    tier: 2, arr: 8,  batch: 24, dep: 8,  dwell: 3, mult: 1.30, flat: 70,  cost: 100, minWeek: 2 },
+  water_taxi:      { name: 'Water Taxi',       shape: 'I2', terrain: 'water',    tier: 3, arr: 3,  batch: 4,  dep: 3,  dwell: 1, mult: 1.40, flat: 35,  cost: 75,  minWeek: 3 },
+  marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 5,  dep: 8,  dwell: 4, mult: 1.65, flat: 60,  cost: 175, minWeek: 6 },
+  cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    tier: 3, arr: 16, batch: 80, dep: 16, dwell: 6, mult: 1.50, flat: 150, cost: 260, minWeek: 7 },
+  helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 3,  dep: 6,  dwell: 2, mult: 1.70, flat: 50,  cost: 190, minWeek: 5, tags: ['air'] },
+  balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 10, batch: 4,  dep: 10, dwell: 5, mult: 1.55, flat: 60,  cost: 130, minWeek: 4, tags: ['air'] },
+  jetway:          { name: 'Jetway',           shape: 'L3', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 8,  batch: 30, dep: 8,  dwell: 4, mult: 1.50, flat: 90,  cost: 200, minWeek: 6, tags: ['air'] },
+  jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L5', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 60, dep: 12, dwell: 6, mult: 1.60, flat: 140, cost: 340, minWeek: 9, tags: ['air'] },
+  private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 10, batch: 2,  dep: 10, dwell: 4, mult: 2.00, flat: 80,  cost: 380, minWeek: 10, rare: true, tags: ['air'] },
+  ski_lift:        { name: 'Ski Lift',         shape: 'I4', terrain: 'corridor', tier: 2, arr: 3,  batch: 7,  dep: 3,  dwell: 1, mult: 1.25, flat: 40,  cost: 60,  minWeek: 2 },
+  alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 9,  dep: 4,  dwell: 2, mult: 1.40, flat: 55,  cost: 110, minWeek: 5 },
+  jetpack:         { name: 'Jetpack Rental',   shape: 'I2', terrain: 'free',     tier: 4, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.55, flat: 30,  cost: 145, minWeek: 6, tags: ['air'] },
+  beam_pad:        { name: 'Beam-Em-Up Pad',   shape: 'O4', terrain: 'free',     tier: 5, arr: 3,  batch: 4,  dep: 3,  dwell: 0, mult: 2.10, flat: 60,  cost: 420, minWeek: 10, rare: true },
+  loop_terminal:   { name: 'Loop Terminal',    shape: 'O4', terrain: 'free',     tier: 3, arr: 4,  batch: 8,  dep: 4,  dwell: 1, mult: 1.45, flat: 60,  cost: 300, minWeek: 12, rare: true, special: 'loop', loopChance: 0.30 },
+};
+
+const AMENITIES = {
+  vending:        { name: 'Vending Machine',   shape: 'I1', tier: 1, radius: 1, rate: 0.40, mult: 1.08, flat: 15, cap: 4,  dur: 1, revenue: 1,  cost: 15,  minWeek: 1, tags: ['food'] },
+  newsstand:      { name: 'Newsstand',         shape: 'I2', tier: 1, radius: 2, rate: 0.35, mult: 1.15, flat: 30, cap: 8,  dur: 1, revenue: 3,  cost: 30,  minWeek: 1 },
+  restroom:       { name: 'Restroom',          shape: 'O4', tier: 1, radius: 2, rate: 0.45, mult: 1.20, flat: 0,  cap: 12, dur: 2, revenue: 0,  cost: 35,  minWeek: 1 },
+  food_stand:     { name: 'Food Stand',        shape: 'I2', tier: 1, radius: 2, rate: 0.35, mult: 1.20, flat: 35, cap: 10, dur: 2, revenue: 4,  cost: 40,  minWeek: 1, tags: ['food'] },
+  burger:         { name: 'Burger Joint',      shape: 'L3', tier: 1, radius: 2, rate: 0.30, mult: 1.40, flat: 50, cap: 20, dur: 3, revenue: 6,  cost: 60,  minWeek: 1, tags: ['food'] },
+  pizza:          { name: 'Pizza Place',       shape: 'S4', tier: 2, radius: 2, rate: 0.30, mult: 1.45, flat: 55, cap: 18, dur: 3, revenue: 8,  cost: 75,  minWeek: 2, tags: ['food'] },
+  coffee:         { name: 'Coffee Shop',       shape: 'I2', tier: 2, radius: 3, rate: 0.40, mult: 1.35, flat: 40, cap: 14, dur: 2, revenue: 7,  cost: 65,  minWeek: 2, tags: ['food'] },
+  kiosk:          { name: 'Information Kiosk', shape: 'I1', tier: 1, radius: 3, rate: 0.30, mult: 1.10, flat: 20, cap: 10, dur: 1, revenue: 1,  cost: 20,  minWeek: 1, special: 'kiosk' },
+  green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 3, rate: 0.25, mult: 1.25, flat: 10, cap: 30, dur: 2, revenue: 0,  cost: 45,  minWeek: 2, tags: ['green'], special: 'green' },
+  sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 2, rate: 0.28, mult: 1.55, flat: 70, cap: 16, dur: 4, revenue: 12, cost: 110, minWeek: 4, tags: ['food'] },
+  cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 3, rate: 0.45, mult: 1.18, flat: 30, cap: 45, dur: 2, revenue: 5,  cost: 130, minWeek: 5, tags: ['food'] },
+  currency:       { name: 'Currency Exchange', shape: 'I2', tier: 3, radius: 2, rate: 0.25, mult: 1.50, flat: 40, cap: 6,  dur: 2, revenue: 15, cost: 95,  minWeek: 4 },
+  clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 2, rate: 0.25, mult: 1.50, flat: 60, cap: 12, dur: 3, revenue: 14, cost: 105, minWeek: 4 },
+  wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 55,  minWeek: 3, special: 'wifi' },
+  waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 2, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 70,  minWeek: 2, special: 'waiting' },
+  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 50,  minWeek: 3, special: 'walkway' },
+  art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 3, rate: 0.22, mult: 1.70, flat: 80, cap: 10, dur: 4, revenue: 18, cost: 165, minWeek: 6 },
+  lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 2, rate: 0.30, mult: 1.65, flat: 60, cap: 14, dur: 3, revenue: 20, cost: 190, minWeek: 7 },
+  designer:       { name: 'Designer Shop',     shape: 'L4', tier: 4, radius: 2, rate: 0.20, mult: 1.90, flat: 90, cap: 8,  dur: 4, revenue: 35, cost: 240, minWeek: 8 },
+  gate:           { name: 'Security Gate',     shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 150, minWeek: 6, special: 'gate' },
+  flier_club:     { name: 'Frequent Flier Club', shape: 'O6', tier: 4, radius: 2, rate: 0,  mult: 1,    flat: 0,  cap: 10, dur: 0, revenue: 25, cost: 300, minWeek: 9, special: 'waiting' },
+  // Sci-fi rares (week 12+, wildcard slot only)
+  drone_swarm:    { name: 'Drone Vending Swarm', shape: 'I2', tier: 0, radius: 6, rate: 0.30, mult: 1.30, flat: 40, cap: 6, dur: 1, revenue: 6, cost: 260, minWeek: 12, rare: true, special: 'anytier' },
+  chrono_lounge:  { name: 'Chrono Lounge',     shape: 'O4', tier: 0, radius: 2, rate: 0,    mult: 1,    flat: 0,  cap: 6,  dur: 0, revenue: 10, cost: 280, minWeek: 12, rare: true, special: 'waiting', stackValue: 0.18 },
+  nanofab:        { name: 'Nanofab Boutique',  shape: 'L3', tier: 0, radius: 2, rate: 0.28, mult: 1.75, flat: 70, cap: 5,  dur: 3, revenue: 22, cost: 320, minWeek: 12, rare: true, special: 'anytier' },
+};
+
+// Bridge: a special placement that opens a span of a locked edge.
+const BRIDGE = { name: 'Bridge / Overpass', shape: 'I3', special: 'bridge', cost: 80 };
+
+// Named upgrades that appear as shop cards
+const NAMED_UPGRADES = {
+  espresso_bar:   { name: 'Espresso Bar',        target: 'coffee',    levels: 2, radiusBonus: 1, cost: 200, minWeek: 5, desc: 'Upgrade a Coffee Shop two levels and add +1 radius.' },
+  concourse_ext:  { name: 'Concourse Extension', target: 'waiting_all', levels: 1, cost: 150, minWeek: 6, desc: 'Every Waiting Area and Club you own gains one level.' },
+  double_shift:   { name: 'Double Shift',        target: 'transport', levels: 2, cost: 220, minWeek: 6, desc: 'Upgrade any transport tile two levels.' },
+  renovation:     { name: 'Renovation',          target: 'amenity',   levels: 2, cost: 240, minWeek: 8, desc: 'Upgrade any amenity two levels.' },
+};
+
+function tileDef(key) {
+  if (TRANSPORTS[key]) return { key, kind: 'transport', ...TRANSPORTS[key] };
+  if (AMENITIES[key]) return { key, kind: 'amenity', ...AMENITIES[key] };
+  if (key === 'bridge') return { key, kind: 'bridge', ...BRIDGE };
+  throw new Error('Unknown tile ' + key);
+}
+
+const TERRAIN_INFO = {
+  road:     { label: 'Road',     claim: 'road',     desc: 'Claims the edge as road. Generous: tiles sit up to 4 cells inland with a driveway.' },
+  rail:     { label: 'Rail',     claim: 'lock',     desc: 'FULL LOCK: the whole edge becomes track.' },
+  water:    { label: 'Water',    claim: 'lock',     desc: 'FULL LOCK: the whole edge becomes water.' },
+  apron:    { label: 'Apron',    claim: 'lock',     desc: 'FULL LOCK: the whole edge becomes an aircraft apron.' },
+  corridor: { label: 'Corridor', claim: 'corridor', desc: 'Reserves a straight lane to the nearest edge. The lane is unbuildable and unwalkable.' },
+  free:     { label: 'Free',     claim: 'none',     desc: 'No terrain relationship. Goes anywhere with room.' },
+};
+
+return { TRANSPORTS, AMENITIES, BRIDGE, NAMED_UPGRADES, tileDef, TERRAIN_INFO };
+})();
+// ---- src/data/events.js
+const __m_src_data_events_js = (() => {
+// Event weeks. `quota` multiplies the base quota. `mods` are read by the game
+// layer and turned into simulator modifiers (see game/modifiers.js).
+const EVENTS = {
+  convention:    { name: 'Convention',      quota: 1.6,  desc: 'All transports spawn +60% batch, mostly $ and $$ travellers.',
+                   mods: { batchMult: 1.6, lowTierBias: 0.8 } },
+  delays:        { name: 'Delays',          quota: 0.85, desc: 'All transports spawn at half batch and dwell is doubled.',
+                   mods: { batchMult: 0.5, dwellMult: 2 } },
+  vip:           { name: 'VIP Delegation',  quota: 1.3,  desc: '6 $$$$$ travellers arrive on tick 1 with a high stop budget.',
+                   mods: { vipCount: 6, vipBudgetBonus: 4 } },
+  holiday_rush:  { name: 'Holiday Rush',    quota: 1.8,  desc: 'Spawn cadence halved for all transports. Expect capacity strain.',
+                   mods: { cadenceDiv: 2 } },
+  weather_front: { name: 'Weather Front',   quota: 0.9,  desc: 'Water and air transports are offline this week.',
+                   mods: { offlineTerrains: ['water'], offlineTags: ['air'] } },
+  strike:        { name: 'Strike',          quota: 0.9,  desc: 'Choose one transport terrain type: it produces nothing this week.',
+                   mods: { strike: true } },
+  inspection:    { name: 'Inspection',      quota: 1.4,  desc: 'Amenities below level 2 are closed for the week.',
+                   mods: { closedBelowLevel: 2 } },
+  festival:      { name: 'Festival',        quota: 1.5,  desc: 'Green space and food amenities gain +0.20 base rate.',
+                   mods: { rateBonusTags: { food: 0.2, green: 0.2 } } },
+  charter:       { name: 'Charter Season',  quota: 1.7,  desc: 'All travellers roll one tier higher for destination purposes.',
+                   mods: { destTierShift: 1 } },
+};
+
+const EVENT_KEYS = Object.keys(EVENTS);
+
+return { EVENTS, EVENT_KEYS };
+})();
+// ---- src/data/cards.js
+const __m_src_data_cards_js = (() => {
+// Bonus cards - consumables from the wildcard slot. Cost 1 AP + money to play.
+// target: none | tile | transport | amenity | edge
+const CARDS = {
+  overtime:       { name: 'Overtime',           cost: 40,  target: 'none',      desc: '+2 AP this week only.' },
+  fast_pass:      { name: 'Fast Pass',          cost: 60,  target: 'none',      desc: 'All travellers +2 stop budget next week.', effect: { stopBudgetBonus: 2 }, weeks: 1 },
+  charter_bus:    { name: 'Charter Bus',        cost: 50,  target: 'none',      desc: '40 extra $ travellers arrive next week.', effect: { extraSpawns: [{ tier: 1, count: 40 }] }, weeks: 1 },
+  rezoning:       { name: 'Rezoning Permit',    cost: 120, target: 'edge',      desc: 'Unlock one locked edge back to greenfield.' },
+  coupon_book:    { name: 'Coupon Book',        cost: 30,  target: 'none',      desc: 'Half fare income, double spawn batch, for 2 weeks.', effect: { batchMult: 2, fareMult: 0.5 }, weeks: 2 },
+  grand_opening:  { name: 'Grand Opening',      cost: 70,  target: 'amenity',   desc: 'One amenity serves at 100% rate for one week.', weeks: 1 },
+  timetable:      { name: 'Timetable Shuffle',  cost: 40,  target: 'transport', desc: 'Reroll the arrival cadence of one transport tile.' },
+  survey_crew:    { name: 'Survey Crew',        cost: 30,  target: 'none',      desc: 'Preview the event two weeks out.' },
+};
+
+return { CARDS };
+})();
+// ---- src/data/ordinances.js
+const __m_src_data_ordinances_js = (() => {
+// Ordinances: one is picked (from 3 offered) at weeks 5, 12 and 20. Permanent.
+const ORDINANCES = {
+  tourist_board:   { name: 'Tourist Board',       desc: 'Travellers two tiers off an amenity still roll at 0.6x instead of 0.25x.', mods: { tierMatch: [1.0, 0.6, 0.6, 0.05] } },
+  express_charter: { name: 'Express Charter',     desc: 'Transport multipliers +0.25, amenity multipliers -0.10.', mods: { transportMultBonus: 0.25, amenityMultBonus: -0.10 } },
+  zoning_variance: { name: 'Zoning Variance',     desc: 'Deleting a tile refunds half its cost and costs no AP.', game: { deleteRefund: 0.5, deleteFreeAP: true } },
+  union_contract:  { name: 'Union Contract',      desc: 'Dwell +2 ticks everywhere; amenity capacity -20%.', mods: { dwellAdd: 2, capacityMult: 0.8 } },
+  retail_compact:  { name: 'Retail Compact',      desc: 'Amenity revenue doubled; flat point values halved.', mods: { revenueMult: 2, flatMult: 0.5 } },
+  night_service:   { name: 'Night Service',       desc: '24 ticks per week instead of 20; quota x1.15.', mods: { ticks: 24, spawnTicks: 20 }, game: { quotaMult: 1.15 } },
+  open_borders:    { name: 'Open Borders',        desc: 'Corridor lanes are walkable.', mods: { walkableLanes: true } },
+  loyalty_scheme:  { name: 'Loyalty Scheme',      desc: 'Every traveller starts with +1 stop budget; fares -50%.', mods: { stopBudgetBonus: 1, fareMult: 0.5 } },
+};
+const ORDINANCE_KEYS = Object.keys(ORDINANCES);
+
+return { ORDINANCES, ORDINANCE_KEYS };
+})();
+// ---- src/data/modes.js
+const __m_src_data_modes_js = (() => {
+// Game modes act as character select. `unlockWeek` is the week any run must
+// reach (in any mode) before this mode becomes available.
+const MODES = {
+  terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'Baseline. 12x12 board.', unlockWeek: 0 },
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and hard. 9x9 board, start with 3 AP, quota grows faster.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.25 },
+  metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. 16x16 board, tile costs +25%.', unlockWeek: 12, costMult: 1.25 },
+  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two edges pre-locked to water; water transports -40% cost.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 } },
+  sky_harbour:{ name: 'Sky Harbour', w: 12, h: 12, desc: 'No rail or water permitted; all Free-terrain tiles -30% cost.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 } },
+  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One AP per week, but 8 shop slots.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8 },
+};
+const MODE_KEYS = Object.keys(MODES);
+
+return { MODES, MODE_KEYS };
+})();
+// ---- src/sim/rng.js
+const __m_src_sim_rng_js = (() => {
+// Seeded PRNG (mulberry32). One stream per subsystem so that changing the
+// number of calls in one system does not reshuffle another's rolls.
+function hashString(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^= h >>> 16) >>> 0;
+}
+
+class Rng {
+  constructor(seed) {
+    this.s = (typeof seed === 'string' ? hashString(seed) : seed >>> 0) || 0x9e3779b9;
+  }
+  next() {
+    let t = (this.s += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  int(n) { return Math.floor(this.next() * n); }
+  range(a, b) { return a + this.next() * (b - a); }
+  chance(p) { return this.next() < p; }
+  pick(arr) { return arr[this.int(arr.length)]; }
+  gauss() {
+    // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = this.next();
+    while (v === 0) v = this.next();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+  weighted(items, weightOf) {
+    let total = 0;
+    for (const it of items) total += weightOf(it);
+    if (total <= 0) return items[this.int(items.length)];
+    let r = this.next() * total;
+    for (const it of items) {
+      r -= weightOf(it);
+      if (r <= 0) return it;
+    }
+    return items[items.length - 1];
+  }
+  shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = this.int(i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+}
+
+function makeStreams(seed, names) {
+  const out = {};
+  for (const n of names) out[n] = new Rng(hashString(String(seed) + ':' + n));
+  return out;
+}
+
+return { hashString, Rng, makeStreams };
+})();
+// ---- src/sim/shapes.js
+const __m_src_sim_shapes_js = (() => {
+// Tetromino-style tile shapes. Each shape is a list of [x,y] cells with the
+// origin at the top-left of the bounding box. Orientations include rotations
+// and mirrors, de-duplicated.
+const BASE = {
+  I1: [[0,0]],
+  I2: [[0,0],[1,0]],
+  I3: [[0,0],[1,0],[2,0]],
+  I4: [[0,0],[1,0],[2,0],[3,0]],
+  I5: [[0,0],[1,0],[2,0],[3,0],[4,0]],
+  I6: [[0,0],[1,0],[2,0],[3,0],[4,0],[5,0]],
+  O4: [[0,0],[1,0],[0,1],[1,1]],
+  O6: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]],
+  L3: [[0,0],[0,1],[1,1]],
+  L4: [[0,0],[0,1],[0,2],[1,2]],
+  L5: [[0,0],[0,1],[0,2],[0,3],[1,3]],
+  S4: [[1,0],[2,0],[0,1],[1,1]],
+  S5: [[0,0],[1,0],[1,1],[1,2],[2,2]],
+  T4: [[0,0],[1,0],[2,0],[1,1]],
+};
+
+function normalize(cells) {
+  const minX = Math.min(...cells.map(c => c[0]));
+  const minY = Math.min(...cells.map(c => c[1]));
+  const out = cells.map(c => [c[0] - minX, c[1] - minY]);
+  out.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+  return out;
+}
+function rotate(cells) { return normalize(cells.map(([x, y]) => [-y, x])); }
+function mirror(cells) { return normalize(cells.map(([x, y]) => [-x, y])); }
+function key(cells) { return cells.map(c => c.join(',')).join(';'); }
+
+const SHAPES = {};
+// Per orientation: every { mirror: 0|1, rot: 0..3 } that produces it from the base
+// orientation (mirror first, then rot x 90deg clockwise). Symmetric shapes (I, O, L3, T)
+// have several; each entry also records where the base cell [0,0] lands (`tip`).
+const SHAPE_TRANSFORMS = {};
+for (const [name, cells] of Object.entries(BASE)) {
+  const seen = new Map();
+  const orients = [], transforms = [];
+  const base = normalize(cells);
+  for (let m = 0; m < 2; m++) {
+    for (let r = 0; r < 4; r++) {
+      // transform the base explicitly so we can track where cell [0,0] ends up
+      let raw = base.map(([x, y]) => (m ? [-x, y] : [x, y]));
+      for (let i = 0; i < r; i++) raw = raw.map(([x, y]) => [-y, x]);
+      const minX = Math.min(...raw.map(c => c[0])), minY = Math.min(...raw.map(c => c[1]));
+      const moved = raw.map(([x, y]) => [x - minX, y - minY]);
+      const cur = normalize(moved);
+      const k = key(cur);
+      const entry = { mirror: m, rot: r, tip: moved[0] };
+      if (!seen.has(k)) { seen.set(k, orients.length); orients.push(cur); transforms.push([entry]); }
+      else transforms[seen.get(k)].push(entry);
+    }
+  }
+  SHAPES[name] = orients;
+  SHAPE_TRANSFORMS[name] = transforms;
+}
+// Transform for drawing a base-orientation sprite at orientation `rot`. If `tipAt` is
+// given ([x,y] relative to the tile's bounding box), prefer the variant that maps the
+// sprite's base cell [0,0] onto that cell (used for tip-attached tiles like jetways).
+function shapeTransform(shape, rot, tipAt = null) {
+  const o = SHAPE_TRANSFORMS[shape];
+  const list = o[((rot % o.length) + o.length) % o.length];
+  if (tipAt) { const hit = list.find(e => e.tip[0] === tipAt[0] && e.tip[1] === tipAt[1]); if (hit) return hit; }
+  return list[0];
+}
+function shapeBaseSize(shape) {
+  const c = SHAPES[shape][0];
+  return { w: Math.max(...c.map(x => x[0])) + 1, h: Math.max(...c.map(x => x[1])) + 1 };
+}
+
+function shapeCells(shape, rot) {
+  const o = SHAPES[shape];
+  return o[((rot % o.length) + o.length) % o.length];
+}
+function orientationCount(shape) { return SHAPES[shape].length; }
+
+return { SHAPES, SHAPE_TRANSFORMS, shapeTransform, shapeBaseSize, shapeCells, orientationCount };
+})();
+// ---- src/sim/board.js
+const __m_src_sim_board_js = (() => {
+// Board model: grid, tiles, edge terrain, corridor lanes and road driveways.
+// Placement legality and terrain claims live here so the UI, the game layer
+// and the harness all share one rule set.
+const { shapeCells } = __m_src_sim_shapes_js;
+const { tileDef } = __m_src_data_tiles_js;
+const { CONFIG } = __m_src_config_js;
+const EDGES = ['N', 'E', 'S', 'W'];
+const LOCK_TERRAINS = new Set(['rail', 'water', 'apron']);
+
+function createBoard(w, h, preLock = {}) {
+  return {
+    w, h,
+    tiles: [],
+    nextId: 1,
+    edges: { N: 'green', E: 'green', S: 'green', W: 'green', ...preLock },
+    openSpans: { N: [], E: [], S: [], W: [] },
+    lanes: [],
+    driveways: [],
+  };
+}
+
+function cloneBoard(b) {
+  return JSON.parse(JSON.stringify(b));
+}
+
+function inBounds(b, x, y) { return x >= 0 && y >= 0 && x < b.w && y < b.h; }
+
+// Occupancy map: null | {type:'tile', tile} | {type:'lane'} | {type:'driveway'}
+function occupancyMap(b) {
+  const m = new Array(b.w * b.h).fill(null);
+  for (const t of b.tiles) for (const [x, y] of t.cells) m[y * b.w + x] = { type: 'tile', tile: t };
+  for (const [x, y] of b.lanes) m[y * b.w + x] = { type: 'lane' };
+  for (const [x, y] of b.driveways) if (!m[y * b.w + x]) m[y * b.w + x] = { type: 'driveway' };
+  return m;
+}
+
+function tileAt(b, x, y) {
+  for (const t of b.tiles) for (const [cx, cy] of t.cells) if (cx === x && cy === y) return t;
+  return null;
+}
+
+function edgesTouched(b, cells) {
+  const out = new Set();
+  for (const [x, y] of cells) {
+    if (y === 0) out.add('N');
+    if (y === b.h - 1) out.add('S');
+    if (x === 0) out.add('W');
+    if (x === b.w - 1) out.add('E');
+  }
+  return [...out];
+}
+
+// Indices along an edge that a set of cells touches (x for N/S, y for E/W)
+function edgeIndices(b, cells, edge) {
+  const out = [];
+  for (const [x, y] of cells) {
+    if (edge === 'N' && y === 0) out.push(x);
+    if (edge === 'S' && y === b.h - 1) out.push(x);
+    if (edge === 'W' && x === 0) out.push(y);
+    if (edge === 'E' && x === b.w - 1) out.push(y);
+  }
+  return out;
+}
+
+function spanOpen(b, edge, idx) { return b.openSpans[edge].includes(idx); }
+
+// Straight-line cells from a tile's cells to an edge, plus the distance.
+// Returns {dist, cells} where cells are the in-between cells (not including the tile).
+function lineToEdge(b, cells, edge) {
+  let best = null;
+  for (const [x, y] of cells) {
+    let dist, line = [];
+    if (edge === 'N') { dist = y; for (let yy = 0; yy < y; yy++) line.push([x, yy]); }
+    if (edge === 'S') { dist = b.h - 1 - y; for (let yy = y + 1; yy < b.h; yy++) line.push([x, yy]); }
+    if (edge === 'W') { dist = x; for (let xx = 0; xx < x; xx++) line.push([xx, y]); }
+    if (edge === 'E') { dist = b.w - 1 - x; for (let xx = x + 1; xx < b.w; xx++) line.push([xx, y]); }
+    if (best === null || dist < best.dist) best = { dist, cells: line, edgeIndex: (edge === 'N' || edge === 'S') ? x : y };
+  }
+  // prefer the middle cell among equal-distance candidates for a tidier look
+  const cands = [];
+  for (const [x, y] of cells) {
+    const d = edge === 'N' ? y : edge === 'S' ? b.h - 1 - y : edge === 'W' ? x : b.w - 1 - x;
+    if (d === best.dist) cands.push([x, y]);
+  }
+  const mid = cands[Math.floor((cands.length - 1) / 2)];
+  const [x, y] = mid;
+  const line = [];
+  if (edge === 'N') for (let yy = 0; yy < y; yy++) line.push([x, yy]);
+  if (edge === 'S') for (let yy = y + 1; yy < b.h; yy++) line.push([x, yy]);
+  if (edge === 'W') for (let xx = 0; xx < x; xx++) line.push([xx, y]);
+  if (edge === 'E') for (let xx = x + 1; xx < b.w; xx++) line.push([xx, y]);
+  return { dist: best.dist, cells: line, edgeIndex: (edge === 'N' || edge === 'S') ? x : y };
+}
+
+function lineClear(occ, b, line, allowDriveway) {
+  for (const [x, y] of line) {
+    const o = occ[y * b.w + x];
+    if (!o) continue;
+    if (o.type === 'driveway' && allowDriveway) continue;
+    if (o.type === 'tile' && o.tile.kind === 'bridge' && allowDriveway) continue;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Check whether a tile can be placed. Returns a result object:
+ * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}] }
+ */
+function checkPlacement(b, key, x, y, rot, mode = null) {
+  const def = tileDef(key);
+  const cells = shapeCells(def.shape, rot).map(([cx, cy]) => [cx + x, cy + y]);
+  const res = { ok: false, reason: '', cells, claims: [], lane: [], driveway: [], opens: [], def };
+  const occ = occupancyMap(b);
+  for (const [cx, cy] of cells) {
+    if (!inBounds(b, cx, cy)) { res.reason = 'Out of bounds'; return res; }
+    const o = occ[cy * b.w + cx];
+    if (o) { res.reason = o.type === 'tile' ? 'Overlaps ' + o.tile.name : o.type === 'lane' ? 'Blocked by a corridor lane' : 'Blocked by a driveway'; return res; }
+  }
+  if (def.kind === 'amenity') { res.ok = true; return res; }
+
+  if (def.kind === 'bridge') {
+    const touched = edgesTouched(b, cells);
+    const lockedTouched = touched.filter(e => b.edges[e] !== 'green');
+    if (lockedTouched.length === 0) { res.reason = 'A bridge must touch a claimed edge (road, rail, water or apron)'; return res; }
+    for (const e of lockedTouched) for (const i of edgeIndices(b, cells, e)) res.opens.push({ edge: e, idx: i });
+    res.ok = true; return res;
+  }
+
+  const terrain = def.terrain;
+  if (mode && mode.banTerrains && mode.banTerrains.includes(terrain)) { res.reason = `${terrain} transport not permitted in this mode`; return res; }
+
+  if (terrain === 'free') { res.ok = true; return res; }
+
+  if (LOCK_TERRAINS.has(terrain)) {
+    const touched = edgesTouched(b, cells);
+    if (touched.length === 0) { res.reason = `${def.name} must touch an edge`; return res; }
+    if (def.attach === 'tip') {
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `${def.name} must point the tip of its L at the edge with the foot inland (rotate or mirror it)`; return res; }
+    }
+    for (const e of touched) {
+      const cur = b.edges[e];
+      const idx = edgeIndices(b, cells, e);
+      const allOpen = idx.every(i => spanOpen(b, e, i));
+      if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
+      else if (cur === terrain || allOpen) { /* fine */ }
+      else { res.reason = `${e} edge is ${cur}; ${terrain} cannot attach there (needs a bridge)`; return res; }
+    }
+    res.ok = true; return res;
+  }
+
+  if (terrain === 'road') {
+    const reach = CONFIG.shop.roadReach;
+    const options = [];
+    for (const e of EDGES) {
+      const line = lineToEdge(b, cells, e);
+      if (line.dist > reach) continue;
+      const cur = b.edges[e];
+      const open = spanOpen(b, e, line.edgeIndex);
+      if (!(cur === 'green' || cur === 'road' || open)) continue;
+      if (!lineClear(occ, b, line.cells, true)) continue;
+      options.push({ e, line, cur });
+    }
+    if (options.length === 0) { res.reason = 'No road access: needs a clear straight path (max 4 cells) to a greenfield or road edge'; return res; }
+    options.sort((a, c) => a.line.dist - c.line.dist);
+    const pick = options[0];
+    res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
+    if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain: 'road', lock: false });
+    res.roadEdge = pick.e;
+    res.ok = true; return res;
+  }
+
+  if (terrain === 'corridor') {
+    // the lane continues the tile's long axis: a vertical lift reaches N or S, a horizontal one E or W
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+    const vertical = (Math.max(...ys) - Math.min(...ys)) > (Math.max(...xs) - Math.min(...xs));
+    const allowed = vertical ? ['N', 'S'] : ['E', 'W'];
+    let best = null;
+    for (const e of allowed) {
+      const line = lineToEdge(b, cells, e);
+      if (!lineClear(occ, b, line.cells, false)) continue;
+      if (best === null || line.dist < best.line.dist) best = { e, line };
+    }
+    if (!best) { res.reason = `${def.name} needs a clear straight lane to the ${vertical ? 'north or south' : 'east or west'} edge (rotate it to reach another edge)`; return res; }
+    res.lane = best.line.cells;
+    res.laneEdge = best.e;
+    res.ok = true; return res;
+  }
+
+  res.reason = 'Unknown terrain ' + terrain;
+  return res;
+}
+
+function placeTile(b, key, x, y, rot, check = null, mode = null) {
+  const c = check || checkPlacement(b, key, x, y, rot, mode);
+  if (!c.ok) throw new Error('Illegal placement: ' + c.reason);
+  const def = c.def;
+  const tile = {
+    id: b.nextId++, key, kind: def.kind, name: def.name, x, y, rot, level: 1,
+    cells: c.cells, terrain: def.terrain || null, radiusBonus: 0, arrOverride: null,
+    lane: c.lane, driveway: c.driveway,
+  };
+  b.tiles.push(tile);
+  for (const cl of c.claims) b.edges[cl.edge] = cl.terrain;
+  for (const o of c.opens) if (!b.openSpans[o.edge].includes(o.idx)) b.openSpans[o.edge].push(o.idx);
+  for (const cell of c.lane) b.lanes.push(cell);
+  for (const cell of c.driveway) b.driveways.push(cell);
+  return tile;
+}
+
+function removeTile(b, id) {
+  const i = b.tiles.findIndex(t => t.id === id);
+  if (i < 0) return null;
+  const t = b.tiles[i];
+  b.tiles.splice(i, 1);
+  const same = (a, c) => a[0] === c[0] && a[1] === c[1];
+  b.lanes = b.lanes.filter(l => !t.lane.some(c => same(c, l)));
+  // keep driveway cells still used by another road tile
+  b.driveways = b.driveways.filter(d => !t.driveway.some(c => same(c, d)) || b.tiles.some(o => o.driveway.some(c => same(c, d))));
+  return t;
+}
+
+// Walk map for the simulator. 0 walkable, 1 blocked, 2 walkway, 3 gate pass cell, 4 gate wall
+function buildWalkMap(b, opts = {}) {
+  const m = new Uint8Array(b.w * b.h);
+  for (const [x, y] of b.lanes) m[y * b.w + x] = opts.walkableLanes ? 0 : 1;
+  for (const t of b.tiles) {
+    const def = tileDef(t.key);
+    for (let i = 0; i < t.cells.length; i++) {
+      const [x, y] = t.cells[i];
+      const k = y * b.w + x;
+      if (def.special === 'walkway') m[k] = 2;
+      else if (def.kind === 'bridge') m[k] = 0;
+      else if (def.special === 'gate') m[k] = i === 1 ? 3 : 4;
+      else m[k] = 1;
+    }
+  }
+  return m;
+}
+
+function boardSummary(b) {
+  return b.tiles.map(t => `${t.name}@${t.x},${t.y} L${t.level}`).join('; ');
+}
+
+return { EDGES, LOCK_TERRAINS, createBoard, cloneBoard, inBounds, occupancyMap, tileAt, edgesTouched, checkPlacement, placeTile, removeTile, buildWalkMap, boardSummary };
+})();
+// ---- src/sim/sim.js
+const __m_src_sim_sim_js = (() => {
+// ============================================================================
+// Headless, deterministic week simulator.
+// Input: board + modifiers + seed. Output: score, money, per-agent tracks,
+// per-tile stats, heatmap. No DOM. Runs in Node and the browser.
+// ============================================================================
+const { CONFIG } = __m_src_config_js;
+const { tileDef } = __m_src_data_tiles_js;
+const { makeStreams } = __m_src_sim_rng_js;
+const { buildWalkMap } = __m_src_sim_board_js;
+const INF = 1e9;
+
+const DEFAULT_MODS = {
+  batchMult: 1, dwellMult: 1, dwellAdd: 0, cadenceDiv: 1, lowTierBias: 0,
+  vipCount: 0, vipBudgetBonus: 0, offlineTerrains: [], offlineTags: [], strikeTerrain: null,
+  closedBelowLevel: 0, rateBonusTags: {}, destTierShift: 0, stopBudgetBonus: 0,
+  extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
+  transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
+  ticks: null, spawnTicks: null, walkableLanes: false, pickpocketRate: null,
+};
+
+function mergeMods(...list) {
+  const out = { ...DEFAULT_MODS };
+  for (const m of list) {
+    if (!m) continue;
+    for (const [k, v] of Object.entries(m)) {
+      if (v === undefined || v === null) continue;
+      if (k === 'batchMult' || k === 'dwellMult' || k === 'fareMult' || k === 'capacityMult' || k === 'revenueMult' || k === 'flatMult') out[k] *= v;
+      else if (k === 'dwellAdd' || k === 'stopBudgetBonus' || k === 'transportMultBonus' || k === 'amenityMultBonus' || k === 'destTierShift' || k === 'vipCount' || k === 'vipBudgetBonus') out[k] += v;
+      else if (k === 'cadenceDiv') out[k] *= v;
+      else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns') out[k] = out[k].concat(v);
+      else if (k === 'rateBonusTags') { out[k] = { ...out[k] }; for (const [t, b] of Object.entries(v)) out[k][t] = (out[k][t] || 0) + b; }
+      else out[k] = v;
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Effective tile stats (after level, modifiers). Exported so the UI can show them.
+function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG) {
+  const def = tileDef(tile.key);
+  const lvl = (tile.level || 1) - 1;
+  const up = cfg.upgrades.transport;
+  const arrBase = tile.arrOverride || def.arr;
+  const tags = def.tags || [];
+  const offline = mods.offlineTerrains.includes(def.terrain) || tags.some(t => mods.offlineTags.includes(t)) || mods.strikeTerrain === def.terrain;
+  return {
+    def, tier: def.tier,
+    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult)),
+    mult: def.mult + up.mult * lvl + mods.transportMultBonus,
+    flat: def.flat * mods.flatMult,
+    arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
+    dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
+    dwell: Math.round(def.dwell * mods.dwellMult + mods.dwellAdd),
+    offline,
+  };
+}
+
+function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifiBonus = 0) {
+  const def = tileDef(tile.key);
+  const lvl = (tile.level || 1) - 1;
+  const up = cfg.upgrades.amenity;
+  const tags = def.tags || [];
+  let rate = def.rate > 0 ? def.rate + up.rate * lvl + wifiBonus : 0;
+  for (const t of tags) if (mods.rateBonusTags[t]) rate += mods.rateBonusTags[t];
+  if (mods.grandOpeningTileId === tile.id) rate = 1;
+  const isService = def.rate > 0;
+  return {
+    def, tier: def.tier, special: def.special || null,
+    rate: Math.min(1, rate),
+    mult: isService ? def.mult + up.mult * lvl + mods.amenityMultBonus : 1,
+    flat: def.flat * mods.flatMult,
+    cap: Math.max(1, Math.round(def.cap * (1 + up.capacity * lvl) * mods.capacityMult)),
+    dur: def.dur,
+    revenue: def.revenue * (1 + up.revenue * lvl) * mods.revenueMult * cfg.economy.revenueScale,
+    radius: def.radius + (tile.radiusBonus || 0),
+    closed: mods.closedBelowLevel > 0 && isService && (tile.level || 1) < mods.closedBelowLevel,
+    stackValue: def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue),
+    minTier: def.key === 'flier_club' ? cfg.sim.frequentFlierMinTier : 1,
+  };
+}
+
+// ---------------------------------------------------------------------------
+class Heap {
+  constructor() { this.a = []; }
+  push(k, v) { const a = this.a; a.push([k, v]); let i = a.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break; [a[p], a[i]] = [a[i], a[p]]; i = p; } }
+  pop() { const a = this.a; const top = a[0]; const last = a.pop(); if (a.length) { a[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return top; }
+  get size() { return this.a.length; }
+}
+
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+function simulateWeek(board, opts = {}) {
+  const cfg = opts.cfg || CONFIG;
+  const mods = mergeMods(opts.mods);
+  const week = opts.week || 1;
+  const seed = opts.seed ?? 1;
+  const rng = makeStreams(seed, ['spawn', 'dest', 'service', 'waypoint', 'walk', 'pick', 'loop']);
+  const TICKS = mods.ticks || cfg.sim.ticks;
+  const SPAWN_TICKS = mods.spawnTicks || cfg.sim.spawnTicks;
+  const W = board.w, H = board.h, N = W * H;
+  const tierMatchTable = mods.tierMatch || cfg.sim.tierMatch;
+
+  // ---- walk maps (gate closed / open)
+  const walkBase = buildWalkMap(board, { walkableLanes: mods.walkableLanes });
+  const passClosed = new Uint8Array(N), passOpen = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const v = walkBase[i];
+    passOpen[i] = (v === 0 || v === 2 || v === 3) ? 1 : 0;
+    passClosed[i] = (v === 0 || v === 2) ? 1 : 0;
+  }
+  const isWalkway = i => walkBase[i] === 2;
+  const isGateCell = i => walkBase[i] === 3;
+  const hasGate = board.tiles.some(t => t.key === 'gate');
+
+  // ---- tiles
+  const transports = [], amenities = [], waitingAreas = [], wifis = [];
+  let kioskCount = 0;
+  const tileStats = {};
+  for (const t of board.tiles) {
+    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, occ: new Int16Array(TICKS + 1), fullTicks: 0, cap: 0 };
+    if (t.kind === 'bridge') continue;
+    const doors = doorCells(board, t, passOpen);
+    if (t.kind === 'transport') {
+      const e = effTransport(t, mods, cfg);
+      transports.push({ tile: t, e, doors, idx: transports.length, spawned: 0 });
+    } else {
+      const def = tileDef(t.key);
+      if (def.special === 'wifi') { wifis.push(t); continue; }
+      if (def.special === 'kiosk') kioskCount++;
+      if (def.special === 'walkway' || def.special === 'gate') continue;
+      const distMap = chebyshevMap(board, t.cells);
+      const rec = { tile: t, def, doors, distMap, occ: 0, idx: amenities.length, e: null };
+      if (def.special === 'waiting') waitingAreas.push(rec); else amenities.push(rec);
+    }
+  }
+  // wifi bonuses
+  for (const a of amenities) {
+    let bonus = 0;
+    for (const w of wifis) {
+      const wd = tileDef(w.key);
+      const r = wd.radius + (w.radiusBonus || 0);
+      let d = INF;
+      for (const [x, y] of w.cells) d = Math.min(d, a.distMap[y * W + x]);
+      if (d <= r) bonus += cfg.sim.wifiBonus;
+    }
+    a.e = effAmenity(a.tile, mods, cfg, Math.min(cfg.sim.wifiCap, bonus));
+    tileStats[a.tile.id].cap = a.e.cap;
+  }
+  for (const wa of waitingAreas) { wa.e = effAmenity(wa.tile, mods, cfg); tileStats[wa.tile.id].cap = wa.e.cap; }
+  const activeTransports = transports.filter(t => !t.e.offline && t.doors.length > 0);
+
+  // ---- distance fields (memoized)
+  const fields = new Map();
+  function field(key, targets, gateOpen) {
+    const k = key + (gateOpen ? ':o' : ':c');
+    let f = fields.get(k);
+    if (f) return f;
+    const pass = gateOpen ? passOpen : passClosed;
+    f = new Float32Array(N).fill(INF);
+    const heap = new Heap();
+    for (const c of targets) { const i = c[1] * W + c[0]; if (pass[i]) { f[i] = 0; heap.push(0, i); } }
+    while (heap.size) {
+      const [d, i] = heap.pop();
+      if (d > f[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (!pass[ni]) continue;
+        if (dx && dy && !(pass[y * W + nx] && pass[ny * W + x])) continue; // no corner cutting
+        const cost = isWalkway(i) ? 0.5 : 1; // cheap to leave a walkway cell => walkways attract paths
+        const nd = d + cost;
+        if (nd < f[ni]) { f[ni] = nd; heap.push(nd, ni); }
+      }
+    }
+    fields.set(k, f);
+    return f;
+  }
+  const transportField = (ti, g) => field('T' + ti, transports[ti].doors, g);
+  const cellField = (x, y, g) => field('C' + x + ',' + y, [[x, y]], g);
+  const amenityField = (ai, g) => field('A' + ai, amenities[ai].doors, g);
+
+  // reachability between transports: 0 none, 1 direct, 2 via gate
+  const reach = transports.map(() => new Int8Array(transports.length));
+  for (let a = 0; a < transports.length; a++) {
+    if (!transports[a].doors.length) continue;
+    const [sx, sy] = transports[a].doors[0];
+    for (let b = 0; b < transports.length; b++) {
+      if (!transports[b].doors.length) continue;
+      if (transportField(b, false)[sy * W + sx] < INF) reach[a][b] = 1;
+      else if (hasGate && transportField(b, true)[sy * W + sx] < INF) reach[a][b] = 2;
+    }
+  }
+
+  // ---- state
+  const agents = [];
+  const live = [];
+  const heat = new Float32Array(N);
+  let score = 0, fares = 0, revenue = 0, banked = 0, strandedPts = 0, stolen = 0;
+  let best = null;
+  const counts = { spawned: 0, boarded: 0, stranded: 0, pickpockets: 0, removed: 0, looped: 0 };
+  const dw = cfg.destinationWeights;
+  const pickRate = mods.pickpocketRate != null ? mods.pickpocketRate
+    : (week >= cfg.run.pickpocketsFromWeek ? cfg.sim.pickpocketRate * Math.max(0, 1 - cfg.sim.kioskPickpocketReduction * kioskCount) : 0);
+
+  function destWeight(travTier, transTier) {
+    const gap = travTier - transTier;
+    if (gap === 0) return dw.same;
+    if (gap === 1) return dw.down1;
+    if (gap === -1) return dw.up1;
+    if (gap === 2) return dw.down2;
+    if (gap === -2) return dw.up2;
+    return dw.far;
+  }
+
+  function chooseDest(originIdx, tier) {
+    const t = Math.min(5, tier + mods.destTierShift);
+    const cands = [];
+    for (let b = 0; b < transports.length; b++) {
+      if (!transports[b].doors.length) continue;
+      if (b !== originIdx && !reach[originIdx][b]) continue;
+      cands.push(b);
+    }
+    if (!cands.length) return originIdx;
+    return rng.dest.weighted(cands, b => destWeight(t, transports[b].e.tier));
+  }
+
+  function snapCell(fx, fy, f) {
+    // nearest cell (Chebyshev spiral) that is reachable in field f
+    const cx = Math.max(0, Math.min(W - 1, Math.round(fx)));
+    const cy = Math.max(0, Math.min(H - 1, Math.round(fy)));
+    for (let r = 0; r < Math.max(W, H); r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        if (f[y * W + x] < INF) return [x, y];
+      }
+    }
+    return null;
+  }
+
+  function makeWaypoints(sx, sy, destIdx, gateOpen, same) {
+    const f = transportField(destIdx, gateOpen);
+    const doors = transports[destIdx].doors;
+    const [dx, dy] = doors[Math.floor(doors.length / 2)];
+    const wps = [];
+    const n = cfg.sim.waypointCount;
+    for (let i = 0; i < n; i++) {
+      let px, py;
+      if (same) {
+        const s = cfg.sim.sameTileWanderSigma;
+        px = sx + rng.waypoint.gauss() * s; py = sy + rng.waypoint.gauss() * s;
+      } else {
+        const lo = (i + 0.15) / n, hi = (i + 0.85) / n;
+        const t = rng.waypoint.range(lo, hi);
+        const s = cfg.sim.waypointSigma;
+        px = sx + (dx - sx) * t + rng.waypoint.gauss() * s;
+        py = sy + (dy - sy) * t + rng.waypoint.gauss() * s;
+      }
+      const c = snapCell(px, py, f);
+      if (c) wps.push(c);
+    }
+    return wps;
+  }
+
+  function spawnAgent(originIdx, tier, kind, extra = {}) {
+    const tr = transports[originIdx];
+    const door = rng.spawn.pick(tr.doors);
+    const id = agents.length;
+    let destIdx = originIdx, gateOpen = false;
+    if (kind === 'pickpocket') {
+      destIdx = transports.length > 1 ? rng.dest.pick(transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx)) : originIdx;
+      gateOpen = true;
+    } else {
+      destIdx = chooseDest(originIdx, tier);
+      if (destIdx !== originIdx && reach[originIdx][destIdx] === 2) gateOpen = true;
+    }
+    const tierInfo = cfg.tiers[tier - 1];
+    const a = {
+      id, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1],
+      value: extra.value ?? tierInfo.base, budget: tierInfo.budget + mods.stopBudgetBonus + (gateOpen ? cfg.sim.gateBudgetBonus : 0) + (extra.budgetBonus || 0),
+      served: new Set(), balked: new Set(), chain: [], state: 'walking', spawnTick: currentTick, endTick: null,
+      frames: [[door[0], door[1]]], events: [], targets: [], ti: 0, serve: null, serveTicks: 0, arrivedTick: -1,
+      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null,
+    };
+    const same = destIdx === originIdx;
+    const wps = makeWaypoints(a.x, a.y, destIdx, gateOpen, same);
+    for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
+    a.targets.push({ kind: 'dest', idx: destIdx });
+    agents.push(a); live.push(a);
+    counts.spawned++;
+    if (kind === 'pickpocket') counts.pickpockets++;
+    tileStats[tr.tile.id].spawned++;
+    return a;
+  }
+
+  function targetField(a, tg) {
+    if (tg.kind === 'wp') return cellField(tg.x, tg.y, a.gateOpen);
+    if (tg.kind === 'dest') return transportField(tg.idx, a.gateOpen);
+    return amenityField(tg.idx, a.gateOpen);
+  }
+
+  // Move one step toward the current target. Returns true if target reached.
+  function stepToward(a, f) {
+    const i = a.y * W + a.x;
+    const here = f[i];
+    if (here === 0) return true;
+    if (here >= INF) return false;
+    const pass = a.gateOpen ? passOpen : passClosed;
+    let bestD = here, cands = [];
+    for (const [dx, dy] of DIRS) {
+      const nx = a.x + dx, ny = a.y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const ni = ny * W + nx;
+      if (!pass[ni]) continue;
+      if (dx && dy && !(pass[a.y * W + nx] && pass[ny * W + a.x])) continue;
+      const d = f[ni];
+      if (d < bestD - 1e-6) { bestD = d; cands = [ni]; }
+      else if (Math.abs(d - bestD) < 1e-6 && d < here) cands.push(ni);
+    }
+    if (!cands.length) return false;
+    const ni = cands.length === 1 ? cands[0] : rng.walk.pick(cands);
+    a.x = ni % W; a.y = (ni - a.x) / W;
+    heat[ni] += 1;
+    return f[ni] === 0;
+  }
+
+  function applyService(a, am, t) {
+    const e = am.e;
+    const before = a.value;
+    a.value = a.value * e.mult + e.flat;
+    if (e.def.special === 'green') a.budget += cfg.sim.greenSpaceBudgetRestore; else a.budget -= 1;
+    a.served.add(am.idx);
+    const st = tileStats[am.tile.id];
+    st.serves++; st.revenue += e.revenue; st.points += a.value - before;
+    revenue += e.revenue;
+    a.chain.push({ name: am.tile.name, tileId: am.tile.id, before, after: a.value, mult: e.mult, flat: e.flat });
+    a.events.push({ t, type: 'serve', tileId: am.tile.id, value: a.value, mult: e.mult, flat: e.flat });
+  }
+
+  function serviceRolls(a, t) {
+    if (a.budget <= 0) return;
+    const i = a.y * W + a.x;
+    const inRange = [];
+    for (const am of amenities) {
+      if (am.e.closed || am.e.rate <= 0) continue;
+      const d = am.distMap[i];
+      if (d < 1 || d > am.e.radius) continue;
+      if (a.served.has(am.idx)) continue;
+      if (amenityField(am.idx, a.gateOpen)[i] >= INF) continue; // walled off: no path to its door
+      inRange.push([d, am]);
+    }
+    if (!inRange.length) return;
+    inRange.sort((p, q) => p[0] - q[0] || p[1].idx - q[1].idx);
+    for (const [d, am] of inRange) {
+      const e = am.e;
+      const gap = e.special === 'anytier' ? 0 : Math.abs(a.tier - e.tier);
+      const tm = tierMatchTable[Math.min(gap, tierMatchTable.length - 1)];
+      const fall = e.radius <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
+      const p = e.rate * tm * fall;
+      if (!rng.service.chance(p)) continue;
+      if (am.occ >= e.cap) {
+        if (!a.balked.has(am.idx)) { a.balked.add(am.idx); tileStats[am.tile.id].balks++; }
+        continue;
+      }
+      // hit: reserve and detour
+      am.occ++;
+      a.state = 'detour';
+      a.serve = am;
+      a.events.push({ t, type: 'detour', tileId: am.tile.id });
+      return;
+    }
+  }
+
+  function beginService(a, t) {
+    const am = a.serve;
+    applyService(a, am, t);
+    a.serveTicks = am.e.dur;
+    a.state = 'serving';
+    if (a.serveTicks <= 0) { endService(a); return; }
+    // step inside: stand on the amenity cell nearest the door for the duration
+    a.serveDoor = [a.x, a.y];
+    let best = null, bd = 99;
+    for (const [cx, cy] of am.tile.cells) { const d = Math.max(Math.abs(cx - a.x), Math.abs(cy - a.y)); if (d < bd) { bd = d; best = [cx, cy]; } }
+    if (best) { a.x = best[0]; a.y = best[1]; }
+  }
+  function endService(a) {
+    a.serve.occ--;
+    a.serve = null;
+    a.state = 'walking';
+    if (a.serveDoor) { a.x = a.serveDoor[0]; a.y = a.serveDoor[1]; a.serveDoor = null; }
+  }
+
+  function board_(a, t) {
+    const tr = transports[a.dest];
+    const e = tr.e;
+    const before = a.value;
+    let v = a.value * e.mult + e.flat;
+    let tierBonus = 1;
+    if (a.tier === e.tier) { tierBonus = cfg.sim.tierMatchExitBonus; v *= tierBonus; }
+    let waitMult = 1;
+    if (a.waitSlot) {
+      waitMult = 1 + a.stacks * a.waitSlot.e.stackValue;
+      v *= waitMult;
+      a.waitSlot.occ--;
+      a.chain.push({ name: a.waitSlot.tile.name, tileId: a.waitSlot.tile.id, before: a.value, after: v, mult: waitMult, flat: 0, stacks: a.stacks });
+      tileStats[a.waitSlot.tile.id].points += (v - a.value);
+      a.waitSlot = null;
+    }
+    a.value = v;
+    a.chain.push({ name: tr.tile.name + ' (exit)', tileId: tr.tile.id, before, after: v, mult: e.mult * tierBonus, flat: e.flat, exit: true });
+    const fare = cfg.tiers[a.tier - 1].fare * mods.fareMult * cfg.economy.fareScale;
+    fares += fare;
+    score += v; banked += v;
+    const st = tileStats[tr.tile.id];
+    st.boarded++; st.points += v; st.revenue += fare;
+    counts.boarded++;
+    a.outcome = 'boarded'; a.state = 'done'; a.endTick = t;
+    a.events.push({ t, type: 'board', tileId: tr.tile.id, value: v });
+    if (!best || v > best.value) best = { id: a.id, tier: a.tier, value: v, chain: a.chain.slice(), origin: transports[a.origin].tile.name, dest: tr.tile.name };
+    // Loop terminal: re-enter with chain intact
+    if (e.def.special === 'loop' && t <= SPAWN_TICKS && rng.loop.chance(e.def.loopChance)) {
+      counts.looped++;
+      const na = spawnAgent(a.dest, a.tier, 'traveller', { value: v });
+      na.events.push({ t, type: 'loop' });
+    }
+  }
+
+  let currentTick = 0;
+  const vipDone = { done: false };
+
+  // extra spawns (Charter Bus etc.) spread across the first spawn ticks
+  const extraQueue = [];
+  for (const ex of mods.extraSpawns) for (let i = 0; i < ex.count; i++) extraQueue.push({ tier: ex.tier, tick: 1 + (i % Math.min(8, SPAWN_TICKS)) });
+
+  for (let t = 1; t <= TICKS; t++) {
+    currentTick = t;
+    // ---- spawns
+    if (t <= SPAWN_TICKS && activeTransports.length) {
+      for (const tr of activeTransports) {
+        if ((t - 1) % tr.e.arr !== 0) continue;
+        for (let n = 0; n < tr.e.batch; n++) {
+          let tier = tr.e.tier;
+          const r = rng.spawn.next();
+          const sp = cfg.sim.tierSpread;
+          if (r < sp.down) tier = Math.max(1, tier - 1); else if (r < sp.down + sp.up) tier = Math.min(5, tier + 1);
+          if (mods.lowTierBias && tier > 2 && rng.spawn.chance(mods.lowTierBias)) tier = rng.spawn.chance(0.5) ? 1 : 2;
+          const kind = pickRate > 0 && rng.pick.chance(pickRate) ? 'pickpocket' : 'traveller';
+          spawnAgent(tr.idx, tier, kind);
+        }
+      }
+      for (const ex of extraQueue) if (ex.tick === t) spawnAgent(rng.spawn.pick(activeTransports).idx, ex.tier, 'traveller');
+      if (t === 1 && mods.vipCount > 0 && !vipDone.done) {
+        vipDone.done = true;
+        for (let i = 0; i < mods.vipCount; i++) spawnAgent(rng.spawn.pick(activeTransports).idx, 5, 'traveller', { budgetBonus: mods.vipBudgetBonus });
+      }
+    }
+
+    // ---- agent updates
+    for (let li = 0; li < live.length; li++) {
+      const a = live[li];
+      if (a.state === 'done') continue;
+      if (a.spawnTick === t && a.frames.length === 1) { /* spawned this tick; still acts */ }
+
+      if (a.kind === 'pickpocket') {
+        updatePickpocket(a, t);
+        continue;
+      }
+
+      if (a.state === 'serving') {
+        a.serveTicks--;
+        if (a.serveTicks <= 0) endService(a);
+      } else if (a.state === 'walking' || a.state === 'detour') {
+        const onWalkway = isWalkway(a.y * W + a.x);
+        const steps = onWalkway ? cfg.sim.walkwaySpeed : 1;
+        let moved = false;
+        for (let s = 0; s < steps && (a.state === 'walking' || a.state === 'detour'); s++) {
+          const tg = a.state === 'detour' ? { kind: 'am', idx: a.serve.idx } : a.targets[a.ti];
+          const f = targetField(a, tg);
+          const px = a.x, py = a.y;
+          const reached = stepToward(a, f);
+          if (a.x !== px || a.y !== py) moved = true;
+          if (reached) {
+            if (a.state === 'detour') { beginService(a, t); break; }
+            a.ti++;
+            if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; a.events.push({ t, type: 'arrive' }); break; }
+          } else if (!moved && f[a.y * W + a.x] >= INF) {
+            // unreachable target: skip it
+            if (a.state === 'detour') { a.served.add(a.serve.idx); a.serve.occ--; a.serve = null; a.state = 'walking'; }
+            else { a.ti++; if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; } }
+            break;
+          } else if (!moved) {
+            // stuck (no descending neighbour) - drop this target
+            if (a.state === 'detour') { a.serve.occ--; a.serve = null; a.state = 'walking'; }
+            else { a.ti++; if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; } }
+            break;
+          }
+        }
+        if (a.state === 'walking' && !onWalkway) serviceRolls(a, t);
+      }
+
+      if (a.state === 'waiting') {
+        // waiting areas
+        const i = a.y * W + a.x;
+        for (const wa of waitingAreas) {
+          const d = wa.distMap[i];
+          if (d > wa.e.radius) continue;
+          if (a.waitSlot === null) {
+            if (a.tier < wa.e.minTier || wa.e.closed) continue;
+            if (wa.occ >= wa.e.cap) { if (!a.balked.has('w' + wa.idx)) { a.balked.add('w' + wa.idx); tileStats[wa.tile.id].balks++; } continue; }
+            wa.occ++; a.waitSlot = wa; a.stacks = 0;
+            tileStats[wa.tile.id].serves++; tileStats[wa.tile.id].revenue += wa.e.revenue; revenue += wa.e.revenue;
+            a.events.push({ t, type: 'lounge', tileId: wa.tile.id });
+          }
+          if (a.waitSlot === wa) {
+            const cap = cfg.tiers[a.tier - 1].waitCap;
+            if (a.stacks < cap) { a.stacks++; a.events.push({ t, type: 'stack', tileId: wa.tile.id, stacks: a.stacks }); }
+          }
+        }
+        const tr = transports[a.dest];
+        const lastCall = cfg.sim.lastCallDeparture && t === TICKS;
+        if ((t >= a.arrivedTick + tr.e.dwell && t % tr.e.dep === 0) || lastCall) board_(a, t);
+      }
+    }
+
+    // ---- frames + occupancy
+    for (const a of live) {
+      if (a.state === 'done' && a.endTick < t) continue;
+      a.frames.push([a.x, a.y]);
+    }
+    for (const am of amenities) { const s = tileStats[am.tile.id]; s.occ[t] = am.occ; if (am.occ >= am.e.cap) s.fullTicks++; }
+    for (const wa of waitingAreas) { const s = tileStats[wa.tile.id]; s.occ[t] = wa.occ; if (wa.occ >= wa.e.cap) s.fullTicks++; }
+    // prune done agents from live list
+    for (let li = live.length - 1; li >= 0; li--) if (live[li].state === 'done' && live[li].endTick < t) live.splice(li, 1);
+  }
+
+  function updatePickpocket(a, t) {
+    const i0 = a.y * W + a.x;
+    const tg = a.targets[a.ti];
+    if (!tg) {
+      // choose a new destination
+      const opts = transports.filter((_, i) => reach[a.origin][i] || i === a.origin);
+      a.dest = rng.dest.pick(opts).idx;
+      a.targets = [{ kind: 'dest', idx: a.dest }]; a.ti = 0;
+    }
+    const f = targetField(a, a.targets[a.ti]);
+    const reached = stepToward(a, f);
+    const i = a.y * W + a.x;
+    if (isGateCell(i)) {
+      a.state = 'done'; a.outcome = 'removed'; a.endTick = t; counts.removed++;
+      a.events.push({ t, type: 'removed' });
+      return;
+    }
+    if (reached || i === i0) { a.ti++; if (a.ti >= a.targets.length) { a.targets = []; a.ti = 0; } }
+    // rob adjacent travellers
+    for (const v of live) {
+      if (v.kind !== 'traveller' || v.state === 'done' || a.robbed.has(v.id)) continue;
+      if (Math.abs(v.x - a.x) <= 1 && Math.abs(v.y - a.y) <= 1) {
+        a.robbed.add(v.id);
+        const loss = v.value * cfg.sim.pickpocketSteal;
+        v.value -= loss; stolen += loss;
+        v.events.push({ t, type: 'robbed', value: v.value, loss });
+        a.events.push({ t, type: 'steal' });
+      }
+    }
+  }
+
+  // ---- end of week: strand everyone still on the board
+  for (const a of agents) {
+    if (a.state === 'done') continue;
+    a.endTick = TICKS;
+    if (a.kind === 'pickpocket') { a.outcome = 'left'; a.state = 'done'; continue; }
+    const v = a.value * cfg.economy.strandedMultiplier;
+    score += v; strandedPts += v;
+    counts.stranded++;
+    tileStats[transports[a.dest].tile.id].stranded++;
+    if (a.waitSlot) { a.waitSlot.occ--; a.waitSlot = null; }
+    if (a.serve) { a.serve.occ--; a.serve = null; }
+    a.outcome = 'stranded'; a.state = 'done';
+    a.events.push({ t: TICKS, type: 'strand', value: v });
+  }
+
+  for (const id in tileStats) {
+    const s = tileStats[id];
+    s.saturation = s.cap > 0 ? s.fullTicks / TICKS : 0;
+  }
+
+  return {
+    seed, week, ticks: TICKS, spawnTicks: SPAWN_TICKS,
+    score: Math.round(score),
+    points: { banked: Math.round(banked), stranded: Math.round(strandedPts), stolen: Math.round(stolen) },
+    money: { fares: Math.round(fares), revenue: Math.round(revenue), total: Math.round(fares + revenue) },
+    counts, best,
+    agents: agents.map(a => ({ id: a.id, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
+    tileStats,
+    heat,
+    w: W, h: H,
+  };
+}
+
+// walkable cells 8-adjacent to a tile
+function doorCells(board, tile, pass) {
+  const W = board.w, H = board.h;
+  const set = new Set(), out = [];
+  const own = new Set(tile.cells.map(([x, y]) => y * W + x));
+  for (const [x, y] of tile.cells) {
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const i = ny * W + nx;
+      if (own.has(i) || set.has(i) || !pass[i]) continue;
+      set.add(i); out.push([nx, ny]);
+    }
+  }
+  return out;
+}
+
+function chebyshevMap(board, cells) {
+  const W = board.w, H = board.h;
+  const m = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let d = 255;
+    for (const [cx, cy] of cells) d = Math.min(d, Math.max(Math.abs(cx - x), Math.abs(cy - y)));
+    m[y * W + x] = d;
+  }
+  return m;
+}
+
+return { DEFAULT_MODS, mergeMods, effTransport, effAmenity, simulateWeek };
+})();
+// ---- src/game/run.js
+const __m_src_game_run_js = (() => {
+// ============================================================================
+// Run state and actions. Plain mutable state object + functions; the UI
+// re-renders after every action. Everything here is DOM-free.
+// ============================================================================
+const { CONFIG, quotaForWeek, apForWeek } = __m_src_config_js;
+const { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef } = __m_src_data_tiles_js;
+const { EVENTS, EVENT_KEYS } = __m_src_data_events_js;
+const { CARDS } = __m_src_data_cards_js;
+const { ORDINANCES, ORDINANCE_KEYS } = __m_src_data_ordinances_js;
+const { MODES } = __m_src_data_modes_js;
+const { Rng, hashString } = __m_src_sim_rng_js;
+const { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, LOCK_TERRAINS } = __m_src_sim_board_js;
+const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
+function createRun({ modeKey = 'terminal', seed = null } = {}) {
+  const mode = MODES[modeKey];
+  seed = seed ?? Math.floor(Math.random() * 1e9);
+  const rng = new Rng(hashString(seed + ':events'));
+  // event plan: shuffled cycles of all events
+  const plan = [];
+  while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
+  const state = {
+    seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    money: CONFIG.run.startMoney,
+    board: createBoard(mode.w, mode.h, mode.preLock || {}),
+    shop: { cards: [], rerolls: 0 },
+    eventPlan: plan, surveyed: false,
+    ordinances: [], pendingOrdinance: null,
+    effects: [], strikeChoice: null, grandOpening: null,
+    lastResult: null, history: [], won: false, log: [],
+    records: { bestWeek: 0, bestTraveller: 0, bestScore: 0 },
+  };
+  state.ap = apForRun(state);
+  state.shop.cards = generateShop(state);
+  return state;
+}
+
+const modeOf = s => MODES[s.modeKey];
+function apForRun(s) {
+  const m = modeOf(s);
+  if (m.fixedAP) return m.fixedAP + s.apPermanentBonus;
+  return apForWeek(s.week, m) + s.apPermanentBonus;
+}
+function isEventWeek(s, week = s.week) { return week % CONFIG.run.eventEvery === 0; }
+function eventForWeek(s, week) {
+  if (!isEventWeek(s, week)) return null;
+  const k = s.eventPlan[(week / CONFIG.run.eventEvery - 1) % s.eventPlan.length];
+  return { key: k, ...EVENTS[k] };
+}
+function currentEvent(s) { return eventForWeek(s, s.week); }
+function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
+function gameRules(s) {
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: false, quotaMult: 1 };
+  for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
+  return r;
+}
+function quotaFor(s, week = s.week) {
+  const ev = eventForWeek(s, week);
+  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult);
+}
+function tileCount(s) { return s.board.tiles.length; }
+function tileCost(s, def) {
+  const m = modeOf(s);
+  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1);
+  if (def.kind === 'transport' && m.terrainCostMult && m.terrainCostMult[def.terrain]) c *= m.terrainCostMult[def.terrain];
+  return Math.round(c);
+}
+function cardCost(s, card) {
+  if (card.type === 'tile') return tileCost(s, tileDef(card.key));
+  if (card.type === 'bridge') return Math.round(BRIDGE.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)));
+  return card.cost;
+}
+function upgradeCost(tile) {
+  const lvl = tile.level || 1;
+  if (lvl >= CONFIG.economy.maxLevel) return null;
+  return CONFIG.economy.upgradeCosts[lvl - 1];
+}
+function rerollFee(s) {
+  const f = CONFIG.economy.rerollFees;
+  return f[Math.min(s.shop.rerolls, f.length - 1)];
+}
+
+// ----------------------------------------------------------------------- shop
+function tileWeight(def, week) {
+  const target = CONFIG.shop.targetCostBase * Math.pow(CONFIG.shop.targetCostGrowth, week - 1);
+  const d = Math.log(def.cost / target);
+  return Math.exp(-(d * d) / (2 * CONFIG.shop.targetCostSigma * CONFIG.shop.targetCostSigma)) + 0.02;
+}
+function transportPool(s, rareOnly = false) {
+  const m = modeOf(s);
+  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+}
+function amenityPool(s, rareOnly = false) {
+  return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
+}
+let cardSeq = 0;
+function tileCard(def, slot) { return { id: 'c' + (++cardSeq), slot, type: 'tile', key: def.key, name: def.name, kind: def.kind, cost: def.cost, desc: '' }; }
+
+function generateShop(s) {
+  const rng = new Rng(hashString(`${s.seed}:shop:${s.week}:${s.shop.rerolls}`));
+  const m = modeOf(s);
+  const nSlots = m.shopSlots || CONFIG.shop.slots;
+  const cards = [];
+  const pickTile = (pool, avoid) => {
+    const filtered = pool.filter(d => !avoid.has(d.key));
+    const use = filtered.length ? filtered : pool;
+    return rng.weighted(use, d => tileWeight(d, s.week));
+  };
+  const used = new Set();
+  const addTransport = slot => { const d = pickTile(transportPool(s), used); used.add(d.key); cards.push(tileCard(d, slot)); };
+  const addAmenity = slot => { const d = pickTile(amenityPool(s), used); used.add(d.key); cards.push(tileCard(d, slot)); };
+  const addUpgrade = slot => cards.push({ id: 'c' + (++cardSeq), slot, type: 'upgrade', name: 'Upgrade Token', cost: 0, desc: 'Raise any owned tile one level. Cost depends on its current level (60 / 140 / 300 / 650).', target: 'tile' });
+  const addWildcard = slot => {
+    const w = { ...CONFIG.shop.wildcard };
+    if (s.week < CONFIG.run.rareTilesFromWeek) w.rare = 0;
+    if (s.board.tiles.length === 0) { w.upgrade = 0; w.namedUpgrade = 0; }
+    if (s.week < CONFIG.run.apUpgradeFromWeek) w.apUpgrade = 0;
+    const named = Object.entries(NAMED_UPGRADES).filter(([k, d]) => d.minWeek <= s.week);
+    if (!named.length) w.namedUpgrade = 0;
+    const kind = rng.weighted(Object.keys(w), k => w[k]);
+    if (kind === 'card') { const k = rng.pick(Object.keys(CARDS)); cards.push({ id: 'c' + (++cardSeq), slot, type: 'card', key: k, name: CARDS[k].name, cost: CARDS[k].cost, desc: CARDS[k].desc, target: CARDS[k].target }); }
+    else if (kind === 'rare') { const pool = [...transportPool(s, true), ...amenityPool(s, true)]; if (pool.length) { const d = rng.pick(pool); cards.push(tileCard(d, slot)); } else addUpgrade(slot); }
+    else if (kind === 'bridge') cards.push({ id: 'c' + (++cardSeq), slot, type: 'bridge', key: 'bridge', name: BRIDGE.name, kind: 'bridge', cost: BRIDGE.cost, desc: 'Place along a claimed edge: opens that span so any transport type may attach there. Walkable.' });
+    else if (kind === 'upgrade') addUpgrade(slot);
+    else if (kind === 'apUpgrade') cards.push({ id: 'c' + (++cardSeq), slot, type: 'ap', name: 'Extra Shift', cost: CONFIG.run.apUpgradeCost, desc: 'Permanent +1 AP per week.' });
+    else if (kind === 'namedUpgrade') { const [k, d] = rng.pick(named); cards.push({ id: 'c' + (++cardSeq), slot, type: 'named_upgrade', key: k, name: d.name, cost: d.cost, desc: d.desc, target: d.target }); }
+  };
+  const pattern = ['transport', 'amenity', 'amenity', 'upgrade', 'wildcard', 'transport', 'amenity', 'wildcard'];
+  for (let i = 0; i < nSlots; i++) {
+    const kind = pattern[i % pattern.length];
+    if (kind === 'transport') addTransport(i);
+    else if (kind === 'amenity') addAmenity(i);
+    else if (kind === 'upgrade') { if (s.board.tiles.length === 0) addAmenity(i); else addUpgrade(i); }
+    else addWildcard(i);
+  }
+  return cards;
+}
+
+// -------------------------------------------------------------------- actions
+function fail(reason) { return { ok: false, reason }; }
+function log(s, msg) { s.log.push(`W${s.week}: ${msg}`); if (s.log.length > 200) s.log.shift(); }
+function removeCard(s, card) { s.shop.cards = s.shop.cards.filter(c => c.id !== card.id); }
+
+function placementCheck(s, key, x, y, rot) { return checkPlacement(s.board, key, x, y, rot, modeOf(s)); }
+
+function buyTile(s, card, x, y, rot) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.ap < 1) return fail('No action points left');
+  const cost = cardCost(s, card);
+  if (s.money < cost) return fail(`Need $${cost}`);
+  const c = placementCheck(s, card.key, x, y, rot);
+  if (!c.ok) return fail(c.reason);
+  const tile = placeTile(s.board, card.key, x, y, rot, c, modeOf(s));
+  tile.paid = cost;
+  s.money -= cost; s.ap -= 1;
+  removeCard(s, card);
+  log(s, `Placed ${tile.name} for $${cost}`);
+  for (const cl of c.claims) log(s, `${cl.edge} edge claimed as ${cl.terrain}${cl.lock ? ' (locked)' : ''}`);
+  return { ok: true, tile };
+}
+
+function upgradeTile(s, card, tileId) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.ap < 1) return fail('No action points left');
+  const tile = s.board.tiles.find(t => t.id === tileId);
+  if (!tile || tile.kind === 'bridge') return fail('Pick a tile to upgrade');
+  const def = tileDef(tile.key);
+  if (card.type === 'upgrade') {
+    const cost = upgradeCost(tile);
+    if (cost == null) return fail('Already at max level');
+    if (s.money < cost) return fail(`Need $${cost}`);
+    tile.level++; s.money -= cost; s.ap -= 1; removeCard(s, card);
+    log(s, `Upgraded ${tile.name} to L${tile.level} for $${cost}`);
+    return { ok: true };
+  }
+  if (card.type === 'named_upgrade') {
+    const nu = NAMED_UPGRADES[card.key];
+    if (s.money < nu.cost) return fail(`Need $${nu.cost}`);
+    if (nu.target === 'coffee' && tile.key !== 'coffee') return fail('Espresso Bar needs a Coffee Shop');
+    if (nu.target === 'transport' && tile.kind !== 'transport') return fail('Needs a transport tile');
+    if (nu.target === 'amenity' && (tile.kind !== 'amenity' || def.rate <= 0)) return fail('Needs a service amenity');
+    if (nu.target === 'waiting_all') {
+      for (const t of s.board.tiles) if (tileDef(t.key).special === 'waiting') t.level = Math.min(CONFIG.economy.maxLevel, t.level + nu.levels);
+    } else {
+      tile.level = Math.min(CONFIG.economy.maxLevel, tile.level + nu.levels);
+      if (nu.radiusBonus) tile.radiusBonus = (tile.radiusBonus || 0) + nu.radiusBonus;
+    }
+    s.money -= nu.cost; s.ap -= 1; removeCard(s, card);
+    log(s, `${nu.name} applied`);
+    return { ok: true };
+  }
+  return fail('Not an upgrade card');
+}
+
+function deleteTile(s, tileId) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  const rules = gameRules(s);
+  if (!rules.deleteFreeAP && s.ap < 1) return fail('No action points left');
+  const t = removeTile(s.board, tileId);
+  if (!t) return fail('No such tile');
+  if (!rules.deleteFreeAP) s.ap -= 1;
+  const refund = Math.round((t.paid || 0) * rules.deleteRefund);
+  s.money += refund;
+  log(s, `Deleted ${t.name}${refund ? ` (refund $${refund})` : ''}`);
+  return { ok: true };
+}
+
+function reroll(s) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.ap < 1) return fail('No action points left');
+  const fee = rerollFee(s);
+  if (s.money < fee) return fail(`Need $${fee}`);
+  s.money -= fee; s.ap -= 1; s.shop.rerolls++;
+  s.shop.cards = generateShop(s);
+  log(s, `Rerolled the shop for $${fee}`);
+  return { ok: true };
+}
+
+function wait(s) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.ap < 1) return fail('No action points left');
+  const interest = Math.min(CONFIG.economy.waitInterestCap, Math.round(s.money * CONFIG.economy.waitInterestRate));
+  s.money += interest; s.ap = 0;
+  log(s, `Waited: +$${interest} interest`);
+  return { ok: true, interest };
+}
+
+function buyAP(s, card) {
+  if (s.ap < 1) return fail('No action points left');
+  if (s.money < card.cost) return fail(`Need $${card.cost}`);
+  s.money -= card.cost; s.ap -= 1; s.apPermanentBonus++; removeCard(s, card);
+  log(s, 'Bought a permanent +1 AP');
+  return { ok: true };
+}
+
+function playCard(s, card, target = null) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (card.type === 'ap') return buyAP(s, card);
+  if (card.type !== 'card') return fail('Not a bonus card');
+  if (s.ap < 1) return fail('No action points left');
+  if (s.money < card.cost) return fail(`Need $${card.cost}`);
+  const def = CARDS[card.key];
+  const tile = target && target.tileId != null ? s.board.tiles.find(t => t.id === target.tileId) : null;
+  switch (card.key) {
+    case 'overtime': s.ap += 2; break;
+    case 'rezoning': {
+      const e = target && target.edge;
+      if (!e || s.board.edges[e] === 'green') return fail('Pick a claimed edge');
+      s.board.edges[e] = 'green'; break;
+    }
+    case 'grand_opening':
+      if (!tile || tile.kind !== 'amenity' || tileDef(tile.key).rate <= 0) return fail('Pick a service amenity');
+      s.effects.push({ name: def.name + ': ' + tile.name, weeksLeft: 1, mods: { grandOpeningTileId: tile.id } }); break;
+    case 'timetable': {
+      if (!tile || tile.kind !== 'transport') return fail('Pick a transport tile');
+      const rng = new Rng(hashString(`${s.seed}:tt:${s.week}:${tile.id}`));
+      const base = TRANSPORTS[tile.key].arr;
+      const options = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16].filter(v => v !== (tile.arrOverride || base) && v >= Math.max(1, base - 3) && v <= base + 3);
+      tile.arrOverride = rng.pick(options.length ? options : [base]);
+      break;
+    }
+    case 'survey_crew': s.surveyed = true; break;
+    default:
+      if (def.effect) s.effects.push({ name: def.name, weeksLeft: def.weeks || 1, mods: def.effect });
+  }
+  s.money -= card.cost; s.ap -= 1; removeCard(s, card);
+  log(s, `Played ${def.name}`);
+  return { ok: true };
+}
+
+function setStrike(s, terrain) { s.strikeChoice = terrain; return { ok: true }; }
+
+function chooseOrdinance(s, key) {
+  if (!s.pendingOrdinance || !s.pendingOrdinance.includes(key)) return fail('Not offered');
+  s.ordinances.push(key); s.pendingOrdinance = null;
+  log(s, `Ordinance: ${ORDINANCES[key].name}`);
+  return { ok: true };
+}
+
+// --------------------------------------------------------------- modifiers
+function computeMods(s, week = s.week) {
+  const list = [];
+  const ev = eventForWeek(s, week);
+  if (ev) {
+    const m = { ...ev.mods };
+    if (m.strike) { delete m.strike; if (s.strikeChoice) m.strikeTerrain = s.strikeChoice; }
+    list.push(m);
+  }
+  for (const k of s.ordinances) list.push(ORDINANCES[k].mods || {});
+  for (const e of s.effects) list.push(e.mods);
+  return mergeMods(...list);
+}
+
+function transportTerrainsOnBoard(s) {
+  return [...new Set(s.board.tiles.filter(t => t.kind === 'transport').map(t => t.terrain))];
+}
+
+// ------------------------------------------------------------ simulation
+function simulateCurrent(s, seed = null, seeds = 1) {
+  const mods = computeMods(s);
+  if (seeds === 1) return simulateWeek(s.board, { seed: seed ?? hashString(`${s.seed}:w${s.week}`), week: s.week, mods });
+  const out = [];
+  for (let i = 0; i < seeds; i++) out.push(simulateWeek(s.board, { seed: hashString(`${s.seed}:est:${i}`), week: s.week, mods }));
+  return out;
+}
+
+function runWeek(s) {
+  if (s.phase !== 'shop') return fail('Not in shop phase');
+  const ev = currentEvent(s);
+  if (ev && ev.mods.strike && !s.strikeChoice) {
+    const terrains = transportTerrainsOnBoard(s);
+    s.strikeChoice = terrains[0] || 'road';
+  }
+  const result = simulateCurrent(s);
+  s.lastResult = result;
+  s.phase = 'summary';
+  return { ok: true, result };
+}
+
+function settle(s) {
+  if (s.phase !== 'summary' || !s.lastResult) return fail('Nothing to settle');
+  const r = s.lastResult;
+  const quota = quotaFor(s);
+  s.money += r.money.total;
+  const passed = r.score >= quota;
+  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total, passed, event: currentEvent(s)?.name || null });
+  s.records.bestWeek = Math.max(s.records.bestWeek, s.week);
+  s.records.bestScore = Math.max(s.records.bestScore, r.score);
+  if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
+  if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
+  if (s.week === CONFIG.run.winWeek && !s.won) { s.won = true; s.phase = 'won'; }
+  else s.phase = 'shop';
+  advanceWeek(s);
+  return { ok: true, passed: true };
+}
+
+function continueAfterWin(s) { if (s.phase === 'won') s.phase = 'shop'; }
+
+function advanceWeek(s) {
+  s.week++;
+  s.ap = apForRun(s);
+  s.shop.rerolls = 0;
+  s.strikeChoice = null; s.surveyed = false;
+  for (const e of s.effects) e.weeksLeft--;
+  s.effects = s.effects.filter(e => e.weeksLeft > 0);
+  s.shop.cards = generateShop(s);
+  if (CONFIG.run.ordinanceWeeks.includes(s.week)) {
+    const rng = new Rng(hashString(`${s.seed}:ord:${s.week}`));
+    const pool = ORDINANCE_KEYS.filter(k => !s.ordinances.includes(k));
+    s.pendingOrdinance = rng.shuffle(pool).slice(0, CONFIG.run.ordinanceChoices);
+  }
+}
+
+// ----------------------------------------------------------- estimates
+function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSeeds) {
+  const c = placementCheck(s, key, x, y, rot);
+  if (!c.ok) return null;
+  const mods = computeMods(s);
+  const before = cloneBoard(s.board);
+  const after = cloneBoard(s.board);
+  placeTile(after, key, x, y, rot, null, modeOf(s));
+  const dp = [], dm = [];
+  for (let i = 0; i < seeds; i++) {
+    const seed = hashString(`${s.seed}:est:${i}`);
+    const a = simulateWeek(before, { seed, week: s.week, mods });
+    const b = simulateWeek(after, { seed, week: s.week, mods });
+    dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
+  }
+  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
+  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+}
+
+function estimateCurrent(s, seeds = CONFIG.placement.previewSeeds) {
+  const rs = simulateCurrent(s, null, seeds);
+  const sc = rs.map(r => r.score).sort((a, b) => a - b);
+  const mo = rs.map(r => r.money.total).sort((a, b) => a - b);
+  return { ptsLo: sc[0], ptsHi: sc[sc.length - 1], cashLo: mo[0], cashHi: mo[mo.length - 1] };
+}
+
+// ------------------------------------------------------------ persistence
+function serialize(s) {
+  const copy = { ...s, lastResult: null };
+  return JSON.stringify(copy);
+}
+function deserialize(json) {
+  const s = JSON.parse(json);
+  if (s.phase === 'summary') s.phase = 'shop';
+  return s;
+}
+
+return { createRun, modeOf, apForRun, isEventWeek, eventForWeek, currentEvent, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, rerollFee, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, wait, buyAP, playCard, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateCurrent, serialize, deserialize };
+})();
+// ---- src/ui/sprites.js
+const __m_src_ui_sprites_js = (() => {
+// Sprite manifest: tile key -> PNG drawn in the shape's BASE orientation
+// (see src/sim/shapes.js) at 32px per cell, covering the bounding box.
+// The renderer clips the image to the tile's cells and rotates/mirrors it to
+// match the placed orientation, so one image per tile type is enough.
+// Missing files fall back to the flat coloured rendering.
+// The bundler (harness/build.js) inlines these as data URIs in dist/.
+const SPRITE_CELL_PX = 32;
+const SPRITES = {
+  bus_stop:      null,      // I2  64x32
+  parking_lot:   null,   // O4  64x64
+  train_station: null, // I4  128x32
+  ferry:         null,         // L4  64x96
+  helipad:       null,       // O4  64x64
+  jetway:        null,        // L3  64x64 (tip top-left, foot bottom-right)
+  food_stand:    null,    // I2  64x32
+  burger:        null,        // L3  64x64
+  coffee:        null,        // I2  64x32
+  restroom:      null,      // O4  64x64
+  waiting_area:  null,  // O4  64x64
+  gate:          null,          // I4  128x32
+};
+
+const cache = new Map();
+function loadSprites(onLoad) {
+  for (const [key, url] of Object.entries(SPRITES)) {
+    if (cache.has(key) || !url) continue;
+    const img = new Image();
+    cache.set(key, { img, ok: false });
+    img.onload = () => { cache.get(key).ok = img.naturalWidth > 0; if (onLoad) onLoad(key); };
+    img.onerror = () => { cache.get(key).ok = false; };
+    img.src = url;
+  }
+}
+function sprite(key) {
+  const e = cache.get(key);
+  return e && e.ok ? e.img : null;
+}
+
+return { SPRITE_CELL_PX, SPRITES, loadSprites, sprite };
+})();
+// ---- src/ui/render.js
+const __m_src_ui_render_js = (() => {
+// Canvas 2D renderer for the board. Pure drawing: takes a view object and
+// paints it. Hit-testing helpers convert pixels to cells/edges.
+const { tileDef } = __m_src_data_tiles_js;
+const { CONFIG } = __m_src_config_js;
+const { EDGES } = __m_src_sim_board_js;
+const { shapeTransform, shapeBaseSize } = __m_src_sim_shapes_js;
+const { loadSprites, sprite } = __m_src_ui_sprites_js;
+const TERRAIN_COLORS = { green: '#3b5a35', road: '#4a4a52', rail: '#5a4a7a', water: '#2a6f9a', apron: '#6b7280' };
+const TRANSPORT_COLORS = { road: '#4c6fc2', rail: '#7a63c9', water: '#2e8fb8', corridor: '#3fa08f', free: '#b57bc4', apron: '#7f8fb5' };
+const UTILITY_COLORS = { wifi: '#6c8ea8', walkway: '#5c5c66', waiting: '#a9a463', gate: '#b74a4a' };
+const AMENITY_TIER_COLORS = ['#8c7a55', '#c48f4a', '#b8783c', '#a86fa0', '#c05f7a', '#c14f6a'];
+
+function colorForDef(d) {
+  if (d.kind === 'bridge') return '#a07850';
+  if (d.kind === 'transport') return TRANSPORT_COLORS[d.terrain] || '#888';
+  if (d.special && UTILITY_COLORS[d.special]) return UTILITY_COLORS[d.special];
+  if (d.special === 'anytier') return '#5aa0a8';
+  return AMENITY_TIER_COLORS[d.tier] || '#999';
+}
+
+class BoardRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.cs = 32; this.ox = 0; this.oy = 0; this.margin = 18;
+    this.w = 12; this.h = 12;
+    this.time = 0;
+    loadSprites();
+  }
+
+  resize(board) {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const size = Math.max(200, Math.floor(Math.min(rect.width, rect.height) - 16));
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.style.width = size + 'px'; this.canvas.style.height = size + 'px';
+    this.canvas.width = Math.round(size * dpr); this.canvas.height = Math.round(size * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.size = size;
+    this.w = board.w; this.h = board.h;
+    const m = Math.max(14, Math.floor(size * 0.045));
+    this.margin = m;
+    this.cs = Math.floor((size - 2 * m) / Math.max(board.w, board.h));
+    this.ox = Math.floor((size - this.cs * board.w) / 2);
+    this.oy = Math.floor((size - this.cs * board.h) / 2);
+  }
+
+  cellAt(px, py) {
+    const x = Math.floor((px - this.ox) / this.cs), y = Math.floor((py - this.oy) / this.cs);
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return null;
+    return { x, y };
+  }
+  edgeAt(px, py) {
+    const inX = px >= this.ox && px < this.ox + this.cs * this.w;
+    const inY = py >= this.oy && py < this.oy + this.cs * this.h;
+    if (py < this.oy && py >= this.oy - this.margin && inX) return 'N';
+    if (py >= this.oy + this.cs * this.h && py < this.oy + this.cs * this.h + this.margin && inX) return 'S';
+    if (px < this.ox && px >= this.ox - this.margin && inY) return 'W';
+    if (px >= this.ox + this.cs * this.w && px < this.ox + this.cs * this.w + this.margin && inY) return 'E';
+    return null;
+  }
+
+  px(x) { return this.ox + x * this.cs; }
+  py(y) { return this.oy + y * this.cs; }
+
+  edgeRect(e) {
+    const m = this.margin, W = this.cs * this.w, H = this.cs * this.h;
+    if (e === 'N') return [this.ox, this.oy - m, W, m];
+    if (e === 'S') return [this.ox, this.oy + H, W, m];
+    if (e === 'W') return [this.ox - m, this.oy, m, H];
+    return [this.ox + W, this.oy, m, H];
+  }
+
+  draw(view) {
+    const { board } = view;
+    const ctx = this.ctx, cs = this.cs;
+    this.time = performance.now() / 1000;
+    ctx.clearRect(0, 0, this.size, this.size);
+
+    // edges
+    for (const e of EDGES) {
+      const [x, y, w, h] = this.edgeRect(e);
+      const terrain = board.edges[e];
+      ctx.fillStyle = TERRAIN_COLORS[terrain] || '#333';
+      ctx.fillRect(x, y, w, h);
+      this.edgeTexture(e, terrain, x, y, w, h);
+      // open spans (bridges)
+      for (const idx of board.openSpans[e]) {
+        ctx.fillStyle = 'rgba(200,160,100,0.85)';
+        if (e === 'N' || e === 'S') ctx.fillRect(this.px(idx) + 2, y + 2, cs - 4, h - 4); else ctx.fillRect(x + 2, this.py(idx) + 2, w - 4, cs - 4);
+      }
+      if (view.highlightEdges && view.highlightEdges.includes(e)) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 6);
+        ctx.strokeStyle = `rgba(240,178,79,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 3;
+        ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+      }
+      if (view.edgeHover === e) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); }
+    }
+
+    // grid floor
+    for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) {
+      ctx.fillStyle = (x + y) % 2 ? '#35523a' : '#3a5a3e';
+      ctx.fillRect(this.px(x), this.py(y), cs, cs);
+    }
+    // driveways and lanes
+    for (const [x, y] of board.driveways) { ctx.fillStyle = '#4a4a52'; ctx.fillRect(this.px(x), this.py(y), cs, cs); ctx.fillStyle = '#5c5c66'; ctx.fillRect(this.px(x) + cs * 0.45, this.py(y) + cs * 0.45, cs * 0.1, cs * 0.1); }
+    for (const [x, y] of board.lanes) { this.hatch(this.px(x), this.py(y), cs, cs, '#3fa08f'); }
+
+    // heatmap
+    if (view.heat && view.result) {
+      const heat = view.result.heat; let max = 1;
+      for (let i = 0; i < heat.length; i++) max = Math.max(max, heat[i]);
+      for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) {
+        const v = heat[y * board.w + x] / max; if (v <= 0) continue;
+        ctx.fillStyle = `rgba(255,${Math.round(200 - 160 * v)},40,${0.15 + 0.7 * Math.sqrt(v)})`;
+        ctx.fillRect(this.px(x), this.py(y), cs, cs);
+      }
+    }
+
+    // tiles
+    const occAt = view.result && view.T != null ? Math.min(view.result.ticks, Math.max(0, Math.ceil(view.T))) : null;
+    for (const t of board.tiles) this.drawTile(t, view, occAt);
+
+    // radius rings for hovered/selected amenity
+    const ringTile = view.radiusTile;
+    if (ringTile) this.drawRadius(ringTile, board, 'rgba(240,178,79,0.18)');
+    if (view.ghost && view.ghost.def && view.ghost.def.kind === 'amenity' && view.ghost.def.radius > 0) {
+      this.drawRadiusCells(view.ghost.cells, view.ghost.def.radius, 'rgba(79,163,224,0.16)');
+      // highlight overlapping amenities
+      for (const t of board.tiles) {
+        if (t.kind !== 'amenity') continue;
+        const d = tileDef(t.key); const r = d.radius + (t.radiusBonus || 0);
+        if (r <= 0) continue;
+        if (cellsWithin(view.ghost.cells, t.cells, Math.max(r, view.ghost.def.radius))) this.outlineCells(t.cells, 'rgba(79,163,224,0.9)', 2);
+      }
+    }
+
+    // ghost placement
+    if (view.ghost) {
+      const g = view.ghost;
+      for (const [x, y] of g.cells) {
+        if (x < 0 || y < 0 || x >= board.w || y >= board.h) continue;
+        ctx.fillStyle = g.ok ? 'rgba(108,196,108,0.45)' : 'rgba(240,90,126,0.45)';
+        ctx.fillRect(this.px(x) + 1, this.py(y) + 1, cs - 2, cs - 2);
+      }
+      for (const [x, y] of g.lane || []) this.hatch(this.px(x), this.py(y), cs, cs, 'rgba(63,160,143,0.8)');
+      for (const [x, y] of g.driveway || []) { ctx.fillStyle = 'rgba(120,120,130,0.5)'; ctx.fillRect(this.px(x) + 3, this.py(y) + 3, cs - 6, cs - 6); }
+    }
+
+    // selection outline
+    if (view.selectedTile) this.outlineCells(view.selectedTile.cells, '#f0b24f', 3);
+    if (view.hoverTile && view.hoverTile !== view.selectedTile) this.outlineCells(view.hoverTile.cells, 'rgba(255,255,255,0.7)', 2);
+    if (view.targetMode) {
+      for (const t of board.tiles) if (view.targetMode(t)) this.outlineCells(t.cells, 'rgba(79,163,224,0.9)', 2);
+    }
+
+    // agents
+    if (view.result && view.T != null) this.drawAgents(view.result, view.T);
+  }
+
+  edgeTexture(e, terrain, x, y, w, h) {
+    const ctx = this.ctx;
+    const horiz = e === 'N' || e === 'S';
+    if (terrain === 'rail') {
+      ctx.strokeStyle = '#c8c0d8'; ctx.lineWidth = 1.5;
+      if (horiz) { ctx.beginPath(); ctx.moveTo(x, y + h * 0.35); ctx.lineTo(x + w, y + h * 0.35); ctx.moveTo(x, y + h * 0.65); ctx.lineTo(x + w, y + h * 0.65); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.moveTo(x + w * 0.35, y); ctx.lineTo(x + w * 0.35, y + h); ctx.moveTo(x + w * 0.65, y); ctx.lineTo(x + w * 0.65, y + h); ctx.stroke(); }
+    } else if (terrain === 'road') {
+      ctx.strokeStyle = '#d8c860'; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); ctx.beginPath();
+      if (horiz) { ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); } else { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); }
+      ctx.stroke(); ctx.setLineDash([]);
+    } else if (terrain === 'water') {
+      ctx.strokeStyle = 'rgba(180,220,255,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      const n = horiz ? w / 12 : h / 12;
+      for (let i = 0; i < n; i++) {
+        if (horiz) { ctx.moveTo(x + i * 12, y + h * 0.5); ctx.quadraticCurveTo(x + i * 12 + 6, y + h * 0.2, x + i * 12 + 12, y + h * 0.5); }
+        else { ctx.moveTo(x + w * 0.5, y + i * 12); ctx.quadraticCurveTo(x + w * 0.2, y + i * 12 + 6, x + w * 0.5, y + i * 12 + 12); }
+      }
+      ctx.stroke();
+    } else if (terrain === 'apron') {
+      ctx.strokeStyle = '#e8e0a0'; ctx.lineWidth = 2; ctx.setLineDash([3, 10]); ctx.beginPath();
+      if (horiz) { ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); } else { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); }
+      ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle = 'rgba(120,180,90,0.25)';
+      for (let i = 0; i < (horiz ? w : h); i += 9) { if (horiz) ctx.fillRect(x + i, y + h * 0.3, 3, h * 0.4); else ctx.fillRect(x + w * 0.3, y + i, w * 0.4, 3); }
+    }
+  }
+
+  hatch(x, y, w, h, color) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    for (let i = -h; i < w; i += 6) { ctx.beginPath(); ctx.moveTo(x + i, y + h); ctx.lineTo(x + i + h, y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  tileColor(t) { return colorForDef(tileDef(t.key)); }
+
+  drawTile(t, view, occAt) {
+    const ctx = this.ctx, cs = this.cs;
+    const d = tileDef(t.key);
+    let color = this.tileColor(t);
+    let full = false, occ = 0, cap = 0;
+    if (occAt != null && view.result && view.result.tileStats[t.id]) {
+      const st = view.result.tileStats[t.id];
+      cap = st.cap; occ = st.occ[occAt] || 0;
+      if (cap > 0 && occ >= cap) full = true;
+    }
+    const closed = view.closedTiles && view.closedTiles.has(t.id);
+    const img = sprite(t.key);
+    const bx0 = Math.min(...t.cells.map(c => c[0])), by0 = Math.min(...t.cells.map(c => c[1]));
+    const bw0 = Math.max(...t.cells.map(c => c[0])) - bx0 + 1, bh0 = Math.max(...t.cells.map(c => c[1])) - by0 + 1;
+    if (img) {
+      // sprite: clip to the tile's cells, then rotate/mirror the base-orientation image
+      let tipAt = null;
+      if (d.attach === 'tip') {
+        // the single cell touching the edge, relative to the bounding box
+        const edgeCell = t.cells.find(([x, y]) => y === 0 || y === this.h - 1 || x === 0 || x === this.w - 1);
+        if (edgeCell) tipAt = [edgeCell[0] - bx0, edgeCell[1] - by0];
+      }
+      const tf = shapeTransform(d.shape, t.rot, tipAt), base = shapeBaseSize(d.shape);
+      ctx.save();
+      ctx.beginPath(); for (const [x, y] of t.cells) ctx.rect(this.px(x), this.py(y), cs, cs); ctx.clip();
+      ctx.translate(this.px(bx0) + bw0 * cs / 2, this.py(by0) + bh0 * cs / 2);
+      ctx.rotate(tf.rot * Math.PI / 2);
+      if (tf.mirror) ctx.scale(-1, 1);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, -base.w * cs / 2, -base.h * cs / 2, base.w * cs, base.h * cs);
+      ctx.restore();
+      if (full || closed) { ctx.fillStyle = 'rgba(70,74,84,0.7)'; for (const [x, y] of t.cells) ctx.fillRect(this.px(x), this.py(y), cs, cs); }
+    }
+    for (const [x, y] of t.cells) {
+      if (!img) { ctx.fillStyle = full || closed ? '#555a66' : color; ctx.fillRect(this.px(x), this.py(y), cs, cs); }
+      if (d.special === 'walkway' && !img) { ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(this.px(x) + 4 + i * (cs - 8) / 3, this.py(y) + cs * 0.3); ctx.lineTo(this.px(x) + 4 + (i + 0.5) * (cs - 8) / 3, this.py(y) + cs * 0.5); ctx.lineTo(this.px(x) + 4 + i * (cs - 8) / 3, this.py(y) + cs * 0.7); ctx.stroke(); } }
+      if (d.special === 'gate' && !img) {
+        const isPass = t.cells.indexOf(t.cells.find(c => c[0] === x && c[1] === y)) === 1;
+        if (isPass) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(this.px(x) + cs * 0.3, this.py(y) + cs * 0.15, cs * 0.4, cs * 0.7); }
+      }
+    }
+    this.outlineCells(t.cells, 'rgba(0,0,0,0.55)', 1.5);
+    // label: anchored on the cell nearest the centroid so L/S shapes label their own cells
+    const bx = Math.min(...t.cells.map(c => c[0])), by = Math.min(...t.cells.map(c => c[1]));
+    const bw = Math.max(...t.cells.map(c => c[0])) - bx + 1, bh = Math.max(...t.cells.map(c => c[1])) - by + 1;
+    const mx = t.cells.reduce((a, c) => a + c[0], 0) / t.cells.length, my = t.cells.reduce((a, c) => a + c[1], 0) / t.cells.length;
+    const anchor = t.cells.slice().sort((a, b) => (Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my)))[0];
+    // horizontal run of own cells through the anchor row
+    const rowCells = t.cells.filter(c => c[1] === anchor[1]);
+    let runL = anchor[0], runR = anchor[0];
+    while (rowCells.some(c => c[0] === runL - 1)) runL--;
+    while (rowCells.some(c => c[0] === runR + 1)) runR++;
+    const colCells = t.cells.filter(c => c[0] === anchor[0]);
+    let runT = anchor[1], runB = anchor[1];
+    while (colCells.some(c => c[1] === runT - 1)) runT--;
+    while (colCells.some(c => c[1] === runB + 1)) runB++;
+    const runW = runR - runL + 1, runH = runB - runT + 1;
+    const vertical = runH > runW && runH >= 3;
+    const cx = vertical ? this.px(anchor[0]) + cs / 2 : this.px(runL) + runW * cs / 2;
+    const cy = vertical ? this.py(runT) + runH * cs / 2 : this.py(anchor[1]) + cs / 2;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const fs = Math.max(8, Math.min(13, cs * 0.34));
+    ctx.font = `600 ${fs}px system-ui, sans-serif`;
+    const maxW = (vertical ? runH : runW) * cs - 6;
+    const maxLines = vertical ? 1 : Math.max(1, Math.min(2, runH));
+    const words = t.name.split(' ');
+    let lines = [];
+    if (ctx.measureText(t.name).width <= maxW) lines = [t.name];
+    else if (maxLines >= 2 && words.every(w => ctx.measureText(w).width <= maxW)) {
+      let cur = '';
+      for (const w of words) { const test = cur ? cur + ' ' + w : w; if (ctx.measureText(test).width <= maxW) cur = test; else { lines.push(cur); cur = w; } }
+      if (cur) lines.push(cur);
+      if (lines.length > maxLines) lines = [words.map(w => w[0]).join('')];
+    } else lines = [words.map(w => w[0]).join('')];
+    const lh = fs + 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (vertical) ctx.rotate(-Math.PI / 2);
+    if (img) {
+      const tw = Math.max(...lines.map(l => ctx.measureText(l).width)) + 8, th = lines.length * lh + 2;
+      ctx.fillStyle = 'rgba(10,12,18,0.72)';
+      ctx.beginPath(); ctx.roundRect(-tw / 2, -th / 2, tw, th, 4); ctx.fill();
+      ctx.fillStyle = '#fff';
+    }
+    lines.forEach((ln, i) => ctx.fillText(ln, 0, -(lines.length - 1) * lh / 2 + i * lh));
+    ctx.restore();
+    // tier + level pips
+    ctx.font = `700 ${Math.max(7, cs * 0.26)}px system-ui, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    if (d.tier > 0) { ctx.fillStyle = CONFIG.tiers[d.tier - 1].color; ctx.fillText(CONFIG.tiers[d.tier - 1].symbol, this.px(bx) + 3, this.py(by) + 2); }
+    if (t.level > 1) { ctx.fillStyle = '#ffe28a'; ctx.textAlign = 'right'; ctx.fillText('L' + t.level, this.px(bx) + bw * cs - 3, this.py(by) + 2); }
+    if (occAt != null && cap > 0) {
+      ctx.fillStyle = full ? '#ffb0b0' : 'rgba(255,255,255,0.85)'; ctx.font = `${Math.max(7, cs * 0.24)}px system-ui, sans-serif`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText(`${occ}/${cap}`, this.px(bx) + bw * cs - 3, this.py(by) + bh * cs - 2);
+    }
+  }
+
+  outlineCells(cells, color, lw) {
+    const ctx = this.ctx, cs = this.cs;
+    const set = new Set(cells.map(([x, y]) => x + ',' + y));
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath();
+    for (const [x, y] of cells) {
+      const X = this.px(x), Y = this.py(y);
+      if (!set.has(x + ',' + (y - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + cs, Y); }
+      if (!set.has(x + ',' + (y + 1))) { ctx.moveTo(X, Y + cs); ctx.lineTo(X + cs, Y + cs); }
+      if (!set.has((x - 1) + ',' + y)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + cs); }
+      if (!set.has((x + 1) + ',' + y)) { ctx.moveTo(X + cs, Y); ctx.lineTo(X + cs, Y + cs); }
+    }
+    ctx.stroke();
+  }
+
+  drawRadius(t, board, color) {
+    const d = tileDef(t.key);
+    const r = d.radius + (t.radiusBonus || 0);
+    if (r <= 0) return;
+    this.drawRadiusCells(t.cells, r, color);
+  }
+  drawRadiusCells(cells, r, color) {
+    const ctx = this.ctx, cs = this.cs;
+    ctx.fillStyle = color;
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+      let d = 99;
+      for (const [cx, cy] of cells) d = Math.min(d, Math.max(Math.abs(cx - x), Math.abs(cy - y)));
+      if (d >= 1 && d <= r) ctx.fillRect(this.px(x), this.py(y), cs, cs);
+    }
+  }
+
+  drawAgents(result, T) {
+    const ctx = this.ctx, cs = this.cs;
+    const r = Math.max(3, cs * 0.18);
+    const popups = [];
+    for (const a of result.agents) {
+      const start = a.spawnTick - 1;
+      if (T < start || T > a.endTick + 0.001) continue;
+      const k = T - start;
+      const i = Math.floor(k), f = k - i;
+      const last = a.frames.length - 1;
+      const p0 = a.frames[Math.min(i, last)], p1 = a.frames[Math.min(i + 1, last)];
+      const x = this.px(p0[0] + (p1[0] - p0[0]) * f) + cs / 2, y = this.py(p0[1] + (p1[1] - p0[1]) * f) + cs / 2;
+      // slight jitter per agent so stacks are visible
+      const jx = ((a.id * 7919) % 11 - 5) * cs * 0.03, jy = ((a.id * 104729) % 11 - 5) * cs * 0.03;
+      ctx.beginPath(); ctx.arc(x + jx, y + jy, r, 0, Math.PI * 2);
+      ctx.fillStyle = a.kind === 'pickpocket' ? '#222' : CONFIG.tiers[a.tier - 1].color;
+      ctx.fill(); ctx.strokeStyle = a.kind === 'pickpocket' ? '#f05a7e' : 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+      for (const ev of a.events) {
+        const age = T - (ev.t - 1);
+        if (age < 0 || age > 1.2) continue;
+        let txt = null, col = '#fff';
+        if (ev.type === 'serve') { txt = `×${ev.mult.toFixed(2)}${ev.flat ? '+' + Math.round(ev.flat) : ''}`; col = '#ffe28a'; }
+        else if (ev.type === 'board') { txt = `+${Math.round(ev.value).toLocaleString()}`; col = '#6cc46c'; }
+        else if (ev.type === 'strand') { txt = `stranded ${Math.round(ev.value)}`; col = '#f05a7e'; }
+        else if (ev.type === 'robbed') { txt = `−${Math.round(ev.loss)}`; col = '#f05a7e'; }
+        else if (ev.type === 'stack') { txt = `+stack ${ev.stacks}`; col = '#c8c48a'; }
+        else if (ev.type === 'removed') { txt = 'caught!'; col = '#f0b24f'; }
+        if (txt) popups.push({ x: x + jx, y: y + jy - r - 4 - age * cs * 0.5, txt, col, alpha: 1 - age / 1.2 });
+      }
+    }
+    ctx.font = `600 ${Math.max(9, cs * 0.3)}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    for (const p of popups) { ctx.globalAlpha = p.alpha; ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillText(p.txt, p.x + 1, p.y + 1); ctx.fillStyle = p.col; ctx.fillText(p.txt, p.x, p.y); }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function cellsWithin(a, b, r) {
+  for (const [ax, ay] of a) for (const [bx, by] of b) if (Math.max(Math.abs(ax - bx), Math.abs(ay - by)) <= r) return true;
+  return false;
+}
+
+return { colorForDef, BoardRenderer };
+})();
+// ---- src/ui/meta.js
+const __m_src_ui_meta_js = (() => {
+// Local persistence: meta-progression (unlocks, records) and run save.
+const META_KEY = 'gcs.meta.v1', SAVE_KEY = 'gcs.save.v1';
+
+function loadMeta() {
+  try { return Object.assign({ bestWeek: 0, bestScore: 0, bestTraveller: 0, byMode: {} }, JSON.parse(localStorage.getItem(META_KEY) || '{}')); }
+  catch { return { bestWeek: 0, bestScore: 0, bestTraveller: 0, byMode: {} }; }
+}
+function saveMeta(m) { try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch {} }
+function recordRun(meta, state) {
+  meta.bestWeek = Math.max(meta.bestWeek, state.records.bestWeek);
+  meta.bestScore = Math.max(meta.bestScore, state.records.bestScore);
+  meta.bestTraveller = Math.max(meta.bestTraveller, state.records.bestTraveller);
+  const m = meta.byMode[state.modeKey] || (meta.byMode[state.modeKey] = { bestWeek: 0, bestScore: 0 });
+  m.bestWeek = Math.max(m.bestWeek, state.records.bestWeek);
+  m.bestScore = Math.max(m.bestScore, state.records.bestScore);
+  saveMeta(meta);
+}
+function saveRun(json) { try { localStorage.setItem(SAVE_KEY, json); } catch {} }
+function loadRun() { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } }
+function clearRun() { try { localStorage.removeItem(SAVE_KEY); } catch {} }
+
+return { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun };
+})();
+// ---- src/ui/main.js
+const __m_src_ui_main_js = (() => {
+// ============================================================================
+// Grand Central Station - browser UI. DOM chrome + canvas board + playback.
+// ============================================================================
+const { CONFIG } = __m_src_config_js;
+const G = __m_src_game_run_js;
+const { tileDef, TERRAIN_INFO, NAMED_UPGRADES } = __m_src_data_tiles_js;
+const { MODES, MODE_KEYS } = __m_src_data_modes_js;
+const { ORDINANCES } = __m_src_data_ordinances_js;
+const { CARDS } = __m_src_data_cards_js;
+const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
+const { effTransport, effAmenity } = __m_src_sim_sim_js;
+const { BoardRenderer, colorForDef } = __m_src_ui_render_js;
+const { loadMeta, recordRun, saveRun, loadRun, clearRun } = __m_src_ui_meta_js;
+const $ = id => document.getElementById(id);
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v; else if (k === 'html') el.innerHTML = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null) el.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c != null) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const fmtK = n => Math.abs(n) >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : fmt(n);
+const tierTag = t => t > 0 ? h('span', { class: 'tier tier' + t }, CONFIG.tiers[t - 1].symbol) : null;
+
+// ------------------------------------------------------------------ state
+let state = null;
+const meta = loadMeta();
+const ui = {
+  mode: 'idle', card: null, rot: 0, hover: null, edgeHover: null, selectedTileId: null, hoverTileId: null,
+  ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
+  pb: { result: null, T: 0, speed: 1, playing: false, last: 0 }, heat: false, summaryShown: false, started: false,
+};
+const renderer = new BoardRenderer($('board'));
+const TICKS_PER_SEC = 2;
+
+// --------------------------------------------------------------- helpers
+function tileById(id) { return state.board.tiles.find(t => t.id === id) || null; }
+function tileAtCell(x, y) { return state.board.tiles.find(t => t.cells.some(c => c[0] === x && c[1] === y)) || null; }
+function mods() { return G.computeMods(state); }
+function persist() { if (ui.started && state && state.phase !== 'lost') saveRun(G.serialize(state)); }
+
+function describeTile(tile, def) {
+  const m = mods();
+  const rows = [];
+  if (def.kind === 'transport') {
+    const e = effTransport(tile || { key: def.key, level: 1 }, m);
+    rows.push(['Brings', `${CONFIG.tiers[def.tier - 1].symbol} travellers, ${e.batch} every ${e.arr} ticks`], ['Departs', `every ${e.dep} ticks${e.dwell ? `, ${e.dwell} tick wait` : ''}`]);
+    rows.push(['Exit bonus', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''}`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
+    if (e.offline) rows.push(['Status', 'OFFLINE this week']);
+    if (def.special === 'loop') rows.push(['Special', `${Math.round(def.loopChance * 100)}% of departures re-enter with chain intact`]);
+  } else if (def.kind === 'amenity') {
+    const e = effAmenity(tile || { key: def.key, level: 1 }, m);
+    if (def.special === 'wifi') rows.push(['Effect', `+${CONFIG.sim.wifiBonus} base rate to amenities within ${e.radius} (cap +${CONFIG.sim.wifiCap})`]);
+    else if (def.special === 'walkway') rows.push(['Effect', 'Travellers ride at 2 cells/tick and take no service rolls while riding']);
+    else if (def.special === 'gate') rows.push(['Effect', 'Wall with one gap. Only travellers bound for the far side may cross; +2 stop budget. Removes pickpockets.']);
+    else if (def.special === 'waiting') rows.push(['Effect', `+${e.stackValue.toFixed(2)} multiplier per tick waited (capped by tier)`], ['Radius', e.radius], ['Capacity', e.cap], ['Revenue', `$${e.revenue.toFixed(1)} per guest`], ...(e.minTier > 1 ? [['Serves', CONFIG.tiers[e.minTier - 1].symbol + ' and up']] : []));
+    else {
+      rows.push(['Serves', def.special === 'anytier' ? 'any tier' : `${CONFIG.tiers[def.tier - 1].symbol} best`], ['Pull', `${(e.rate * 100).toFixed(0)}% within ${e.radius}`]);
+      rows.push(['Chain', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''}`], ['Capacity', `${e.cap} at a time, ${e.dur} tick${e.dur === 1 ? '' : 's'}`], ['Earns', `$${e.revenue.toFixed(1)} per visit`]);
+      if (def.special === 'green') rows.push(['Special', 'Restores 1 stop budget instead of spending it']);
+      if (def.special === 'kiosk') rows.push(['Special', `−${CONFIG.sim.kioskPickpocketReduction * 100}% pickpocket spawns`]);
+      if (e.closed) rows.push(['Status', 'CLOSED (inspection)']);
+    }
+  } else if (def.kind === 'bridge') {
+    rows.push(['Effect', 'Opens the adjacent edge span to any transport terrain. Walkable.']);
+  }
+  const kv = h('div', { class: 'kv' });
+  for (const [k, v] of rows) kv.append(h('span', { class: 'k' }, k), h('span', {}, v));
+  return kv;
+}
+
+function lastStatsFor(tileId) {
+  const r = state.lastResult || (state.history.length ? null : null);
+  if (!r || !r.tileStats[tileId]) return null;
+  return r.tileStats[tileId];
+}
+
+// ------------------------------------------------------------ rendering
+function renderAll() { renderTop(); renderShop(); renderSide(); persist(); scheduleProjection(); }
+
+function renderTop() {
+  const quota = G.quotaFor(state);
+  $('st-week').textContent = state.week + (G.isEventWeek(state) ? ' ★' : '');
+  $('st-quota').textContent = fmt(quota);
+  const bar = $('topbar');
+  bar.classList.remove('gold');
+  if (ui.projection && state.phase === 'shop') {
+    const avg = (ui.projection.ptsLo + ui.projection.ptsHi) / 2;
+    const ratio = avg / quota;
+    $('st-proj').textContent = `${fmtK(ui.projection.ptsLo)}–${fmtK(ui.projection.ptsHi)}`;
+    bar.title = `Projected this week: ${fmtK(ui.projection.ptsLo)} to ${fmtK(ui.projection.ptsHi)} points (${Math.round(ratio * 100)}% of quota)`;
+    if (ratio >= 2) { bar.classList.add('gold'); bar.style.background = ''; }
+    else {
+      // red at <=50% of quota, green at >=105%
+      const t = Math.max(0, Math.min(1, (ratio - 0.5) / 0.55));
+      bar.style.background = `linear-gradient(180deg, hsl(${Math.round(t * 120)}, 45%, ${18 + Math.round(t * 6)}%), var(--panel))`;
+    }
+  } else { bar.style.background = ''; bar.title = ''; $('st-proj').textContent = ''; }
+  const canRun = state.phase === 'shop' && ui.mode !== 'playback';
+  $('btn-run').disabled = !canRun;
+  $('btn-run').textContent = state.ap > 0 ? `Run Week ▶ (${state.ap} AP left)` : 'Run Week ▶';
+  $('btn-run-big').classList.toggle('hidden', !(canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over')));
+  $('playback').classList.toggle('hidden', ui.mode !== 'playback');
+  // wallet
+  $('st-money').textContent = '$' + fmt(state.money);
+  $('st-ap').textContent = state.ap;
+  $('btn-shop-expand').textContent = `▲ Shop · $${fmt(state.money)} · ${state.ap} AP`;
+  const pips = $('ap-pips'); pips.innerHTML = '';
+  const total = Math.max(state.ap, G.apForRun(state));
+  for (let i = 0; i < total; i++) pips.append(h('span', { class: 'pip' + (i < state.ap ? '' : ' empty') }));
+}
+
+function shapeCanvas(def, w = 84, h = 84) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const cells = shapeCells(def.shape, 0);
+  const bw = Math.max(...cells.map(x => x[0])) + 1, bh = Math.max(...cells.map(x => x[1])) + 1;
+  const cs = Math.min(18, Math.floor((w - 4) / Math.max(bw, 1)), Math.floor((h - 4) / Math.max(bh, 1)));
+  const ox = (w - bw * cs) / 2, oy = (h - bh * cs) / 2;
+  g.fillStyle = colorForDef(def);
+  for (const [x, y] of cells) { g.fillRect(ox + x * cs + 1, oy + y * cs + 1, cs - 2, cs - 2); }
+  g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1;
+  for (const [x, y] of cells) g.strokeRect(ox + x * cs + 1.5, oy + y * cs + 1.5, cs - 3, cs - 3);
+  if (def.kind === 'amenity' && def.radius > 0) {
+    g.strokeStyle = 'rgba(240,178,79,0.5)'; g.setLineDash([2, 2]);
+    g.strokeRect(ox - def.radius * cs * 0.35, oy - def.radius * cs * 0.35, bw * cs + def.radius * cs * 0.7, bh * cs + def.radius * cs * 0.7);
+    g.setLineDash([]);
+  }
+  return c;
+}
+const CARD_ICONS = { upgrade: '⬆', named_upgrade: '✦', card: '♦', ap: '+1', bridge: '═' };
+function cardKindLabel(card) {
+  if (card.type === 'tile') { const d = tileDef(card.key); if (d.kind === 'transport') return 'transport'; if (d.special === 'waiting') return 'lounge'; if (d.rate === 0) return 'utility'; return 'amenity'; }
+  return { upgrade: 'upgrade', named_upgrade: 'upgrade', card: 'bonus card', ap: 'upgrade', bridge: 'structure' }[card.type] || '';
+}
+function cardDetails(card) {
+  const box = h('div');
+  box.append(h('h4', {}, card.name));
+  if (card.type === 'tile' || card.type === 'bridge') {
+    const def = tileDef(card.key);
+    box.append(describeTile(null, def));
+    if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, TERRAIN_INFO[def.terrain].desc));
+  } else box.append(h('div', { class: 'desc' }, card.desc || ''));
+  if (card.type === 'upgrade') box.append(h('div', { class: 'desc' }, 'Amenities gain chain multiplier, capacity, revenue and pull per level. Transports gain batch size and exit bonus.'));
+  return box;
+}
+
+function renderShop() {
+  const wrap = $('shop-cards'); wrap.innerHTML = '';
+  for (const card of state.shop.cards) {
+    const cost = G.cardCost(state, card);
+    const affordable = state.money >= cost && state.ap >= 1;
+    const isTile = card.type === 'tile' || card.type === 'bridge';
+    const def = isTile ? tileDef(card.key) : null;
+    const kind = cardKindLabel(card);
+    const kclass = { transport: 'k-transport', amenity: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', 'bonus card': 'k-bonus', structure: 'k-structure' }[kind] || '';
+    const el = h('div', { class: 'card ' + kclass + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
+      h('span', { class: 'slot' }, cardKindLabel(card)),
+      h('div', { class: 'name' }, card.name),
+      isTile ? shapeCanvas(def, 84, 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
+      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.tier > 0 ? '' : def.shape)] : (card.type === 'upgrade' ? 'any tile' : '')),
+      h('div', { class: 'cost' }, card.type === 'upgrade' ? '$60+' : `$${cost}`));
+    el.addEventListener('pointerenter', e => showPopup(cardDetails(card), e.clientX, e.clientY, false));
+    el.addEventListener('pointermove', e => positionPopup(e.clientX, e.clientY));
+    el.addEventListener('pointerleave', () => hidePopup(false));
+    wrap.append(el);
+  }
+  $('btn-reroll').innerHTML = `Reroll<br><small>1 AP · $${G.rerollFee(state)}</small>`;
+  $('btn-reroll').disabled = state.phase !== 'shop' || state.ap < 1 || state.money < G.rerollFee(state);
+  const interest = Math.min(CONFIG.economy.waitInterestCap, Math.round(state.money * CONFIG.economy.waitInterestRate));
+  $('btn-wait').innerHTML = `Wait<br><small>all AP · +$${interest}</small>`;
+  $('btn-wait').disabled = state.phase !== 'shop' || state.ap < 1;
+}
+
+// ------------------------------------------------------------ popup
+function showPopup(content, x, y, sticky) {
+  const p = $('popup'); p.innerHTML = ''; p.append(content);
+  p.classList.remove('hidden'); p.classList.toggle('sticky', !!sticky); p.dataset.sticky = sticky ? '1' : '';
+  positionPopup(x, y);
+}
+function positionPopup(x, y) {
+  const p = $('popup'); if (p.classList.contains('hidden')) return;
+  const r = p.getBoundingClientRect();
+  let px = x + 16, py = y + 16;
+  if (px + r.width > window.innerWidth - 8) px = x - r.width - 12;
+  if (py + r.height > window.innerHeight - 8) py = Math.max(8, y - r.height - 12);
+  p.style.left = px + 'px'; p.style.top = py + 'px';
+}
+function hidePopup(force) {
+  const p = $('popup');
+  if (!force && p.dataset.sticky) return;
+  p.classList.add('hidden'); p.dataset.sticky = '';
+}
+function tileDetails(t, sticky) {
+  const def = tileDef(t.key);
+  const box = h('div');
+  box.append(h('h4', {}, `${t.name}${t.level > 1 ? ' · L' + t.level : ''}`));
+  box.append(describeTile(t, def));
+  const st = lastStatsFor(t.id);
+  if (st) {
+    const line = t.kind === 'transport' ? `Last week: ${st.spawned} arrived, ${st.boarded} boarded, ${st.stranded} stranded` : `Last week: ${st.serves} served${st.balks ? `, ${st.balks} turned away` : ''}${st.cap ? `, ${(st.saturation * 100).toFixed(0)}% full` : ''}`;
+    box.append(h('div', { class: 'desc' }, line));
+  }
+  if (sticky && state.phase === 'shop') {
+    const rules = G.gameRules(state);
+    const up = G.upgradeCost(t);
+    box.append(h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
+      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); ui.selectedTileId = null; hidePopup(true); renderAll(); } }, rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
+      up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `L${t.level + 1}: $${up} with a token`) : null));
+  }
+  return box;
+}
+
+function renderTimeline() {
+  const tl = $('timeline'); tl.innerHTML = '';
+  const rows = [];
+  const last = state.history[state.history.length - 1];
+  if (last) rows.push(h('div', { class: 'tl-row past ' + (last.passed ? 'ok' : 'fail') }, h('span', { class: 'wk' }, `Week ${last.week}`), h('span', { class: 'q' }, `${fmt(last.score)} points`)));
+  const nextEv = G.nextEventWeek(state);
+  for (let w = state.week; w <= state.week + 4; w++) {
+    const current = w === state.week;
+    const ev = G.eventForWeek(state, w);
+    const known = ev && (w === nextEv || current || (state.surveyed && w === nextEv + CONFIG.run.eventEvery));
+    const ord = CONFIG.run.ordinanceWeeks.includes(w);
+    const cls = ['tl-row', current ? 'current' : '', ev ? 'event' : (ord ? 'ordinance' : ''), w === state.week + 4 ? 'last' : ''].join(' ');
+    const row = h('div', { class: cls }, h('span', { class: 'wk' }, `Week ${w}`), h('span', { class: 'q' }, current ? `quota ${fmt(G.quotaFor(state))}` : (known || !ev ? `quota ${fmtK(G.quotaFor(state, w))}` : '')));
+    if (ev) {
+      const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
+      if (known) {
+        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${ev.quota}`), h('div', {}, ev.desc));
+        if (current && ev.mods.strike) {
+          const terrains = G.transportTerrainsOnBoard(state);
+          const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); } });
+          for (const t of terrains) sel.append(h('option', { value: t, selected: state.strikeChoice === t ? '' : null }, TERRAIN_INFO[t].label));
+          if (!terrains.length) sel.append(h('option', {}, 'no transports'));
+          if (!state.strikeChoice && terrains.length) G.setStrike(state, terrains[0]);
+          body.append(h('div', { class: 'row', style: 'margin-top:4px' }, 'Striking: ', sel));
+        }
+      } else body.append(h('span', { class: 'tag' }, 'Event week'), h('div', {}, 'Revealed once the current event resolves.'));
+      row.append(body);
+    }
+    if (ord) row.append(h('div', { class: 'sub' }, h('span', { class: 'tag' }, 'Ordinance!'), h('div', {}, 'Choose one of three permanent rules.')));
+    rows.push(row);
+  }
+  tl.append(...rows);
+}
+
+function renderSide() {
+  renderTimeline();
+  const rb = $('rules-body'); rb.innerHTML = '';
+  for (const k of state.ordinances) rb.append(h('div', {}, h('b', {}, ORDINANCES[k].name), h('div', { style: 'font-size:12px;color:var(--muted)' }, ORDINANCES[k].desc)));
+  for (const e of state.effects) rb.append(h('div', {}, h('b', {}, e.name), h('span', { style: 'color:var(--muted)' }, ` · ${e.weeksLeft} week${e.weeksLeft === 1 ? '' : 's'} left`)));
+  $('rules-panel').classList.toggle('hidden', !state.ordinances.length && !state.effects.length);
+  renderInfo();
+}
+
+function renderInfo() {
+  const panel = $('info-panel'), title = $('info-title'), body = $('info-body'); body.innerHTML = '';
+  panel.classList.remove('hidden');
+  if (ui.mode === 'playback') { title.textContent = 'Simulating'; body.textContent = 'Full amenities grey out. Skip any time.'; return; }
+  if (ui.mode === 'place' && ui.card) {
+    const def = tileDef(ui.card.key);
+    title.textContent = 'Placing ' + ui.card.name;
+    if (ui.ghost) {
+      if (!ui.ghost.ok) body.append(h('div', { class: 'bad' }, ui.ghost.reason));
+      else {
+        for (const c of ui.ghost.claims) body.append(h('div', { class: 'warn' }, c.lock ? `Locks the ${c.edge} edge to ${c.terrain} for the run` : `Claims the ${c.edge} edge as ${c.terrain}`));
+        body.append(h('div', {}, 'This week: ', ui.estimate ? h('b', {}, `${ui.estimate.ptsLo >= 0 ? '+' : ''}${fmtK(ui.estimate.ptsLo)} to ${fmtK(ui.estimate.ptsHi)} pts`) : h('i', {}, 'estimating…')));
+      }
+    } else body.append(h('div', { style: 'color:var(--muted)' }, 'Hover the board.'));
+    body.append(h('div', { style: 'font-size:12px;color:var(--muted);margin-top:6px' }, orientationCount(def.shape) > 1 ? 'R or scroll rotates · Esc cancels' : 'Esc cancels'));
+    return;
+  }
+  if (ui.mode === 'target' && ui.card) {
+    title.textContent = ui.card.name;
+    body.append(h('div', { class: 'accent' }, ui.card.target === 'edge' ? 'Click a claimed edge.' : 'Click a highlighted tile.'), h('div', { style: 'font-size:12px;color:var(--muted);margin-top:6px' }, 'Esc cancels'));
+    return;
+  }
+  panel.classList.add('hidden');
+}
+
+function hint(msg) { const el = $('board-hint'); el.textContent = msg; clearTimeout(hint.t); hint.t = setTimeout(() => { el.textContent = ''; }, 2500); }
+
+// ------------------------------------------------------------ projections
+function scheduleProjection() {
+  clearTimeout(ui.projectionTimer);
+  ui.projection = null; $('st-proj').textContent = '…';
+  if (state.phase !== 'shop') return;
+  ui.projectionTimer = setTimeout(() => { ui.projection = G.estimateCurrent(state, 3); renderTop(); }, 30);
+}
+function scheduleEstimate() {
+  clearTimeout(ui.estimateTimer);
+  if (!ui.ghost || !ui.ghost.ok || !ui.card) { ui.estimate = null; return; }
+  const key = `${ui.card.key},${ui.ghost.x},${ui.ghost.y},${ui.rot}`;
+  if (ui.estimateKey === key && ui.estimate) return;
+  ui.estimate = null; ui.estimateKey = key;
+  const snap = { key: ui.card.key, x: ui.ghost.x, y: ui.ghost.y, rot: ui.rot };
+  ui.estimateTimer = setTimeout(() => {
+    if (ui.estimateKey !== key || !ui.card) return;
+    ui.estimate = G.estimatePlacement(state, snap.key, snap.x, snap.y, snap.rot);
+    renderInfo();
+  }, 120);
+}
+
+// ------------------------------------------------------------ interaction
+function selectCard(card) {
+  if (state.phase !== 'shop' || ui.mode === 'playback') return;
+  if (ui.card && ui.card.id === card.id) { cancelMode(); return; }
+  ui.card = card; ui.rot = 0; ui.selectedTileId = null; ui.estimate = null; hidePopup(true);
+  if (card.type === 'tile' || card.type === 'bridge') ui.mode = 'place';
+  else if (card.type === 'upgrade' || card.type === 'named_upgrade') {
+    if (card.type === 'named_upgrade' && card.target === 'waiting_all') { const anyT = state.board.tiles[0]; if (!anyT) { hint('No tiles to upgrade'); return; } const r = G.upgradeTile(state, card, anyT.id); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); return; }
+    ui.mode = 'target';
+  } else if (card.type === 'card' || card.type === 'ap') {
+    if (card.target === 'none' || card.type === 'ap') { const r = G.playCard(state, card); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); return; }
+    ui.mode = 'target';
+  }
+  renderShop(); renderInfo(); updateGhost();
+}
+function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.estimate = null; hidePopup(true); renderShop(); renderInfo(); }
+
+function targetFilter(t) {
+  const c = ui.card; if (!c) return false;
+  const d = tileDef(t.key);
+  if (c.type === 'upgrade') return t.kind !== 'bridge' && t.level < CONFIG.economy.maxLevel;
+  if (c.type === 'named_upgrade') { const nu = NAMED_UPGRADES[c.key]; if (nu.target === 'coffee') return t.key === 'coffee'; if (nu.target === 'transport') return t.kind === 'transport'; if (nu.target === 'amenity') return t.kind === 'amenity' && d.rate > 0; return false; }
+  if (c.type === 'card') { if (c.target === 'amenity') return t.kind === 'amenity' && d.rate > 0; if (c.target === 'transport') return t.kind === 'transport'; }
+  return false;
+}
+
+function ghostOrigin(def, cell) {
+  const cells = shapeCells(def.shape, ui.rot);
+  const bw = Math.max(...cells.map(c => c[0])) + 1, bh = Math.max(...cells.map(c => c[1])) + 1;
+  return { x: cell.x - Math.floor((bw - 1) / 2), y: cell.y - Math.floor((bh - 1) / 2) };
+}
+function updateGhost() {
+  if (ui.mode !== 'place' || !ui.card || !ui.hover) { ui.ghost = null; return; }
+  const def = tileDef(ui.card.key);
+  const o = ghostOrigin(def, ui.hover);
+  const c = G.placementCheck(state, ui.card.key, o.x, o.y, ui.rot);
+  ui.ghost = { ...c, x: o.x, y: o.y, def };
+  scheduleEstimate();
+  renderInfo();
+}
+
+function onPointerMove(e) {
+  const rect = renderer.canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const cell = renderer.cellAt(px, py);
+  const edge = cell ? null : renderer.edgeAt(px, py);
+  const changed = (cell?.x !== ui.hover?.x || cell?.y !== ui.hover?.y || edge !== ui.edgeHover);
+  ui.hover = cell; ui.edgeHover = edge;
+  if (!changed) return;
+  const t = cell ? tileAtCell(cell.x, cell.y) : null;
+  ui.hoverTileId = t ? t.id : null;
+  if (ui.mode === 'place') updateGhost();
+  else {
+    renderInfo();
+    if (t && ui.mode !== 'playback' && !$('popup').dataset.sticky) showPopup(tileDetails(t, false), e.clientX, e.clientY, false);
+    else if (!t) hidePopup(false);
+  }
+}
+function onPointerLeave() { ui.hover = null; ui.edgeHover = null; ui.hoverTileId = null; ui.ghost = null; hidePopup(false); renderInfo(); }
+
+function onClick(e) {
+  if (ui.mode === 'playback') return;
+  const rect = renderer.canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const cell = renderer.cellAt(px, py);
+  const edge = cell ? null : renderer.edgeAt(px, py);
+  if (ui.mode === 'place' && ui.card) {
+    if (!cell) return;
+    updateGhost();
+    if (!ui.ghost.ok) { hint(ui.ghost.reason); return; }
+    const placement = { card: ui.card, x: ui.ghost.x, y: ui.ghost.y, rot: ui.rot };
+    const doPlace = () => {
+      const r = G.buyTile(state, placement.card, placement.x, placement.y, placement.rot);
+      if (!r.ok) { hint(r.reason); return; }
+      ui.selectedTileId = r.tile.id; cancelMode(); renderAll();
+    };
+    doPlace();
+    return;
+  }
+  if (ui.mode === 'target' && ui.card) {
+    if (ui.card.target === 'edge') {
+      if (!edge) { hint('Click an edge strip around the board'); return; }
+      const r = G.playCard(state, ui.card, { edge }); if (!r.ok) hint(r.reason);
+      cancelMode(); renderAll(); return;
+    }
+    const t = cell ? tileAtCell(cell.x, cell.y) : null;
+    if (!t || !targetFilter(t)) { hint('Pick a highlighted tile'); return; }
+    const r = ui.card.type === 'card' ? G.playCard(state, ui.card, { tileId: t.id }) : G.upgradeTile(state, ui.card, t.id);
+    if (!r.ok) hint(r.reason);
+    ui.selectedTileId = t.id; cancelMode(); renderAll(); return;
+  }
+  const t = cell ? tileAtCell(cell.x, cell.y) : null;
+  ui.selectedTileId = t ? t.id : null;
+  if (t) showPopup(tileDetails(t, true), e.clientX, e.clientY, true); else hidePopup(true);
+  renderInfo();
+}
+
+function onKey(e) {
+  if (e.key === 'Escape') { hidePopup(true); if (ui.mode === 'place' || ui.mode === 'target') cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
+  if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
+  if (e.key === ' ' && ui.mode === 'playback') { e.preventDefault(); ui.pb.playing = !ui.pb.playing; }
+}
+function rotate(dir) { if (!ui.card) return; const n = orientationCount(tileDef(ui.card.key).shape); ui.rot = (ui.rot + dir + n) % n; updateGhost(); }
+
+// ------------------------------------------------------------ playback
+function startWeek() {
+  if (state.phase !== 'shop') return;
+  cancelMode();
+  const r = G.runWeek(state);
+  if (!r.ok) { hint(r.reason); return; }
+  ui.mode = 'playback'; ui.pb.result = r.result; ui.pb.T = 0; ui.pb.playing = true; ui.pb.last = performance.now(); ui.summaryShown = false; ui.heat = false;
+  ui.selectedTileId = null; hidePopup(true);
+  renderTop(); renderInfo(); renderShop();
+  if (ui.pb.speed === 'skip') finishPlayback();
+}
+function finishPlayback() {
+  ui.pb.T = ui.pb.result.ticks; ui.pb.playing = false;
+  $('pb-tick').textContent = `tick ${ui.pb.result.ticks}/${ui.pb.result.ticks}`;
+  if (!ui.summaryShown) { ui.summaryShown = true; showSummary(); }
+}
+function setSpeed(s) {
+  ui.pb.speed = s;
+  document.querySelectorAll('#playback .speed').forEach(b => b.classList.toggle('active', b.dataset.speed === String(s)));
+  if (s === 'skip' && ui.mode === 'playback') finishPlayback();
+}
+
+function frame(now) {
+  if (state) {
+    if (ui.mode === 'playback' && ui.pb.playing) {
+      const dt = (now - ui.pb.last) / 1000;
+      ui.pb.T += dt * TICKS_PER_SEC * (ui.pb.speed === 'skip' ? 1000 : ui.pb.speed);
+      if (ui.pb.T >= ui.pb.result.ticks) finishPlayback();
+      $('pb-tick').textContent = `tick ${Math.min(ui.pb.result.ticks, Math.floor(ui.pb.T))}/${ui.pb.result.ticks}`;
+    }
+    ui.pb.last = now;
+    const m = mods();
+    const closed = new Set(state.board.tiles.filter(t => t.kind === 'amenity' && effAmenity(t, m).closed).map(t => t.id));
+    const selected = tileById(ui.selectedTileId), hover = tileById(ui.hoverTileId);
+    const radiusTile = (ui.mode !== 'playback') ? ((selected && selected.kind === 'amenity') ? selected : (hover && hover.kind === 'amenity') ? hover : null) : null;
+    renderer.draw({
+      board: state.board, ghost: ui.mode === 'place' ? ui.ghost : null, selectedTile: selected, hoverTile: hover, radiusTile,
+      highlightEdges: ui.ghost && ui.ghost.ok ? ui.ghost.claims.map(c => c.edge) : (ui.mode === 'target' && ui.card && ui.card.target === 'edge' ? Object.keys(state.board.edges).filter(e => state.board.edges[e] !== 'green') : null),
+      edgeHover: ui.edgeHover,
+      result: (ui.mode === 'playback' || ui.heat) ? (ui.pb.result || state.lastResult) : null,
+      T: ui.mode === 'playback' ? ui.pb.T : null, heat: ui.heat, closedTiles: closed,
+      targetMode: ui.mode === 'target' && ui.card && ui.card.target !== 'edge' ? targetFilter : null,
+    });
+  }
+  requestAnimationFrame(frame);
+}
+
+// ------------------------------------------------------------ modals
+function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children); $('modal').classList.remove('hidden'); }
+function closeModal() { $('modal').classList.add('hidden'); }
+
+function drawHistoryChart(canvas, history) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 800, H = 190;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const padL = 44, padR = 10, padT = 12, padB = 24;
+  const vals = history.flatMap(x => [x.score, x.quota]).filter(v => v > 0);
+  const lo = Math.max(1, Math.min(...vals) / 1.6), hi = Math.max(...vals) * 1.25;
+  const ly = v => padT + (H - padT - padB) * (1 - (Math.log(Math.max(v, lo)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)));
+  const n = history.length, slot = (W - padL - padR) / n;
+  g.font = '11px system-ui, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  // grid lines at 1, 2, 5 x 10^k
+  for (let k = 3; k < 8; k++) for (const m of [1, 2, 5]) { const v = m * Math.pow(10, k); if (v < lo || v > hi) continue; const y = ly(v); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke(); g.fillStyle = '#9aa0b0'; g.fillText(v >= 1000 ? (v / 1000) + 'k' : v, padL - 6, y); }
+  // bars
+  history.forEach((x, i) => {
+    const cx = padL + slot * (i + 0.5), bw = Math.min(28, slot * 0.6);
+    const y = ly(x.score), base = H - padB;
+    g.fillStyle = x.passed ? 'rgba(108,196,108,0.85)' : 'rgba(240,90,126,0.85)';
+    g.fillRect(cx - bw / 2, y, bw, base - y);
+    g.fillStyle = '#9aa0b0'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(x.week % CONFIG.run.eventEvery === 0 ? x.week + '★' : x.week, cx, base + 4);
+  });
+  // quota line
+  g.strokeStyle = '#f0b24f'; g.lineWidth = 2; g.beginPath();
+  history.forEach((x, i) => { const cx = padL + slot * (i + 0.5); const y = ly(x.quota); if (i === 0) g.moveTo(cx, y); else g.lineTo(cx, y); });
+  g.stroke();
+  history.forEach((x, i) => { const cx = padL + slot * (i + 0.5); g.fillStyle = '#f0b24f'; g.beginPath(); g.arc(cx, ly(x.quota), 3, 0, Math.PI * 2); g.fill(); });
+  g.fillStyle = '#f0b24f'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = '600 11px system-ui, sans-serif';
+  g.fillText('quota', padL + 4, padT + 2);
+}
+
+function showSummary() {
+  const r = ui.pb.result; const quota = G.quotaFor(state);
+  const passed = r.score >= quota;
+  const history = state.history.concat([{ week: state.week, score: r.score, quota, passed, money: r.money.total }]);
+  const rows = Object.values(r.tileStats).sort((a, b) => b.points - a.points);
+  const table = h('table', { class: 'stats' }, h('tr', {}, ...['Tile', 'Served', 'Turned away', 'Full', 'Earned', 'Points', 'Arrived', 'Boarded', 'Stranded'].map(x => h('th', {}, x))));
+  for (const s of rows) {
+    const t = tileById(s.id);
+    table.append(h('tr', {}, h('td', {}, `${s.name}${t && t.level > 1 ? ' L' + t.level : ''}`), h('td', {}, s.kind === 'amenity' ? s.serves : '–'), h('td', {}, s.kind === 'amenity' ? s.balks : '–'), h('td', {}, s.cap ? (s.saturation * 100).toFixed(0) + '%' : '–'), h('td', {}, '$' + fmt(s.revenue)), h('td', {}, fmt(s.points)), h('td', {}, s.kind === 'transport' ? s.spawned : '–'), h('td', {}, s.kind === 'transport' ? s.boarded : '–'), h('td', {}, s.kind === 'transport' ? s.stranded : '–')));
+  }
+  const chart = h('canvas', { id: 'chart' });
+  const stranded = r.counts.stranded ? ` · ${r.counts.stranded} stranded` : '';
+  const stolen = r.points.stolen ? ` · ${fmtK(r.points.stolen)} stolen by ${r.counts.pickpockets} pickpockets` : '';
+  openModal(
+    h('h2', {}, `Week ${state.week}`, G.currentEvent(state) ? h('span', { class: 'event-tag accent', style: 'margin-left:8px' }, G.currentEvent(state).name) : null),
+    h('div', { class: 'row' }, h('span', { class: 'big ' + (passed ? 'good' : 'bad') }, fmt(r.score)), h('span', { class: 'lbl' }, `of ${fmt(quota)} needed`), h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓ quota met' : '✗ quota missed — run over'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
+    h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${r.counts.boarded} boarded${stranded}${stolen}`),
+    chart,
+    h('details', {}, h('summary', {}, 'Per-tile breakdown'), h('div', { style: 'max-height:240px;overflow:auto' }, table)),
+    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed ? 'Continue →' : 'See results')));
+  requestAnimationFrame(() => drawHistoryChart(chart, history));
+}
+function showHeatBar() {
+  const el = $('board-hint'); el.innerHTML = '';
+  el.style.pointerEvents = 'auto';
+  el.append(h('button', { class: 'primary', onclick: () => { ui.heat = false; ui.mode = 'playback'; el.innerHTML = ''; el.style.pointerEvents = 'none'; showSummary(); } }, 'Back to summary'));
+}
+function continueFromSummary() {
+  closeModal();
+  ui.heat = false;
+  const r = G.settle(state);
+  recordRun(meta, state);
+  if (!r.passed) { clearRun(); showGameOver(); ui.mode = 'over'; renderAll(); return; }
+  ui.mode = 'idle';
+  if (state.phase === 'won') { showWin(); return; }
+  afterWeekStart();
+}
+function afterWeekStart() {
+  renderer.resize(state.board);
+  renderAll();
+  const evThen = () => { if (G.isEventWeek(state) && ui.eventShownWeek !== state.week) { ui.eventShownWeek = state.week; showEventModal(); } };
+  if (state.pendingOrdinance) showOrdinance(evThen); else evThen();
+}
+function showEventModal(onDone) {
+  const ev = G.currentEvent(state);
+  if (!ev) { if (onDone) onDone(); return; }
+  const box = $('modal-box');
+  const parts = [
+    h('div', {}, h('span', { class: 'boss-star' }, '★')),
+    h('div', { class: 'lbl' }, `Week ${state.week} · event week`),
+    h('h2', {}, ev.name),
+    h('div', { class: 'event-mult' }, `Quota ×${ev.quota} → ${fmt(G.quotaFor(state))}`),
+    h('p', {}, ev.desc),
+  ];
+  if (ev.mods.strike) {
+    const terrains = G.transportTerrainsOnBoard(state);
+    const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); renderSide(); } });
+    for (const t of terrains) sel.append(h('option', { value: t }, TERRAIN_INFO[t].label));
+    if (terrains.length && !state.strikeChoice) G.setStrike(state, terrains[0]);
+    parts.push(h('div', { class: 'row', style: 'justify-content:center' }, 'Which transport type strikes? ', sel));
+  }
+  parts.push(h('div', { class: 'btnrow', style: 'justify-content:center' }, h('button', { class: 'primary', onclick: () => { closeModal(); box.classList.remove('event'); if (onDone) onDone(); } }, 'Bring it on')));
+  openModal(...parts);
+  box.classList.add('event');
+}
+function showOrdinance(onDone) {
+  openModal(h('h2', {}, `Week ${state.week}: choose an ordinance`), h('p', {}, 'Permanent for the rest of the run.'),
+    h('div', { class: 'choices' }, ...state.pendingOrdinance.map(k => h('div', { class: 'mode', onclick: () => { G.chooseOrdinance(state, k); closeModal(); renderAll(); if (onDone) onDone(); } }, h('div', { class: 'name' }, ORDINANCES[k].name), h('div', { class: 'desc' }, ORDINANCES[k].desc)))));
+}
+function showWin() {
+  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${CONFIG.run.winWeek}. The quota keeps climbing in endless mode — how far can you go?`),
+    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); showStart(); } }, 'New run'), h('button', { class: 'primary', onclick: () => { G.continueAfterWin(state); closeModal(); afterWeekStart(); } }, 'Keep going →')));
+}
+function showGameOver() {
+  const last = state.history[state.history.length - 1];
+  openModal(h('h2', { class: 'bad' }, 'The run is over'), h('p', {}, `Week ${last.week}: ${fmt(last.score)} points against a quota of ${fmt(last.quota)}.`),
+    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Best week score'), h('span', {}, fmt(state.records.bestScore)), h('span', { class: 'k' }, 'Best traveller'), h('span', {}, fmt(state.records.bestTraveller)), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed)),
+    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.mode = 'over'; } }, 'Inspect board'), h('button', { class: 'primary', onclick: () => { closeModal(); showStart(); } }, 'New run')));
+}
+
+function showStart() {
+  const saved = loadRun();
+  const seedInput = h('input', { type: 'text', placeholder: 'seed (optional)', style: 'font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px;width:160px' });
+  const modes = h('div', { class: 'modes' });
+  for (const k of MODE_KEYS) {
+    const m = MODES[k];
+    const unlocked = meta.bestWeek >= m.unlockWeek;
+    const rec = meta.byMode[k];
+    modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, seedInput.value.trim()) : null },
+      h('div', { class: 'name' }, m.name, unlocked ? '' : ` 🔒 reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
+  }
+  openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
+    h('p', {}, 'You run a transit hub. Each week, place a few tiles, then watch travellers cross the board. Every shop they pass multiplies what they are worth. Hit the quota or the run ends.'),
+    h('p', { style: 'font-size:12px;color:var(--muted)' }, 'Transport tiles bring people but score badly. Amenities score well but bring nobody. Multiply first, then add: flat-add tiles want to be early on a route, multipliers late. Transports claim edge terrain permanently — rail and water lock an entire edge.'),
+    saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
+    h('h3', {}, 'Choose a mode'), modes,
+    h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));
+}
+function newRun(modeKey, seedText) {
+  const seed = seedText ? (isNaN(Number(seedText)) ? seedText : Number(seedText)) : null;
+  state = G.createRun({ modeKey, seed });
+  ui.started = true;
+  closeModal(); ui.mode = 'idle'; ui.selectedTileId = null; ui.heat = false; ui.pb.result = null;
+  afterWeekStart();
+}
+function showMenu() {
+  openModal(h('h2', {}, 'Menu'),
+    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Mode'), h('span', {}, MODES[state.modeKey].name), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed), h('span', { class: 'k' }, 'Week'), h('span', {}, state.week)),
+    h('h3', {}, 'History'), h('table', { class: 'stats' }, h('tr', {}, h('th', {}, 'Week'), h('th', {}, 'Score'), h('th', {}, 'Quota'), h('th', {}, 'Money'), h('th', {}, 'Event')), ...state.history.map(x => h('tr', {}, h('td', {}, x.week), h('td', { class: x.passed ? 'good' : 'bad' }, fmt(x.score)), h('td', {}, fmt(x.quota)), h('td', {}, '+$' + fmt(x.money)), h('td', {}, x.event || '')))),
+    h('div', { class: 'btnrow' }, h('button', { class: 'danger', onclick: () => { clearRun(); closeModal(); showStart(); } }, 'Abandon run'), h('button', { class: 'primary', onclick: closeModal }, 'Back')));
+}
+
+// ------------------------------------------------------------ boot
+function boot() {
+  const c = renderer.canvas;
+  c.addEventListener('pointermove', onPointerMove);
+  c.addEventListener('pointerleave', onPointerLeave);
+  c.addEventListener('click', onClick);
+  c.addEventListener('wheel', e => { if (ui.mode === 'place') { e.preventDefault(); rotate(e.deltaY > 0 ? 1 : -1); } }, { passive: false });
+  c.addEventListener('contextmenu', e => { e.preventDefault(); if (ui.mode === 'place') rotate(1); else cancelMode(); });
+  window.addEventListener('keydown', onKey);
+  window.addEventListener('resize', () => { if (state) renderer.resize(state.board); });
+  $('btn-run').addEventListener('click', startWeek);
+  $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
+  $('btn-wait').addEventListener('click', () => { const r = G.wait(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
+  $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
+  const layout = (() => { try { return JSON.parse(localStorage.getItem('gcs.layout') || '{}'); } catch { return {}; } })();
+  const applyLayout = () => {
+    $('shop').classList.toggle('collapsed', !!layout.shopCollapsed);
+    $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);
+    $('side-tab').classList.toggle('hidden', !layout.sideCollapsed);
+    try { localStorage.setItem('gcs.layout', JSON.stringify(layout)); } catch {}
+    if (state) renderer.resize(state.board);
+  };
+  $('btn-shop-toggle').addEventListener('click', () => { layout.shopCollapsed = true; applyLayout(); });
+  $('btn-shop-expand').addEventListener('click', () => { layout.shopCollapsed = false; applyLayout(); });
+  $('btn-run-big').addEventListener('click', startWeek);
+  $('btn-side-toggle').addEventListener('click', () => { layout.sideCollapsed = true; applyLayout(); });
+  $('side-tab').addEventListener('click', () => { layout.sideCollapsed = false; applyLayout(); });
+  applyLayout();
+  document.querySelectorAll('#playback .speed').forEach(b => b.addEventListener('click', () => setSpeed(b.dataset.speed === 'skip' ? 'skip' : Number(b.dataset.speed))));
+  state = G.createRun({ modeKey: 'terminal', seed: 1 }); // placeholder board behind the start modal
+  renderer.resize(state.board);
+  renderAll();
+  requestAnimationFrame(frame);
+  showStart();
+}
+boot();
+// Debug/testing handle: window.gcs.state, window.gcs.G (game API), window.gcs.refresh()
+window.gcs = { get state() { return state; }, set state(v) { state = v; }, G, renderer, refresh: () => { renderer.resize(state.board); renderAll(); }, ui, showStart, afterWeekStart };
+
+return {  };
+})();
+
+</script>
+</body>
+</html>

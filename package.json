@@ -1,0 +1,12 @@
+{
+  "name": "grand-central-station",
+  "version": "0.1.0",
+  "description": "Grand Central Station - a browser roguelite about running a transit hub",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "harness": "node harness/run.js",
+    "test": "node harness/selftest.js"
+  }
+}

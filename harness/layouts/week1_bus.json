@@ -1,0 +1,1 @@
+{ "mode": "terminal", "week": 1, "tiles": [ { "key": "bus_stop", "x": 5, "y": 10 }, { "key": "food_stand", "x": 5, "y": 6 } ] }

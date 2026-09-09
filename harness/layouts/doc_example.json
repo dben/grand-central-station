@@ -1,0 +1,7 @@
+{ "mode": "terminal", "week": 4, "tiles": [
+  { "key": "train_station", "x": 4, "y": 0 },
+  { "key": "ferry", "x": 10, "y": 8, "rot": 0 },
+  { "key": "burger", "x": 5, "y": 3 },
+  { "key": "restroom", "x": 7, "y": 5 },
+  { "key": "newsstand", "x": 6, "y": 8 }
+] }

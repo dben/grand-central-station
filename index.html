@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grand Central Station</title>
+<link rel="stylesheet" href="src/ui/style.css">
+</head>
+<body>
+<script>
+if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded', () => {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:99;background:#14161c;color:#e6e8ee;font:15px/1.5 system-ui,sans-serif;padding:40px;';
+  d.innerHTML = '<h2>Grand Central Station needs to be served over HTTP</h2><p>Browsers block ES modules on <code>file://</code> pages. Either:</p><ul><li>open <b>dist/grand-central-station.html</b> instead (single-file build, works from disk), or</li><li>run a local server in this folder, e.g. <code>python -m http.server 8080</code> (or <code>start-windows.bat</code>), then open <a href="http://localhost:8080/" style="color:#f0b24f">http://localhost:8080/</a>.</li></ul>';
+  document.body.append(d);
+});
+</script>
+<div id="app">
+  <header id="topbar">
+    <div class="brand"><span class="logo">GCS</span><span class="title">Grand Central Station</span></div>
+    <div class="stat"><span class="lbl">Week</span><span id="st-week" class="val blocky">1</span></div>
+    <div class="stat"><span class="lbl">Quota</span><span id="st-quota" class="val blocky">5,000</span></div>
+    <span id="st-proj" class="sr-only"></span>
+    <div class="spacer"></div>
+    <div id="playback" class="hidden">
+      <span id="pb-tick" class="lbl">tick 0/20</span>
+      <button data-speed="1" class="speed active">1×</button>
+      <button data-speed="2" class="speed">2×</button>
+      <button data-speed="4" class="speed">4×</button>
+      <button data-speed="skip" class="speed">Skip</button>
+    </div>
+    <button id="btn-menu" title="Menu">☰</button>
+  </header>
+
+  <main id="main">
+    <div id="board-wrap">
+      <canvas id="board"></canvas>
+      <div id="board-hint"></div>
+      <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
+    </div>
+    <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
+    <aside id="side">
+      <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
+      <div id="run-wrap"><button id="btn-run" class="primary">Run Week ▶</button></div>
+      <section id="info-panel" class="panel hidden">
+        <h3 id="info-title">Placing</h3>
+        <div id="info-body"></div>
+      </section>
+      <section id="timeline-panel" class="panel">
+        <h3>Timeline</h3>
+        <div id="timeline"></div>
+      </section>
+      <section id="rules-panel" class="panel hidden">
+        <h3>Ordinances &amp; effects</h3>
+        <div id="rules-body"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer id="shop">
+    <button id="btn-shop-toggle" class="toggle" title="Collapse shop">⌄</button>
+    <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
+    <div id="shop-cards"></div>
+    <div id="shop-actions">
+      <div id="wallet">
+        <div id="st-money" class="roller">$220</div>
+        <div id="ap-pips" title="Action points"></div>
+        <span id="st-ap" class="sr-only">2</span>
+      </div>
+      <button id="btn-reroll">Reroll<br><small>1 AP · $10</small></button>
+      <button id="btn-wait">Wait<br><small>all AP · +interest</small></button>
+    </div>
+  </footer>
+</div>
+
+<div id="popup" class="hidden"></div>
+<div id="modal" class="hidden"><div id="modal-box"></div></div>
+<script type="module" src="src/ui/main.js"></script>
+</body>
+</html>
