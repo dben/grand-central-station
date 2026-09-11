@@ -1,0 +1,10 @@
+{ "mode": "terminal", "week": 6, "note": "the degenerate opposite - all throughput, nothing to spend it on",
+  "tiles": [
+    { "key": "bus_stop", "x": 4, "y": 0 },
+    { "key": "parking_lot", "x": 7, "y": 0 },
+    { "key": "bike_rental", "x": 0, "y": 4 },
+    { "key": "rideshare", "x": 0, "y": 7 },
+    { "key": "train_station", "x": 6, "y": 11 },
+    { "key": "tram_stop", "x": 10, "y": 4, "rot": 1 },
+    { "key": "newsstand", "x": 5, "y": 5 }
+  ] }

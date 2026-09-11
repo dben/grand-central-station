@@ -14,8 +14,15 @@ page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') er
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 const results = [];
 const check = (name, cond, extra = '') => { results.push(`${cond ? 'ok  ' : 'FAIL'}: ${name} ${extra}`); };
-const cellPx = async (x, y) => page.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); return [b.left + r.px(x) + r.cs / 2, b.top + r.py(y) + r.cs / 2]; }, [x, y]);
-const edgePx = async (e) => page.evaluate((e) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [x, y, w, h] = r.edgeRect(e); return [b.left + x + w / 2, b.top + y + h / 2]; }, e);
+// Run Week now asks for confirmation first.
+const runWeekUI = async (page) => {
+  await page.locator('#btn-run').click(); await page.waitForTimeout(150);
+  // the confirmation only appears while action points are unspent
+  if (await page.locator('#btn-run-confirm').count()) await page.locator('#btn-run-confirm').click();
+  await page.waitForTimeout(200);
+};
+const cellPx = async (x, y) => page.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
+const edgePx = async (e) => page.evaluate((e) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.edgeCenterPx(e); return [b.left + px, b.top + py]; }, e);
 // auto-play weeks through the API (greedy-lite) up to a target week
 const fastForward = async (toWeek) => page.evaluate((toWeek) => {
   const { G } = window.gcs; let s = window.gcs.state;
@@ -29,9 +36,9 @@ const fastForward = async (toWeek) => page.evaluate((toWeek) => {
       const tr = cards.find(c => c.kind === 'transport'), am = cards.find(c => c.kind === 'amenity');
       const nTr = s.board.tiles.filter(t => t.kind === 'transport').length, nAm = s.board.tiles.length - nTr;
       const pick = (nTr <= nAm && tr) ? tr : (am || tr);
-      if (!pick) { G.wait(s); break; }
-      const p = legal(pick.key); if (!p) { G.wait(s); break; }
-      const r = G.buyTile(s, pick, p.x, p.y, p.r); if (!r.ok) { G.wait(s); break; }
+      if (!pick) break;
+      const p = legal(pick.key); if (!p) break;
+      const r = G.buyTile(s, pick, p.x, p.y, p.r); if (!r.ok) break;
     }
     G.runWeek(s); const st = G.settle(s);
     if (!st.passed) return { died: s.week };
@@ -47,6 +54,27 @@ try {
   await page.waitForTimeout(300);
   const cards1 = await page.locator('.card .name').allTextContents();
   check('week-1 shop has no upgrade token or bridge', !cards1.includes('Upgrade Token') && !cards1.some(c => c.includes('Bridge')), cards1.join(','));
+  // isometric camera: round-trip a few cells, then zoom/pan and round-trip again
+  const roundTrip = () => page.evaluate(() => {
+    const r = window.gcs.renderer; const bad = [];
+    for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
+      const [px, py] = r.cellCenterPx(x, y);
+      const c = r.cellAt(px, py);
+      if (!c || c.x !== x || c.y !== y) bad.push(`${x},${y}->${c ? c.x + ',' + c.y : 'null'}`);
+    }
+    for (const e of ['N', 'E', 'S', 'W']) { const [px, py] = r.edgeCenterPx(e); if (r.edgeAt(px, py) !== e) bad.push('edge ' + e); }
+    return bad;
+  });
+  check('iso hit-testing round-trips at fit zoom', (await roundTrip()).length === 0, (await roundTrip()).slice(0, 4).join(' '));
+  const cam = await page.evaluate(() => {
+    const r = window.gcs.renderer; const z0 = r.zoom;
+    r.zoomAt(2.2, r.viewW * 0.35, r.viewH * 0.6); r.panBy(-40, 25);
+    return { z0, z1: r.zoom, pan: [Math.round(r.panX), Math.round(r.panY)] };
+  });
+  check('zoom + pan change the camera', cam.z1 > cam.z0 * 1.5, JSON.stringify(cam));
+  check('iso hit-testing round-trips while zoomed and panned', (await roundTrip()).length === 0, (await roundTrip()).slice(0, 4).join(' '));
+  await page.evaluate(() => window.gcs.renderer.fit());
+  await page.waitForTimeout(100);
   // fast forward to week 5 (ordinance week)
   let ff = await fastForward(5);
   check('fast-forward to week 5', ff.week === 5, JSON.stringify(ff));
@@ -58,20 +86,46 @@ try {
   await page.waitForTimeout(200);
   check('ordinance chosen', (await page.locator('#rules-body').innerText()).length > 20, await page.locator('#rules-body').innerText());
   await page.screenshot({ path: SP + '/shot6_week5.png' });
-  // upgrade token via UI: click token card then a tile
-  const tokenIdx = (await page.locator('.card .name').allTextContents()).indexOf('Upgrade Token');
-  check('upgrade token offered at week 5', tokenIdx >= 0);
-  if (tokenIdx >= 0) {
-    await page.locator('.card').nth(tokenIdx).click();
+  // Upgrade cards are bound to a tile type you own and carry their own name, so
+  // find one by type and force it into the shop if this week's roll had none.
+  const upCard = await page.evaluate(() => {
+    const s = window.gcs.state, G = window.gcs.G;
+    let c = s.shop.cards.find(c => c.type === 'upgrade');
+    if (!c) {
+      const keys = G.upgradableKeys(s);
+      if (!keys.length) return null;
+      s.shop.cards = G.generateShop(s);
+      c = s.shop.cards.find(c => c.type === 'upgrade');
+      if (!c) { s.money += 2000; s.shop.rerolls = 0;
+        for (let i = 0; i < 40 && !c; i++) { s.shop.rerolls = i; s.shop.cards = G.generateShop(s); c = s.shop.cards.find(c => c.type === 'upgrade'); } }
+      window.gcs.refresh();
+    }
+    if (!c) return null;
+    const t = G.upgradeTargets(s, c)[0];
+    return { idx: s.shop.cards.indexOf(c), name: c.name, tileName: c.tileName, key: c.key, levels: c.levels,
+             tileId: t.id, x: t.cells[0][0], y: t.cells[0][1], level: t.level };
+  });
+  check('a tile-specific upgrade is offered by week 5', !!upCard, upCard ? `${upCard.name} (${upCard.tileName})` : 'none');
+  if (upCard) {
+    check('upgrade card is named for its tile, not generic', upCard.name !== 'Upgrade Token' && !!upCard.tileName, upCard.name);
+    await page.evaluate(() => { window.gcs.state.money += 2000; window.gcs.refresh(); });
+    await page.locator('.card').nth(upCard.idx).click();
     await page.waitForTimeout(150);
     const infoT = await page.locator('#info-title').innerText();
-    check('target mode prompt', infoT.toLowerCase().includes('upgrade'), infoT);
-    const tile = await page.evaluate(() => { const s = window.gcs.state; const t = s.board.tiles.find(t => t.kind === 'amenity') || s.board.tiles[0]; return { id: t.id, x: t.cells[0][0], y: t.cells[0][1], level: t.level, money: s.money }; });
-    const [px, py] = await cellPx(tile.x, tile.y);
+    check('target mode prompt names the card', infoT.toLowerCase().includes(upCard.name.toLowerCase()), infoT);
+    // an upgrade card must refuse a tile of the wrong type
+    const wrong = await page.evaluate((key) => { const s = window.gcs.state; const t = s.board.tiles.find(t => t.key !== key && t.kind !== 'bridge'); return t ? { x: t.cells[0][0], y: t.cells[0][1], id: t.id, level: t.level } : null; }, upCard.key);
+    if (wrong) {
+      const [wx, wy] = await cellPx(wrong.x, wrong.y);
+      await page.mouse.click(wx, wy); await page.waitForTimeout(150);
+      const stillL = await page.evaluate((id) => window.gcs.state.board.tiles.find(t => t.id === id).level, wrong.id);
+      check('upgrade card refuses the wrong tile type', stillL === wrong.level, `level ${wrong.level} -> ${stillL}`);
+    }
+    const [px, py] = await cellPx(upCard.x, upCard.y);
     await page.mouse.click(px, py);
     await page.waitForTimeout(200);
-    const after = await page.evaluate((id) => window.gcs.state.board.tiles.find(t => t.id === id).level, tile.id);
-    check('tile upgraded via click', after === tile.level + 1, `level ${tile.level} -> ${after}, money was ${tile.money}`);
+    const after = await page.evaluate((id) => window.gcs.state.board.tiles.find(t => t.id === id).level, upCard.tileId);
+    check('tile upgraded via click', after === Math.min(5, upCard.level + upCard.levels), `level ${upCard.level} -> ${after} (card grants ${upCard.levels})`);
   }
   // rezoning card on an edge
   await page.evaluate(() => { const s = window.gcs.state; s.money += 500; s.ap = Math.max(s.ap, 2); const locked = Object.keys(s.board.edges).find(e => s.board.edges[e] !== 'green'); if (!locked) { s.board.edges.N = 'rail'; } s.shop.cards.push({ id: 'test-rez', slot: 4, type: 'card', key: 'rezoning', name: 'Rezoning Permit', cost: 120, desc: 'Unlock one locked edge back to greenfield.', target: 'edge' }); window.gcs.refresh(); });
@@ -91,6 +145,17 @@ try {
   await page.locator('#popup button.danger').click(); await page.waitForTimeout(150);
   const nTiles = await page.evaluate(() => window.gcs.state.board.tiles.length);
   check('delete via info panel', nTiles === delTile.n - 1, `${delTile.n} -> ${nTiles}`);
+  // a drag pans the camera instead of selecting; a click still selects
+  const beforePan = await page.evaluate(() => [window.gcs.renderer.panX, window.gcs.renderer.panY]);
+  const cbox = await page.locator('#board').boundingBox();
+  await page.mouse.move(cbox.x + cbox.width / 2, cbox.y + cbox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cbox.x + cbox.width / 2 - 60, cbox.y + cbox.height / 2 - 30, { steps: 6 });
+  await page.mouse.up();
+  const afterPan = await page.evaluate(() => [window.gcs.renderer.panX, window.gcs.renderer.panY]);
+  check('drag pans the board', Math.abs(afterPan[0] - beforePan[0]) > 30, `${beforePan} -> ${afterPan}`);
+  await page.evaluate(() => window.gcs.renderer.fit());
+  await page.waitForTimeout(100);
   // save/resume: reload and resume (run is alive at week 5)
   const wk5 = await page.locator('#st-week').innerText();
   await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(400);
@@ -111,7 +176,7 @@ try {
   if (hasSelect) { const opts = await page.locator('#event-body select option').allTextContents(); await page.locator('#event-body select').selectOption({ index: opts.length - 1 }); await page.waitForTimeout(100); check('strike choice recorded', !!(await page.evaluate(() => window.gcs.state.strikeChoice)), opts.join(',')); }
   await page.screenshot({ path: SP + '/shot7_week8.png' });
   // run week 8 through the UI at 4x briefly, then skip
-  await page.locator('#btn-run').click(); await page.waitForTimeout(200);
+  await runWeekUI(page);
   await page.locator('#playback button[data-speed="4"]').click(); await page.waitForTimeout(1200);
   await page.screenshot({ path: SP + '/shot8_playback8.png' });
   if (!(await page.locator('#modal:not(.hidden)').count())) await page.locator('#playback button[data-speed="skip"]').click(); await page.waitForTimeout(400);
@@ -131,8 +196,12 @@ try {
   await page.evaluate(() => { const s = window.gcs.state; s.phase = 'shop'; s.week = 16; s.ap = 3; s.pendingOrdinance = null; s.board.tiles.forEach(t => t.level = 5); window.gcs.refresh(); });
   await page.waitForTimeout(200);
   const proj = await page.locator('#st-proj').innerText();
-  results.push(`info: week-16 projection with L5 board: ${proj} vs quota ${await page.locator('#st-quota').innerText()}`);
-  await page.locator('#btn-run').click(); await page.waitForTimeout(200);
+  results.push(`info: week-16 projection with L5 board: ${proj} vs quota ${await page.locator('#st-quota').textContent()}`);
+  // ten or fewer stars render as glyphs, more as a "7 / 13 ★" counter
+  const starText = (await page.locator('#quota-stars').textContent()).trim();
+  const starNodes = await page.locator('#quota-stars .star').count();
+  check('quota shown as stars', starNodes > 0 || /\d+\s*★/.test(starText), `"${starText}" / ${starNodes} glyphs`);
+  await runWeekUI(page);
   if (!(await page.locator('#modal:not(.hidden)').count())) await page.locator('#playback button[data-speed="skip"]').click(); await page.waitForTimeout(500);
   await page.screenshot({ path: SP + '/shot10_week16_summary.png' });
   await page.locator('#modal button.primary').click(); await page.waitForTimeout(300);
@@ -143,7 +212,7 @@ try {
     check('endless continues to week 17', (await page.locator('#st-week').innerText()).startsWith('17'), await page.locator('#st-week').innerText());
     await page.evaluate(() => { const s = window.gcs.state; if (s.pendingOrdinance) window.gcs.G.chooseOrdinance(s, s.pendingOrdinance[0]); s.week = 60; s.ap = 0; window.gcs.refresh(); });
     if (await page.locator('#modal:not(.hidden)').count()) { await page.locator('#modal .mode').first().click().catch(() => {}); await page.waitForTimeout(200); }
-    await page.locator('#btn-run').click(); await page.waitForTimeout(200);
+    await runWeekUI(page);
     if (!(await page.locator('#modal:not(.hidden)').count())) await page.locator('#playback button[data-speed="skip"]').click(); await page.waitForTimeout(400);
     await page.locator('#modal button.primary').click(); await page.waitForTimeout(300);
     const over = await page.locator('#modal-box h2').innerText().catch(() => '');
@@ -160,6 +229,32 @@ try {
   const dims = await page.evaluate(() => [window.gcs.state.board.w, window.gcs.state.modeKey]);
   check('junction 9x9 run started', dims[0] === 9, JSON.stringify(dims));
   await page.screenshot({ path: SP + '/shot11_junction.png' });
+  // Draw order: a tall one-cell tile in front of a long bar must occlude it.
+  // Ordering whole tiles gets this wrong (the bar's far end sorts last and
+  // repaints over the tile standing in front of its near end), so the renderer
+  // orders by cell. Sample a pixel on the front tile's roof, in the band that
+  // the cell behind it would repaint, and check whose colour won.
+  await page.evaluate(() => {
+    const s = window.gcs.state, r = window.gcs.renderer;
+    s.board.tiles.length = 0; s.board.lanes.length = 0; s.board.driveways.length = 0;
+    const add = (name, key, cells) => s.board.tiles.push({ id: s.board.nextId++, key, name, kind: 'amenity', cells, rot: 0, level: 1 });
+    add('Bar', 'waiting_area', [[4, 4], [4, 5], [4, 6], [4, 7]]); // sorts last as a whole tile
+    add('Fr', 'vending', [[5, 5]]);                               // stands in front of the bar's far end
+    window.gcs.ui.selectedTileId = null; window.gcs.ui.hoverTileId = null;
+    r.fit(); window.gcs.refresh();
+  });
+  await page.waitForTimeout(400);
+  const roof = await page.evaluate(() => {
+    const r = window.gcs.renderer, d = r.dpr || 1;
+    const [x, y] = r.project(5.5, 5.5);
+    const sy = y - r.heightOf('vending') * r.hz - r.hh * 0.75; // roof, above the label chip
+    const im = r.canvas.getContext('2d').getImageData(Math.round(x * d), Math.round(sy * d), 1, 1).data;
+    return [im[0], im[1], im[2]];
+  });
+  const near = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 40;
+  check('cells in front paint over the multi-cell tiles behind them', near(roof, [255, 165, 58]),
+    `roof pixel ${roof} (front tile #ffa53a=255,165,58; bar behind #d9d24a=217,210,74)`);
+  await page.screenshot({ path: SP + '/shot12_draworder.png' });
 } catch (e) { results.push('TEST ERROR ' + e.message.split('\n').slice(0, 25).join(' | ')); await page.screenshot({ path: SP + '/shot_err2.png' }); }
 console.log(results.join('\n'));
 console.log('console errors:', errors.length ? errors.join('\n') : 'none');

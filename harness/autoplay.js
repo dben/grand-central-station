@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Autoplay bot: plays full runs through the real game layer with a greedy
 // heuristic, to see where runs die and how score tracks quota.
-//   node harness/autoplay.js --runs 5 --weeks 16 --mode terminal [--policy greedy|naive] [--verbose]
+//   node harness/autoplay.js --runs 5 --weeks 16 --mode terminal [--seed0 1000] [--policy greedy|naive] [--verbose]
 import * as G from '../src/game/run.js';
 import { tileDef } from '../src/data/tiles.js';
 import { orientationCount } from '../src/sim/shapes.js';
@@ -12,6 +12,9 @@ const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i
 const RUNS = Number(opt('runs', 4)), WEEKS = Number(opt('weeks', 16)), MODE = opt('mode', 'terminal'), POLICY = opt('policy', 'greedy');
 const VERBOSE = args.includes('--verbose');
 const CANDS = Number(opt('cands', 10));
+// Base seed for the run population. Vary it to check whether a shift in the
+// survival rate is a real balance move or just this set of 16 runs.
+const SEED0 = Number(opt('seed0', 1000));
 
 function legalPlacements(s, key, rng, limit) {
   const def = tileDef(key);
@@ -67,17 +70,17 @@ function greedyAction(s, rng) {
   }
   if (!best || best.score < 1.5) {
     if (s.money < 60 && s.shop.rerolls === 0 && s.ap >= 2 && best) return best;
-    return { score: 0, act: () => G.wait(s), label: 'Wait' };
+    return { score: 0, act: () => ({ ok: true, pass: true }), label: 'Run early' };
   }
   return best;
 }
 
 function naiveAction(s, rng) {
   const affordable = s.shop.cards.filter(c => (c.type === 'tile') && G.cardCost(s, c) <= s.money);
-  if (!affordable.length) return { act: () => G.wait(s), label: 'Wait' };
+  if (!affordable.length) return { act: () => ({ ok: true, pass: true }), label: 'Run early' };
   const card = rng.pick(affordable);
   const places = legalPlacements(s, card.key, rng, 1);
-  if (!places.length) return { act: () => G.wait(s), label: 'Wait' };
+  if (!places.length) return { act: () => ({ ok: true, pass: true }), label: 'Run early' };
   const p = places[0];
   return { act: () => G.buyTile(s, card, p.x, p.y, p.r), label: `${card.name}@${p.x},${p.y}` };
 }
@@ -85,7 +88,7 @@ function naiveAction(s, rng) {
 const outcomes = [];
 const ratioByWeek = {};
 for (let run = 0; run < RUNS; run++) {
-  const seed = 1000 + run;
+  const seed = SEED0 + run;
   const s = G.createRun({ modeKey: MODE, seed });
   const rng = new Rng(seed);
   let died = null;
@@ -97,7 +100,7 @@ for (let run = 0; run < RUNS; run++) {
       const a = POLICY === 'naive' ? naiveAction(s, rng) : greedyAction(s, rng);
       const r = a.act();
       if (VERBOSE) console.log(`  run ${run} w${s.week} AP${s.ap} $${s.money}: ${a.label} -> ${r.ok ? 'ok' : r.reason}`);
-      if (!r.ok) { G.wait(s); }
+      if (!r.ok || r.pass) break;   // unspent AP is paid out when the week runs
     }
     const quota = G.quotaFor(s);
     const { result } = G.runWeek(s);

@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { createBoard, placeTile, checkPlacement } from '../src/sim/board.js';
 import { simulateWeek } from '../src/sim/sim.js';
 import { MODES } from '../src/data/modes.js';
-import { quotaForWeek } from '../src/config.js';
+import { quotaForWeek, starsOf, starTarget } from '../src/config.js';
 
 export function loadLayout(spec) {
   const mode = MODES[spec.mode || 'terminal'];
@@ -41,14 +41,15 @@ export function runLayout(spec, { seeds = 30, week = spec.week || 1, mods = spec
     t.serves += st.serves; t.balks += st.balks; t.revenue += st.revenue; t.points += st.points; t.sat += st.saturation; t.spawned += st.spawned; t.boarded += st.boarded; t.stranded += st.stranded;
   }
   for (const t of Object.values(tiles)) for (const k of Object.keys(t)) if (k !== 'name') t[k] /= seeds;
-  const counts = { spawned: mean(results.map(r => r.counts.spawned)), boarded: mean(results.map(r => r.counts.boarded)), stranded: mean(results.map(r => r.counts.stranded)) };
+  const counts = { spawned: mean(results.map(r => r.counts.spawned)), boarded: mean(results.map(r => r.counts.boarded)), stranded: mean(results.map(r => r.counts.stranded)), lost: mean(results.map(r => r.counts.lost)) };
   return { board, mode, week, quota: quotaForWeek(week, mode), score: { mean: mean(scores), p10: pct(scores, 0.1), p50: pct(scores, 0.5), p90: pct(scores, 0.9) }, money: { mean: mean(money), p10: pct(money, 0.1), p90: pct(money, 0.9) }, tiles, counts, msPerWeek: ms, results };
 }
 
 export function report(r) {
   const f = n => Math.round(n).toLocaleString('en-US');
-  console.log(`Week ${r.week}  quota ${f(r.quota)}  |  score mean ${f(r.score.mean)}  p10 ${f(r.score.p10)}  p50 ${f(r.score.p50)}  p90 ${f(r.score.p90)}  |  money mean ${f(r.money.mean)} (${f(r.money.p10)}-${f(r.money.p90)})  |  ${r.msPerWeek.toFixed(1)} ms/week`);
-  console.log(`  travellers: spawned ${r.counts.spawned.toFixed(1)}  boarded ${r.counts.boarded.toFixed(1)}  stranded ${r.counts.stranded.toFixed(1)}`);
+  console.log(`Week ${r.week}  quota ${f(r.quota)} (${starTarget(r.quota)}\u2605)  |  score mean ${f(r.score.mean)} (${starsOf(r.score.mean)}\u2605)  p10 ${f(r.score.p10)} (${starsOf(r.score.p10)}\u2605)  p50 ${f(r.score.p50)}  p90 ${f(r.score.p90)} (${starsOf(r.score.p90)}\u2605)  |  money mean ${f(r.money.mean)} (${f(r.money.p10)}-${f(r.money.p90)})  |  ${r.msPerWeek.toFixed(1)} ms/week`);
+  const strandPct = r.counts.spawned ? (r.counts.stranded / r.counts.spawned * 100).toFixed(0) : '0';
+  console.log(`  travellers: spawned ${r.counts.spawned.toFixed(1)}  boarded ${r.counts.boarded.toFixed(1)}  stranded ${r.counts.stranded.toFixed(1)} (${strandPct}%)  lost ${r.counts.lost.toFixed(1)}  |  stars vs quota ${(r.score.mean / r.quota).toFixed(2)}x`);
   const rows = Object.values(r.tiles);
   console.log('  ' + 'tile'.padEnd(20) + 'serves'.padStart(8) + 'balks'.padStart(7) + 'sat%'.padStart(6) + 'revenue'.padStart(9) + 'points'.padStart(9) + 'spawn'.padStart(7) + 'board'.padStart(7) + 'strand'.padStart(7));
   for (const t of rows) console.log('  ' + t.name.padEnd(20) + t.serves.toFixed(1).padStart(8) + t.balks.toFixed(1).padStart(7) + (t.sat * 100).toFixed(0).padStart(6) + t.revenue.toFixed(0).padStart(9) + f(t.points).padStart(9) + t.spawned.toFixed(1).padStart(7) + t.boarded.toFixed(1).padStart(7) + t.stranded.toFixed(1).padStart(7));

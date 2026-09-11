@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grand Central Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/ui/style.css">
 </head>
 <body>
@@ -19,14 +22,18 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
   <header id="topbar">
     <div class="brand"><span class="logo">GCS</span><span class="title">Grand Central Station</span></div>
     <div class="stat"><span class="lbl">Week</span><span id="st-week" class="val blocky">1</span></div>
-    <div class="stat"><span class="lbl">Quota</span><span id="st-quota" class="val blocky">5,000</span></div>
+    <div class="stat" id="quota-stat">
+      <span class="lbl">Quota</span>
+      <div id="quota-stars" class="stars" title="One star per 1,000 points"></div>
+    </div>
+    <span id="st-quota" class="sr-only">5,000</span>
     <span id="st-proj" class="sr-only"></span>
     <div class="spacer"></div>
     <div id="playback" class="hidden">
       <span id="pb-tick" class="lbl">tick 0/20</span>
-      <button data-speed="1" class="speed active">1×</button>
-      <button data-speed="2" class="speed">2×</button>
-      <button data-speed="4" class="speed">4×</button>
+      <button data-speed="1" class="speed">½×</button>
+      <button data-speed="2" class="speed active">1×</button>
+      <button data-speed="4" class="speed">2×</button>
       <button data-speed="skip" class="speed">Skip</button>
     </div>
     <button id="btn-menu" title="Menu">☰</button>
@@ -36,12 +43,37 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
     <div id="board-wrap">
       <canvas id="board"></canvas>
       <div id="board-hint"></div>
+      <div id="board-tools">
+        <button id="btn-music" title="Music on (M)" aria-label="Music" aria-pressed="true">♪</button>
+        <button id="btn-zoom-out" title="Zoom out (-)" aria-label="Zoom out">−</button>
+        <button id="btn-zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
+        <button id="btn-zoom-fit" title="Fit board (0)" aria-label="Fit board">Fit</button>
+      </div>
+      <div id="place-tools" class="hidden">
+        <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
+        <button id="btn-place" class="primary">Build here</button>
+        <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
+      </div>
       <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
+      <!-- the shop floats over the bottom edge of the board -->
+      <div id="shop">
+        <div id="shop-actions">
+          <div id="wallet">
+            <div id="st-money" class="roller">$220</div>
+            <div id="ap-pips" title="Action points"></div>
+            <span id="st-ap" class="sr-only">2</span>
+          </div>
+          <button id="btn-reroll" title="Costs 1 action point">Reroll</button>
+          <button id="btn-run" class="primary">Run Week ▶</button>
+        </div>
+        <div id="shop-cards"></div>
+        <div id="shop-side"><button id="btn-shop-toggle" class="toggle" title="Hide shop">⌄</button></div>
+        <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
+      </div>
     </div>
     <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
     <aside id="side">
       <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
-      <div id="run-wrap"><button id="btn-run" class="primary">Run Week ▶</button></div>
       <section id="info-panel" class="panel hidden">
         <h3 id="info-title">Placing</h3>
         <div id="info-body"></div>
@@ -56,21 +88,6 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
       </section>
     </aside>
   </main>
-
-  <footer id="shop">
-    <button id="btn-shop-toggle" class="toggle" title="Collapse shop">⌄</button>
-    <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
-    <div id="shop-cards"></div>
-    <div id="shop-actions">
-      <div id="wallet">
-        <div id="st-money" class="roller">$220</div>
-        <div id="ap-pips" title="Action points"></div>
-        <span id="st-ap" class="sr-only">2</span>
-      </div>
-      <button id="btn-reroll">Reroll<br><small>1 AP · $10</small></button>
-      <button id="btn-wait">Wait<br><small>all AP · +interest</small></button>
-    </div>
-  </footer>
 </div>
 
 <div id="popup" class="hidden"></div>

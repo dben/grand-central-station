@@ -4,6 +4,11 @@
 // match the placed orientation, so one image per tile type is enough.
 // Missing files fall back to the flat coloured rendering.
 // The bundler (harness/build.js) inlines these as data URIs in dist/.
+//
+// Tiles draw in two layers with the crowd between them (see render.js):
+// SPRITES_FLOOR is the under layer - the interior a traveller stands on, like
+// a lounge's seating or a shop's tiling - and SPRITES is the over layer, the
+// walls and roof that hide anyone inside. A tile may have either or both.
 export const SPRITE_CELL_PX = 32;
 export const SPRITES = {
   bus_stop:      'assets/tiles/bus_stop.png',      // I2  64x32
@@ -17,21 +22,33 @@ export const SPRITES = {
   coffee:        'assets/tiles/coffee.png',        // I2  64x32
   restroom:      'assets/tiles/restroom.png',      // O4  64x64
   waiting_area:  'assets/tiles/waiting_area.png',  // O4  64x64
-  gate:          'assets/tiles/gate.png',          // I4  128x32
+  // gate.png (I4) predates the two-cell Security Checkpoint booth; it draws flat until redrawn at I2
+};
+
+// Under layer, same geometry and naming as SPRITES. Every entry is optional.
+export const SPRITES_FLOOR = {
+  waiting_area:  'assets/tiles/waiting_area_floor.png',  // O4  64x64  seating a traveller stands among
 };
 
 const cache = new Map();
-export function loadSprites(onLoad) {
-  for (const [key, url] of Object.entries(SPRITES)) {
-    if (cache.has(key) || !url) continue;
+function load(manifest, prefix, onLoad) {
+  for (const [key, url] of Object.entries(manifest)) {
+    const id = prefix + key;
+    if (cache.has(id) || !url) continue;
     const img = new Image();
-    cache.set(key, { img, ok: false });
-    img.onload = () => { cache.get(key).ok = img.naturalWidth > 0; if (onLoad) onLoad(key); };
-    img.onerror = () => { cache.get(key).ok = false; };
+    cache.set(id, { img, ok: false });
+    img.onload = () => { cache.get(id).ok = img.naturalWidth > 0; if (onLoad) onLoad(key); };
+    img.onerror = () => { cache.get(id).ok = false; };
     img.src = url;
   }
 }
-export function sprite(key) {
-  const e = cache.get(key);
+export function loadSprites(onLoad) {
+  load(SPRITES, '', onLoad);
+  load(SPRITES_FLOOR, 'floor:', onLoad);
+}
+function get(id) {
+  const e = cache.get(id);
   return e && e.ok ? e.img : null;
 }
+export function sprite(key) { return get(key); }
+export function spriteFloor(key) { return get('floor:' + key); }

@@ -1,0 +1,10 @@
+{ "mode": "terminal", "week": 6, "note": "one transport feeding a dense amenity run - the case amenities have to be worth building for",
+  "tiles": [
+    { "key": "bus_stop", "x": 4, "y": 0 },
+    { "key": "newsstand", "x": 4, "y": 3 },
+    { "key": "food_stand", "x": 6, "y": 3 },
+    { "key": "coffee", "x": 3, "y": 5 },
+    { "key": "burger", "x": 6, "y": 5 },
+    { "key": "restroom", "x": 8, "y": 6 },
+    { "key": "train_station", "x": 6, "y": 11 }
+  ] }

@@ -5,8 +5,9 @@ export const ORDINANCES = {
   zoning_variance: { name: 'Zoning Variance',     desc: 'Deleting a tile refunds half its cost and costs no AP.', game: { deleteRefund: 0.5, deleteFreeAP: true } },
   union_contract:  { name: 'Union Contract',      desc: 'Dwell +2 ticks everywhere; amenity capacity -20%.', mods: { dwellAdd: 2, capacityMult: 0.8 } },
   retail_compact:  { name: 'Retail Compact',      desc: 'Amenity revenue doubled; flat point values halved.', mods: { revenueMult: 2, flatMult: 0.5 } },
-  night_service:   { name: 'Night Service',       desc: '24 ticks per week instead of 20; quota x1.15.', mods: { ticks: 24, spawnTicks: 20 }, game: { quotaMult: 1.15 } },
-  open_borders:    { name: 'Open Borders',        desc: 'Corridor lanes are walkable.', mods: { walkableLanes: true } },
+  night_service:   { name: 'Night Service',       desc: '30 ticks per week instead of 24, and arrivals run 4 ticks longer; quota x1.15.', mods: { ticks: 30, spawnTicks: 20 }, game: { quotaMult: 1.15 } },
+  wayfinding:      { name: 'Wayfinding Signs',    desc: 'Every service amenity gains +1 radius; capacity -15%.', mods: { amenityRadiusBonus: 1, capacityMult: 0.85 } },
   loyalty_scheme:  { name: 'Loyalty Scheme',      desc: 'Every traveller starts with +1 stop budget; fares -50%.', mods: { stopBudgetBonus: 1, fareMult: 0.5 } },
+  staff_expansion: { name: 'Staff Expansion',     desc: '+1 action point every week; tiles cost 15% more.', game: { apBonus: 1, costMult: 1.15 } },
 };
 export const ORDINANCE_KEYS = Object.keys(ORDINANCES);

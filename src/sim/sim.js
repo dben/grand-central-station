@@ -6,17 +6,17 @@
 import { CONFIG } from '../config.js';
 import { tileDef } from '../data/tiles.js';
 import { makeStreams } from './rng.js';
-import { buildWalkMap } from './board.js';
+import { buildWalkMap, checkpointFences, fenceBlocked } from './board.js';
 
 const INF = 1e9;
 
 export const DEFAULT_MODS = {
   batchMult: 1, dwellMult: 1, dwellAdd: 0, cadenceDiv: 1, lowTierBias: 0,
-  vipCount: 0, vipBudgetBonus: 0, offlineTerrains: [], offlineTags: [], strikeTerrain: null,
+  vipCount: 0, vipBudgetBonus: 0, offlineTerrains: [], offlineTags: [], strikeTerrain: null, strikeSkeleton: null, closedRate: 0,
   closedBelowLevel: 0, rateBonusTags: {}, destTierShift: 0, stopBudgetBonus: 0,
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
-  ticks: null, spawnTicks: null, walkableLanes: false, pickpocketRate: null,
+  ticks: null, spawnTicks: null, pickpocketRate: null, amenityRadiusBonus: 0,
 };
 
 export function mergeMods(...list) {
@@ -26,7 +26,7 @@ export function mergeMods(...list) {
     for (const [k, v] of Object.entries(m)) {
       if (v === undefined || v === null) continue;
       if (k === 'batchMult' || k === 'dwellMult' || k === 'fareMult' || k === 'capacityMult' || k === 'revenueMult' || k === 'flatMult') out[k] *= v;
-      else if (k === 'dwellAdd' || k === 'stopBudgetBonus' || k === 'transportMultBonus' || k === 'amenityMultBonus' || k === 'destTierShift' || k === 'vipCount' || k === 'vipBudgetBonus') out[k] += v;
+      else if (k === 'dwellAdd' || k === 'stopBudgetBonus' || k === 'transportMultBonus' || k === 'amenityMultBonus' || k === 'destTierShift' || k === 'vipCount' || k === 'vipBudgetBonus' || k === 'amenityRadiusBonus') out[k] += v;
       else if (k === 'cadenceDiv') out[k] *= v;
       else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns') out[k] = out[k].concat(v);
       else if (k === 'rateBonusTags') { out[k] = { ...out[k] }; for (const [t, b] of Object.entries(v)) out[k][t] = (out[k][t] || 0) + b; }
@@ -38,17 +38,20 @@ export function mergeMods(...list) {
 
 // ---------------------------------------------------------------------------
 // Effective tile stats (after level, modifiers). Exported so the UI can show them.
-export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG) {
+// `wifi` is the WiFi strength reaching the tile (see wifiStrength).
+export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   const def = tileDef(tile.key);
   const lvl = (tile.level || 1) - 1;
   const up = cfg.upgrades.transport;
   const arrBase = tile.arrOverride || def.arr;
   const tags = def.tags || [];
   const offline = mods.offlineTerrains.includes(def.terrain) || tags.some(t => mods.offlineTags.includes(t)) || mods.strikeTerrain === def.terrain;
+  // struck, but it is the only terrain running: skeleton service, not a shutdown
+  const skeleton = mods.strikeSkeleton === def.terrain;
   return {
-    def, tier: def.tier,
-    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult)),
-    mult: def.mult + up.mult * lvl + mods.transportMultBonus,
+    def, tier: def.tier, skeleton,
+    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
+    mult: def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit,
     flat: def.flat * mods.flatMult,
     arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
     dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
@@ -57,26 +60,35 @@ export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG) {
   };
 }
 
-export function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifiBonus = 0) {
+export function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   const def = tileDef(tile.key);
   const lvl = (tile.level || 1) - 1;
   const up = cfg.upgrades.amenity;
   const tags = def.tags || [];
-  let rate = def.rate > 0 ? def.rate + up.rate * lvl + wifiBonus : 0;
+  let rate = def.rate > 0 ? def.rate + up.rate * lvl + wifi * cfg.sim.wifi.rate : 0;
   for (const t of tags) if (mods.rateBonusTags[t]) rate += mods.rateBonusTags[t];
   if (mods.grandOpeningTileId === tile.id) rate = 1;
   const isService = def.rate > 0;
+  // An inspection restricts un-upgraded amenities rather than shutting them
+  // off: closedRate is the fraction of their pull and chain bonus that still
+  // works. closedRate 0 is a full closure.
+  const under = mods.closedBelowLevel > 0 && isService && (tile.level || 1) < mods.closedBelowLevel;
+  const restrict = under ? mods.closedRate : 1;
+  let mult = isService ? def.mult + up.mult * lvl + mods.amenityMultBonus + wifi * cfg.sim.wifi.mult : 1;
+  if (under) mult = 1 + (mult - 1) * restrict;
   return {
     def, tier: def.tier, special: def.special || null,
-    rate: Math.min(1, rate),
-    mult: isService ? def.mult + up.mult * lvl + mods.amenityMultBonus : 1,
-    flat: def.flat * mods.flatMult,
+    rate: Math.min(1, rate) * restrict,
+    mult,
+    flat: def.flat * mods.flatMult * restrict,
     cap: Math.max(1, Math.round(def.cap * (1 + up.capacity * lvl) * mods.capacityMult)),
     dur: def.dur,
     revenue: def.revenue * (1 + up.revenue * lvl) * mods.revenueMult * cfg.economy.revenueScale,
-    radius: def.radius + (tile.radiusBonus || 0),
-    closed: mods.closedBelowLevel > 0 && isService && (tile.level || 1) < mods.closedBelowLevel,
-    stackValue: def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue),
+    radius: def.radius + (tile.radiusBonus || 0) + (def.rate > 0 ? mods.amenityRadiusBonus : 0),
+    closed: under && restrict === 0,
+    restricted: under && restrict > 0,
+    walkable: !!def.walkable,
+    stackValue: (def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack,
     minTier: def.key === 'flier_club' ? cfg.sim.frequentFlierMinTier : 1,
   };
 }
@@ -91,6 +103,20 @@ class Heap {
 
 const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 
+// WiFi strength reaching a footprint: one unit per hotspot within its radius
+// (more for upgraded hotspots), capped. Exported so the UI can quote it.
+export function wifiStrength(board, cells, cfg = CONFIG) {
+  const wc = cfg.sim.wifi;
+  let s = 0;
+  for (const w of board.tiles) {
+    if (w.key !== 'wifi') continue;
+    const r = tileDef(w.key).radius + (w.radiusBonus || 0);
+    const near = cells.some(([x, y]) => w.cells.some(([hx, hy]) => Math.max(Math.abs(hx - x), Math.abs(hy - y)) <= r));
+    if (near) s += 1 + wc.perLevel * ((w.level || 1) - 1);
+  }
+  return Math.min(wc.cap, s);
+}
+
 export function simulateWeek(board, opts = {}) {
   const cfg = opts.cfg || CONFIG;
   const mods = mergeMods(opts.mods);
@@ -102,53 +128,60 @@ export function simulateWeek(board, opts = {}) {
   const W = board.w, H = board.h, N = W * H;
   const tierMatchTable = mods.tierMatch || cfg.sim.tierMatch;
 
-  // ---- walk maps (gate closed / open)
-  const walkBase = buildWalkMap(board, { walkableLanes: mods.walkableLanes });
+  // ---- walk maps (checkpoint booths closed / open)
+  const walkBase = buildWalkMap(board);
   const passClosed = new Uint8Array(N), passOpen = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     const v = walkBase[i];
-    passOpen[i] = (v === 0 || v === 2 || v === 3) ? 1 : 0;
-    passClosed[i] = (v === 0 || v === 2) ? 1 : 0;
+    passOpen[i] = (v === 0 || v === 2 || v === 3 || v === 5) ? 1 : 0;
+    passClosed[i] = (v === 0 || v === 2 || v === 5) ? 1 : 0;
   }
   const isWalkway = i => walkBase[i] === 2;
   const isGateCell = i => walkBase[i] === 3;
   const hasGate = board.tiles.some(t => t.key === 'gate');
+  const ckCfg = cfg.sim.checkpoint;
+  // Checkpoint fences run between cells, so they are a per-step rule rather
+  // than a blocked cell: blocked[i] has bit d set when step DIRS[d] out of
+  // cell i crosses a fence.
+  const blocked = new Uint8Array(N);
+  if (hasGate) {
+    const fences = checkpointFences(board);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      for (let d = 0; d < 8; d++) if (fenceBlocked(fences, W, H, x, y, DIRS[d][0], DIRS[d][1])) blocked[y * W + x] |= 1 << d;
+    }
+  }
+  // Clearing a booth multiplies a traveller's value and adds stop budget; an
+  // upgraded booth multiplies more.
+  const booths = new Map();
+  for (const t of board.tiles) if (t.key === 'gate') {
+    const mult = ckCfg.mult + ckCfg.multPerLevel * ((t.level || 1) - 1);
+    for (const [x, y] of t.cells) booths.set(y * W + x, { tile: t, mult, bonus: ckCfg.budgetBonus });
+  }
 
   // ---- tiles
-  const transports = [], amenities = [], waitingAreas = [], wifis = [];
-  let kioskCount = 0;
+  const transports = [], amenities = [], waitingAreas = [], security = [];
   const tileStats = {};
   for (const t of board.tiles) {
-    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, occ: new Int16Array(TICKS + 1), fullTicks: 0, cap: 0 };
+    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, lost: 0, occ: new Int16Array(TICKS + 1), fullTicks: 0, cap: 0 };
     if (t.kind === 'bridge') continue;
-    const doors = doorCells(board, t, passOpen);
+    const doors = doorCells(board, t, passOpen, blocked);
     if (t.kind === 'transport') {
-      const e = effTransport(t, mods, cfg);
-      transports.push({ tile: t, e, doors, idx: transports.length, spawned: 0 });
+      transports.push({ tile: t, e: effTransport(t, mods, cfg, wifiStrength(board, t.cells, cfg)), doors, idx: transports.length, spawned: 0 });
     } else {
       const def = tileDef(t.key);
-      if (def.special === 'wifi') { wifis.push(t); continue; }
-      if (def.special === 'kiosk') kioskCount++;
-      if (def.special === 'walkway' || def.special === 'gate') continue;
+      // Its radius grows only through the Extra Patrol upgrade's radiusBonus,
+      // so `def.radius + radiusBonus` is the one formula the UI shares.
+      if (def.special === 'security') { security.push({ tile: t, distMap: chebyshevMap(board, t.cells), radius: def.radius + (t.radiusBonus || 0) }); continue; }
+      if (def.special === 'walkway' || def.special === 'gate' || def.special === 'wifi') continue;
       const distMap = chebyshevMap(board, t.cells);
-      const rec = { tile: t, def, doors, distMap, occ: 0, idx: amenities.length, e: null };
+      // A walk-through amenity (a park) is reached by stepping onto it, not
+      // just by standing at its door.
+      const targets = def.walkable ? t.cells.concat(doors) : doors;
+      const rec = { tile: t, def, doors, targets, distMap, occ: 0, idx: amenities.length, e: effAmenity(t, mods, cfg, wifiStrength(board, t.cells, cfg)) };
+      tileStats[t.id].cap = rec.e.cap;
       if (def.special === 'waiting') waitingAreas.push(rec); else amenities.push(rec);
     }
   }
-  // wifi bonuses
-  for (const a of amenities) {
-    let bonus = 0;
-    for (const w of wifis) {
-      const wd = tileDef(w.key);
-      const r = wd.radius + (w.radiusBonus || 0);
-      let d = INF;
-      for (const [x, y] of w.cells) d = Math.min(d, a.distMap[y * W + x]);
-      if (d <= r) bonus += cfg.sim.wifiBonus;
-    }
-    a.e = effAmenity(a.tile, mods, cfg, Math.min(cfg.sim.wifiCap, bonus));
-    tileStats[a.tile.id].cap = a.e.cap;
-  }
-  for (const wa of waitingAreas) { wa.e = effAmenity(wa.tile, mods, cfg); tileStats[wa.tile.id].cap = wa.e.cap; }
   const activeTransports = transports.filter(t => !t.e.offline && t.doors.length > 0);
 
   // ---- distance fields (memoized)
@@ -165,11 +198,12 @@ export function simulateWeek(board, opts = {}) {
       const [d, i] = heap.pop();
       if (d > f[i]) continue;
       const x = i % W, y = (i - x) / W;
-      for (const [dx, dy] of DIRS) {
+      for (let di = 0; di < 8; di++) {
+        const [dx, dy] = DIRS[di];
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const ni = ny * W + nx;
-        if (!pass[ni]) continue;
+        if (!pass[ni] || (blocked[i] & (1 << di))) continue;
         if (dx && dy && !(pass[y * W + nx] && pass[ny * W + x])) continue; // no corner cutting
         const cost = isWalkway(i) ? 0.5 : 1; // cheap to leave a walkway cell => walkways attract paths
         const nd = d + cost;
@@ -181,7 +215,7 @@ export function simulateWeek(board, opts = {}) {
   }
   const transportField = (ti, g) => field('T' + ti, transports[ti].doors, g);
   const cellField = (x, y, g) => field('C' + x + ',' + y, [[x, y]], g);
-  const amenityField = (ai, g) => field('A' + ai, amenities[ai].doors, g);
+  const amenityField = (ai, g) => field('A' + ai, amenities[ai].targets, g);
 
   // reachability between transports: 0 none, 1 direct, 2 via gate
   const reach = transports.map(() => new Int8Array(transports.length));
@@ -200,11 +234,16 @@ export function simulateWeek(board, opts = {}) {
   const live = [];
   const heat = new Float32Array(N);
   let score = 0, fares = 0, revenue = 0, banked = 0, strandedPts = 0, stolen = 0;
+  // score credited on each tick, so the UI can fill the week's stars during playback
+  const scoreByTick = new Array(TICKS + 1).fill(0);
   let best = null;
-  const counts = { spawned: 0, boarded: 0, stranded: 0, pickpockets: 0, removed: 0, looped: 0 };
+  const counts = { spawned: 0, boarded: 0, stranded: 0, lost: 0, pickpockets: 0, removed: 0, looped: 0 };
   const dw = cfg.destinationWeights;
+  // The crime wave phases in over `pickpocketRamp` weeks rather than landing
+  // at full strength the week it is announced.
+  const crimeAge = week - cfg.run.pickpocketsFromWeek + 1;
   const pickRate = mods.pickpocketRate != null ? mods.pickpocketRate
-    : (week >= cfg.run.pickpocketsFromWeek ? cfg.sim.pickpocketRate * Math.max(0, 1 - cfg.sim.kioskPickpocketReduction * kioskCount) : 0);
+    : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / cfg.sim.pickpocketRamp) : 0);
 
   function destWeight(travTier, transTier) {
     const gap = travTier - transTier;
@@ -216,14 +255,13 @@ export function simulateWeek(board, opts = {}) {
     return dw.far;
   }
 
+  // A traveller picks where they want to go, whether or not you have left them
+  // a way to get there. Walling a platform off does not redirect the crowd - it
+  // strands them (see `lost`), which is what makes boxing people in a mistake.
   function chooseDest(originIdx, tier) {
     const t = Math.min(5, tier + mods.destTierShift);
     const cands = [];
-    for (let b = 0; b < transports.length; b++) {
-      if (!transports[b].doors.length) continue;
-      if (b !== originIdx && !reach[originIdx][b]) continue;
-      cands.push(b);
-    }
+    for (let b = 0; b < transports.length; b++) if (transports[b].doors.length) cands.push(b);
     if (!cands.length) return originIdx;
     return rng.dest.weighted(cands, b => destWeight(t, transports[b].e.tier));
   }
@@ -267,6 +305,15 @@ export function simulateWeek(board, opts = {}) {
     return wps;
   }
 
+  // Top up a lost traveller's wander so they keep circulating instead of
+  // freezing on the spot. Returns false for anyone with a route to follow.
+  function wanderOn(a, t) {
+    if (!a.lost || t > TICKS) return false;
+    const wps = makeWaypoints(a.x, a.y, a.origin, a.gateOpen, true);
+    for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
+    return a.ti < a.targets.length;
+  }
+
   function spawnAgent(originIdx, tier, kind, extra = {}) {
     const tr = transports[originIdx];
     const door = rng.spawn.pick(tr.doors);
@@ -277,20 +324,24 @@ export function simulateWeek(board, opts = {}) {
       gateOpen = true;
     } else {
       destIdx = chooseDest(originIdx, tier);
-      if (destIdx !== originIdx && reach[originIdx][destIdx] === 2) gateOpen = true;
+      // An open checkpoint lets anyone through to whatever is on the far side;
+      // a filtering one only admits travellers whose platform is over there.
+      gateOpen = hasGate && (!ckCfg.filter || reach[originIdx][destIdx] === 2);
     }
+    const lost = kind !== 'pickpocket' && !reach[originIdx][destIdx];
     const tierInfo = cfg.tiers[tier - 1];
     const a = {
       id, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1],
-      value: extra.value ?? tierInfo.base, budget: tierInfo.budget + mods.stopBudgetBonus + (gateOpen ? cfg.sim.gateBudgetBonus : 0) + (extra.budgetBonus || 0),
+      value: extra.value ?? tierInfo.base, budget: tierInfo.budget + mods.stopBudgetBonus + (extra.budgetBonus || 0), cleared: false,
       served: new Set(), balked: new Set(), chain: [], state: 'walking', spawnTick: currentTick, endTick: null,
       frames: [[door[0], door[1]]], events: [], targets: [], ti: 0, serve: null, serveTicks: 0, arrivedTick: -1,
-      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null,
+      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null, lost,
     };
+    // A lost traveller has no route to follow, so they wander the concourse
+    // looking for a way through and never reach a platform.
     const same = destIdx === originIdx;
-    const wps = makeWaypoints(a.x, a.y, destIdx, gateOpen, same);
-    for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
-    a.targets.push({ kind: 'dest', idx: destIdx });
+    for (const [wx, wy] of makeWaypoints(a.x, a.y, lost ? originIdx : destIdx, gateOpen, same || lost)) a.targets.push({ kind: 'wp', x: wx, y: wy });
+    if (!lost) a.targets.push({ kind: 'dest', idx: destIdx });
     agents.push(a); live.push(a);
     counts.spawned++;
     if (kind === 'pickpocket') counts.pickpockets++;
@@ -312,11 +363,12 @@ export function simulateWeek(board, opts = {}) {
     if (here >= INF) return false;
     const pass = a.gateOpen ? passOpen : passClosed;
     let bestD = here, cands = [];
-    for (const [dx, dy] of DIRS) {
+    for (let di = 0; di < 8; di++) {
+      const [dx, dy] = DIRS[di];
       const nx = a.x + dx, ny = a.y + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const ni = ny * W + nx;
-      if (!pass[ni]) continue;
+      if (!pass[ni] || (blocked[i] & (1 << di))) continue;
       if (dx && dy && !(pass[a.y * W + nx] && pass[ny * W + a.x])) continue;
       const d = f[ni];
       if (d < bestD - 1e-6) { bestD = d; cands = [ni]; }
@@ -326,6 +378,16 @@ export function simulateWeek(board, opts = {}) {
     const ni = cands.length === 1 ? cands[0] : rng.walk.pick(cands);
     a.x = ni % W; a.y = (ni - a.x) / W;
     heat[ni] += 1;
+    // clearing a checkpoint booth: a chain link and extra stop budget, once per traveller
+    const bo = a.kind === 'traveller' && !a.cleared ? booths.get(ni) : null;
+    if (bo) {
+      const before = a.value;
+      a.cleared = true; a.budget += bo.bonus; a.value *= bo.mult;
+      const st = tileStats[bo.tile.id];
+      st.serves++; st.points += a.value - before;
+      a.chain.push({ name: bo.tile.name, tileId: bo.tile.id, before, after: a.value, mult: bo.mult, flat: 0 });
+      a.events.push({ t: currentTick, type: 'cleared', tileId: bo.tile.id, mult: bo.mult, value: a.value });
+    }
     return f[ni] === 0;
   }
 
@@ -349,7 +411,8 @@ export function simulateWeek(board, opts = {}) {
     for (const am of amenities) {
       if (am.e.closed || am.e.rate <= 0) continue;
       const d = am.distMap[i];
-      if (d < 1 || d > am.e.radius) continue;
+      // standing on a walk-through amenity (a park) counts as being beside it
+      if ((d < 1 && !am.e.walkable) || d > am.e.radius) continue;
       if (a.served.has(am.idx)) continue;
       if (amenityField(am.idx, a.gateOpen)[i] >= INF) continue; // walled off: no path to its door
       inRange.push([d, am]);
@@ -360,7 +423,7 @@ export function simulateWeek(board, opts = {}) {
       const e = am.e;
       const gap = e.special === 'anytier' ? 0 : Math.abs(a.tier - e.tier);
       const tm = tierMatchTable[Math.min(gap, tierMatchTable.length - 1)];
-      const fall = e.radius <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
+      const fall = e.radius <= 1 || d <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
       const p = e.rate * tm * fall;
       if (!rng.service.chance(p)) continue;
       if (am.occ >= e.cap) {
@@ -415,7 +478,7 @@ export function simulateWeek(board, opts = {}) {
     a.chain.push({ name: tr.tile.name + ' (exit)', tileId: tr.tile.id, before, after: v, mult: e.mult * tierBonus, flat: e.flat, exit: true });
     const fare = cfg.tiers[a.tier - 1].fare * mods.fareMult * cfg.economy.fareScale;
     fares += fare;
-    score += v; banked += v;
+    score += v; banked += v; scoreByTick[t] += v;
     const st = tileStats[tr.tile.id];
     st.boarded++; st.points += v; st.revenue += fare;
     counts.boarded++;
@@ -479,6 +542,9 @@ export function simulateWeek(board, opts = {}) {
         const steps = onWalkway ? cfg.sim.walkwaySpeed : 1;
         let moved = false;
         for (let s = 0; s < steps && (a.state === 'walking' || a.state === 'detour'); s++) {
+          // One service roll per cell travelled, so riding a walkway passes the
+          // same shops as walking it - twice as fast.
+          if (s > 0 && a.state === 'walking') serviceRolls(a, t);
           const tg = a.state === 'detour' ? { kind: 'am', idx: a.serve.idx } : a.targets[a.ti];
           const f = targetField(a, tg);
           const px = a.x, py = a.y;
@@ -487,23 +553,24 @@ export function simulateWeek(board, opts = {}) {
           if (reached) {
             if (a.state === 'detour') { beginService(a, t); break; }
             a.ti++;
-            if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; a.events.push({ t, type: 'arrive' }); break; }
+            if (a.ti >= a.targets.length) { if (!wanderOn(a, t)) { a.state = 'waiting'; a.arrivedTick = t; a.events.push({ t, type: 'arrive' }); } break; }
           } else if (!moved && f[a.y * W + a.x] >= INF) {
             // unreachable target: skip it
             if (a.state === 'detour') { a.served.add(a.serve.idx); a.serve.occ--; a.serve = null; a.state = 'walking'; }
-            else { a.ti++; if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; } }
+            else { a.ti++; if (a.ti >= a.targets.length && !wanderOn(a, t)) { a.state = 'waiting'; a.arrivedTick = t; } }
             break;
           } else if (!moved) {
             // stuck (no descending neighbour) - drop this target
             if (a.state === 'detour') { a.serve.occ--; a.serve = null; a.state = 'walking'; }
-            else { a.ti++; if (a.ti >= a.targets.length) { a.state = 'waiting'; a.arrivedTick = t; } }
+            else { a.ti++; if (a.ti >= a.targets.length && !wanderOn(a, t)) { a.state = 'waiting'; a.arrivedTick = t; } }
             break;
           }
         }
-        if (a.state === 'walking' && !onWalkway) serviceRolls(a, t);
+        if (a.state === 'walking') serviceRolls(a, t);
       }
 
-      if (a.state === 'waiting') {
+      if (a.state === 'waiting' && !a.lost) {
+        // A lost traveller can never reach a platform, so they never board.
         // waiting areas
         const i = a.y * W + a.x;
         for (const wa of waitingAreas) {
@@ -550,7 +617,7 @@ export function simulateWeek(board, opts = {}) {
     const f = targetField(a, a.targets[a.ti]);
     const reached = stepToward(a, f);
     const i = a.y * W + a.x;
-    if (isGateCell(i)) {
+    if (isGateCell(i) || security.some(p => p.distMap[i] <= p.radius)) {
       a.state = 'done'; a.outcome = 'removed'; a.endTick = t; counts.removed++;
       a.events.push({ t, type: 'removed' });
       return;
@@ -574,14 +641,14 @@ export function simulateWeek(board, opts = {}) {
     if (a.state === 'done') continue;
     a.endTick = TICKS;
     if (a.kind === 'pickpocket') { a.outcome = 'left'; a.state = 'done'; continue; }
-    const v = a.value * cfg.economy.strandedMultiplier;
-    score += v; strandedPts += v;
-    counts.stranded++;
-    tileStats[transports[a.dest].tile.id].stranded++;
+    const v = a.value * (a.lost ? cfg.economy.lostMultiplier : cfg.economy.strandedMultiplier);
+    score += v; strandedPts += v; scoreByTick[TICKS] += v;
+    if (a.lost) { counts.lost++; tileStats[transports[a.origin].tile.id].lost++; }
+    else { counts.stranded++; tileStats[transports[a.dest].tile.id].stranded++; }
     if (a.waitSlot) { a.waitSlot.occ--; a.waitSlot = null; }
     if (a.serve) { a.serve.occ--; a.serve = null; }
-    a.outcome = 'stranded'; a.state = 'done';
-    a.events.push({ t: TICKS, type: 'strand', value: v });
+    a.outcome = a.lost ? 'lost' : 'stranded'; a.state = 'done';
+    a.events.push({ t: TICKS, type: a.lost ? 'lost' : 'strand', value: v });
   }
 
   for (const id in tileStats) {
@@ -589,10 +656,15 @@ export function simulateWeek(board, opts = {}) {
     s.saturation = s.cap > 0 ? s.fullTicks / TICKS : 0;
   }
 
+  // running total, so scoreByTick[t] is the score on the board at tick t
+  for (let t = 1; t <= TICKS; t++) scoreByTick[t] += scoreByTick[t - 1];
+  for (let t = 0; t <= TICKS; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
+
   return {
     seed, week, ticks: TICKS, spawnTicks: SPAWN_TICKS,
     score: Math.round(score),
     points: { banked: Math.round(banked), stranded: Math.round(strandedPts), stolen: Math.round(stolen) },
+    scoreByTick,
     money: { fares: Math.round(fares), revenue: Math.round(revenue), total: Math.round(fares + revenue) },
     counts, best,
     agents: agents.map(a => ({ id: a.id, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
@@ -602,17 +674,18 @@ export function simulateWeek(board, opts = {}) {
   };
 }
 
-// walkable cells 8-adjacent to a tile
-function doorCells(board, tile, pass) {
+// walkable cells 8-adjacent to a tile, not across a checkpoint fence
+function doorCells(board, tile, pass, blocked) {
   const W = board.w, H = board.h;
   const set = new Set(), out = [];
   const own = new Set(tile.cells.map(([x, y]) => y * W + x));
   for (const [x, y] of tile.cells) {
-    for (const [dx, dy] of DIRS) {
+    for (let di = 0; di < 8; di++) {
+      const [dx, dy] = DIRS[di];
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const i = ny * W + nx;
-      if (own.has(i) || set.has(i) || !pass[i]) continue;
+      if (own.has(i) || set.has(i) || !pass[i] || (blocked[y * W + x] & (1 << di))) continue;
       set.add(i); out.push([nx, ny]);
     }
   }

@@ -2,9 +2,9 @@
 // Run state and actions. Plain mutable state object + functions; the UI
 // re-renders after every action. Everything here is DOM-free.
 // ============================================================================
-import { CONFIG, quotaForWeek, apForWeek } from '../config.js';
-import { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef } from '../data/tiles.js';
-import { EVENTS, EVENT_KEYS } from '../data/events.js';
+import { CONFIG, quotaForWeek, apForWeek, starTarget } from '../config.js';
+import { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef, tileUpgrade } from '../data/tiles.js';
+import { EVENTS, EVENT_KEYS, MILESTONES } from '../data/events.js';
 import { CARDS } from '../data/cards.js';
 import { ORDINANCES, ORDINANCE_KEYS } from '../data/ordinances.js';
 import { MODES } from '../data/modes.js';
@@ -36,10 +36,13 @@ export function createRun({ modeKey = 'terminal', seed = null } = {}) {
 }
 
 export const modeOf = s => MODES[s.modeKey];
+// AP for the week: the mode's flat base, plus Extra Shift purchases, an
+// ordinance like Staff Expansion, and any timed effect (Temp Staff) still running.
 export function apForRun(s) {
   const m = modeOf(s);
-  if (m.fixedAP) return m.fixedAP + s.apPermanentBonus;
-  return apForWeek(s.week, m) + s.apPermanentBonus;
+  const extra = s.apPermanentBonus + (gameRules(s).apBonus || 0) + s.effects.reduce((a, e) => a + (e.ap || 0), 0);
+  if (m.fixedAP) return m.fixedAP + extra;
+  return apForWeek(s.week, m) + extra;
 }
 export function isEventWeek(s, week = s.week) { return week % CONFIG.run.eventEvery === 0; }
 export function eventForWeek(s, week) {
@@ -48,9 +51,13 @@ export function eventForWeek(s, week) {
   return { key: k, ...EVENTS[k] };
 }
 export function currentEvent(s) { return eventForWeek(s, s.week); }
+// The milestone that switches on at this exact week, if any.
+export function milestoneForWeek(s, week) {
+  return MILESTONES.find(m => CONFIG.run[m.week] === week) || null;
+}
 export function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 export function gameRules(s) {
-  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: false, quotaMult: 1 };
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: false, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
@@ -61,24 +68,63 @@ export function quotaFor(s, week = s.week) {
 export function tileCount(s) { return s.board.tiles.length; }
 export function tileCost(s, def) {
   const m = modeOf(s);
-  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1);
+  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1) * gameRules(s).costMult;
   if (def.kind === 'transport' && m.terrainCostMult && m.terrainCostMult[def.terrain]) c *= m.terrainCostMult[def.terrain];
   return Math.round(c);
 }
 export function cardCost(s, card) {
   if (card.type === 'tile') return tileCost(s, tileDef(card.key));
   if (card.type === 'bridge') return Math.round(BRIDGE.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)));
+  if (card.type === 'upgrade') return upgradeCardCost(s, card) ?? 0;
   return card.cost;
 }
-export function upgradeCost(tile) {
+export function upgradeCost(tile, levels = 1, costMult = 1) {
   const lvl = tile.level || 1;
   if (lvl >= CONFIG.economy.maxLevel) return null;
-  return CONFIG.economy.upgradeCosts[lvl - 1];
+  // a multi-level card costs what those levels would have cost one at a time
+  let total = 0;
+  for (let i = 0; i < levels && lvl - 1 + i < CONFIG.economy.upgradeCosts.length; i++) total += CONFIG.economy.upgradeCosts[lvl - 1 + i];
+  return Math.round(total * costMult);
 }
-export function rerollFee(s) {
-  const f = CONFIG.economy.rerollFees;
-  return f[Math.min(s.shop.rerolls, f.length - 1)];
+
+// ------------------------------------------------------------- upgrade cards
+// An upgrade card names one tile type you already own. Types with nothing left
+// to raise are not offered at all, so an upgrade card is always playable.
+export function upgradableKeys(s) {
+  const keys = new Set();
+  for (const t of s.board.tiles) if (t.kind !== 'bridge' && (t.level || 1) < CONFIG.economy.maxLevel) keys.add(t.key);
+  return [...keys];
 }
+export function upgradeTargets(s, card) {
+  return s.board.tiles.filter(t => t.key === card.key && (t.level || 1) < CONFIG.economy.maxLevel);
+}
+// Cheapest tile of the card's type, which is what its price tag quotes.
+export function upgradeCardCost(s, card) {
+  const ts = upgradeTargets(s, card);
+  if (!ts.length) return null;
+  return Math.min(...ts.map(t => upgradeCost(t, card.levels, card.costMult)));
+}
+// Which category upgrades have something to hit this week.
+export function namedUpgradeKeys(s) {
+  const below = t => (t.level || 1) < CONFIG.economy.maxLevel;
+  return Object.entries(NAMED_UPGRADES).filter(([k, d]) => {
+    if (d.minWeek > s.week) return false;
+    if (d.target === 'waiting_all') return s.board.tiles.some(t => tileDef(t.key).special === 'waiting' && below(t));
+    if (d.target === 'transport') return s.board.tiles.some(t => t.kind === 'transport' && below(t));
+    if (d.target === 'amenity') return s.board.tiles.some(t => t.kind === 'amenity' && tileDef(t.key).rate > 0 && below(t));
+    return false;
+  }).map(([k]) => k);
+}
+export function rerollFee(s) { return CONFIG.economy.rerollCost; }
+export function quotaStars(s, week = s.week) { return starTarget(quotaFor(s, week)); }
+
+// Running the week with action points left pays a fixed amount per point,
+// growing with the week, so finishing early is a choice rather than a waste.
+export function earlyFinishPerAP(s, week = s.week) {
+  const e = CONFIG.economy;
+  return e.earlyFinishBase + e.earlyFinishPerWeek * (week - 1);
+}
+export function earlyFinishBonus(s, ap = s.ap) { return earlyFinishPerAP(s) * Math.max(0, ap); }
 
 // ----------------------------------------------------------------------- shop
 function tileWeight(def, week) {
@@ -94,44 +140,77 @@ function amenityPool(s, rareOnly = false) {
   return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
 }
 let cardSeq = 0;
-function tileCard(def, slot) { return { id: 'c' + (++cardSeq), slot, type: 'tile', key: def.key, name: def.name, kind: def.kind, cost: def.cost, desc: '' }; }
+const nextId = () => 'c' + (++cardSeq);
+function tileCard(def, slot) { return { id: nextId(), slot, type: 'tile', key: def.key, name: def.name, kind: def.kind, cost: def.cost, desc: '' }; }
 
 export function generateShop(s) {
   const rng = new Rng(hashString(`${s.seed}:shop:${s.week}:${s.shop.rerolls}`));
   const m = modeOf(s);
   const nSlots = m.shopSlots || CONFIG.shop.slots;
   const cards = [];
-  const pickTile = (pool, avoid) => {
-    const filtered = pool.filter(d => !avoid.has(d.key));
+  const used = new Set();          // avoid two of the same tile in one shop
+  const pickTile = (pool) => {
+    const filtered = pool.filter(d => !used.has(d.key));
     const use = filtered.length ? filtered : pool;
     return rng.weighted(use, d => tileWeight(d, s.week));
   };
-  const used = new Set();
-  const addTransport = slot => { const d = pickTile(transportPool(s), used); used.add(d.key); cards.push(tileCard(d, slot)); };
-  const addAmenity = slot => { const d = pickTile(amenityPool(s), used); used.add(d.key); cards.push(tileCard(d, slot)); };
-  const addUpgrade = slot => cards.push({ id: 'c' + (++cardSeq), slot, type: 'upgrade', name: 'Upgrade Token', cost: 0, desc: 'Raise any owned tile one level. Cost depends on its current level (60 / 140 / 300 / 650).', target: 'tile' });
-  const addWildcard = slot => {
-    const w = { ...CONFIG.shop.wildcard };
-    if (s.week < CONFIG.run.rareTilesFromWeek) w.rare = 0;
-    if (s.board.tiles.length === 0) { w.upgrade = 0; w.namedUpgrade = 0; }
-    if (s.week < CONFIG.run.apUpgradeFromWeek) w.apUpgrade = 0;
-    const named = Object.entries(NAMED_UPGRADES).filter(([k, d]) => d.minWeek <= s.week);
-    if (!named.length) w.namedUpgrade = 0;
-    const kind = rng.weighted(Object.keys(w), k => w[k]);
-    if (kind === 'card') { const k = rng.pick(Object.keys(CARDS)); cards.push({ id: 'c' + (++cardSeq), slot, type: 'card', key: k, name: CARDS[k].name, cost: CARDS[k].cost, desc: CARDS[k].desc, target: CARDS[k].target }); }
-    else if (kind === 'rare') { const pool = [...transportPool(s, true), ...amenityPool(s, true)]; if (pool.length) { const d = rng.pick(pool); cards.push(tileCard(d, slot)); } else addUpgrade(slot); }
-    else if (kind === 'bridge') cards.push({ id: 'c' + (++cardSeq), slot, type: 'bridge', key: 'bridge', name: BRIDGE.name, kind: 'bridge', cost: BRIDGE.cost, desc: 'Place along a claimed edge: opens that span so any transport type may attach there. Walkable.' });
-    else if (kind === 'upgrade') addUpgrade(slot);
-    else if (kind === 'apUpgrade') cards.push({ id: 'c' + (++cardSeq), slot, type: 'ap', name: 'Extra Shift', cost: CONFIG.run.apUpgradeCost, desc: 'Permanent +1 AP per week.' });
-    else if (kind === 'namedUpgrade') { const [k, d] = rng.pick(named); cards.push({ id: 'c' + (++cardSeq), slot, type: 'named_upgrade', key: k, name: d.name, cost: d.cost, desc: d.desc, target: d.target }); }
+  const addTile = (pool, slot) => { if (!pool.length) return false; const d = pickTile(pool); used.add(d.key); cards.push(tileCard(d, slot)); return true; };
+  const addTransport = slot => addTile(transportPool(s), slot);
+  const addAmenity = slot => addTile(amenityPool(s), slot);
+  const addRare = slot => addTile([...transportPool(s, true), ...amenityPool(s, true)], slot);
+  const addUpgrade = slot => {
+    const keys = upgradableKeys(s).filter(k => !used.has('up:' + k));
+    if (!keys.length) return false;
+    const key = rng.pick(keys); used.add('up:' + key);
+    const u = tileUpgrade(key);
+    cards.push({ id: nextId(), slot, type: 'upgrade', key, name: u.name, tileName: u.tileName, levels: u.levels, radiusBonus: u.radiusBonus, costMult: u.costMult, cost: 0, desc: u.desc, target: 'tile' });
+    return true;
   };
-  const pattern = ['transport', 'amenity', 'amenity', 'upgrade', 'wildcard', 'transport', 'amenity', 'wildcard'];
+  const addNamedUpgrade = slot => {
+    const keys = namedUpgradeKeys(s).filter(k => !used.has('nu:' + k));
+    if (!keys.length) return false;
+    const k = rng.pick(keys); used.add('nu:' + k);
+    const d = NAMED_UPGRADES[k];
+    cards.push({ id: nextId(), slot, type: 'named_upgrade', key: k, name: d.name, cost: d.cost, desc: d.desc, target: d.target });
+    return true;
+  };
+  const addBonusCard = slot => {
+    const keys = Object.keys(CARDS).filter(k => !used.has('card:' + k));
+    if (!keys.length) return false;
+    const k = rng.pick(keys); used.add('card:' + k);
+    cards.push({ id: nextId(), slot, type: 'card', key: k, name: CARDS[k].name, cost: CARDS[k].cost, desc: CARDS[k].desc, target: CARDS[k].target });
+    return true;
+  };
+  const addAP = slot => { if (used.has('ap')) return false; used.add('ap'); cards.push({ id: nextId(), slot, type: 'ap', name: 'Extra Shift', cost: CONFIG.run.apUpgradeCost, desc: 'Permanent +1 AP per week.' }); return true; };
+  const addBridge = slot => { cards.push({ id: nextId(), slot, type: 'bridge', key: 'bridge', name: BRIDGE.name, kind: 'bridge', cost: BRIDGE.cost, desc: 'Place along a claimed edge: opens that span so any transport type may attach there. Walkable.' }); return true; };
+  const ADD = { transport: addTransport, amenity: addAmenity, upgrade: addUpgrade, namedUpgrade: addNamedUpgrade, card: addBonusCard, rare: addRare, apUpgrade: addAP, bridge: addBridge };
+
+  // Week 1 is a fixed opening hand so the first turn always makes sense:
+  // something to bring people in, and something to serve them with.
+  if (s.week === 1) {
+    const { transport, amenity } = CONFIG.shop.week1;
+    let slot = 0;
+    for (let i = 0; i < transport && slot < nSlots; i++, slot++) addTransport(slot);
+    for (let i = 0; i < amenity && slot < nSlots; i++, slot++) addAmenity(slot);
+    while (slot < nSlots) { addAmenity(slot); slot++; }
+    return cards;
+  }
+
+  // Every other week: each slot rolls independently, so the mix varies. Kinds
+  // with nothing playable behind them are weighted out rather than substituted.
   for (let i = 0; i < nSlots; i++) {
-    const kind = pattern[i % pattern.length];
-    if (kind === 'transport') addTransport(i);
-    else if (kind === 'amenity') addAmenity(i);
-    else if (kind === 'upgrade') { if (s.board.tiles.length === 0) addAmenity(i); else addUpgrade(i); }
-    else addWildcard(i);
+    const w = { ...CONFIG.shop.slotWeights };
+    if (s.week < CONFIG.run.rareTilesFromWeek) w.rare = 0;
+    if (s.week < CONFIG.run.apUpgradeFromWeek) w.apUpgrade = 0;
+    if (!upgradableKeys(s).length) w.upgrade = 0;
+    if (!namedUpgradeKeys(s).length) w.namedUpgrade = 0;
+    // guarantee at least one thing you can actually build
+    const haveTile = cards.some(c => c.type === 'tile');
+    if (!haveTile && i === nSlots - 1) { w.upgrade = 0; w.namedUpgrade = 0; w.card = 0; w.apUpgrade = 0; w.bridge = 0; }
+    const kinds = Object.keys(w).filter(k => w[k] > 0);
+    if (!kinds.length) { addAmenity(i); continue; }
+    const kind = rng.weighted(kinds, k => w[k]);
+    if (!ADD[kind](i)) addAmenity(i);   // fall back to a tile if that kind ran dry
   }
   return cards;
 }
@@ -165,24 +244,29 @@ export function upgradeTile(s, card, tileId) {
   const tile = s.board.tiles.find(t => t.id === tileId);
   if (!tile || tile.kind === 'bridge') return fail('Pick a tile to upgrade');
   const def = tileDef(tile.key);
+  const maxL = CONFIG.economy.maxLevel;
   if (card.type === 'upgrade') {
-    const cost = upgradeCost(tile);
-    if (cost == null) return fail('Already at max level');
+    // tile-specific: the card names the type it upgrades
+    if (tile.key !== card.key) return fail(`${card.name} needs ${card.tileName || tileDef(card.key).name}`);
+    if ((tile.level || 1) >= maxL) return fail('Already at max level');
+    const cost = upgradeCost(tile, card.levels, card.costMult);
     if (s.money < cost) return fail(`Need $${cost}`);
-    tile.level++; s.money -= cost; s.ap -= 1; removeCard(s, card);
-    log(s, `Upgraded ${tile.name} to L${tile.level} for $${cost}`);
+    tile.level = Math.min(maxL, (tile.level || 1) + card.levels);
+    if (card.radiusBonus) tile.radiusBonus = (tile.radiusBonus || 0) + card.radiusBonus;
+    s.money -= cost; s.ap -= 1; removeCard(s, card);
+    log(s, `${card.name}: ${tile.name} to L${tile.level} for $${cost}`);
     return { ok: true };
   }
   if (card.type === 'named_upgrade') {
     const nu = NAMED_UPGRADES[card.key];
     if (s.money < nu.cost) return fail(`Need $${nu.cost}`);
-    if (nu.target === 'coffee' && tile.key !== 'coffee') return fail('Espresso Bar needs a Coffee Shop');
     if (nu.target === 'transport' && tile.kind !== 'transport') return fail('Needs a transport tile');
     if (nu.target === 'amenity' && (tile.kind !== 'amenity' || def.rate <= 0)) return fail('Needs a service amenity');
     if (nu.target === 'waiting_all') {
-      for (const t of s.board.tiles) if (tileDef(t.key).special === 'waiting') t.level = Math.min(CONFIG.economy.maxLevel, t.level + nu.levels);
+      for (const t of s.board.tiles) if (tileDef(t.key).special === 'waiting') t.level = Math.min(maxL, t.level + nu.levels);
     } else {
-      tile.level = Math.min(CONFIG.economy.maxLevel, tile.level + nu.levels);
+      if ((tile.level || 1) >= maxL) return fail('Already at max level');
+      tile.level = Math.min(maxL, tile.level + nu.levels);
       if (nu.radiusBonus) tile.radiusBonus = (tile.radiusBonus || 0) + nu.radiusBonus;
     }
     s.money -= nu.cost; s.ap -= 1; removeCard(s, card);
@@ -212,17 +296,8 @@ export function reroll(s) {
   if (s.money < fee) return fail(`Need $${fee}`);
   s.money -= fee; s.ap -= 1; s.shop.rerolls++;
   s.shop.cards = generateShop(s);
-  log(s, `Rerolled the shop for $${fee}`);
+  log(s, fee ? `Rerolled the shop for $${fee}` : 'Rerolled the shop');
   return { ok: true };
-}
-
-export function wait(s) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
-  if (s.ap < 1) return fail('No action points left');
-  const interest = Math.min(CONFIG.economy.waitInterestCap, Math.round(s.money * CONFIG.economy.waitInterestRate));
-  s.money += interest; s.ap = 0;
-  log(s, `Waited: +$${interest} interest`);
-  return { ok: true, interest };
 }
 
 export function buyAP(s, card) {
@@ -243,6 +318,8 @@ export function playCard(s, card, target = null) {
   const tile = target && target.tileId != null ? s.board.tiles.find(t => t.id === target.tileId) : null;
   switch (card.key) {
     case 'overtime': s.ap += 2; break;
+    // +1 now (covering the AP the card cost) and +1 in each of the next weeks
+    case 'temp_staff': s.ap += def.ap; s.effects.push({ name: def.name, weeksLeft: def.weeks, mods: {}, ap: def.ap }); break;
     case 'rezoning': {
       const e = target && target.edge;
       if (!e || s.board.edges[e] === 'green') return fail('Pick a claimed edge');
@@ -283,7 +360,15 @@ export function computeMods(s, week = s.week) {
   const ev = eventForWeek(s, week);
   if (ev) {
     const m = { ...ev.mods };
-    if (m.strike) { delete m.strike; if (s.strikeChoice) m.strikeTerrain = s.strikeChoice; }
+    if (m.strike) {
+      delete m.strike;
+      if (s.strikeChoice) {
+        // A walkout that would take the board's only transport terrain offline
+        // is an unavoidable loss, so it drops to a skeleton service instead.
+        if (transportTerrainsOnBoard(s).length <= 1) m.strikeSkeleton = s.strikeChoice;
+        else m.strikeTerrain = s.strikeChoice;
+      }
+    }
     list.push(m);
   }
   for (const k of s.ordinances) list.push(ORDINANCES[k].mods || {});
@@ -312,9 +397,13 @@ export function runWeek(s) {
     s.strikeChoice = terrains[0] || 'road';
   }
   const result = simulateCurrent(s);
+  // unspent action points are paid out as the early-finish bonus
+  const bonus = earlyFinishBonus(s);
+  s.money += bonus; s.ap = 0; s.earlyBonus = bonus;
+  if (bonus) log(s, `Ran the week early: +$${bonus}`);
   s.lastResult = result;
   s.phase = 'summary';
-  return { ok: true, result };
+  return { ok: true, result, bonus };
 }
 
 export function settle(s) {
@@ -323,7 +412,7 @@ export function settle(s) {
   const quota = quotaFor(s);
   s.money += r.money.total;
   const passed = r.score >= quota;
-  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total, passed, event: currentEvent(s)?.name || null });
+  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, event: currentEvent(s)?.name || null });
   s.records.bestWeek = Math.max(s.records.bestWeek, s.week);
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
@@ -338,11 +427,12 @@ export function continueAfterWin(s) { if (s.phase === 'won') s.phase = 'shop'; }
 
 function advanceWeek(s) {
   s.week++;
+  // effects tick down first, so one with weeks left still counts toward AP
+  for (const e of s.effects) e.weeksLeft--;
+  s.effects = s.effects.filter(e => e.weeksLeft > 0);
   s.ap = apForRun(s);
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false;
-  for (const e of s.effects) e.weeksLeft--;
-  s.effects = s.effects.filter(e => e.weeksLeft > 0);
   s.shop.cards = generateShop(s);
   if (CONFIG.run.ordinanceWeeks.includes(s.week)) {
     const rng = new Rng(hashString(`${s.seed}:ord:${s.week}`));
@@ -359,6 +449,30 @@ export function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.pr
   const before = cloneBoard(s.board);
   const after = cloneBoard(s.board);
   placeTile(after, key, x, y, rot, null, modeOf(s));
+  const dp = [], dm = [];
+  for (let i = 0; i < seeds; i++) {
+    const seed = hashString(`${s.seed}:est:${i}`);
+    const a = simulateWeek(before, { seed, week: s.week, mods });
+    const b = simulateWeek(after, { seed, week: s.week, mods });
+    dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
+  }
+  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
+  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+}
+
+// Same idea as estimatePlacement, but for raising a tile's level: what would
+// this week look like if that tile were `levels` better?
+export function estimateUpgrade(s, tileId, levels = 1, radiusBonus = 0, seeds = CONFIG.placement.previewSeeds) {
+  const tile = s.board.tiles.find(t => t.id === tileId);
+  if (!tile || tile.kind === 'bridge') return null;
+  const lvl = Math.min(CONFIG.economy.maxLevel, (tile.level || 1) + levels);
+  if (lvl === (tile.level || 1) && !radiusBonus) return null;
+  const mods = computeMods(s);
+  const before = cloneBoard(s.board);
+  const after = cloneBoard(s.board);
+  const at = after.tiles.find(t => t.id === tileId);
+  at.level = lvl;
+  if (radiusBonus) at.radiusBonus = (at.radiusBonus || 0) + radiusBonus;
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
     const seed = hashString(`${s.seed}:est:${i}`);

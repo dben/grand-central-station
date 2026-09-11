@@ -139,6 +139,11 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     if (def.attach === 'tip') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `${def.name} must point the tip of its L at the edge with the foot inland (rotate or mirror it)`; return res; }
     }
+    // Long vehicles berth alongside, not nose-in: every cell has to sit on the
+    // same edge, which pins a straight tile to the two orientations that lie flat.
+    if (def.attach === 'edgewise') {
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `${def.name} must lie lengthwise along a single edge (rotate it)`; return res; }
+    }
     for (const e of touched) {
       const cur = b.edges[e];
       const idx = edgeIndices(b, cells, e);
@@ -221,22 +226,86 @@ export function removeTile(b, id) {
   return t;
 }
 
-// Walk map for the simulator. 0 walkable, 1 blocked, 2 walkway, 3 gate pass cell, 4 gate wall
-export function buildWalkMap(b, opts = {}) {
+// Walk map for the simulator. 0 walkable, 1 blocked, 2 walkway, 3 checkpoint
+// booth, 5 concourse floor (walk-through at normal speed).
+// Corridor lanes are reserved ground, not a wall: nothing may be built on them
+// but travellers cross them freely, so a lift lane cannot be used to fence the
+// board in two.
+export function buildWalkMap(b) {
   const m = new Uint8Array(b.w * b.h);
-  for (const [x, y] of b.lanes) m[y * b.w + x] = opts.walkableLanes ? 0 : 1;
   for (const t of b.tiles) {
     const def = tileDef(t.key);
-    for (let i = 0; i < t.cells.length; i++) {
-      const [x, y] = t.cells[i];
+    for (const [x, y] of t.cells) {
       const k = y * b.w + x;
       if (def.special === 'walkway') m[k] = 2;
+      else if (def.special === 'gate') m[k] = 3;
+      // Lounges, parks, hotspots and guard posts are floor space, not walls.
+      // Travellers cross them freely; a lounge only stacks once they are
+      // waiting there, a park serves anyone who walks through (see sim.js).
+      else if (def.walkable) m[k] = 5;
       else if (def.kind === 'bridge') m[k] = 0;
-      else if (def.special === 'gate') m[k] = i === 1 ? 3 : 4;
       else m[k] = 1;
     }
   }
   return m;
+}
+
+// ------------------------------------------------------------ checkpoints
+// A Security Checkpoint is a two-cell booth. Its fence runs along the grid
+// line between those two cells, from one board edge to the other, and sits
+// between cells rather than on them, so it costs no floor space. The booth is
+// the gap: the only place the line can be crossed.
+//   axis 'h': the line y = `line` (between rows line-1 and line), gap at column `gap`
+//   axis 'v': the line x = `line` (between columns line-1 and line), gap at row `gap`
+export function checkpointLine(cells) {
+  const [a, c] = cells;
+  if (a[0] === c[0]) return { axis: 'h', line: Math.max(a[1], c[1]), gap: a[0] };
+  return { axis: 'v', line: Math.max(a[0], c[0]), gap: a[1] };
+}
+
+// Every fence line on the board, with the gaps its booths leave. Booths that
+// share a line share one fence and each adds a lane.
+export function checkpointFences(b, extraCells = null) {
+  const out = { h: new Map(), v: new Map() };
+  const add = cells => {
+    const { axis, line, gap } = checkpointLine(cells);
+    if (!out[axis].has(line)) out[axis].set(line, new Set());
+    out[axis].get(line).add(gap);
+  };
+  for (const t of b.tiles) if (t.key === 'gate') add(t.cells);
+  if (extraCells) add(extraCells);
+  return out;
+}
+
+// Is a one-cell step from (x, y) by (dx, dy) stopped by a fence? A straight
+// step is stopped by the fence segment it crosses; a diagonal one passes
+// through a corner and is stopped if either segment meeting there is fenced,
+// so nobody squeezes past the end of a booth.
+export function fenceBlocked(f, w, h, x, y, dx, dy) {
+  const walled = (gaps, i, len) => i >= 0 && i < len && !gaps.has(i);
+  if (dy) {
+    const gaps = f.h.get(dy > 0 ? y + 1 : y);
+    if (gaps) {
+      if (!dx) { if (walled(gaps, x, w)) return true; }
+      else { const cx = dx > 0 ? x + 1 : x; if (walled(gaps, cx - 1, w) || walled(gaps, cx, w)) return true; }
+    }
+  }
+  if (dx) {
+    const gaps = f.v.get(dx > 0 ? x + 1 : x);
+    if (gaps) {
+      if (!dy) { if (walled(gaps, y, h)) return true; }
+      else { const cy = dy > 0 ? y + 1 : y; if (walled(gaps, cy - 1, h) || walled(gaps, cy, h)) return true; }
+    }
+  }
+  return false;
+}
+
+// Fence segments to draw, as grid-space lines [[x0, y0], [x1, y1]].
+export function fenceSegments(b, extraCells = null) {
+  const f = checkpointFences(b, extraCells), segs = [];
+  for (const [y, gaps] of f.h) for (let x = 0; x < b.w; x++) if (!gaps.has(x)) segs.push({ axis: 'h', x, y, a: [x, y], b: [x + 1, y] });
+  for (const [x, gaps] of f.v) for (let y = 0; y < b.h; y++) if (!gaps.has(y)) segs.push({ axis: 'v', x, y, a: [x, y], b: [x, y + 1] });
+  return segs;
 }
 
 export function boardSummary(b) {

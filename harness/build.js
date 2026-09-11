@@ -55,6 +55,12 @@ out = out.replace(/'assets\/tiles\/([a-z_]+)\.png'/g, (all, key) => {
   return `'data:image/png;base64,${readFileSync(p).toString('base64')}'`;
 });
 out = out.replace("if (cache.has(key)) continue;", "if (cache.has(key) || !url) continue;");
+// the soundtrack too: a few MB of base64, but the build stays a single file
+out = out.replace(/'assets\/music\/([A-Za-z0-9_]+\.mp3)'/g, (all, file) => {
+  const p = resolve(root, `assets/music/${file}`);
+  if (!existsSync(p)) { missing.push(file); return 'null'; }
+  return `'data:audio/mpeg;base64,${readFileSync(p).toString('base64')}'`;
+});
 
 let html = readFileSync(resolve(root, 'index.html'), 'utf8');
 html = html.replace('<link rel="stylesheet" href="src/ui/style.css">', () => `<style>\n${readFileSync(resolve(root, 'src/ui/style.css'), 'utf8')}\n</style>`);
@@ -64,4 +70,4 @@ mkdirSync(resolve(root, 'dist'), { recursive: true });
 const dest = resolve(root, 'dist/grand-central-station.html');
 writeFileSync(dest, html);
 console.log(`wrote ${relative(root, dest)} (${(html.length / 1024).toFixed(0)} KB, ${order.length} modules)`);
-if (missing.length) console.log(`sprites not found (flat rendering used): ${missing.join(', ')}`);
+if (missing.length) console.log(`assets not found (sprites fall back to flat rendering, music to silence): ${missing.join(', ')}`);
