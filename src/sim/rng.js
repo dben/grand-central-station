@@ -53,6 +53,36 @@ export class Rng {
   }
 }
 
+// Stateless draws. `mix` hashes a handful of integers into a uniform in [0, 1),
+// so a roll can be keyed by *who* is rolling and *what for* (a traveller, a
+// shop, a cell) rather than by how many rolls came before it. That keeps two
+// nearly identical boards on the same random path: a tile that changes one
+// traveller's route re-rolls that traveller, not the whole week.
+export function mix(...xs) {
+  let h = 0x9e3779b9;
+  for (const x of xs) {
+    h = Math.imul(h ^ (x | 0), 2654435761);
+    h ^= h >>> 15;
+    h = Math.imul(h, 2246822507);
+    h ^= h >>> 13;
+  }
+  return (Math.imul(h ^ (h >>> 16), 3266489909) >>> 0) / 4294967296;
+}
+export function gaussOf(u, v) {
+  return Math.sqrt(-2.0 * Math.log(u || 1e-12)) * Math.cos(2.0 * Math.PI * v);
+}
+export function weightedOf(u, items, weightOf) {
+  let total = 0;
+  for (const it of items) total += weightOf(it);
+  if (total <= 0) return items[Math.floor(u * items.length)];
+  let r = u * total;
+  for (const it of items) {
+    r -= weightOf(it);
+    if (r <= 0) return it;
+  }
+  return items[items.length - 1];
+}
+
 export function makeStreams(seed, names) {
   const out = {};
   for (const n of names) out[n] = new Rng(hashString(String(seed) + ':' + n));

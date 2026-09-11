@@ -11,7 +11,10 @@ import { loadSprites, sprite, spriteFloor } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
-const TRANSPORT_COLORS = { road: '#2f6bff', rail: '#9b5cff', water: '#00c2d4', corridor: '#1fcfb0', free: '#e05cff', apron: '#6f8cff' };
+const TRANSPORT_COLORS = { road: '#2f6bff', rail: '#9b5cff', water: '#00c2d4', corridor: '#1fcfb0', free: '#e05cff', apron: '#6f8cff', underground: '#f28c28' };
+// The underground layer, by what the tunnel is for: a subway line, a garage
+// ramp to the road, a submarine pen's channel to the sea.
+const TUNNEL_COLORS = { through: '#ffb020', road: '#b9bfd6', water: '#3fd8ff' };
 const UTILITY_COLORS = { wifi: '#7fb8d9', walkway: '#8a8aa3', waiting: '#d9d24a', gate: '#d8433a', security: '#ff7ab8' };
 const AMENITY_TIER_COLORS = ['#d1a868', '#ffa53a', '#ff7a24', '#ff5fc0', '#ff3f6e', '#e8203f'];
 // The land around the board, and the board's own checkerboard.
@@ -250,6 +253,9 @@ export class BoardRenderer {
       for (const [x, y] of ghost.lane) this.hatchCell(x, y, 'rgba(31,207,176,0.85)');
       for (const [x, y] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, 'rgba(120,120,130,0.5)');
     }
+    // Aiming or inspecting an underground tile lifts the whole tunnel layer
+    // above the buildings, so a crossing is visible even where a tile covers it.
+    const underground = !!(ghost && ghost.tunnel) || !!(view.showUnderground);
 
     // Buildings are painted cell by cell, back to front along x + y, rather
     // than tile by tile. Footprints interleave: a one-cell tile can sit in
@@ -300,9 +306,11 @@ export class BoardRenderer {
       }
     }
     if (view.targetMode) for (const t of board.tiles) if (view.targetMode(t)) this.outlineCells(t.cells, 'rgba(53,212,255,0.95)', 2, tileHeight(tileDef(t.key)));
+    if (view.dangerTiles) for (const t of view.dangerTiles) this.outlineCells(t.cells, 'rgba(255,79,122,0.95)', 3, tileHeight(tileDef(t.key)));
     if (view.hoverTile && view.hoverTile !== view.selectedTile) this.outlineCells(view.hoverTile.cells, 'rgba(255,255,255,0.7)', 2, tileHeight(tileDef(view.hoverTile.key)));
     if (view.selectedTile) this.outlineCells(view.selectedTile.cells, '#ffd23f', 3, tileHeight(tileDef(view.selectedTile.key)));
 
+    if (underground) this.drawUnderground(board, ghost, view);
     if (ghost) this.drawGhostOutline(ghost);
     // a checkpoint ghost previews the whole fence line it would raise
     if (ghost && view.ghost.def && view.ghost.def.special === 'gate' && ghost.cells.length === 2) {
@@ -420,6 +428,8 @@ export class BoardRenderer {
         this.fillRegion(gx, gy, gw, gh, TERRAIN_COLORS[terrain] || '#333');
         this.edgeTexture(e, terrain, gx, gy, gw, gh);
       }
+      // subway portals: where a line leaves the board it dives under the strip
+      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) this.drawPortal(e, t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1], TUNNEL_COLORS.through);
       for (const idx of board.openSpans[e]) {
         ctx.fillStyle = 'rgba(200,160,100,0.85)';
         if (e === 'N' || e === 'S') this.regionPath(idx + 0.06, gy + 0.06, 0.88, gh - 0.12);
@@ -443,6 +453,7 @@ export class BoardRenderer {
       this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, '#6d7288');
     }
     for (const [x, y] of board.lanes) this.hatchCell(x, y, '#1fcfb0');
+    for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
     if (this.k >= 14) {
       ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
@@ -474,7 +485,7 @@ export class BoardRenderer {
       color: g.ok ? '#4dff6e' : '#ff4f7a',
       fill: g.ok ? 'rgba(77,255,110,0.40)' : 'rgba(255,79,122,0.40)',
       cells, set: new Set(cells.map(([x, y]) => x + ',' + y)),
-      lane: g.lane || [], driveway: g.driveway || [],
+      lane: g.lane || [], driveway: g.driveway || [], tunnel: g.tunnel || null,
     };
   }
   drawGhostCell(x, y, info) {
@@ -619,6 +630,45 @@ export class BoardRenderer {
     for (let i = -h; i < b.x1 - b.x0 + h; i += step) { ctx.moveTo(b.x0 + i, b.y1); ctx.lineTo(b.x0 + i + h, b.y0); }
     ctx.stroke();
     ctx.restore();
+  }
+
+  // One tunnel: a dark cut along its axis with rail ties across it, so the
+  // underground layer reads as track rather than as a painted stripe.
+  drawTunnel(cells, axis, color, alpha, ties = true) {
+    if (!cells.length) return;
+    const ctx = this.ctx;
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    for (const [x, y] of cells) axis === 'h' ? this.rectPath(x, y + 0.3, 1, 0.4) : this.rectPath(x + 0.3, y, 0.4, 1);
+    ctx.fillStyle = 'rgba(10,5,32,0.9)'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.beginPath();
+    for (const [x, y] of cells) {
+      if (axis === 'h') { this.line([x, y + 0.5], [x + 1, y + 0.5]); if (ties && this.k >= 14) for (const u of [0.25, 0.75]) this.line([x + u, y + 0.36], [x + u, y + 0.64]); }
+      else { this.line([x + 0.5, y], [x + 0.5, y + 1]); if (ties && this.k >= 14) for (const u of [0.25, 0.75]) this.line([x + 0.36, y + u], [x + 0.64, y + u]); }
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  // The mouth of a subway line in an edge strip, at index `idx` along it.
+  drawPortal(e, idx, color) {
+    const ctx = this.ctx, m = EDGE_MARGIN;
+    const r = e === 'N' ? [idx + 0.28, -m * 0.55, 0.44, m * 0.55] : e === 'S' ? [idx + 0.28, this.h, 0.44, m * 0.55]
+      : e === 'W' ? [-m * 0.55, idx + 0.28, m * 0.55, 0.44] : [this.w, idx + 0.28, m * 0.55, 0.44];
+    this.fillRegion(...r, 'rgba(10,5,32,0.9)');
+    this.regionPath(...r); ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.stroke();
+  }
+  // The underground layer lifted over the buildings: every tunnel at full
+  // strength, the pending one in the ghost's colour, and the ground dimmed so
+  // the lines are what the eye lands on.
+  drawUnderground(board, ghost, view) {
+    const ctx = this.ctx;
+    ctx.save();
+    this.regionPath(0, 0, board.w, board.h); ctx.fillStyle = 'rgba(10,5,32,0.35)'; ctx.fill();
+    ctx.restore();
+    for (const t of board.tiles) if (t.tunnel) {
+      this.drawTunnel(t.cells.concat(t.tunnel.cells), t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.95);
+      if (view.selectedTile === t || view.hoverTile === t) this.drawTunnel(t.cells.concat(t.tunnel.cells), t.tunnel.axis, '#fff', 0.5, false);
+    }
+    if (ghost && ghost.tunnel) this.drawTunnel(ghost.cells.concat(ghost.tunnel.cells), ghost.tunnel.axis, ghost.color, 0.95);
   }
 
   // Everything a tile's cells need in order to paint themselves, worked out

@@ -28,7 +28,7 @@ export const CONFIG = {
 
   // ------------------------------------------------------------------- quota
   quota: {
-    base: 5000,
+    base: 5400,                 // (was 5000) travellers who mind the clock board about 8% more value
     // A station's output grows fast while it is small and slowly once it is
     // built out, so a single per-week multiplier makes the first half free and
     // the last few weeks a cliff. Growth starts at `earlyGrowth` and decays
@@ -54,6 +54,11 @@ export const CONFIG = {
     upgradeCosts: [60, 140, 300, 650],    // level 1->2, 2->3, 3->4, 4->5
     maxLevel: 5,
     deleteRefund: 0,                      // fraction of base cost refunded on delete
+    // Undoing a placement costs the money already spent, not the week. A
+    // delete and a Rezoning Permit are free of action points, so a bad spot
+    // can be fixed and rebuilt in the same week.
+    deleteCostsAP: false,
+    rezoningCostsAP: false,
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -75,7 +80,14 @@ export const CONFIG = {
     checkpoint: {
       mult: 1.3,                // value multiplier for clearing the booth
       multPerLevel: 0.1,        // extra multiplier per checkpoint level above 1
+      // true: the multiplier is applied when the traveller boards, on top of
+      // the whole chain, so the booth is worth the same wherever on the route
+      // it stands. false: it applies at the crossing, like a shop's.
+      atExit: true,
       budgetBonus: 2,           // stop budget for clearing the booth; rarely binding on its own
+      // How far the fence reaches from the booth: 'edge' (to both board edges),
+      // 'walls' (until a solid tile stands beside the line) or a cell count each way.
+      fence: 'walls',
       // false: anyone may walk through to reach whatever is on the far side.
       // true: only travellers whose platform is on the far side may cross, so
       // each side keeps its own shops (the old Security Gate rule).
@@ -105,6 +117,17 @@ export const CONFIG = {
     wifi: { rate: 0.05, mult: 0.12, stack: 0.04, exit: 0.04, perLevel: 0.5, cap: 2 },
     // Green space
     greenSpaceBudgetRestore: 1,
+    // Travellers know when their platform closes. One only accepts a detour if
+    // the walk there, the service and the walk on to the platform all fit
+    // before the last tick (with `slack` ticks to spare), and one whose
+    // remaining wander no longer fits drops the wander and walks straight
+    // there. `enabled: false` restores the oblivious crowd.
+    hurry: { enabled: true, slack: 0 },
+    // Stratified rolls: the travellers a transport sends are spread evenly
+    // over the dice (a golden-ratio sequence per spawn slot) instead of each
+    // rolling alone, so a week's tiers, destinations and stops land close to
+    // their expected mix. Each traveller still looks random; the total is steadier.
+    stratify: true,
   },
 
   // --------------------------------------------------------------- travellers
@@ -112,7 +135,7 @@ export const CONFIG = {
     // index = tier-1
     // colours mirror --t1..--t5 in style.css; tier 1 is cream so its
     // travellers still show up against the green board
-    { symbol: '$',     base: 100,  fare: 2,  budget: 7, waitCap: 2, color: '#fffbe0' },
+    { symbol: '$',     base: 100,  fare: 2,  budget: 3, waitCap: 2, color: '#fffbe0' },
     { symbol: '$$',    base: 180,  fare: 5,  budget: 4, waitCap: 3, color: '#35d4ff' },
     { symbol: '$$$',   base: 320,  fare: 12, budget: 5, waitCap: 4, color: '#c77dff' },
     { symbol: '$$$$',  base: 600,  fare: 30, budget: 6, waitCap: 5, color: '#ffd23f' },
@@ -152,7 +175,9 @@ export const CONFIG = {
 
   // -------------------------------------------------------------- placement
   placement: {
-    previewSeeds: 4,           // sims per estimate (with and without)
+    // Sims per estimate. The "without" runs are cached for the phase, so a
+    // preview costs one sim per seed; the badge shows the mean over them.
+    previewSeeds: 8,
   },
 };
 

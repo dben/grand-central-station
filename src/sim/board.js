@@ -1,6 +1,6 @@
-// Board model: grid, tiles, edge terrain, corridor lanes and road driveways.
-// Placement legality and terrain claims live here so the UI, the game layer
-// and the harness all share one rule set.
+// Board model: grid, tiles, edge terrain, corridor lanes, road driveways and
+// the underground layer of tunnels. Placement legality and terrain claims live
+// here so the UI, the game layer and the harness all share one rule set.
 import { shapeCells } from './shapes.js';
 import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
@@ -33,6 +33,30 @@ export function occupancyMap(b) {
   for (const [x, y] of b.lanes) m[y * b.w + x] = { type: 'lane' };
   for (const [x, y] of b.driveways) if (!m[y * b.w + x]) m[y * b.w + x] = { type: 'driveway' };
   return m;
+}
+
+// The underground layer: every cell an existing tunnel runs through, including
+// the footprint of the station it belongs to. Ground tiles ignore it entirely -
+// anything can be built over a tunnel - but no two tunnels may share a cell.
+export function undergroundCells(b) {
+  const set = new Set();
+  for (const t of b.tiles) if (t.tunnel) for (const [x, y] of t.cells.concat(t.tunnel.cells)) set.add(x + ',' + y);
+  return set;
+}
+// Edges where a subway line surfaces. Such an edge can never become water.
+export function tunnelEnds(b) {
+  const out = new Set();
+  for (const t of b.tiles) if (t.tunnel && t.tunnel.line === 'through') for (const e of t.tunnel.ends) out.add(e);
+  return out;
+}
+// Can this tile's tunnel go anywhere on this board? A subway needs an axis that
+// does not end in water; a parking garage or dock needs an edge of its terrain.
+// The shop uses this so it never offers an underground tile with nowhere to dig.
+export function lineAvailable(b, def) {
+  if (def.terrain !== 'underground') return true;
+  const e = b.edges;
+  if (def.line === 'through') return (e.N !== 'water' && e.S !== 'water') || (e.W !== 'water' && e.E !== 'water');
+  return EDGES.some(k => e[k] === def.line);
 }
 
 export function tileAt(b, x, y) {
@@ -144,14 +168,18 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     if (def.attach === 'edgewise') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `${def.name} must lie lengthwise along a single edge (rotate it)`; return res; }
     }
+    const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
     for (const e of touched) {
       const cur = b.edges[e];
       const idx = edgeIndices(b, cells, e);
       const allOpen = idx.every(i => spanOpen(b, e, i));
+      // a subway line surfaces at this edge, and a tunnel can't end in the sea
+      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway line surfaces at the ${e} edge, so it can't become water`; return res; }
       if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
       else if (cur === terrain || allOpen) { /* fine */ }
       else { res.reason = `${e} edge is ${cur}; ${terrain} cannot attach there (needs a bridge)`; return res; }
     }
+    res.attachEdges = touched;
     res.ok = true; return res;
   }
 
@@ -173,6 +201,40 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
     if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain: 'road', lock: false });
     res.roadEdge = pick.e;
+    res.attachEdges = [pick.e];
+    res.ok = true; return res;
+  }
+
+  if (terrain === 'underground') {
+    // The tunnel is worked out before it is judged, so a failed preview can
+    // still show the line that would have crossed or surfaced badly.
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+    if (def.line === 'through') {
+      // along the long axis, all the way to both ends of the board
+      const vertical = (Math.max(...ys) - Math.min(...ys)) > (Math.max(...xs) - Math.min(...xs));
+      const own = new Set(cells.map(c => c.join(',')));
+      const line = [];
+      if (vertical) { for (let yy = 0; yy < b.h; yy++) if (!own.has(xs[0] + ',' + yy)) line.push([xs[0], yy]); }
+      else { for (let xx = 0; xx < b.w; xx++) if (!own.has(xx + ',' + ys[0])) line.push([xx, ys[0]]); }
+      const ends = vertical ? ['N', 'S'] : ['W', 'E'];
+      res.tunnel = { line: 'through', axis: vertical ? 'v' : 'h', ends, cells: line };
+      const wet = ends.find(e => b.edges[e] === 'water');
+      if (wet) { res.reason = `${def.name} can't surface into the water on the ${wet} edge (rotate it)`; return res; }
+    } else {
+      // straight to the nearest edge of the wanted terrain, however far
+      let best = null;
+      for (const e of EDGES) {
+        if (b.edges[e] !== def.line) continue;
+        const line = lineToEdge(b, cells, e);
+        if (best === null || line.dist < best.line.dist) best = { e, line };
+      }
+      if (!best) { res.reason = `${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      res.tunnel = { line: def.line, axis: best.e === 'N' || best.e === 'S' ? 'v' : 'h', ends: [best.e], cells: best.line.cells };
+      res.attachEdges = [best.e];
+    }
+    const under = undergroundCells(b);
+    const hit = cells.concat(res.tunnel.cells).find(([cx, cy]) => under.has(cx + ',' + cy));
+    if (hit) { res.reason = `Underground lines can't cross (tunnel at ${hit[0]},${hit[1]})`; return res; }
     res.ok = true; return res;
   }
 
@@ -204,7 +266,7 @@ export function placeTile(b, key, x, y, rot, check = null, mode = null) {
   const tile = {
     id: b.nextId++, key, kind: def.kind, name: def.name, x, y, rot, level: 1,
     cells: c.cells, terrain: def.terrain || null, radiusBonus: 0, arrOverride: null,
-    lane: c.lane, driveway: c.driveway,
+    lane: c.lane, driveway: c.driveway, edges: c.attachEdges || [], tunnel: c.tunnel || null,
   };
   b.tiles.push(tile);
   for (const cl of c.claims) b.edges[cl.edge] = cl.terrain;
@@ -212,6 +274,15 @@ export function placeTile(b, key, x, y, rot, check = null, mode = null) {
   for (const cell of c.lane) b.lanes.push(cell);
   for (const cell of c.driveway) b.driveways.push(cell);
   return tile;
+}
+
+// Tiles that would lose their footing if `edge` went back to open ground.
+// Each transport records the edges it depends on when placed (`tile.edges`):
+// every edge a lock-terrain tile touches, or the edge a road tile's driveway
+// runs to, or the edge an underground garage or dock tunnels to. Corridor, Free
+// and subway tiles depend on none.
+export function edgeDependents(b, edge) {
+  return b.tiles.filter(t => (t.edges || []).includes(edge));
 }
 
 export function removeTile(b, id) {
@@ -250,6 +321,52 @@ export function buildWalkMap(b) {
   return m;
 }
 
+// Transports a placement would wall off: after `cells` become solid, which
+// transports can no longer be walked to from some other transport? Travellers
+// bound for a sealed platform are lost (see sim.js), so the preview names it.
+export function cutOffTransports(b, cells, def) {
+  if (def && (def.walkable || def.kind === 'bridge' || def.special === 'walkway' || def.special === 'gate')) return [];
+  const before = sealedTransports(b, buildWalkMap(b));
+  const m = buildWalkMap(b);
+  for (const [x, y] of cells) m[y * b.w + x] = 1;
+  return sealedTransports(b, m).filter(t => !before.includes(t));
+}
+// Transports on walk map `m` that some other transport cannot walk to.
+function sealedTransports(b, m) {
+  const pass = i => m[i] !== 1;
+  const fences = checkpointFences(b);
+  const reach = (sx, sy) => {
+    const seen = new Uint8Array(b.w * b.h), stack = [sy * b.w + sx];
+    seen[stack[0]] = 1;
+    while (stack.length) {
+      const i = stack.pop(), x = i % b.w, y = (i - x) / b.w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= b.w || ny >= b.h) continue;
+        const ni = ny * b.w + nx;
+        if (seen[ni] || !pass(ni) || fenceBlocked(fences, b.w, b.h, x, y, dx, dy)) continue;
+        if (dx && dy && !(pass(y * b.w + nx) && pass(ny * b.w + x))) continue;
+        seen[ni] = 1; stack.push(ni);
+      }
+    }
+    return seen;
+  };
+  // a transport's doors: walkable cells 8-adjacent to it
+  const doors = t => {
+    const own = new Set(t.cells.map(([x, y]) => y * b.w + x)), out = [];
+    for (const [x, y] of t.cells) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(b, nx, ny) || own.has(ny * b.w + nx) || !pass(ny * b.w + nx)) continue;
+      out.push(ny * b.w + nx);
+    }
+    return [...new Set(out)];
+  };
+  const ts = b.tiles.filter(t => t.kind === 'transport').map(t => ({ t, doors: doors(t) }));
+  if (ts.length < 2) return [];
+  const seenFrom = ts.map(({ doors }) => (doors.length ? reach(doors[0] % b.w, (doors[0] - doors[0] % b.w) / b.w) : null));
+  return ts.filter((a, i) => !a.doors.length || ts.some((c, j) => j !== i && seenFrom[j] && !a.doors.some(d => seenFrom[j][d]))).map(a => a.t);
+}
+
 // ------------------------------------------------------------ checkpoints
 // A Security Checkpoint is a two-cell booth. Its fence runs along the grid
 // line between those two cells, from one board edge to the other, and sits
@@ -263,38 +380,57 @@ export function checkpointLine(cells) {
   return { axis: 'v', line: Math.max(a[0], c[0]), gap: a[1] };
 }
 
-// Every fence line on the board, with the gaps its booths leave. Booths that
-// share a line share one fence and each adds a lane.
+// Every fence line on the board: per line, the set of indices where a fence
+// panel stands. How far the panels reach from the booth is `sim.checkpoint.fence`:
+// 'edge' runs them to both board edges; 'walls' runs them until a solid tile
+// stands on either side of the line (the fence spans the open floor the booth
+// sits in); a number runs them that many cells each way. Booths that share a
+// line share one fence, and each booth's own cell is always a gap.
 export function checkpointFences(b, extraCells = null) {
+  const reach = CONFIG.sim.checkpoint.fence;
+  const walk = reach === 'walls' ? buildWalkMap(b) : null;
+  const solid = (x, y) => x < 0 || y < 0 || x >= b.w || y >= b.h || walk[y * b.w + x] === 1;
   const out = { h: new Map(), v: new Map() };
-  const add = cells => {
-    const { axis, line, gap } = checkpointLine(cells);
-    if (!out[axis].has(line)) out[axis].set(line, new Set());
-    out[axis].get(line).add(gap);
-  };
+  const booths = [];
+  const add = cells => booths.push(checkpointLine(cells));
   for (const t of b.tiles) if (t.key === 'gate') add(t.cells);
   if (extraCells) add(extraCells);
+  for (const { axis, line, gap } of booths) {
+    if (!out[axis].has(line)) out[axis].set(line, new Set());
+    const walls = out[axis].get(line);
+    const len = axis === 'h' ? b.w : b.h;
+    // a panel at index i on a horizontal line y sits between (i, y-1) and (i, y)
+    const moot = i => axis === 'h' ? (solid(i, line - 1) || solid(i, line)) : (solid(line - 1, i) || solid(line, i));
+    for (const dir of [-1, 1]) {
+      for (let i = gap + dir, n = 0; i >= 0 && i < len; i += dir, n++) {
+        if (typeof reach === 'number' && n >= reach) break;
+        if (reach === 'walls' && moot(i)) break;
+        walls.add(i);
+      }
+    }
+  }
+  for (const { axis, line, gap } of booths) out[axis].get(line).delete(gap);
   return out;
 }
 
 // Is a one-cell step from (x, y) by (dx, dy) stopped by a fence? A straight
-// step is stopped by the fence segment it crosses; a diagonal one passes
-// through a corner and is stopped if either segment meeting there is fenced,
-// so nobody squeezes past the end of a booth.
+// step is stopped by the panel it crosses; a diagonal one passes through a
+// corner and is stopped if either panel meeting there stands, so nobody
+// squeezes past the end of a booth.
 export function fenceBlocked(f, w, h, x, y, dx, dy) {
-  const walled = (gaps, i, len) => i >= 0 && i < len && !gaps.has(i);
+  const walled = (walls, i) => walls.has(i);
   if (dy) {
-    const gaps = f.h.get(dy > 0 ? y + 1 : y);
-    if (gaps) {
-      if (!dx) { if (walled(gaps, x, w)) return true; }
-      else { const cx = dx > 0 ? x + 1 : x; if (walled(gaps, cx - 1, w) || walled(gaps, cx, w)) return true; }
+    const walls = f.h.get(dy > 0 ? y + 1 : y);
+    if (walls) {
+      if (!dx) { if (walled(walls, x)) return true; }
+      else { const cx = dx > 0 ? x + 1 : x; if (walled(walls, cx - 1) || walled(walls, cx)) return true; }
     }
   }
   if (dx) {
-    const gaps = f.v.get(dx > 0 ? x + 1 : x);
-    if (gaps) {
-      if (!dy) { if (walled(gaps, y, h)) return true; }
-      else { const cy = dy > 0 ? y + 1 : y; if (walled(gaps, cy - 1, h) || walled(gaps, cy, h)) return true; }
+    const walls = f.v.get(dx > 0 ? x + 1 : x);
+    if (walls) {
+      if (!dy) { if (walled(walls, y)) return true; }
+      else { const cy = dy > 0 ? y + 1 : y; if (walled(walls, cy - 1) || walled(walls, cy)) return true; }
     }
   }
   return false;
@@ -303,8 +439,8 @@ export function fenceBlocked(f, w, h, x, y, dx, dy) {
 // Fence segments to draw, as grid-space lines [[x0, y0], [x1, y1]].
 export function fenceSegments(b, extraCells = null) {
   const f = checkpointFences(b, extraCells), segs = [];
-  for (const [y, gaps] of f.h) for (let x = 0; x < b.w; x++) if (!gaps.has(x)) segs.push({ axis: 'h', x, y, a: [x, y], b: [x + 1, y] });
-  for (const [x, gaps] of f.v) for (let y = 0; y < b.h; y++) if (!gaps.has(y)) segs.push({ axis: 'v', x, y, a: [x, y], b: [x, y + 1] });
+  for (const [y, walls] of f.h) for (const x of walls) segs.push({ axis: 'h', x, y, a: [x, y], b: [x + 1, y] });
+  for (const [x, walls] of f.v) for (const y of walls) segs.push({ axis: 'v', x, y, a: [x, y], b: [x, y + 1] });
   return segs;
 }
 

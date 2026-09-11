@@ -7,6 +7,7 @@ import { createBoard, placeTile, checkPlacement } from '../src/sim/board.js';
 import { simulateWeek } from '../src/sim/sim.js';
 import { MODES } from '../src/data/modes.js';
 import { quotaForWeek, starsOf, starTarget } from '../src/config.js';
+import { applySets } from './sets.mjs';
 
 export function loadLayout(spec) {
   const mode = MODES[spec.mode || 'terminal'];
@@ -59,7 +60,8 @@ if (process.argv[1] && process.argv[1].endsWith('run.js')) {
   const args = process.argv.slice(2);
   const file = args.find(a => !a.startsWith('--'));
   const opt = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : def; };
-  if (!file) { console.error('usage: node harness/run.js <layout.json> [--seeds N] [--week W] [--json]'); process.exit(1); }
+  if (!file) { console.error('usage: node harness/run.js <layout.json> [--seeds N] [--week W] [--json] [--set path=value]'); process.exit(1); }
+  applySets(args);
   const spec = JSON.parse(readFileSync(file, 'utf8'));
   const r = runLayout(spec, { seeds: Number(opt('seeds', 30)), week: Number(opt('week', spec.week || 1)) });
   if (args.includes('--json')) console.log(JSON.stringify({ week: r.week, quota: r.quota, score: r.score, money: r.money, tiles: r.tiles, counts: r.counts }, null, 1));

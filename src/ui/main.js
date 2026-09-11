@@ -3,11 +3,12 @@
 // ============================================================================
 import { CONFIG, starsOf, starTarget } from '../config.js';
 import * as G from '../game/run.js';
-import { tileDef, TERRAIN_INFO, NAMED_UPGRADES } from '../data/tiles.js';
+import { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } from '../data/tiles.js';
 import { MODES, MODE_KEYS } from '../data/modes.js';
 import { ORDINANCES } from '../data/ordinances.js';
 import { CARDS } from '../data/cards.js';
 import { orientationCount, shapeCells } from '../sim/shapes.js';
+import { cutOffTransports } from '../sim/board.js';
 import { effTransport, effAmenity } from '../sim/sim.js';
 import { BoardRenderer, colorForDef } from './render.js';
 import { attachBoardInput } from './boardinput.js';
@@ -24,6 +25,7 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 const fmt = n => Math.round(n).toLocaleString('en-US');
+const EDGE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
 const fmtK = n => Math.abs(n) >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : fmt(n);
 const tierTag = t => t > 0 ? h('span', { class: 'tier tier' + t }, CONFIG.tiers[t - 1].symbol) : null;
 
@@ -77,6 +79,11 @@ function describeTile(tile, def) {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
     rows.push(['Brings', `${CONFIG.tiers[def.tier - 1].symbol} travellers, ${e.batch} every ${e.arr} ticks`], ['Departs', `every ${e.dep} ticks${e.dwell ? `, ${e.dwell} tick wait` : ''}`]);
     rows.push(['Exit bonus', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''}`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
+    if (def.terrain === 'underground') {
+      const tn = tile && tile.tunnel;
+      rows.push(['Tunnel', tn ? (tn.line === 'through' ? `Surfaces at the ${EDGE_NAMES[tn.ends[0]]} and ${EDGE_NAMES[tn.ends[1]]} edges` : `${tn.cells.length} cell${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);
+      rows.push(['Layer', 'Build over it freely; other tunnels can\'t cross it']);
+    }
     if (e.offline) rows.push(['Status', 'OFFLINE this week']);
     else if (e.skeleton) rows.push(['Status', `Strike: skeleton service (${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% batch)`]);
     if (def.special === 'loop') rows.push(['Special', `${Math.round(def.loopChance * 100)}% of departures re-enter with chain intact`]);
@@ -133,7 +140,7 @@ function renderQuotaStars() {
     const r = ui.pb.result, t = Math.min(r.ticks, Math.max(0, Math.floor(ui.pb.T)));
     filled = starsOf(r.scoreByTick ? r.scoreByTick[t] : r.score);
   } else if (state.phase === 'summary' && state.lastResult) filled = starsOf(state.lastResult.score);
-  const preview = (state.phase === 'shop' && ui.projection) ? starsOf((ui.projection.ptsLo + ui.projection.ptsHi) / 2) : 0;
+  const preview = (state.phase === 'shop' && ui.projection) ? starsOf(ui.projection.pts) : 0;
   const showEarned = ui.mode === 'playback' || !!(state.phase === 'summary' && state.lastResult);
   const key = `${total}/${filled}/${preview}/${showEarned}`;
   if (ui.starKey === key) return;
@@ -158,7 +165,7 @@ function renderTop() {
   const bar = $('topbar');
   if (state.phase !== 'shop') { bar.classList.remove('gold', 'tinted'); bar.title = ''; $('st-proj').textContent = ''; }
   else if (ui.projection) {
-    const avg = (ui.projection.ptsLo + ui.projection.ptsHi) / 2;
+    const avg = ui.projection.pts;
     const ratio = avg / quota;
     $('st-proj').textContent = `${fmtK(ui.projection.ptsLo)}–${fmtK(ui.projection.ptsHi)}`;
     bar.title = `Projected this week: ${starsOf(ui.projection.ptsLo)}★ to ${starsOf(ui.projection.ptsHi)}★ of ${G.quotaStars(state)}★ (${fmtK(ui.projection.ptsLo)}–${fmtK(ui.projection.ptsHi)} points)`;
@@ -230,7 +237,7 @@ function renderShop() {
   const wrap = $('shop-cards'); wrap.innerHTML = '';
   for (const card of state.shop.cards) {
     const cost = G.cardCost(state, card);
-    const affordable = state.money >= cost && state.ap >= 1;
+    const affordable = state.money >= cost && state.ap >= G.cardAPCost(state, card);
     const isTile = card.type === 'tile' || card.type === 'bridge';
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
@@ -489,8 +496,19 @@ function onBoardTap(cell, edge, e) {
   if (ui.mode === 'target' && ui.card) {
     if (ui.card.target === 'edge') {
       if (!edge) { hint('Tap an edge strip around the board'); return; }
-      const r = G.playCard(state, ui.card, { edge }); if (!r.ok) hint(r.reason);
-      cancelMode(); renderAll(); return;
+      const card = ui.card;
+      const play = () => { const r = G.playCard(state, card, { edge }); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); };
+      // Rezoning demolishes every transport attached to the edge, so say which first.
+      const doomed = card.key === 'rezoning' && state.board.edges[edge] !== 'green' ? G.rezoningVictims(state, edge) : [];
+      if (!doomed.length) { play(); return; }
+      openModal(
+        h('h2', {}, `Rezone the ${EDGE_NAMES[edge]} edge?`),
+        h('p', {}, `The ${EDGE_NAMES[edge]} edge goes back to open ground, and ${doomed.length === 1 ? 'the transport attached to it is' : `all ${doomed.length} transports attached to it are`} demolished with no refund:`),
+        h('ul', {}, ...doomed.map(t => h('li', {}, `${t.name}${t.level > 1 ? ' L' + t.level : ''}`))),
+        h('div', { class: 'btnrow', style: 'justify-content:center' },
+          h('button', { onclick: closeModal }, 'Keep it'),
+          h('button', { id: 'btn-rezone-confirm', class: 'danger', onclick: () => { closeModal(); play(); } }, 'Rezone and demolish')));
+      return;
     }
     const t = cell ? tileAtCell(cell.x, cell.y) : null;
     if (!t || !targetFilter(t)) { hint('Pick a highlighted tile'); return; }
@@ -579,6 +597,10 @@ function frame(now) {
       result: (ui.mode === 'playback' || ui.heat) ? (ui.pb.result || state.lastResult) : null,
       T: ui.mode === 'playback' ? ui.pb.T : null, heat: ui.heat, closedTiles: closed,
       targetMode: ui.mode === 'target' && ui.card && ui.card.target !== 'edge' ? targetFilter : null,
+      // pointing at an underground tile lifts the tunnel layer into view
+      showUnderground: ui.mode !== 'playback' && !!((selected && selected.tunnel) || (hover && hover.tunnel)),
+      // aiming a Rezoning Permit at an edge outlines what it would demolish
+      dangerTiles: ui.mode === 'target' && ui.card && ui.card.key === 'rezoning' && ui.edgeHover && state.board.edges[ui.edgeHover] !== 'green' ? G.rezoningVictims(state, ui.edgeHover) : null,
     });
   }
   requestAnimationFrame(frame);
@@ -587,7 +609,7 @@ function frame(now) {
 // What the pending action is worth, floated over the tile it would affect.
 // Estimates are a spread across a few seeds; the badge shows their midpoint as
 // a single star count so there is one number to read, not a range.
-const estStars = e => e ? starsOf((e.ptsLo + e.ptsHi) / 2) : null;
+const estStars = e => e ? starsOf(e.pts) : null;
 function starBadge() {
   if (state.phase !== 'shop' || !ui.card) return null;
   if (ui.mode === 'place') {
@@ -596,6 +618,8 @@ function starBadge() {
     const z = ui.ghost.def ? renderer.heightOf(ui.card.key) : 0;
     if (!ui.ghost.ok) return { cells, z, reason: ui.ghost.reason };
     const warnings = ui.ghost.claims.map(c => c.lock ? `Locks the ${c.edge} edge to ${c.terrain}` : `Claims the ${c.edge} edge as ${c.terrain}`);
+    // sealing a platform in loses everyone bound for it, so say so before the stars do
+    for (const t of cutOffTransports(state.board, cells, ui.ghost.def)) warnings.push(`Cuts off ${t.name}: travellers bound there are lost`);
     return { cells, z, stars: estStars(ui.estimate), warnings };
   }
   // upgrade cards: the same badge over whichever owned tile is hovered
@@ -620,7 +644,8 @@ function upgradeLevels(card) {
 }
 
 // ------------------------------------------------------------ modals
-function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children); $('modal').classList.remove('hidden'); }
+// null children are optional parts left out (append would print them as "null")
+function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children.filter(c => c != null)); $('modal').classList.remove('hidden'); }
 function closeModal() { $('modal').classList.add('hidden'); }
 
 function drawHistoryChart(canvas, history) {
@@ -771,7 +796,10 @@ function showGameOver() {
 
 function showStart() {
   playTrack(null);
-  const saved = loadRun();
+  let saved = loadRun();
+  // saves are not migrated: one from an older build is reported and dropped
+  const stale = !!saved && !G.saveIsCurrent(saved);
+  if (stale) { clearRun(); saved = null; }
   const seedInput = h('input', { type: 'text', placeholder: 'seed (optional)', style: 'font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px;width:160px' });
   const modes = h('div', { class: 'modes' });
   for (const k of MODE_KEYS) {
@@ -782,8 +810,8 @@ function showStart() {
       h('div', { class: 'name' }, m.name, unlocked ? '' : ` 🔒 reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
   }
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
-    h('p', {}, 'You run a transit hub. Each week, place a few tiles, then watch travellers cross the board. Every shop they pass multiplies what they are worth. Hit the quota or the run ends.'),
-    h('p', { style: 'font-size:12px;color:var(--muted)' }, 'Transport tiles bring people but score badly. Amenities score well but bring nobody. Multiply first, then add: flat-add tiles want to be early on a route, multipliers late. Transports claim edge terrain permanently — rail and water lock an entire edge.'),
+    h('p', {}, 'You run a transit hub. Each week, expand the hub, and watch travelers wander through. Hit the satisfaction quota or the run ends.'),
+    stale ? h('p', { class: 'warn' }, 'Your saved run is from an older version of the game and can\'t be resumed. Start a new run below.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
     h('h3', {}, 'Choose a mode'), modes,
     h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));

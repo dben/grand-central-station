@@ -133,11 +133,22 @@ try {
   const lockedEdge = await page.evaluate(() => Object.keys(window.gcs.state.board.edges).find(e => window.gcs.state.board.edges[e] !== 'green'));
   await page.locator('.card', { hasText: 'Rezoning' }).click();
   await page.waitForTimeout(150);
+  // rezoning demolishes transports, so snapshot the board and put it back after:
+  // the fast-forward below needs the run to still be alive
+  await page.evaluate(() => { window.__boardBeforeRezone = JSON.parse(JSON.stringify(window.gcs.state.board)); });
+  const doomed = await page.evaluate((e) => window.gcs.G.rezoningVictims(window.gcs.state, e).length, lockedEdge);
   const [ex, ey] = await edgePx(lockedEdge);
   await page.mouse.click(ex, ey);
   await page.waitForTimeout(200);
+  // a rezone that would demolish transports asks first
+  const asked = await page.locator('#btn-rezone-confirm').count();
+  check('rezoning warns before demolishing attached transports', doomed === 0 || asked === 1, `${doomed} attached, dialog ${asked ? 'shown' : 'missing'}`);
+  if (asked) { await page.locator('#btn-rezone-confirm').click(); await page.waitForTimeout(200); }
   const edgeNow = await page.evaluate((e) => window.gcs.state.board.edges[e], lockedEdge);
   check('rezoning permit unlocks edge via edge click', edgeNow === 'green', `${lockedEdge}: ${edgeNow}`);
+  const leftOn = await page.evaluate((e) => window.gcs.G.rezoningVictims(window.gcs.state, e).length, lockedEdge);
+  check('rezoning demolishes the transports attached to the edge', leftOn === 0, `${doomed} before, ${leftOn} after`);
+  await page.evaluate(() => { window.gcs.state.board = window.__boardBeforeRezone; window.gcs.refresh(); });
   // delete a tile via panel
   const delTile = await page.evaluate(() => { const s = window.gcs.state; s.ap = 2; const t = s.board.tiles[s.board.tiles.length - 1]; return { id: t.id, x: t.cells[0][0], y: t.cells[0][1], n: s.board.tiles.length }; });
   const [dx, dy] = await cellPx(delTile.x, delTile.y);
@@ -255,6 +266,37 @@ try {
   check('cells in front paint over the multi-cell tiles behind them', near(roof, [255, 165, 58]),
     `roof pixel ${roof} (front tile #ffa53a=255,165,58; bar behind #d9d24a=217,210,74)`);
   await page.screenshot({ path: SP + '/shot12_draworder.png' });
+  // Underground layer: aim a subway through the real UI, then build it and a
+  // garage whose tunnel would cross it.
+  await page.evaluate(() => {
+    const s = window.gcs.state; s.phase = 'shop'; s.ap = 3; s.money = 5000;
+    s.board.edges.E = 'road';
+    s.shop.cards.push({ id: 'test-sub', slot: 4, type: 'tile', key: 'subway', name: 'Subway Station', kind: 'transport', cost: 150, desc: '' },
+      { id: 'test-gar', slot: 5, type: 'tile', key: 'under_parking', name: 'Underground Parking', kind: 'transport', cost: 110, desc: '' });
+    window.gcs.ui.mode = 'idle'; window.gcs.ui.card = null; window.gcs.refresh();
+  });
+  await page.waitForTimeout(150);
+  await page.locator('.card', { hasText: 'Subway Station' }).click(); await page.waitForTimeout(150);
+  const [sx, sy] = await cellPx(3, 2);
+  await page.mouse.move(sx, sy); await page.waitForTimeout(250);
+  const ghost = await page.evaluate(() => { const g = window.gcs.ui.ghost; return g ? { ok: g.ok, tunnel: g.tunnel ? g.tunnel.cells.length : -1, ends: g.tunnel ? g.tunnel.ends.join('') : '' } : null; });
+  check('subway ghost carries its tunnel', !!ghost && ghost.ok && ghost.tunnel === 7 && ghost.ends === 'WE', JSON.stringify(ghost));
+  await page.screenshot({ path: SP + '/shot13_underground_ghost.png' });
+  await page.mouse.click(sx, sy); await page.waitForTimeout(200);
+  const built = await page.evaluate(() => { const t = window.gcs.state.board.tiles.find(t => t.key === 'subway'); return t ? { y: t.y, tunnel: t.tunnel.cells.length } : null; });
+  check('subway built with its tunnel recorded', !!built && built.tunnel === 7, JSON.stringify(built));
+  await page.locator('.card', { hasText: 'Underground Parking' }).click(); await page.waitForTimeout(150);
+  // a garage below the line tunnels east along its own row; one whose row is the subway's crosses it
+  const [gx, gy] = await cellPx(2, 6);
+  await page.mouse.move(gx, gy); await page.waitForTimeout(250);
+  const gOk = await page.evaluate(() => { const g = window.gcs.ui.ghost; return g && g.ok && g.tunnel && g.tunnel.ends.join('') === 'E'; });
+  check('garage ghost tunnels to the road edge', !!gOk);
+  const [cx2, cy2] = await cellPx(6, 2);
+  await page.mouse.move(cx2, cy2); await page.waitForTimeout(250);
+  const gBad = await page.evaluate(() => { const g = window.gcs.ui.ghost; return g ? { ok: g.ok, reason: g.reason } : null; });
+  check('a garage on the subway row is refused as a crossing', !!gBad && !gBad.ok && /cross/.test(gBad.reason), JSON.stringify(gBad));
+  await page.screenshot({ path: SP + '/shot14_underground_cross.png' });
+  await page.keyboard.press('Escape');
 } catch (e) { results.push('TEST ERROR ' + e.message.split('\n').slice(0, 25).join(' | ')); await page.screenshot({ path: SP + '/shot_err2.png' }); }
 console.log(results.join('\n'));
 console.log('console errors:', errors.length ? errors.join('\n') : 'none');

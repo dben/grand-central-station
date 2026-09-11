@@ -4,7 +4,11 @@
 //   dep (departure cadence), dwell, mult, flat, cost, minWeek, rare.
 // Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
 //   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall).
-// Terrain: road | rail | water | apron | corridor | free
+// Terrain: road | rail | water | apron | corridor | free | underground
+// Underground tiles sit on the ground like any other but run a tunnel on a
+// second layer that nothing else shares (see checkPlacement): `line` says where
+// it goes. 'through' follows the tile's long axis to both ends of the board,
+// 'road' and 'water' tunnel straight to the nearest edge of that terrain.
 // attach: 'tip' = only the tip of the L (top of the stem) may touch the edge; the foot points inland.
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
 // ============================================================================
@@ -34,6 +38,10 @@ export const TRANSPORTS = {
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },
   jetpack:         { name: 'Jetpack Rental',   shape: 'I2', terrain: 'free',     tier: 4, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.19, flat: 9 ,  cost: 290, minWeek: 6, tags: ['air'] },
   beam_pad:        { name: 'Beam-Em-Up Pad',   shape: 'O4', terrain: 'free',     tier: 5, arr: 3,  batch: 2,  dep: 3,  dwell: 0, mult: 1.39, flat: 18,  cost: 840, minWeek: 10, rare: true },
+  subway:          { name: 'Subway Station',   shape: 'I2', terrain: 'underground', line: 'through', tier: 2, arr: 3,  batch: 4,  dep: 3,  dwell: 1, mult: 1.08, flat: 14,  cost: 150, minWeek: 3 },
+  express_subway:  { name: 'Express Subway',   shape: 'I3', terrain: 'underground', line: 'through', tier: 3, arr: 5,  batch: 6,  dep: 5,  dwell: 2, mult: 1.15, flat: 22,  cost: 330, minWeek: 6 },
+  under_parking:   { name: 'Underground Parking', shape: 'L3', terrain: 'underground', line: 'road', tier: 1, arr: 1, batch: 2, dep: 1, dwell: 0, mult: 1.02, flat: 30, cost: 110, minWeek: 3 },
+  sub_dock:        { name: 'Submarine Dock',   shape: 'I2', terrain: 'underground', line: 'water', tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.22, flat: 16,  cost: 320, minWeek: 5 },
   loop_terminal:   { name: 'Loop Terminal',    shape: 'O4', terrain: 'free',     tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 1, mult: 1.16, flat: 18,  cost: 600, minWeek: 12, rare: true, special: 'loop', loopChance: 0.30 },
 };
 
@@ -110,6 +118,10 @@ export const TILE_UPGRADES = {
   monorail:      { name: 'Third Car' },
   express_train: { name: 'Double-Decker Stock' },
   jetway:        { name: 'Wide-Body Bridge' },
+  subway:        { name: 'Longer Platforms' },
+  express_subway:{ name: 'Extra Carriages' },
+  under_parking: { name: 'Second Level' },
+  sub_dock:      { name: 'Pressure Lock' },
 };
 
 // The upgrade a tile type offers, filled in from TILE_UPGRADES or generated.
@@ -147,4 +159,11 @@ export const TERRAIN_INFO = {
   apron:    { label: 'Apron',    claim: 'lock',     desc: 'The whole edge becomes an airfield.' },
   corridor: { label: 'Corridor', claim: 'corridor', desc: 'Reserves a straight lane to the nearest edge. The lane is unbuildable.' },
   free:     { label: 'Free',     claim: 'none',     desc: 'No terrain relationship. Goes anywhere with room.' },
+  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel on the underground layer. Anything can be built over a tunnel and travellers walk across it, but tunnels can never cross each other.' },
+};
+// What an underground tile's tunnel does, for the catalogue and the tile popup.
+export const LINE_INFO = {
+  through: 'Tunnels along its length to both ends of the board. Neither end may surface into water.',
+  road:    'Tunnels straight to the nearest road edge. Offered only while an edge is road.',
+  water:   'Tunnels straight to the nearest water edge. Offered only while an edge is water.',
 };

@@ -378,7 +378,7 @@ const CONFIG = {
 
   // ------------------------------------------------------------------- quota
   quota: {
-    base: 5000,
+    base: 5400,                 // (was 5000) travellers who mind the clock board about 8% more value
     // A station's output grows fast while it is small and slowly once it is
     // built out, so a single per-week multiplier makes the first half free and
     // the last few weeks a cliff. Growth starts at `earlyGrowth` and decays
@@ -404,6 +404,11 @@ const CONFIG = {
     upgradeCosts: [60, 140, 300, 650],    // level 1->2, 2->3, 3->4, 4->5
     maxLevel: 5,
     deleteRefund: 0,                      // fraction of base cost refunded on delete
+    // Undoing a placement costs the money already spent, not the week. A
+    // delete and a Rezoning Permit are free of action points, so a bad spot
+    // can be fixed and rebuilt in the same week.
+    deleteCostsAP: false,
+    rezoningCostsAP: false,
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -425,7 +430,14 @@ const CONFIG = {
     checkpoint: {
       mult: 1.3,                // value multiplier for clearing the booth
       multPerLevel: 0.1,        // extra multiplier per checkpoint level above 1
+      // true: the multiplier is applied when the traveller boards, on top of
+      // the whole chain, so the booth is worth the same wherever on the route
+      // it stands. false: it applies at the crossing, like a shop's.
+      atExit: true,
       budgetBonus: 2,           // stop budget for clearing the booth; rarely binding on its own
+      // How far the fence reaches from the booth: 'edge' (to both board edges),
+      // 'walls' (until a solid tile stands beside the line) or a cell count each way.
+      fence: 'walls',
       // false: anyone may walk through to reach whatever is on the far side.
       // true: only travellers whose platform is on the far side may cross, so
       // each side keeps its own shops (the old Security Gate rule).
@@ -455,6 +467,17 @@ const CONFIG = {
     wifi: { rate: 0.05, mult: 0.12, stack: 0.04, exit: 0.04, perLevel: 0.5, cap: 2 },
     // Green space
     greenSpaceBudgetRestore: 1,
+    // Travellers know when their platform closes. One only accepts a detour if
+    // the walk there, the service and the walk on to the platform all fit
+    // before the last tick (with `slack` ticks to spare), and one whose
+    // remaining wander no longer fits drops the wander and walks straight
+    // there. `enabled: false` restores the oblivious crowd.
+    hurry: { enabled: true, slack: 0 },
+    // Stratified rolls: the travellers a transport sends are spread evenly
+    // over the dice (a golden-ratio sequence per spawn slot) instead of each
+    // rolling alone, so a week's tiers, destinations and stops land close to
+    // their expected mix. Each traveller still looks random; the total is steadier.
+    stratify: true,
   },
 
   // --------------------------------------------------------------- travellers
@@ -462,7 +485,7 @@ const CONFIG = {
     // index = tier-1
     // colours mirror --t1..--t5 in style.css; tier 1 is cream so its
     // travellers still show up against the green board
-    { symbol: '$',     base: 100,  fare: 2,  budget: 7, waitCap: 2, color: '#fffbe0' },
+    { symbol: '$',     base: 100,  fare: 2,  budget: 3, waitCap: 2, color: '#fffbe0' },
     { symbol: '$$',    base: 180,  fare: 5,  budget: 4, waitCap: 3, color: '#35d4ff' },
     { symbol: '$$$',   base: 320,  fare: 12, budget: 5, waitCap: 4, color: '#c77dff' },
     { symbol: '$$$$',  base: 600,  fare: 30, budget: 6, waitCap: 5, color: '#ffd23f' },
@@ -502,7 +525,9 @@ const CONFIG = {
 
   // -------------------------------------------------------------- placement
   placement: {
-    previewSeeds: 4,           // sims per estimate (with and without)
+    // Sims per estimate. The "without" runs are cached for the phase, so a
+    // preview costs one sim per seed; the badge shows the mean over them.
+    previewSeeds: 8,
   },
 };
 
@@ -539,7 +564,11 @@ const __m_src_data_tiles_js = (() => {
 //   dep (departure cadence), dwell, mult, flat, cost, minWeek, rare.
 // Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
 //   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall).
-// Terrain: road | rail | water | apron | corridor | free
+// Terrain: road | rail | water | apron | corridor | free | underground
+// Underground tiles sit on the ground like any other but run a tunnel on a
+// second layer that nothing else shares (see checkPlacement): `line` says where
+// it goes. 'through' follows the tile's long axis to both ends of the board,
+// 'road' and 'water' tunnel straight to the nearest edge of that terrain.
 // attach: 'tip' = only the tip of the L (top of the stem) may touch the edge; the foot points inland.
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
 // ============================================================================
@@ -569,6 +598,10 @@ const TRANSPORTS = {
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },
   jetpack:         { name: 'Jetpack Rental',   shape: 'I2', terrain: 'free',     tier: 4, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.19, flat: 9 ,  cost: 290, minWeek: 6, tags: ['air'] },
   beam_pad:        { name: 'Beam-Em-Up Pad',   shape: 'O4', terrain: 'free',     tier: 5, arr: 3,  batch: 2,  dep: 3,  dwell: 0, mult: 1.39, flat: 18,  cost: 840, minWeek: 10, rare: true },
+  subway:          { name: 'Subway Station',   shape: 'I2', terrain: 'underground', line: 'through', tier: 2, arr: 3,  batch: 4,  dep: 3,  dwell: 1, mult: 1.08, flat: 14,  cost: 150, minWeek: 3 },
+  express_subway:  { name: 'Express Subway',   shape: 'I3', terrain: 'underground', line: 'through', tier: 3, arr: 5,  batch: 6,  dep: 5,  dwell: 2, mult: 1.15, flat: 22,  cost: 330, minWeek: 6 },
+  under_parking:   { name: 'Underground Parking', shape: 'L3', terrain: 'underground', line: 'road', tier: 1, arr: 1, batch: 2, dep: 1, dwell: 0, mult: 1.02, flat: 30, cost: 110, minWeek: 3 },
+  sub_dock:        { name: 'Submarine Dock',   shape: 'I2', terrain: 'underground', line: 'water', tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.22, flat: 16,  cost: 320, minWeek: 5 },
   loop_terminal:   { name: 'Loop Terminal',    shape: 'O4', terrain: 'free',     tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 1, mult: 1.16, flat: 18,  cost: 600, minWeek: 12, rare: true, special: 'loop', loopChance: 0.30 },
 };
 
@@ -645,6 +678,10 @@ const TILE_UPGRADES = {
   monorail:      { name: 'Third Car' },
   express_train: { name: 'Double-Decker Stock' },
   jetway:        { name: 'Wide-Body Bridge' },
+  subway:        { name: 'Longer Platforms' },
+  express_subway:{ name: 'Extra Carriages' },
+  under_parking: { name: 'Second Level' },
+  sub_dock:      { name: 'Pressure Lock' },
 };
 
 // The upgrade a tile type offers, filled in from TILE_UPGRADES or generated.
@@ -682,9 +719,16 @@ const TERRAIN_INFO = {
   apron:    { label: 'Apron',    claim: 'lock',     desc: 'The whole edge becomes an airfield.' },
   corridor: { label: 'Corridor', claim: 'corridor', desc: 'Reserves a straight lane to the nearest edge. The lane is unbuildable.' },
   free:     { label: 'Free',     claim: 'none',     desc: 'No terrain relationship. Goes anywhere with room.' },
+  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel on the underground layer. Anything can be built over a tunnel and travellers walk across it, but tunnels can never cross each other.' },
+};
+// What an underground tile's tunnel does, for the catalogue and the tile popup.
+const LINE_INFO = {
+  through: 'Tunnels along its length to both ends of the board. Neither end may surface into water.',
+  road:    'Tunnels straight to the nearest road edge. Offered only while an edge is road.',
+  water:   'Tunnels straight to the nearest water edge. Offered only while an edge is water.',
 };
 
-return { TRANSPORTS, AMENITIES, BRIDGE, TILE_UPGRADES, tileUpgrade, NAMED_UPGRADES, tileDef, TERRAIN_INFO };
+return { TRANSPORTS, AMENITIES, BRIDGE, TILE_UPGRADES, tileUpgrade, NAMED_UPGRADES, tileDef, TERRAIN_INFO, LINE_INFO };
 })();
 // ---- src/data/events.js
 const __m_src_data_events_js = (() => {
@@ -730,14 +774,15 @@ return { EVENTS, EVENT_KEYS, MILESTONES };
 })();
 // ---- src/data/cards.js
 const __m_src_data_cards_js = (() => {
-// Bonus cards - consumables from the wildcard slot. Cost 1 AP + money to play.
+// Bonus cards - consumables from the wildcard slot. Cost 1 AP + money to play
+// (a Rezoning Permit costs no AP unless economy.rezoningCostsAP is set).
 // target: none | tile | transport | amenity | edge
 const CARDS = {
   overtime:       { name: 'Overtime',           cost: 40,  target: 'none',      desc: '+2 AP this week only.' },
   temp_staff:     { name: 'Temp Staff',         cost: 70,  target: 'none',      desc: '+1 AP this week and each of the next two.', ap: 1, weeks: 3 },
   fast_pass:      { name: 'Fast Pass',          cost: 60,  target: 'none',      desc: 'All travellers +2 stop budget next week.', effect: { stopBudgetBonus: 2 }, weeks: 1 },
   charter_bus:    { name: 'Charter Bus',        cost: 50,  target: 'none',      desc: '40 extra $ travellers arrive next week.', effect: { extraSpawns: [{ tier: 1, count: 40 }] }, weeks: 1 },
-  rezoning:       { name: 'Rezoning Permit',    cost: 120, target: 'edge',      desc: 'Unlock one locked edge back to greenfield.' },
+  rezoning:       { name: 'Rezoning Permit',    cost: 120, target: 'edge',      desc: 'Turn one claimed edge back into open ground. Transports attached to it are demolished, with no refund.' },
   coupon_book:    { name: 'Coupon Book',        cost: 30,  target: 'none',      desc: 'Half fare income, double spawn batch, for 2 weeks.', effect: { batchMult: 2, fareMult: 0.5 }, weeks: 2 },
   grand_opening:  { name: 'Grand Opening',      cost: 70,  target: 'amenity',   desc: 'One amenity serves at 100% rate for one week.', weeks: 1 },
   timetable:      { name: 'Timetable Shuffle',  cost: 40,  target: 'transport', desc: 'Reroll the arrival cadence of one transport tile.' },
@@ -752,7 +797,7 @@ const __m_src_data_ordinances_js = (() => {
 const ORDINANCES = {
   tourist_board:   { name: 'Tourist Board',       desc: 'Travellers two tiers off an amenity still roll at 0.6x instead of 0.25x.', mods: { tierMatch: [1.0, 0.6, 0.6, 0.05] } },
   express_charter: { name: 'Express Charter',     desc: 'Transport multipliers +0.25, amenity multipliers -0.10.', mods: { transportMultBonus: 0.25, amenityMultBonus: -0.10 } },
-  zoning_variance: { name: 'Zoning Variance',     desc: 'Deleting a tile refunds half its cost and costs no AP.', game: { deleteRefund: 0.5, deleteFreeAP: true } },
+  zoning_variance: { name: 'Zoning Variance',     desc: 'Deleting a tile refunds half its cost.', game: { deleteRefund: 0.5, deleteFreeAP: true } },
   union_contract:  { name: 'Union Contract',      desc: 'Dwell +2 ticks everywhere; amenity capacity -20%.', mods: { dwellAdd: 2, capacityMult: 0.8 } },
   retail_compact:  { name: 'Retail Compact',      desc: 'Amenity revenue doubled; flat point values halved.', mods: { revenueMult: 2, flatMult: 0.5 } },
   night_service:   { name: 'Night Service',       desc: '30 ticks per week instead of 24, and arrivals run 4 ticks longer; quota x1.15.', mods: { ticks: 30, spawnTicks: 20 }, game: { quotaMult: 1.15 } },
@@ -770,7 +815,7 @@ const __m_src_data_modes_js = (() => {
 // reach (in any mode) before this mode becomes available.
 const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'Baseline. 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and hard. 9x9 board, start with 3 AP, quota grows faster.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.16 },
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and hard. 9x9 board, 3 AP a week instead of 2, quota grows faster.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.16 },
   metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. 16x16 board, tile costs +25%.', unlockWeek: 12, costMult: 1.25 },
   waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two edges pre-locked to water; water transports -40% cost.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 } },
   sky_harbour:{ name: 'Sky Harbour', w: 12, h: 12, desc: 'No rail or water permitted; all Free-terrain tiles -30% cost.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 } },
@@ -837,13 +882,43 @@ class Rng {
   }
 }
 
+// Stateless draws. `mix` hashes a handful of integers into a uniform in [0, 1),
+// so a roll can be keyed by *who* is rolling and *what for* (a traveller, a
+// shop, a cell) rather than by how many rolls came before it. That keeps two
+// nearly identical boards on the same random path: a tile that changes one
+// traveller's route re-rolls that traveller, not the whole week.
+function mix(...xs) {
+  let h = 0x9e3779b9;
+  for (const x of xs) {
+    h = Math.imul(h ^ (x | 0), 2654435761);
+    h ^= h >>> 15;
+    h = Math.imul(h, 2246822507);
+    h ^= h >>> 13;
+  }
+  return (Math.imul(h ^ (h >>> 16), 3266489909) >>> 0) / 4294967296;
+}
+function gaussOf(u, v) {
+  return Math.sqrt(-2.0 * Math.log(u || 1e-12)) * Math.cos(2.0 * Math.PI * v);
+}
+function weightedOf(u, items, weightOf) {
+  let total = 0;
+  for (const it of items) total += weightOf(it);
+  if (total <= 0) return items[Math.floor(u * items.length)];
+  let r = u * total;
+  for (const it of items) {
+    r -= weightOf(it);
+    if (r <= 0) return it;
+  }
+  return items[items.length - 1];
+}
+
 function makeStreams(seed, names) {
   const out = {};
   for (const n of names) out[n] = new Rng(hashString(String(seed) + ':' + n));
   return out;
 }
 
-return { hashString, Rng, makeStreams };
+return { hashString, Rng, mix, gaussOf, weightedOf, makeStreams };
 })();
 // ---- src/sim/shapes.js
 const __m_src_sim_shapes_js = (() => {
@@ -928,9 +1003,9 @@ return { SHAPES, SHAPE_TRANSFORMS, shapeTransform, shapeBaseSize, shapeCells, or
 })();
 // ---- src/sim/board.js
 const __m_src_sim_board_js = (() => {
-// Board model: grid, tiles, edge terrain, corridor lanes and road driveways.
-// Placement legality and terrain claims live here so the UI, the game layer
-// and the harness all share one rule set.
+// Board model: grid, tiles, edge terrain, corridor lanes, road driveways and
+// the underground layer of tunnels. Placement legality and terrain claims live
+// here so the UI, the game layer and the harness all share one rule set.
 const { shapeCells } = __m_src_sim_shapes_js;
 const { tileDef } = __m_src_data_tiles_js;
 const { CONFIG } = __m_src_config_js;
@@ -962,6 +1037,30 @@ function occupancyMap(b) {
   for (const [x, y] of b.lanes) m[y * b.w + x] = { type: 'lane' };
   for (const [x, y] of b.driveways) if (!m[y * b.w + x]) m[y * b.w + x] = { type: 'driveway' };
   return m;
+}
+
+// The underground layer: every cell an existing tunnel runs through, including
+// the footprint of the station it belongs to. Ground tiles ignore it entirely -
+// anything can be built over a tunnel - but no two tunnels may share a cell.
+function undergroundCells(b) {
+  const set = new Set();
+  for (const t of b.tiles) if (t.tunnel) for (const [x, y] of t.cells.concat(t.tunnel.cells)) set.add(x + ',' + y);
+  return set;
+}
+// Edges where a subway line surfaces. Such an edge can never become water.
+function tunnelEnds(b) {
+  const out = new Set();
+  for (const t of b.tiles) if (t.tunnel && t.tunnel.line === 'through') for (const e of t.tunnel.ends) out.add(e);
+  return out;
+}
+// Can this tile's tunnel go anywhere on this board? A subway needs an axis that
+// does not end in water; a parking garage or dock needs an edge of its terrain.
+// The shop uses this so it never offers an underground tile with nowhere to dig.
+function lineAvailable(b, def) {
+  if (def.terrain !== 'underground') return true;
+  const e = b.edges;
+  if (def.line === 'through') return (e.N !== 'water' && e.S !== 'water') || (e.W !== 'water' && e.E !== 'water');
+  return EDGES.some(k => e[k] === def.line);
 }
 
 function tileAt(b, x, y) {
@@ -1073,14 +1172,18 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     if (def.attach === 'edgewise') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `${def.name} must lie lengthwise along a single edge (rotate it)`; return res; }
     }
+    const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
     for (const e of touched) {
       const cur = b.edges[e];
       const idx = edgeIndices(b, cells, e);
       const allOpen = idx.every(i => spanOpen(b, e, i));
+      // a subway line surfaces at this edge, and a tunnel can't end in the sea
+      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway line surfaces at the ${e} edge, so it can't become water`; return res; }
       if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
       else if (cur === terrain || allOpen) { /* fine */ }
       else { res.reason = `${e} edge is ${cur}; ${terrain} cannot attach there (needs a bridge)`; return res; }
     }
+    res.attachEdges = touched;
     res.ok = true; return res;
   }
 
@@ -1102,6 +1205,40 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
     if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain: 'road', lock: false });
     res.roadEdge = pick.e;
+    res.attachEdges = [pick.e];
+    res.ok = true; return res;
+  }
+
+  if (terrain === 'underground') {
+    // The tunnel is worked out before it is judged, so a failed preview can
+    // still show the line that would have crossed or surfaced badly.
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+    if (def.line === 'through') {
+      // along the long axis, all the way to both ends of the board
+      const vertical = (Math.max(...ys) - Math.min(...ys)) > (Math.max(...xs) - Math.min(...xs));
+      const own = new Set(cells.map(c => c.join(',')));
+      const line = [];
+      if (vertical) { for (let yy = 0; yy < b.h; yy++) if (!own.has(xs[0] + ',' + yy)) line.push([xs[0], yy]); }
+      else { for (let xx = 0; xx < b.w; xx++) if (!own.has(xx + ',' + ys[0])) line.push([xx, ys[0]]); }
+      const ends = vertical ? ['N', 'S'] : ['W', 'E'];
+      res.tunnel = { line: 'through', axis: vertical ? 'v' : 'h', ends, cells: line };
+      const wet = ends.find(e => b.edges[e] === 'water');
+      if (wet) { res.reason = `${def.name} can't surface into the water on the ${wet} edge (rotate it)`; return res; }
+    } else {
+      // straight to the nearest edge of the wanted terrain, however far
+      let best = null;
+      for (const e of EDGES) {
+        if (b.edges[e] !== def.line) continue;
+        const line = lineToEdge(b, cells, e);
+        if (best === null || line.dist < best.line.dist) best = { e, line };
+      }
+      if (!best) { res.reason = `${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      res.tunnel = { line: def.line, axis: best.e === 'N' || best.e === 'S' ? 'v' : 'h', ends: [best.e], cells: best.line.cells };
+      res.attachEdges = [best.e];
+    }
+    const under = undergroundCells(b);
+    const hit = cells.concat(res.tunnel.cells).find(([cx, cy]) => under.has(cx + ',' + cy));
+    if (hit) { res.reason = `Underground lines can't cross (tunnel at ${hit[0]},${hit[1]})`; return res; }
     res.ok = true; return res;
   }
 
@@ -1133,7 +1270,7 @@ function placeTile(b, key, x, y, rot, check = null, mode = null) {
   const tile = {
     id: b.nextId++, key, kind: def.kind, name: def.name, x, y, rot, level: 1,
     cells: c.cells, terrain: def.terrain || null, radiusBonus: 0, arrOverride: null,
-    lane: c.lane, driveway: c.driveway,
+    lane: c.lane, driveway: c.driveway, edges: c.attachEdges || [], tunnel: c.tunnel || null,
   };
   b.tiles.push(tile);
   for (const cl of c.claims) b.edges[cl.edge] = cl.terrain;
@@ -1141,6 +1278,15 @@ function placeTile(b, key, x, y, rot, check = null, mode = null) {
   for (const cell of c.lane) b.lanes.push(cell);
   for (const cell of c.driveway) b.driveways.push(cell);
   return tile;
+}
+
+// Tiles that would lose their footing if `edge` went back to open ground.
+// Each transport records the edges it depends on when placed (`tile.edges`):
+// every edge a lock-terrain tile touches, or the edge a road tile's driveway
+// runs to, or the edge an underground garage or dock tunnels to. Corridor, Free
+// and subway tiles depend on none.
+function edgeDependents(b, edge) {
+  return b.tiles.filter(t => (t.edges || []).includes(edge));
 }
 
 function removeTile(b, id) {
@@ -1179,6 +1325,52 @@ function buildWalkMap(b) {
   return m;
 }
 
+// Transports a placement would wall off: after `cells` become solid, which
+// transports can no longer be walked to from some other transport? Travellers
+// bound for a sealed platform are lost (see sim.js), so the preview names it.
+function cutOffTransports(b, cells, def) {
+  if (def && (def.walkable || def.kind === 'bridge' || def.special === 'walkway' || def.special === 'gate')) return [];
+  const before = sealedTransports(b, buildWalkMap(b));
+  const m = buildWalkMap(b);
+  for (const [x, y] of cells) m[y * b.w + x] = 1;
+  return sealedTransports(b, m).filter(t => !before.includes(t));
+}
+// Transports on walk map `m` that some other transport cannot walk to.
+function sealedTransports(b, m) {
+  const pass = i => m[i] !== 1;
+  const fences = checkpointFences(b);
+  const reach = (sx, sy) => {
+    const seen = new Uint8Array(b.w * b.h), stack = [sy * b.w + sx];
+    seen[stack[0]] = 1;
+    while (stack.length) {
+      const i = stack.pop(), x = i % b.w, y = (i - x) / b.w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= b.w || ny >= b.h) continue;
+        const ni = ny * b.w + nx;
+        if (seen[ni] || !pass(ni) || fenceBlocked(fences, b.w, b.h, x, y, dx, dy)) continue;
+        if (dx && dy && !(pass(y * b.w + nx) && pass(ny * b.w + x))) continue;
+        seen[ni] = 1; stack.push(ni);
+      }
+    }
+    return seen;
+  };
+  // a transport's doors: walkable cells 8-adjacent to it
+  const doors = t => {
+    const own = new Set(t.cells.map(([x, y]) => y * b.w + x)), out = [];
+    for (const [x, y] of t.cells) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(b, nx, ny) || own.has(ny * b.w + nx) || !pass(ny * b.w + nx)) continue;
+      out.push(ny * b.w + nx);
+    }
+    return [...new Set(out)];
+  };
+  const ts = b.tiles.filter(t => t.kind === 'transport').map(t => ({ t, doors: doors(t) }));
+  if (ts.length < 2) return [];
+  const seenFrom = ts.map(({ doors }) => (doors.length ? reach(doors[0] % b.w, (doors[0] - doors[0] % b.w) / b.w) : null));
+  return ts.filter((a, i) => !a.doors.length || ts.some((c, j) => j !== i && seenFrom[j] && !a.doors.some(d => seenFrom[j][d]))).map(a => a.t);
+}
+
 // ------------------------------------------------------------ checkpoints
 // A Security Checkpoint is a two-cell booth. Its fence runs along the grid
 // line between those two cells, from one board edge to the other, and sits
@@ -1192,38 +1384,57 @@ function checkpointLine(cells) {
   return { axis: 'v', line: Math.max(a[0], c[0]), gap: a[1] };
 }
 
-// Every fence line on the board, with the gaps its booths leave. Booths that
-// share a line share one fence and each adds a lane.
+// Every fence line on the board: per line, the set of indices where a fence
+// panel stands. How far the panels reach from the booth is `sim.checkpoint.fence`:
+// 'edge' runs them to both board edges; 'walls' runs them until a solid tile
+// stands on either side of the line (the fence spans the open floor the booth
+// sits in); a number runs them that many cells each way. Booths that share a
+// line share one fence, and each booth's own cell is always a gap.
 function checkpointFences(b, extraCells = null) {
+  const reach = CONFIG.sim.checkpoint.fence;
+  const walk = reach === 'walls' ? buildWalkMap(b) : null;
+  const solid = (x, y) => x < 0 || y < 0 || x >= b.w || y >= b.h || walk[y * b.w + x] === 1;
   const out = { h: new Map(), v: new Map() };
-  const add = cells => {
-    const { axis, line, gap } = checkpointLine(cells);
-    if (!out[axis].has(line)) out[axis].set(line, new Set());
-    out[axis].get(line).add(gap);
-  };
+  const booths = [];
+  const add = cells => booths.push(checkpointLine(cells));
   for (const t of b.tiles) if (t.key === 'gate') add(t.cells);
   if (extraCells) add(extraCells);
+  for (const { axis, line, gap } of booths) {
+    if (!out[axis].has(line)) out[axis].set(line, new Set());
+    const walls = out[axis].get(line);
+    const len = axis === 'h' ? b.w : b.h;
+    // a panel at index i on a horizontal line y sits between (i, y-1) and (i, y)
+    const moot = i => axis === 'h' ? (solid(i, line - 1) || solid(i, line)) : (solid(line - 1, i) || solid(line, i));
+    for (const dir of [-1, 1]) {
+      for (let i = gap + dir, n = 0; i >= 0 && i < len; i += dir, n++) {
+        if (typeof reach === 'number' && n >= reach) break;
+        if (reach === 'walls' && moot(i)) break;
+        walls.add(i);
+      }
+    }
+  }
+  for (const { axis, line, gap } of booths) out[axis].get(line).delete(gap);
   return out;
 }
 
 // Is a one-cell step from (x, y) by (dx, dy) stopped by a fence? A straight
-// step is stopped by the fence segment it crosses; a diagonal one passes
-// through a corner and is stopped if either segment meeting there is fenced,
-// so nobody squeezes past the end of a booth.
+// step is stopped by the panel it crosses; a diagonal one passes through a
+// corner and is stopped if either panel meeting there stands, so nobody
+// squeezes past the end of a booth.
 function fenceBlocked(f, w, h, x, y, dx, dy) {
-  const walled = (gaps, i, len) => i >= 0 && i < len && !gaps.has(i);
+  const walled = (walls, i) => walls.has(i);
   if (dy) {
-    const gaps = f.h.get(dy > 0 ? y + 1 : y);
-    if (gaps) {
-      if (!dx) { if (walled(gaps, x, w)) return true; }
-      else { const cx = dx > 0 ? x + 1 : x; if (walled(gaps, cx - 1, w) || walled(gaps, cx, w)) return true; }
+    const walls = f.h.get(dy > 0 ? y + 1 : y);
+    if (walls) {
+      if (!dx) { if (walled(walls, x)) return true; }
+      else { const cx = dx > 0 ? x + 1 : x; if (walled(walls, cx - 1) || walled(walls, cx)) return true; }
     }
   }
   if (dx) {
-    const gaps = f.v.get(dx > 0 ? x + 1 : x);
-    if (gaps) {
-      if (!dy) { if (walled(gaps, y, h)) return true; }
-      else { const cy = dy > 0 ? y + 1 : y; if (walled(gaps, cy - 1, h) || walled(gaps, cy, h)) return true; }
+    const walls = f.v.get(dx > 0 ? x + 1 : x);
+    if (walls) {
+      if (!dy) { if (walled(walls, y)) return true; }
+      else { const cy = dy > 0 ? y + 1 : y; if (walled(walls, cy - 1) || walled(walls, cy)) return true; }
     }
   }
   return false;
@@ -1232,8 +1443,8 @@ function fenceBlocked(f, w, h, x, y, dx, dy) {
 // Fence segments to draw, as grid-space lines [[x0, y0], [x1, y1]].
 function fenceSegments(b, extraCells = null) {
   const f = checkpointFences(b, extraCells), segs = [];
-  for (const [y, gaps] of f.h) for (let x = 0; x < b.w; x++) if (!gaps.has(x)) segs.push({ axis: 'h', x, y, a: [x, y], b: [x + 1, y] });
-  for (const [x, gaps] of f.v) for (let y = 0; y < b.h; y++) if (!gaps.has(y)) segs.push({ axis: 'v', x, y, a: [x, y], b: [x, y + 1] });
+  for (const [y, walls] of f.h) for (const x of walls) segs.push({ axis: 'h', x, y, a: [x, y], b: [x + 1, y] });
+  for (const [x, walls] of f.v) for (const y of walls) segs.push({ axis: 'v', x, y, a: [x, y], b: [x, y + 1] });
   return segs;
 }
 
@@ -1241,7 +1452,7 @@ function boardSummary(b) {
   return b.tiles.map(t => `${t.name}@${t.x},${t.y} L${t.level}`).join('; ');
 }
 
-return { EDGES, LOCK_TERRAINS, createBoard, cloneBoard, inBounds, occupancyMap, tileAt, edgesTouched, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, fenceSegments, boardSummary };
+return { EDGES, LOCK_TERRAINS, createBoard, cloneBoard, inBounds, occupancyMap, undergroundCells, tunnelEnds, lineAvailable, tileAt, edgesTouched, checkPlacement, placeTile, edgeDependents, removeTile, buildWalkMap, cutOffTransports, checkpointLine, checkpointFences, fenceBlocked, fenceSegments, boardSummary };
 })();
 // ---- src/sim/sim.js
 const __m_src_sim_sim_js = (() => {
@@ -1252,7 +1463,7 @@ const __m_src_sim_sim_js = (() => {
 // ============================================================================
 const { CONFIG } = __m_src_config_js;
 const { tileDef } = __m_src_data_tiles_js;
-const { makeStreams } = __m_src_sim_rng_js;
+const { hashString, mix, gaussOf, weightedOf } = __m_src_sim_rng_js;
 const { buildWalkMap, checkpointFences, fenceBlocked } = __m_src_sim_board_js;
 const INF = 1e9;
 
@@ -1368,7 +1579,17 @@ function simulateWeek(board, opts = {}) {
   const mods = mergeMods(opts.mods);
   const week = opts.week || 1;
   const seed = opts.seed ?? 1;
-  const rng = makeStreams(seed, ['spawn', 'dest', 'service', 'waypoint', 'walk', 'pick', 'loop']);
+  // Every roll is keyed by the traveller making it (their spawn slot, not
+  // their number in the week) and what it decides, so a board change only
+  // re-rolls the travellers it actually touches (see mix in rng.js).
+  const seedHash = hashString(String(seed));
+  const R = { tier: 1, bias: 2, kind: 3, door: 4, dest: 5, wp: 6, walk: 7, svc: 8, loop: 9, pdest: 10, tr: 11 };
+  // A roll is a hash of the traveller and the question. Stratified, the
+  // traveller's slot walks the unit interval in golden-ratio steps and the
+  // question only offsets it, so slot after slot covers the dice evenly.
+  const PHI = 0.6180339887498949;
+  const strat = !!cfg.sim.stratify;
+  const roll = (a, tag, x = 0, y = 0) => strat ? (a.ord * PHI + mix(seedHash, a.grp, tag, x, y)) % 1 : mix(seedHash, a.h, tag, x, y);
   const TICKS = mods.ticks || cfg.sim.ticks;
   const SPAWN_TICKS = mods.spawnTicks || cfg.sim.spawnTicks;
   const W = board.w, H = board.h, N = W * H;
@@ -1462,6 +1683,20 @@ function simulateWeek(board, opts = {}) {
   const transportField = (ti, g) => field('T' + ti, transports[ti].doors, g);
   const cellField = (x, y, g) => field('C' + x + ',' + y, [[x, y]], g);
   const amenityField = (ai, g) => field('A' + ai, amenities[ai].targets, g);
+  // Shortest walk from an amenity's door on to a platform, for the time check.
+  const returns = new Map();
+  function returnDist(ai, ti, g) {
+    const k = ai + ':' + ti + (g ? ':o' : ':c');
+    let d = returns.get(k);
+    if (d === undefined) {
+      const f = transportField(ti, g);
+      d = INF;
+      for (const [x, y] of amenities[ai].targets) d = Math.min(d, f[y * W + x]);
+      returns.set(k, d);
+    }
+    return d;
+  }
+  const hurry = cfg.sim.hurry || { enabled: false, slack: 0 };
 
   // reachability between transports: 0 none, 1 direct, 2 via gate
   const reach = transports.map(() => new Int8Array(transports.length));
@@ -1504,12 +1739,12 @@ function simulateWeek(board, opts = {}) {
   // A traveller picks where they want to go, whether or not you have left them
   // a way to get there. Walling a platform off does not redirect the crowd - it
   // strands them (see `lost`), which is what makes boxing people in a mistake.
-  function chooseDest(originIdx, tier) {
+  function chooseDest(a, originIdx, tier) {
     const t = Math.min(5, tier + mods.destTierShift);
     const cands = [];
     for (let b = 0; b < transports.length; b++) if (transports[b].doors.length) cands.push(b);
     if (!cands.length) return originIdx;
-    return rng.dest.weighted(cands, b => destWeight(t, transports[b].e.tier));
+    return weightedOf(roll(a, R.dest), cands, b => destWeight(t, transports[b].e.tier));
   }
 
   function snapCell(fx, fy, f) {
@@ -1527,7 +1762,8 @@ function simulateWeek(board, opts = {}) {
     return null;
   }
 
-  function makeWaypoints(sx, sy, destIdx, gateOpen, same) {
+  // `leg` numbers the wander so a lost traveller's top-ups roll fresh points.
+  function makeWaypoints(a, sx, sy, destIdx, gateOpen, same, leg = 0) {
     const f = transportField(destIdx, gateOpen);
     const doors = transports[destIdx].doors;
     const [dx, dy] = doors[Math.floor(doors.length / 2)];
@@ -1535,15 +1771,17 @@ function simulateWeek(board, opts = {}) {
     const n = cfg.sim.waypointCount;
     for (let i = 0; i < n; i++) {
       let px, py;
+      const k = leg * n + i;
+      const g1 = gaussOf(roll(a, R.wp, k, 0), roll(a, R.wp, k, 1)), g2 = gaussOf(roll(a, R.wp, k, 2), roll(a, R.wp, k, 3));
       if (same) {
         const s = cfg.sim.sameTileWanderSigma;
-        px = sx + rng.waypoint.gauss() * s; py = sy + rng.waypoint.gauss() * s;
+        px = sx + g1 * s; py = sy + g2 * s;
       } else {
         const lo = (i + 0.15) / n, hi = (i + 0.85) / n;
-        const t = rng.waypoint.range(lo, hi);
+        const t = lo + roll(a, R.wp, k, 4) * (hi - lo);
         const s = cfg.sim.waypointSigma;
-        px = sx + (dx - sx) * t + rng.waypoint.gauss() * s;
-        py = sy + (dy - sy) * t + rng.waypoint.gauss() * s;
+        px = sx + (dx - sx) * t + g1 * s;
+        py = sy + (dy - sy) * t + g2 * s;
       }
       const c = snapCell(px, py, f);
       if (c) wps.push(c);
@@ -1555,21 +1793,30 @@ function simulateWeek(board, opts = {}) {
   // freezing on the spot. Returns false for anyone with a route to follow.
   function wanderOn(a, t) {
     if (!a.lost || t > TICKS) return false;
-    const wps = makeWaypoints(a.x, a.y, a.origin, a.gateOpen, true);
+    const wps = makeWaypoints(a, a.x, a.y, a.origin, a.gateOpen, true, ++a.legs);
     for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
     return a.ti < a.targets.length;
   }
 
-  function spawnAgent(originIdx, tier, kind, extra = {}) {
+  // A traveller's dice are their spawn slot: `grp` is the group they were
+  // spawned in (a transport, the charter, the VIPs) and `ord` their number in
+  // it, so the same slot rolls the same whatever else is on the board.
+  // `tier` may be a function of the slot.
+  function spawnAgent(grp, ord, originIdx, tier, kind, extra = {}) {
+    const key = grp + ':' + ord;
+    const slot = { key, grp: hashString(grp), ord, h: hashString(key) };
+    if (typeof tier === 'function') tier = tier(slot);
+    if (kind === 'roll') kind = pickRate > 0 && roll(slot, R.kind) < pickRate ? 'pickpocket' : 'traveller';
     const tr = transports[originIdx];
-    const door = rng.spawn.pick(tr.doors);
+    const door = tr.doors[Math.floor(roll(slot, R.door) * tr.doors.length)];
     const id = agents.length;
     let destIdx = originIdx, gateOpen = false;
     if (kind === 'pickpocket') {
-      destIdx = transports.length > 1 ? rng.dest.pick(transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx)) : originIdx;
+      const opts = transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx);
+      destIdx = transports.length > 1 ? opts[Math.floor(roll(slot, R.pdest) * opts.length)] : originIdx;
       gateOpen = true;
     } else {
-      destIdx = chooseDest(originIdx, tier);
+      destIdx = chooseDest(slot, originIdx, tier);
       // An open checkpoint lets anyone through to whatever is on the far side;
       // a filtering one only admits travellers whose platform is over there.
       gateOpen = hasGate && (!ckCfg.filter || reach[originIdx][destIdx] === 2);
@@ -1577,16 +1824,17 @@ function simulateWeek(board, opts = {}) {
     const lost = kind !== 'pickpocket' && !reach[originIdx][destIdx];
     const tierInfo = cfg.tiers[tier - 1];
     const a = {
-      id, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1],
+      id, ...slot, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1], legs: 0,
       value: extra.value ?? tierInfo.base, budget: tierInfo.budget + mods.stopBudgetBonus + (extra.budgetBonus || 0), cleared: false,
       served: new Set(), balked: new Set(), chain: [], state: 'walking', spawnTick: currentTick, endTick: null,
       frames: [[door[0], door[1]]], events: [], targets: [], ti: 0, serve: null, serveTicks: 0, arrivedTick: -1,
-      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null, lost,
+      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null, lost, booth: null,
+      miss: new Float32Array(amenities.length).fill(1),
     };
     // A lost traveller has no route to follow, so they wander the concourse
     // looking for a way through and never reach a platform.
     const same = destIdx === originIdx;
-    for (const [wx, wy] of makeWaypoints(a.x, a.y, lost ? originIdx : destIdx, gateOpen, same || lost)) a.targets.push({ kind: 'wp', x: wx, y: wy });
+    for (const [wx, wy] of makeWaypoints(a, a.x, a.y, lost ? originIdx : destIdx, gateOpen, same || lost)) a.targets.push({ kind: 'wp', x: wx, y: wy });
     if (!lost) a.targets.push({ kind: 'dest', idx: destIdx });
     agents.push(a); live.push(a);
     counts.spawned++;
@@ -1621,17 +1869,21 @@ function simulateWeek(board, opts = {}) {
       else if (Math.abs(d - bestD) < 1e-6 && d < here) cands.push(ni);
     }
     if (!cands.length) return false;
-    const ni = cands.length === 1 ? cands[0] : rng.walk.pick(cands);
+    const ni = cands.length === 1 ? cands[0] : cands[Math.floor(roll(a, R.walk, i) * cands.length)];
     a.x = ni % W; a.y = (ni - a.x) / W;
     heat[ni] += 1;
     // clearing a checkpoint booth: a chain link and extra stop budget, once per traveller
     const bo = a.kind === 'traveller' && !a.cleared ? booths.get(ni) : null;
     if (bo) {
       const before = a.value;
-      a.cleared = true; a.budget += bo.bonus; a.value *= bo.mult;
+      a.cleared = true; a.budget += bo.bonus;
       const st = tileStats[bo.tile.id];
-      st.serves++; st.points += a.value - before;
-      a.chain.push({ name: bo.tile.name, tileId: bo.tile.id, before, after: a.value, mult: bo.mult, flat: 0 });
+      st.serves++;
+      if (ckCfg.atExit) a.booth = bo;   // credited when they board (see board_)
+      else {
+        a.value *= bo.mult; st.points += a.value - before;
+        a.chain.push({ name: bo.tile.name, tileId: bo.tile.id, before, after: a.value, mult: bo.mult, flat: 0 });
+      }
       a.events.push({ t: currentTick, type: 'cleared', tileId: bo.tile.id, mult: bo.mult, value: a.value });
     }
     return f[ni] === 0;
@@ -1650,9 +1902,23 @@ function simulateWeek(board, opts = {}) {
     a.events.push({ t, type: 'serve', tileId: am.tile.id, value: a.value, mult: e.mult, flat: e.flat });
   }
 
+  // Ticks the rest of a traveller's route takes: each waypoint in turn, then
+  // the platform. INF when a leg is unreachable.
+  function routeLeft(a) {
+    let x = a.x, y = a.y, d = 0;
+    for (let k = a.ti; k < a.targets.length; k++) {
+      const tg = a.targets[k];
+      d += targetField(a, tg)[y * W + x];
+      if (tg.kind !== 'wp') break;
+      x = tg.x; y = tg.y;
+    }
+    return d;
+  }
+
   function serviceRolls(a, t) {
     if (a.budget <= 0) return;
     const i = a.y * W + a.x;
+    const left = TICKS - t - hurry.slack;
     const inRange = [];
     for (const am of amenities) {
       if (am.e.closed || am.e.rate <= 0) continue;
@@ -1660,7 +1926,10 @@ function simulateWeek(board, opts = {}) {
       // standing on a walk-through amenity (a park) counts as being beside it
       if ((d < 1 && !am.e.walkable) || d > am.e.radius) continue;
       if (a.served.has(am.idx)) continue;
-      if (amenityField(am.idx, a.gateOpen)[i] >= INF) continue; // walled off: no path to its door
+      const walk = amenityField(am.idx, a.gateOpen)[i];
+      if (walk >= INF) continue; // walled off: no path to its door
+      // no time to shop and still make the platform: walk on
+      if (hurry.enabled && !a.lost && walk + am.e.dur + returnDist(am.idx, a.dest, a.gateOpen) > left) continue;
       inRange.push([d, am]);
     }
     if (!inRange.length) return;
@@ -1671,7 +1940,14 @@ function simulateWeek(board, opts = {}) {
       const tm = tierMatchTable[Math.min(gap, tierMatchTable.length - 1)];
       const fall = e.radius <= 1 || d <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
       const p = e.rate * tm * fall;
-      if (!rng.service.chance(p)) continue;
+      // One die per traveller and shop, thrown once: the pull accumulates cell
+      // by cell (1 - the chance of having missed at every cell so far) and the
+      // traveller stops at the first cell where it passes their throw. Cell by
+      // cell that is the same odds as a fresh roll at each, but a whole
+      // transport's travellers now share one evenly spread set of throws.
+      const miss = a.miss[am.idx] * (1 - p);
+      a.miss[am.idx] = miss;
+      if (1 - miss < roll(a, R.svc, am.tile.id)) continue;
       if (am.occ >= e.cap) {
         if (!a.balked.has(am.idx)) { a.balked.add(am.idx); tileStats[am.tile.id].balks++; }
         continue;
@@ -1711,6 +1987,12 @@ function simulateWeek(board, opts = {}) {
     let v = a.value * e.mult + e.flat;
     let tierBonus = 1;
     if (a.tier === e.tier) { tierBonus = cfg.sim.tierMatchExitBonus; v *= tierBonus; }
+    if (a.booth) {
+      const bv = v * a.booth.mult;
+      a.chain.push({ name: a.booth.tile.name, tileId: a.booth.tile.id, before: v, after: bv, mult: a.booth.mult, flat: 0 });
+      tileStats[a.booth.tile.id].points += bv - v;
+      v = bv; a.booth = null;
+    }
     let waitMult = 1;
     if (a.waitSlot) {
       waitMult = 1 + a.stacks * a.waitSlot.e.stackValue;
@@ -1732,9 +2014,9 @@ function simulateWeek(board, opts = {}) {
     a.events.push({ t, type: 'board', tileId: tr.tile.id, value: v });
     if (!best || v > best.value) best = { id: a.id, tier: a.tier, value: v, chain: a.chain.slice(), origin: transports[a.origin].tile.name, dest: tr.tile.name };
     // Loop terminal: re-enter with chain intact
-    if (e.def.special === 'loop' && t <= SPAWN_TICKS && rng.loop.chance(e.def.loopChance)) {
+    if (e.def.special === 'loop' && t <= SPAWN_TICKS && roll(a, R.loop) < e.def.loopChance) {
       counts.looped++;
-      const na = spawnAgent(a.dest, a.tier, 'traveller', { value: v });
+      const na = spawnAgent(a.key + ':loop', 0, a.dest, a.tier, 'traveller', { value: v });
       na.events.push({ t, type: 'loop' });
     }
   }
@@ -1753,19 +2035,24 @@ function simulateWeek(board, opts = {}) {
       for (const tr of activeTransports) {
         if ((t - 1) % tr.e.arr !== 0) continue;
         for (let n = 0; n < tr.e.batch; n++) {
-          let tier = tr.e.tier;
-          const r = rng.spawn.next();
-          const sp = cfg.sim.tierSpread;
-          if (r < sp.down) tier = Math.max(1, tier - 1); else if (r < sp.down + sp.up) tier = Math.min(5, tier + 1);
-          if (mods.lowTierBias && tier > 2 && rng.spawn.chance(mods.lowTierBias)) tier = rng.spawn.chance(0.5) ? 1 : 2;
-          const kind = pickRate > 0 && rng.pick.chance(pickRate) ? 'pickpocket' : 'traveller';
-          spawnAgent(tr.idx, tier, kind);
+          const tierOf = slot => {
+            let tier = tr.e.tier;
+            const r = roll(slot, R.tier);
+            const sp = cfg.sim.tierSpread;
+            if (r < sp.down) tier = Math.max(1, tier - 1); else if (r < sp.down + sp.up) tier = Math.min(5, tier + 1);
+            if (mods.lowTierBias && tier > 2 && roll(slot, R.bias, 0) < mods.lowTierBias) tier = roll(slot, R.bias, 1) < 0.5 ? 1 : 2;
+            return tier;
+          };
+          spawnAgent('T' + tr.tile.id, tr.spawned++, tr.idx, tierOf, 'roll');
         }
       }
-      for (const ex of extraQueue) if (ex.tick === t) spawnAgent(rng.spawn.pick(activeTransports).idx, ex.tier, 'traveller');
+      const pickTr = slot => activeTransports[Math.floor(roll(slot, R.tr) * activeTransports.length)].idx;
+      const slotOf = (grp, ord) => ({ grp: hashString(grp), ord, h: hashString(grp + ':' + ord) });
+      let xi = 0;
+      for (const ex of extraQueue) { if (ex.tick === t) spawnAgent('X', xi, pickTr(slotOf('X', xi)), ex.tier, 'traveller'); xi++; }
       if (t === 1 && mods.vipCount > 0 && !vipDone.done) {
         vipDone.done = true;
-        for (let i = 0; i < mods.vipCount; i++) spawnAgent(rng.spawn.pick(activeTransports).idx, 5, 'traveller', { budgetBonus: mods.vipBudgetBonus });
+        for (let i = 0; i < mods.vipCount; i++) spawnAgent('V', i, pickTr(slotOf('V', i)), 5, 'traveller', { budgetBonus: mods.vipBudgetBonus });
       }
     }
 
@@ -1784,6 +2071,10 @@ function simulateWeek(board, opts = {}) {
         a.serveTicks--;
         if (a.serveTicks <= 0) endService(a);
       } else if (a.state === 'walking' || a.state === 'detour') {
+        // Late in the week the wander no longer fits: head straight for the platform.
+        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > TICKS) {
+          a.ti = a.targets.length - 1; a.events.push({ t, type: 'hurry' });
+        }
         const onWalkway = isWalkway(a.y * W + a.x);
         const steps = onWalkway ? cfg.sim.walkwaySpeed : 1;
         let moved = false;
@@ -1857,7 +2148,7 @@ function simulateWeek(board, opts = {}) {
     if (!tg) {
       // choose a new destination
       const opts = transports.filter((_, i) => reach[a.origin][i] || i === a.origin);
-      a.dest = rng.dest.pick(opts).idx;
+      a.dest = opts[Math.floor(roll(a, R.pdest, ++a.legs) * opts.length)].idx;
       a.targets = [{ kind: 'dest', idx: a.dest }]; a.ti = 0;
     }
     const f = targetField(a, a.targets[a.ti]);
@@ -1913,7 +2204,7 @@ function simulateWeek(board, opts = {}) {
     scoreByTick,
     money: { fares: Math.round(fares), revenue: Math.round(revenue), total: Math.round(fares + revenue) },
     counts, best,
-    agents: agents.map(a => ({ id: a.id, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
+    agents: agents.map(a => ({ id: a.id, key: a.key, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
     tileStats,
     heat,
     w: W, h: H,
@@ -1964,8 +2255,12 @@ const { CARDS } = __m_src_data_cards_js;
 const { ORDINANCES, ORDINANCE_KEYS } = __m_src_data_ordinances_js;
 const { MODES } = __m_src_data_modes_js;
 const { Rng, hashString } = __m_src_sim_rng_js;
-const { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, LOCK_TERRAINS } = __m_src_sim_board_js;
+const { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } = __m_src_sim_board_js;
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
+// Bump whenever the shape of the saved run changes (state fields, board or tile
+// records). Saves are not migrated: an older one is reported and discarded.
+const SAVE_VERSION = 3;
+
 function createRun({ modeKey = 'terminal', seed = null } = {}) {
   const mode = MODES[modeKey];
   seed = seed ?? Math.floor(Math.random() * 1e9);
@@ -1974,7 +2269,7 @@ function createRun({ modeKey = 'terminal', seed = null } = {}) {
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    version: SAVE_VERSION, seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
     money: CONFIG.run.startMoney,
     board: createBoard(mode.w, mode.h, mode.preLock || {}),
     shop: { cards: [], rerolls: 0 },
@@ -2011,7 +2306,7 @@ function milestoneForWeek(s, week) {
 }
 function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 function gameRules(s) {
-  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: false, quotaMult: 1, apBonus: 0, costMult: 1 };
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
@@ -2070,6 +2365,8 @@ function namedUpgradeKeys(s) {
   }).map(([k]) => k);
 }
 function rerollFee(s) { return CONFIG.economy.rerollCost; }
+// Action points a card takes to play: one, except a Rezoning Permit (see economy.rezoningCostsAP).
+function cardAPCost(s, card) { return card.type === 'card' && card.key === 'rezoning' && !CONFIG.economy.rezoningCostsAP ? 0 : 1; }
 function quotaStars(s, week = s.week) { return starTarget(quotaFor(s, week)); }
 
 // Running the week with action points left pays a fixed amount per point,
@@ -2086,9 +2383,11 @@ function tileWeight(def, week) {
   const d = Math.log(def.cost / target);
   return Math.exp(-(d * d) / (2 * CONFIG.shop.targetCostSigma * CONFIG.shop.targetCostSigma)) + 0.02;
 }
+// Underground tiles only turn up while their tunnel has somewhere to go: a
+// garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
   const m = modeOf(s);
-  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
   return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
@@ -2266,7 +2565,8 @@ function playCard(s, card, target = null) {
   if (s.phase !== 'shop') return fail('Not in shop phase');
   if (card.type === 'ap') return buyAP(s, card);
   if (card.type !== 'card') return fail('Not a bonus card');
-  if (s.ap < 1) return fail('No action points left');
+  const apCost = cardAPCost(s, card);
+  if (s.ap < apCost) return fail('No action points left');
   if (s.money < card.cost) return fail(`Need $${card.cost}`);
   const def = CARDS[card.key];
   const tile = target && target.tileId != null ? s.board.tiles.find(t => t.id === target.tileId) : null;
@@ -2277,7 +2577,12 @@ function playCard(s, card, target = null) {
     case 'rezoning': {
       const e = target && target.edge;
       if (!e || s.board.edges[e] === 'green') return fail('Pick a claimed edge');
-      s.board.edges[e] = 'green'; break;
+      // Everything attached to the edge goes with it: a train station on open
+      // ground, or a bus stop whose road is gone, is a state the rules can't hold.
+      for (const t of rezoningVictims(s, e)) { removeTile(s.board, t.id); log(s, `Rezoning demolished ${t.name}`); }
+      s.board.edges[e] = 'green';
+      s.board.openSpans[e] = [];
+      break;
     }
     case 'grand_opening':
       if (!tile || tile.kind !== 'amenity' || tileDef(tile.key).rate <= 0) return fail('Pick a service amenity');
@@ -2294,10 +2599,13 @@ function playCard(s, card, target = null) {
     default:
       if (def.effect) s.effects.push({ name: def.name, weeksLeft: def.weeks || 1, mods: def.effect });
   }
-  s.money -= card.cost; s.ap -= 1; removeCard(s, card);
+  s.money -= card.cost; s.ap -= apCost; removeCard(s, card);
   log(s, `Played ${def.name}`);
   return { ok: true };
 }
+
+// Transports a Rezoning Permit on `edge` would demolish.
+function rezoningVictims(s, edge) { return edgeDependents(s.board, edge); }
 
 function setStrike(s, terrain) { s.strikeChoice = terrain; return { ok: true }; }
 
@@ -2335,12 +2643,31 @@ function transportTerrainsOnBoard(s) {
 }
 
 // ------------------------------------------------------------ simulation
+// Estimate runs on the board as it stands are cached for the phase: every
+// preview needs the same "before" sims, and only the "after" sim is new.
+const estCache = { key: null, runs: new Map() };
+function estimateRun(s, board, i, mods) {
+  const seed = hashString(`${s.seed}:est:${i}`);
+  if (board !== s.board) return simulateWeek(board, { seed, week: s.week, mods });
+  const key = `${s.seed}:${s.week}:${JSON.stringify(mods)}:${JSON.stringify(board)}`;
+  if (estCache.key !== key) { estCache.key = key; estCache.runs.clear(); }
+  let r = estCache.runs.get(i);
+  if (!r) { r = simulateWeek(board, { seed, week: s.week, mods }); estCache.runs.set(i, r); }
+  return r;
+}
 function simulateCurrent(s, seed = null, seeds = 1) {
   const mods = computeMods(s);
   if (seeds === 1) return simulateWeek(s.board, { seed: seed ?? hashString(`${s.seed}:w${s.week}`), week: s.week, mods });
   const out = [];
-  for (let i = 0; i < seeds; i++) out.push(simulateWeek(s.board, { seed: hashString(`${s.seed}:est:${i}`), week: s.week, mods }));
+  for (let i = 0; i < seeds; i++) out.push(estimateRun(s, s.board, i, mods));
   return out;
+}
+// Spread and mean of a set of per-seed point and cash deltas (or totals).
+function spread(dp, dm) {
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const pts = mean(dp), cash = mean(dm);
+  dp = dp.slice().sort((a, b) => a - b); dm = dm.slice().sort((a, b) => a - b);
+  return { pts, cash, ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
 }
 
 function runWeek(s) {
@@ -2400,18 +2727,15 @@ function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSe
   const c = placementCheck(s, key, x, y, rot);
   if (!c.ok) return null;
   const mods = computeMods(s);
-  const before = cloneBoard(s.board);
   const after = cloneBoard(s.board);
   placeTile(after, key, x, y, rot, null, modeOf(s));
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
-    const seed = hashString(`${s.seed}:est:${i}`);
-    const a = simulateWeek(before, { seed, week: s.week, mods });
-    const b = simulateWeek(after, { seed, week: s.week, mods });
+    const a = estimateRun(s, s.board, i, mods);
+    const b = estimateRun(s, after, i, mods);
     dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
   }
-  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
-  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+  return spread(dp, dm);
 }
 
 // Same idea as estimatePlacement, but for raising a tile's level: what would
@@ -2422,27 +2746,22 @@ function estimateUpgrade(s, tileId, levels = 1, radiusBonus = 0, seeds = CONFIG.
   const lvl = Math.min(CONFIG.economy.maxLevel, (tile.level || 1) + levels);
   if (lvl === (tile.level || 1) && !radiusBonus) return null;
   const mods = computeMods(s);
-  const before = cloneBoard(s.board);
   const after = cloneBoard(s.board);
   const at = after.tiles.find(t => t.id === tileId);
   at.level = lvl;
   if (radiusBonus) at.radiusBonus = (at.radiusBonus || 0) + radiusBonus;
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
-    const seed = hashString(`${s.seed}:est:${i}`);
-    const a = simulateWeek(before, { seed, week: s.week, mods });
-    const b = simulateWeek(after, { seed, week: s.week, mods });
+    const a = estimateRun(s, s.board, i, mods);
+    const b = estimateRun(s, after, i, mods);
     dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
   }
-  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
-  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+  return spread(dp, dm);
 }
 
 function estimateCurrent(s, seeds = CONFIG.placement.previewSeeds) {
   const rs = simulateCurrent(s, null, seeds);
-  const sc = rs.map(r => r.score).sort((a, b) => a - b);
-  const mo = rs.map(r => r.money.total).sort((a, b) => a - b);
-  return { ptsLo: sc[0], ptsHi: sc[sc.length - 1], cashLo: mo[0], cashHi: mo[mo.length - 1] };
+  return spread(rs.map(r => r.score), rs.map(r => r.money.total));
 }
 
 // ------------------------------------------------------------ persistence
@@ -2450,13 +2769,16 @@ function serialize(s) {
   const copy = { ...s, lastResult: null };
   return JSON.stringify(copy);
 }
+function saveIsCurrent(json) {
+  try { return JSON.parse(json).version === SAVE_VERSION; } catch { return false; }
+}
 function deserialize(json) {
   const s = JSON.parse(json);
   if (s.phase === 'summary') s.phase = 'shop';
   return s;
 }
 
-return { createRun, modeOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, quotaStars, earlyFinishPerAP, earlyFinishBonus, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, deserialize };
+return { SAVE_VERSION, createRun, modeOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -2531,7 +2853,10 @@ const { shapeTransform, shapeBaseSize } = __m_src_sim_shapes_js;
 const { loadSprites, sprite, spriteFloor } = __m_src_ui_sprites_js;
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
-const TRANSPORT_COLORS = { road: '#2f6bff', rail: '#9b5cff', water: '#00c2d4', corridor: '#1fcfb0', free: '#e05cff', apron: '#6f8cff' };
+const TRANSPORT_COLORS = { road: '#2f6bff', rail: '#9b5cff', water: '#00c2d4', corridor: '#1fcfb0', free: '#e05cff', apron: '#6f8cff', underground: '#f28c28' };
+// The underground layer, by what the tunnel is for: a subway line, a garage
+// ramp to the road, a submarine pen's channel to the sea.
+const TUNNEL_COLORS = { through: '#ffb020', road: '#b9bfd6', water: '#3fd8ff' };
 const UTILITY_COLORS = { wifi: '#7fb8d9', walkway: '#8a8aa3', waiting: '#d9d24a', gate: '#d8433a', security: '#ff7ab8' };
 const AMENITY_TIER_COLORS = ['#d1a868', '#ffa53a', '#ff7a24', '#ff5fc0', '#ff3f6e', '#e8203f'];
 // The land around the board, and the board's own checkerboard.
@@ -2770,6 +3095,9 @@ class BoardRenderer {
       for (const [x, y] of ghost.lane) this.hatchCell(x, y, 'rgba(31,207,176,0.85)');
       for (const [x, y] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, 'rgba(120,120,130,0.5)');
     }
+    // Aiming or inspecting an underground tile lifts the whole tunnel layer
+    // above the buildings, so a crossing is visible even where a tile covers it.
+    const underground = !!(ghost && ghost.tunnel) || !!(view.showUnderground);
 
     // Buildings are painted cell by cell, back to front along x + y, rather
     // than tile by tile. Footprints interleave: a one-cell tile can sit in
@@ -2820,9 +3148,11 @@ class BoardRenderer {
       }
     }
     if (view.targetMode) for (const t of board.tiles) if (view.targetMode(t)) this.outlineCells(t.cells, 'rgba(53,212,255,0.95)', 2, tileHeight(tileDef(t.key)));
+    if (view.dangerTiles) for (const t of view.dangerTiles) this.outlineCells(t.cells, 'rgba(255,79,122,0.95)', 3, tileHeight(tileDef(t.key)));
     if (view.hoverTile && view.hoverTile !== view.selectedTile) this.outlineCells(view.hoverTile.cells, 'rgba(255,255,255,0.7)', 2, tileHeight(tileDef(view.hoverTile.key)));
     if (view.selectedTile) this.outlineCells(view.selectedTile.cells, '#ffd23f', 3, tileHeight(tileDef(view.selectedTile.key)));
 
+    if (underground) this.drawUnderground(board, ghost, view);
     if (ghost) this.drawGhostOutline(ghost);
     // a checkpoint ghost previews the whole fence line it would raise
     if (ghost && view.ghost.def && view.ghost.def.special === 'gate' && ghost.cells.length === 2) {
@@ -2940,6 +3270,8 @@ class BoardRenderer {
         this.fillRegion(gx, gy, gw, gh, TERRAIN_COLORS[terrain] || '#333');
         this.edgeTexture(e, terrain, gx, gy, gw, gh);
       }
+      // subway portals: where a line leaves the board it dives under the strip
+      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) this.drawPortal(e, t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1], TUNNEL_COLORS.through);
       for (const idx of board.openSpans[e]) {
         ctx.fillStyle = 'rgba(200,160,100,0.85)';
         if (e === 'N' || e === 'S') this.regionPath(idx + 0.06, gy + 0.06, 0.88, gh - 0.12);
@@ -2963,6 +3295,7 @@ class BoardRenderer {
       this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, '#6d7288');
     }
     for (const [x, y] of board.lanes) this.hatchCell(x, y, '#1fcfb0');
+    for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
     if (this.k >= 14) {
       ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
@@ -2994,7 +3327,7 @@ class BoardRenderer {
       color: g.ok ? '#4dff6e' : '#ff4f7a',
       fill: g.ok ? 'rgba(77,255,110,0.40)' : 'rgba(255,79,122,0.40)',
       cells, set: new Set(cells.map(([x, y]) => x + ',' + y)),
-      lane: g.lane || [], driveway: g.driveway || [],
+      lane: g.lane || [], driveway: g.driveway || [], tunnel: g.tunnel || null,
     };
   }
   drawGhostCell(x, y, info) {
@@ -3139,6 +3472,45 @@ class BoardRenderer {
     for (let i = -h; i < b.x1 - b.x0 + h; i += step) { ctx.moveTo(b.x0 + i, b.y1); ctx.lineTo(b.x0 + i + h, b.y0); }
     ctx.stroke();
     ctx.restore();
+  }
+
+  // One tunnel: a dark cut along its axis with rail ties across it, so the
+  // underground layer reads as track rather than as a painted stripe.
+  drawTunnel(cells, axis, color, alpha, ties = true) {
+    if (!cells.length) return;
+    const ctx = this.ctx;
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    for (const [x, y] of cells) axis === 'h' ? this.rectPath(x, y + 0.3, 1, 0.4) : this.rectPath(x + 0.3, y, 0.4, 1);
+    ctx.fillStyle = 'rgba(10,5,32,0.9)'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.beginPath();
+    for (const [x, y] of cells) {
+      if (axis === 'h') { this.line([x, y + 0.5], [x + 1, y + 0.5]); if (ties && this.k >= 14) for (const u of [0.25, 0.75]) this.line([x + u, y + 0.36], [x + u, y + 0.64]); }
+      else { this.line([x + 0.5, y], [x + 0.5, y + 1]); if (ties && this.k >= 14) for (const u of [0.25, 0.75]) this.line([x + 0.36, y + u], [x + 0.64, y + u]); }
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  // The mouth of a subway line in an edge strip, at index `idx` along it.
+  drawPortal(e, idx, color) {
+    const ctx = this.ctx, m = EDGE_MARGIN;
+    const r = e === 'N' ? [idx + 0.28, -m * 0.55, 0.44, m * 0.55] : e === 'S' ? [idx + 0.28, this.h, 0.44, m * 0.55]
+      : e === 'W' ? [-m * 0.55, idx + 0.28, m * 0.55, 0.44] : [this.w, idx + 0.28, m * 0.55, 0.44];
+    this.fillRegion(...r, 'rgba(10,5,32,0.9)');
+    this.regionPath(...r); ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.stroke();
+  }
+  // The underground layer lifted over the buildings: every tunnel at full
+  // strength, the pending one in the ghost's colour, and the ground dimmed so
+  // the lines are what the eye lands on.
+  drawUnderground(board, ghost, view) {
+    const ctx = this.ctx;
+    ctx.save();
+    this.regionPath(0, 0, board.w, board.h); ctx.fillStyle = 'rgba(10,5,32,0.35)'; ctx.fill();
+    ctx.restore();
+    for (const t of board.tiles) if (t.tunnel) {
+      this.drawTunnel(t.cells.concat(t.tunnel.cells), t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.95);
+      if (view.selectedTile === t || view.hoverTile === t) this.drawTunnel(t.cells.concat(t.tunnel.cells), t.tunnel.axis, '#fff', 0.5, false);
+    }
+    if (ghost && ghost.tunnel) this.drawTunnel(ghost.cells.concat(ghost.tunnel.cells), ghost.tunnel.axis, ghost.color, 0.95);
   }
 
   // Everything a tile's cells need in order to paint themselves, worked out
@@ -3637,11 +4009,12 @@ const __m_src_ui_main_js = (() => {
 // ============================================================================
 const { CONFIG, starsOf, starTarget } = __m_src_config_js;
 const G = __m_src_game_run_js;
-const { tileDef, TERRAIN_INFO, NAMED_UPGRADES } = __m_src_data_tiles_js;
+const { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } = __m_src_data_tiles_js;
 const { MODES, MODE_KEYS } = __m_src_data_modes_js;
 const { ORDINANCES } = __m_src_data_ordinances_js;
 const { CARDS } = __m_src_data_cards_js;
 const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
+const { cutOffTransports } = __m_src_sim_board_js;
 const { effTransport, effAmenity } = __m_src_sim_sim_js;
 const { BoardRenderer, colorForDef } = __m_src_ui_render_js;
 const { attachBoardInput } = __m_src_ui_boardinput_js;
@@ -3657,6 +4030,7 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 const fmt = n => Math.round(n).toLocaleString('en-US');
+const EDGE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
 const fmtK = n => Math.abs(n) >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : fmt(n);
 const tierTag = t => t > 0 ? h('span', { class: 'tier tier' + t }, CONFIG.tiers[t - 1].symbol) : null;
 
@@ -3710,6 +4084,11 @@ function describeTile(tile, def) {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
     rows.push(['Brings', `${CONFIG.tiers[def.tier - 1].symbol} travellers, ${e.batch} every ${e.arr} ticks`], ['Departs', `every ${e.dep} ticks${e.dwell ? `, ${e.dwell} tick wait` : ''}`]);
     rows.push(['Exit bonus', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''}`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
+    if (def.terrain === 'underground') {
+      const tn = tile && tile.tunnel;
+      rows.push(['Tunnel', tn ? (tn.line === 'through' ? `Surfaces at the ${EDGE_NAMES[tn.ends[0]]} and ${EDGE_NAMES[tn.ends[1]]} edges` : `${tn.cells.length} cell${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);
+      rows.push(['Layer', 'Build over it freely; other tunnels can\'t cross it']);
+    }
     if (e.offline) rows.push(['Status', 'OFFLINE this week']);
     else if (e.skeleton) rows.push(['Status', `Strike: skeleton service (${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% batch)`]);
     if (def.special === 'loop') rows.push(['Special', `${Math.round(def.loopChance * 100)}% of departures re-enter with chain intact`]);
@@ -3766,7 +4145,7 @@ function renderQuotaStars() {
     const r = ui.pb.result, t = Math.min(r.ticks, Math.max(0, Math.floor(ui.pb.T)));
     filled = starsOf(r.scoreByTick ? r.scoreByTick[t] : r.score);
   } else if (state.phase === 'summary' && state.lastResult) filled = starsOf(state.lastResult.score);
-  const preview = (state.phase === 'shop' && ui.projection) ? starsOf((ui.projection.ptsLo + ui.projection.ptsHi) / 2) : 0;
+  const preview = (state.phase === 'shop' && ui.projection) ? starsOf(ui.projection.pts) : 0;
   const showEarned = ui.mode === 'playback' || !!(state.phase === 'summary' && state.lastResult);
   const key = `${total}/${filled}/${preview}/${showEarned}`;
   if (ui.starKey === key) return;
@@ -3791,7 +4170,7 @@ function renderTop() {
   const bar = $('topbar');
   if (state.phase !== 'shop') { bar.classList.remove('gold', 'tinted'); bar.title = ''; $('st-proj').textContent = ''; }
   else if (ui.projection) {
-    const avg = (ui.projection.ptsLo + ui.projection.ptsHi) / 2;
+    const avg = ui.projection.pts;
     const ratio = avg / quota;
     $('st-proj').textContent = `${fmtK(ui.projection.ptsLo)}–${fmtK(ui.projection.ptsHi)}`;
     bar.title = `Projected this week: ${starsOf(ui.projection.ptsLo)}★ to ${starsOf(ui.projection.ptsHi)}★ of ${G.quotaStars(state)}★ (${fmtK(ui.projection.ptsLo)}–${fmtK(ui.projection.ptsHi)} points)`;
@@ -3863,7 +4242,7 @@ function renderShop() {
   const wrap = $('shop-cards'); wrap.innerHTML = '';
   for (const card of state.shop.cards) {
     const cost = G.cardCost(state, card);
-    const affordable = state.money >= cost && state.ap >= 1;
+    const affordable = state.money >= cost && state.ap >= G.cardAPCost(state, card);
     const isTile = card.type === 'tile' || card.type === 'bridge';
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
@@ -4122,8 +4501,19 @@ function onBoardTap(cell, edge, e) {
   if (ui.mode === 'target' && ui.card) {
     if (ui.card.target === 'edge') {
       if (!edge) { hint('Tap an edge strip around the board'); return; }
-      const r = G.playCard(state, ui.card, { edge }); if (!r.ok) hint(r.reason);
-      cancelMode(); renderAll(); return;
+      const card = ui.card;
+      const play = () => { const r = G.playCard(state, card, { edge }); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); };
+      // Rezoning demolishes every transport attached to the edge, so say which first.
+      const doomed = card.key === 'rezoning' && state.board.edges[edge] !== 'green' ? G.rezoningVictims(state, edge) : [];
+      if (!doomed.length) { play(); return; }
+      openModal(
+        h('h2', {}, `Rezone the ${EDGE_NAMES[edge]} edge?`),
+        h('p', {}, `The ${EDGE_NAMES[edge]} edge goes back to open ground, and ${doomed.length === 1 ? 'the transport attached to it is' : `all ${doomed.length} transports attached to it are`} demolished with no refund:`),
+        h('ul', {}, ...doomed.map(t => h('li', {}, `${t.name}${t.level > 1 ? ' L' + t.level : ''}`))),
+        h('div', { class: 'btnrow', style: 'justify-content:center' },
+          h('button', { onclick: closeModal }, 'Keep it'),
+          h('button', { id: 'btn-rezone-confirm', class: 'danger', onclick: () => { closeModal(); play(); } }, 'Rezone and demolish')));
+      return;
     }
     const t = cell ? tileAtCell(cell.x, cell.y) : null;
     if (!t || !targetFilter(t)) { hint('Pick a highlighted tile'); return; }
@@ -4212,6 +4602,10 @@ function frame(now) {
       result: (ui.mode === 'playback' || ui.heat) ? (ui.pb.result || state.lastResult) : null,
       T: ui.mode === 'playback' ? ui.pb.T : null, heat: ui.heat, closedTiles: closed,
       targetMode: ui.mode === 'target' && ui.card && ui.card.target !== 'edge' ? targetFilter : null,
+      // pointing at an underground tile lifts the tunnel layer into view
+      showUnderground: ui.mode !== 'playback' && !!((selected && selected.tunnel) || (hover && hover.tunnel)),
+      // aiming a Rezoning Permit at an edge outlines what it would demolish
+      dangerTiles: ui.mode === 'target' && ui.card && ui.card.key === 'rezoning' && ui.edgeHover && state.board.edges[ui.edgeHover] !== 'green' ? G.rezoningVictims(state, ui.edgeHover) : null,
     });
   }
   requestAnimationFrame(frame);
@@ -4220,7 +4614,7 @@ function frame(now) {
 // What the pending action is worth, floated over the tile it would affect.
 // Estimates are a spread across a few seeds; the badge shows their midpoint as
 // a single star count so there is one number to read, not a range.
-const estStars = e => e ? starsOf((e.ptsLo + e.ptsHi) / 2) : null;
+const estStars = e => e ? starsOf(e.pts) : null;
 function starBadge() {
   if (state.phase !== 'shop' || !ui.card) return null;
   if (ui.mode === 'place') {
@@ -4229,6 +4623,8 @@ function starBadge() {
     const z = ui.ghost.def ? renderer.heightOf(ui.card.key) : 0;
     if (!ui.ghost.ok) return { cells, z, reason: ui.ghost.reason };
     const warnings = ui.ghost.claims.map(c => c.lock ? `Locks the ${c.edge} edge to ${c.terrain}` : `Claims the ${c.edge} edge as ${c.terrain}`);
+    // sealing a platform in loses everyone bound for it, so say so before the stars do
+    for (const t of cutOffTransports(state.board, cells, ui.ghost.def)) warnings.push(`Cuts off ${t.name}: travellers bound there are lost`);
     return { cells, z, stars: estStars(ui.estimate), warnings };
   }
   // upgrade cards: the same badge over whichever owned tile is hovered
@@ -4253,7 +4649,8 @@ function upgradeLevels(card) {
 }
 
 // ------------------------------------------------------------ modals
-function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children); $('modal').classList.remove('hidden'); }
+// null children are optional parts left out (append would print them as "null")
+function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children.filter(c => c != null)); $('modal').classList.remove('hidden'); }
 function closeModal() { $('modal').classList.add('hidden'); }
 
 function drawHistoryChart(canvas, history) {
@@ -4404,7 +4801,10 @@ function showGameOver() {
 
 function showStart() {
   playTrack(null);
-  const saved = loadRun();
+  let saved = loadRun();
+  // saves are not migrated: one from an older build is reported and dropped
+  const stale = !!saved && !G.saveIsCurrent(saved);
+  if (stale) { clearRun(); saved = null; }
   const seedInput = h('input', { type: 'text', placeholder: 'seed (optional)', style: 'font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px;width:160px' });
   const modes = h('div', { class: 'modes' });
   for (const k of MODE_KEYS) {
@@ -4415,8 +4815,8 @@ function showStart() {
       h('div', { class: 'name' }, m.name, unlocked ? '' : ` 🔒 reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
   }
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
-    h('p', {}, 'You run a transit hub. Each week, place a few tiles, then watch travellers cross the board. Every shop they pass multiplies what they are worth. Hit the quota or the run ends.'),
-    h('p', { style: 'font-size:12px;color:var(--muted)' }, 'Transport tiles bring people but score badly. Amenities score well but bring nobody. Multiply first, then add: flat-add tiles want to be early on a route, multipliers late. Transports claim edge terrain permanently — rail and water lock an entire edge.'),
+    h('p', {}, 'You run a transit hub. Each week, expand the hub, and watch travelers wander through. Hit the satisfaction quota or the run ends.'),
+    stale ? h('p', { class: 'warn' }, 'Your saved run is from an older version of the game and can\'t be resumed. Start a new run below.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
     h('h3', {}, 'Choose a mode'), modes,
     h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));

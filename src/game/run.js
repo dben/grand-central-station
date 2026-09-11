@@ -9,8 +9,12 @@ import { CARDS } from '../data/cards.js';
 import { ORDINANCES, ORDINANCE_KEYS } from '../data/ordinances.js';
 import { MODES } from '../data/modes.js';
 import { Rng, hashString } from '../sim/rng.js';
-import { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, LOCK_TERRAINS } from '../sim/board.js';
+import { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
 import { simulateWeek, mergeMods } from '../sim/sim.js';
+
+// Bump whenever the shape of the saved run changes (state fields, board or tile
+// records). Saves are not migrated: an older one is reported and discarded.
+export const SAVE_VERSION = 3;
 
 export function createRun({ modeKey = 'terminal', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -20,7 +24,7 @@ export function createRun({ modeKey = 'terminal', seed = null } = {}) {
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    version: SAVE_VERSION, seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
     money: CONFIG.run.startMoney,
     board: createBoard(mode.w, mode.h, mode.preLock || {}),
     shop: { cards: [], rerolls: 0 },
@@ -57,7 +61,7 @@ export function milestoneForWeek(s, week) {
 }
 export function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 export function gameRules(s) {
-  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: false, quotaMult: 1, apBonus: 0, costMult: 1 };
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
@@ -116,6 +120,8 @@ export function namedUpgradeKeys(s) {
   }).map(([k]) => k);
 }
 export function rerollFee(s) { return CONFIG.economy.rerollCost; }
+// Action points a card takes to play: one, except a Rezoning Permit (see economy.rezoningCostsAP).
+export function cardAPCost(s, card) { return card.type === 'card' && card.key === 'rezoning' && !CONFIG.economy.rezoningCostsAP ? 0 : 1; }
 export function quotaStars(s, week = s.week) { return starTarget(quotaFor(s, week)); }
 
 // Running the week with action points left pays a fixed amount per point,
@@ -132,9 +138,11 @@ function tileWeight(def, week) {
   const d = Math.log(def.cost / target);
   return Math.exp(-(d * d) / (2 * CONFIG.shop.targetCostSigma * CONFIG.shop.targetCostSigma)) + 0.02;
 }
+// Underground tiles only turn up while their tunnel has somewhere to go: a
+// garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
   const m = modeOf(s);
-  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
   return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
@@ -312,7 +320,8 @@ export function playCard(s, card, target = null) {
   if (s.phase !== 'shop') return fail('Not in shop phase');
   if (card.type === 'ap') return buyAP(s, card);
   if (card.type !== 'card') return fail('Not a bonus card');
-  if (s.ap < 1) return fail('No action points left');
+  const apCost = cardAPCost(s, card);
+  if (s.ap < apCost) return fail('No action points left');
   if (s.money < card.cost) return fail(`Need $${card.cost}`);
   const def = CARDS[card.key];
   const tile = target && target.tileId != null ? s.board.tiles.find(t => t.id === target.tileId) : null;
@@ -323,7 +332,12 @@ export function playCard(s, card, target = null) {
     case 'rezoning': {
       const e = target && target.edge;
       if (!e || s.board.edges[e] === 'green') return fail('Pick a claimed edge');
-      s.board.edges[e] = 'green'; break;
+      // Everything attached to the edge goes with it: a train station on open
+      // ground, or a bus stop whose road is gone, is a state the rules can't hold.
+      for (const t of rezoningVictims(s, e)) { removeTile(s.board, t.id); log(s, `Rezoning demolished ${t.name}`); }
+      s.board.edges[e] = 'green';
+      s.board.openSpans[e] = [];
+      break;
     }
     case 'grand_opening':
       if (!tile || tile.kind !== 'amenity' || tileDef(tile.key).rate <= 0) return fail('Pick a service amenity');
@@ -340,10 +354,13 @@ export function playCard(s, card, target = null) {
     default:
       if (def.effect) s.effects.push({ name: def.name, weeksLeft: def.weeks || 1, mods: def.effect });
   }
-  s.money -= card.cost; s.ap -= 1; removeCard(s, card);
+  s.money -= card.cost; s.ap -= apCost; removeCard(s, card);
   log(s, `Played ${def.name}`);
   return { ok: true };
 }
+
+// Transports a Rezoning Permit on `edge` would demolish.
+export function rezoningVictims(s, edge) { return edgeDependents(s.board, edge); }
 
 export function setStrike(s, terrain) { s.strikeChoice = terrain; return { ok: true }; }
 
@@ -381,12 +398,31 @@ export function transportTerrainsOnBoard(s) {
 }
 
 // ------------------------------------------------------------ simulation
+// Estimate runs on the board as it stands are cached for the phase: every
+// preview needs the same "before" sims, and only the "after" sim is new.
+const estCache = { key: null, runs: new Map() };
+function estimateRun(s, board, i, mods) {
+  const seed = hashString(`${s.seed}:est:${i}`);
+  if (board !== s.board) return simulateWeek(board, { seed, week: s.week, mods });
+  const key = `${s.seed}:${s.week}:${JSON.stringify(mods)}:${JSON.stringify(board)}`;
+  if (estCache.key !== key) { estCache.key = key; estCache.runs.clear(); }
+  let r = estCache.runs.get(i);
+  if (!r) { r = simulateWeek(board, { seed, week: s.week, mods }); estCache.runs.set(i, r); }
+  return r;
+}
 export function simulateCurrent(s, seed = null, seeds = 1) {
   const mods = computeMods(s);
   if (seeds === 1) return simulateWeek(s.board, { seed: seed ?? hashString(`${s.seed}:w${s.week}`), week: s.week, mods });
   const out = [];
-  for (let i = 0; i < seeds; i++) out.push(simulateWeek(s.board, { seed: hashString(`${s.seed}:est:${i}`), week: s.week, mods }));
+  for (let i = 0; i < seeds; i++) out.push(estimateRun(s, s.board, i, mods));
   return out;
+}
+// Spread and mean of a set of per-seed point and cash deltas (or totals).
+function spread(dp, dm) {
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const pts = mean(dp), cash = mean(dm);
+  dp = dp.slice().sort((a, b) => a - b); dm = dm.slice().sort((a, b) => a - b);
+  return { pts, cash, ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
 }
 
 export function runWeek(s) {
@@ -446,18 +482,15 @@ export function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.pr
   const c = placementCheck(s, key, x, y, rot);
   if (!c.ok) return null;
   const mods = computeMods(s);
-  const before = cloneBoard(s.board);
   const after = cloneBoard(s.board);
   placeTile(after, key, x, y, rot, null, modeOf(s));
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
-    const seed = hashString(`${s.seed}:est:${i}`);
-    const a = simulateWeek(before, { seed, week: s.week, mods });
-    const b = simulateWeek(after, { seed, week: s.week, mods });
+    const a = estimateRun(s, s.board, i, mods);
+    const b = estimateRun(s, after, i, mods);
     dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
   }
-  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
-  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+  return spread(dp, dm);
 }
 
 // Same idea as estimatePlacement, but for raising a tile's level: what would
@@ -468,33 +501,31 @@ export function estimateUpgrade(s, tileId, levels = 1, radiusBonus = 0, seeds = 
   const lvl = Math.min(CONFIG.economy.maxLevel, (tile.level || 1) + levels);
   if (lvl === (tile.level || 1) && !radiusBonus) return null;
   const mods = computeMods(s);
-  const before = cloneBoard(s.board);
   const after = cloneBoard(s.board);
   const at = after.tiles.find(t => t.id === tileId);
   at.level = lvl;
   if (radiusBonus) at.radiusBonus = (at.radiusBonus || 0) + radiusBonus;
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
-    const seed = hashString(`${s.seed}:est:${i}`);
-    const a = simulateWeek(before, { seed, week: s.week, mods });
-    const b = simulateWeek(after, { seed, week: s.week, mods });
+    const a = estimateRun(s, s.board, i, mods);
+    const b = estimateRun(s, after, i, mods);
     dp.push(b.score - a.score); dm.push(b.money.total - a.money.total);
   }
-  dp.sort((a, b) => a - b); dm.sort((a, b) => a - b);
-  return { ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+  return spread(dp, dm);
 }
 
 export function estimateCurrent(s, seeds = CONFIG.placement.previewSeeds) {
   const rs = simulateCurrent(s, null, seeds);
-  const sc = rs.map(r => r.score).sort((a, b) => a - b);
-  const mo = rs.map(r => r.money.total).sort((a, b) => a - b);
-  return { ptsLo: sc[0], ptsHi: sc[sc.length - 1], cashLo: mo[0], cashHi: mo[mo.length - 1] };
+  return spread(rs.map(r => r.score), rs.map(r => r.money.total));
 }
 
 // ------------------------------------------------------------ persistence
 export function serialize(s) {
   const copy = { ...s, lastResult: null };
   return JSON.stringify(copy);
+}
+export function saveIsCurrent(json) {
+  try { return JSON.parse(json).version === SAVE_VERSION; } catch { return false; }
 }
 export function deserialize(json) {
   const s = JSON.parse(json);

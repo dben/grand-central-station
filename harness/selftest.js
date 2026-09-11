@@ -1,6 +1,8 @@
 // Basic invariants: determinism, placement rules, gate filtering.
-import { createBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked } from '../src/sim/board.js';
+import { createBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
+import { createRun, playCard, rezoningVictims, deleteTile } from '../src/game/run.js';
+import { CONFIG } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { fails++; console.log('FAIL:', msg); } else console.log('ok  :', msg); };
@@ -118,10 +120,20 @@ placeTile(b, 'bus_stop', 1, 5, 0);
 placeTile(b, 'helipad', 9, 5, 0);
 placeTile(b, 'coffee', 1, 7, 0);
 for (let y = 0; y < 12; y += 2) placeTile(b, 'restroom', 5, y, 0);   // solid wall, x = 5-6
-const rl = simulateWeek(b, { seed: 4, week: 6 });
-ok(rl.counts.lost > 0, 'travellers with no route to their platform are lost');
+// Cross-board trips are a 5% pick between a $ stop and a $$$$ pad, so sum a few seeds.
+const rls = [1, 2, 3, 4, 5, 6].map(seed => simulateWeek(b, { seed, week: 6 }));
+const rl = rls.reduce((m, r) => (r.counts.lost > m.counts.lost ? r : m), rls[0]);
+ok(rls.reduce((n, r) => n + r.counts.lost, 0) > 0, 'travellers with no route to their platform are lost');
+{
+  const open = createBoard(12, 12);
+  placeTile(open, 'bus_stop', 1, 5, 0); placeTile(open, 'helipad', 9, 5, 0);
+  for (let y = 0; y < 10; y += 2) placeTile(open, 'restroom', 5, y, 0);   // wall with a gap at rows 10-11
+  const gapDef = { kind: 'amenity', walkable: false };
+  ok(cutOffTransports(open, [[5, 10], [6, 10], [5, 11], [6, 11]], gapDef).length === 2, 'the preview names the platforms a placement would seal off');
+  ok(cutOffTransports(open, [[5, 10], [6, 10]], gapDef).length === 0 && cutOffTransports(open, [[5, 10], [6, 10], [5, 11], [6, 11]], { kind: 'amenity', walkable: true }).length === 0, 'a placement that leaves a way through, or is walk-through, seals nothing');
+}
 ok(rl.agents.filter(a => a.outcome === 'lost').every(a => !a.events.some(e => e.type === 'board')), 'lost travellers never board');
-const rlOpen = simulateWeek(b, { seed: 4, week: 6 });
+const rlOpen = simulateWeek(b, { seed: rl.seed, week: 6 });
 ok(rlOpen.score === rl.score, 'lost run is deterministic');
 
 // security station clears pickpockets out of its radius
@@ -136,6 +148,107 @@ removeTile(b, b.tiles.find(t => t.key === 'security').id);
 placeTile(b, 'guard', 5, 5, 0);
 const guard = simulateWeek(b, { seed: 5, week: 12, mods: { pickpocketRate: 1 } });
 ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too');
+
+// the underground layer: tunnels run under everything and never cross each other
+{
+  b = createBoard(12, 12);
+  const sub = checkPlacement(b, 'subway', 4, 5, 0);           // horizontal: cells (4,5),(5,5)
+  ok(sub.ok && sub.tunnel.axis === 'h' && sub.tunnel.cells.length === 10 && sub.tunnel.ends.join() === 'W,E' && sub.claims.length === 0, 'a subway tunnels along its row to both ends of the board and claims no edge');
+  placeTile(b, 'subway', 4, 5, 0, sub);
+  ok(checkPlacement(b, 'restroom', 8, 4, 0).ok && checkPlacement(b, 'bus_stop', 0, 5, 0).ok, 'ground tiles can be built over the tunnel');
+  placeTile(b, 'restroom', 8, 4, 0);
+  ok(buildWalkMap(b)[5 * 12 + 1] === 0, 'a tunnel cell is ordinary floor to walk across');
+  const cross = checkPlacement(b, 'subway', 9, 8, 1);          // vertical: its column meets row 5
+  ok(!cross.ok && cross.reason.includes('cross') && cross.tunnel && cross.tunnel.axis === 'v', 'a vertical subway cannot cross a horizontal one, and the preview still carries its line');
+  ok(checkPlacement(b, 'subway', 2, 8, 0).ok, 'a parallel subway is fine');
+  ok(!checkPlacement(b, 'express_subway', 4, 5, 1).ok, 'a tunnel cannot pass under another station');
+  ok(!checkPlacement(b, 'water_taxi', 0, 2, 1).ok && checkPlacement(b, 'water_taxi', 0, 2, 1).reason.includes('surfaces'), 'an edge where a subway surfaces cannot become water');
+  ok(checkPlacement(b, 'water_taxi', 2, 0, 0).ok, 'the other edges can');
+  placeTile(b, 'water_taxi', 2, 0, 0);
+  const wet = checkPlacement(b, 'subway', 7, 8, 1);
+  ok(!wet.ok && wet.reason.includes('water') && checkPlacement(b, 'express_subway', 6, 9, 0).ok, 'a subway line cannot end in the water, but the other axis still works');
+  // garages and docks tunnel to the nearest edge of their terrain, however far
+  ok(!checkPlacement(b, 'under_parking', 6, 8, 0).ok && !lineAvailable(b, { terrain: 'underground', line: 'road' }), 'underground parking needs a road edge, and the shop knows it');
+  placeTile(b, 'bus_stop', 10, 10, 0);                          // road, east edge? (10,10)-(11,10): E at dist 0
+  ok(b.edges.E === 'road' && lineAvailable(b, { terrain: 'underground', line: 'road' }), 'a road edge makes it available');
+  const gar = checkPlacement(b, 'under_parking', 2, 8, 0);
+  ok(gar.ok && gar.tunnel.ends.join() === 'E' && gar.tunnel.axis === 'h' && gar.tunnel.cells.length === 8 && gar.driveway.length === 0 && gar.claims.length === 0, 'the garage tunnels straight to the road edge: no driveway, no reach limit, no claim');
+  placeTile(b, 'under_parking', 2, 8, 0, gar);
+  ok(b.tiles.find(t => t.key === 'under_parking').edges.join() === 'E', 'it depends on that road edge');
+  const dock = checkPlacement(b, 'sub_dock', 5, 2, 0);
+  ok(dock.ok && dock.tunnel.ends.join() === 'N' && dock.tunnel.axis === 'v' && dock.tunnel.cells.length === 2, 'a submarine dock tunnels to the nearest water edge');
+  ok(!checkPlacement(b, 'sub_dock', 7, 6, 1).ok, 'but not across the subway line');
+  removeTile(b, b.tiles.find(t => t.key === 'subway').id);
+  ok(checkPlacement(b, 'sub_dock', 7, 6, 1).ok && !undergroundCells(b).has('0,5'), 'deleting the subway frees its tunnel');
+  ok(lineAvailable(createBoard(12, 12, { W: 'water', S: 'water' }), { terrain: 'underground', line: 'through' }) === false && lineAvailable(createBoard(12, 12, { W: 'water' }), { terrain: 'underground', line: 'through' }), 'a subway is only offered while one axis is clear of water');
+  // the station is a transport like any other
+  b = createBoard(12, 12);
+  placeTile(b, 'subway', 4, 5, 0);
+  placeTile(b, 'coffee', 4, 8, 0);
+  const rs = simulateWeek(b, { seed: 3, week: 4 });
+  ok(rs.counts.spawned > 0 && rs.counts.boarded > 0 && rs.tileStats[b.tiles[1].id].serves > 0, 'subway travellers arrive, shop and board');
+}
+
+// rezoning demolishes whatever depends on the edge, and nothing else
+{
+  const s = createRun({ seed: 3 });
+  placeTile(s.board, 'train_station', 4, 0, 0);   // rail, north
+  placeTile(s.board, 'bus_stop', 2, 3, 0);        // road, west (driveway)
+  placeTile(s.board, 'helipad', 6, 6, 0);         // free
+  placeTile(s.board, 'coffee', 5, 3, 0);
+  ok(rezoningVictims(s, 'N').map(t => t.key).join() === 'train_station' && rezoningVictims(s, 'W').map(t => t.key).join() === 'bus_stop', 'rezoning victims are the tiles attached to that edge');
+  const card = { id: 'rz', type: 'card', key: 'rezoning', cost: 0 };
+  s.ap = 0; s.shop.cards.push(card);
+  ok(playCard(s, card, { edge: 'W' }).ok && s.board.edges.W === 'green', 'rezoning a road edge opens it, and costs no AP');
+  ok(!s.board.tiles.some(t => t.key === 'bus_stop') && s.board.driveways.length === 0, 'the road tile and its driveway are demolished');
+  ok(['train_station', 'helipad', 'coffee'].every(k => s.board.tiles.some(t => t.key === k)), 'tiles on other edges and inland are untouched');
+}
+
+// undoing a placement costs money, not the week
+{
+  const s = createRun({ seed: 3 });
+  const t = placeTile(s.board, 'coffee', 5, 3, 0);
+  s.ap = 0;
+  ok(deleteTile(s, t.id).ok && s.board.tiles.length === 0, 'deleting a tile costs no AP');
+}
+
+// time-aware travellers: no detour they cannot make the platform from
+{
+  const lay = createBoard(12, 12);
+  for (const [k, x, y] of [['bus_stop', 4, 0], ['newsstand', 4, 3], ['food_stand', 6, 3], ['coffee', 3, 5], ['burger', 6, 5], ['restroom', 8, 6], ['train_station', 6, 11]]) placeTile(lay, k, x, y, 0);
+  const seeds = [1, 2, 3, 4, 5, 6];
+  const on = seeds.map(seed => simulateWeek(lay, { seed, week: 6 }));
+  CONFIG.sim.hurry.enabled = false;
+  const off = seeds.map(seed => simulateWeek(lay, { seed, week: 6 }));
+  CONFIG.sim.hurry.enabled = true;
+  const strands = rs => rs.reduce((n, r) => n + r.counts.stranded, 0);
+  ok(strands(on) < strands(off) / 2, `time-aware travellers strand less than half as often (${strands(on)} vs ${strands(off)})`);
+  const hurried = on.flatMap(r => r.agents).filter(a => a.events.some(e => e.type === 'hurry'));
+  const boarded = hurried.filter(a => a.outcome === 'boarded');
+  ok(boarded.length > hurried.length / 2 && boarded.every(a => a.events.findIndex(e => e.type === 'hurry') < a.events.findIndex(e => e.type === 'arrive')), 'a traveller who hurries goes on to the platform');
+  // keyed rolls: a tile changes only the travellers who come within its reach
+  const far = simulateWeek(lay, { seed: 1, week: 6 });
+  placeTile(lay, 'vending', 0, 11, 0);
+  const far2 = simulateWeek(lay, { seed: 1, week: 6 });
+  const near = a => a.frames.some(([x, y]) => Math.max(Math.abs(x - 0), Math.abs(y - 11)) <= 2);
+  const untouched = far.agents.filter(a => !near(a));
+  ok(untouched.length > far.agents.length / 2 && far.agents.length === far2.agents.length && untouched.every(a => { const c = far2.agents[a.id]; return a.key === c.key && a.value === c.value && a.outcome === c.outcome; }), 'a new tile changes nobody\'s week but those who pass it');
+}
+
+// the fence stops at a building: it spans the open floor the booth stands in
+{
+  const fb = createBoard(12, 12);
+  placeTile(fb, 'gate', 6, 5, 0);          // fence on x = 7, gap at row 5
+  placeTile(fb, 'restroom', 7, 1, 0);      // solid at (7..8, 1..2): the panel at row 2 is moot
+  const f = checkpointFences(fb);
+  ok(fenceBlocked(f, 12, 12, 6, 4, 1, 0) && fenceBlocked(f, 12, 12, 6, 3, 1, 0) && fenceBlocked(f, 12, 12, 6, 11, 1, 0), 'the fence runs along open floor from the booth');
+  ok(!fenceBlocked(f, 12, 12, 6, 1, 1, 0) && !fenceBlocked(f, 12, 12, 6, 0, 1, 0), 'and stops where a building already blocks the way');
+  // the booth's bonus is applied when they board, after the whole chain
+  placeTile(fb, 'bus_stop', 1, 5, 0); placeTile(fb, 'helipad', 9, 5, 0); placeTile(fb, 'coffee', 3, 3, 0);
+  const rr = [3, 4, 5, 6].map(seed => simulateWeek(fb, { seed, week: 8, mods: { pickpocketRate: 0 } }));
+  const cleared = rr.flatMap(r => r.agents).filter(a => a.outcome === 'boarded' && a.events.some(e => e.type === 'cleared') && a.chain.some(c => !c.exit && !c.name.includes('Checkpoint')));
+  ok(cleared.length > 0 && cleared.every(a => a.chain.findIndex(c => c.name.includes('Checkpoint')) > a.chain.findLastIndex(c => !c.exit && !c.name.includes('Checkpoint'))), 'clearing the booth multiplies the finished chain');
+}
 
 const rperf0 = performance.now();
 for (let i = 0; i < 20; i++) simulateWeek(b, { seed: i, week: 8 });

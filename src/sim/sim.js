@@ -5,7 +5,7 @@
 // ============================================================================
 import { CONFIG } from '../config.js';
 import { tileDef } from '../data/tiles.js';
-import { makeStreams } from './rng.js';
+import { hashString, mix, gaussOf, weightedOf } from './rng.js';
 import { buildWalkMap, checkpointFences, fenceBlocked } from './board.js';
 
 const INF = 1e9;
@@ -122,7 +122,17 @@ export function simulateWeek(board, opts = {}) {
   const mods = mergeMods(opts.mods);
   const week = opts.week || 1;
   const seed = opts.seed ?? 1;
-  const rng = makeStreams(seed, ['spawn', 'dest', 'service', 'waypoint', 'walk', 'pick', 'loop']);
+  // Every roll is keyed by the traveller making it (their spawn slot, not
+  // their number in the week) and what it decides, so a board change only
+  // re-rolls the travellers it actually touches (see mix in rng.js).
+  const seedHash = hashString(String(seed));
+  const R = { tier: 1, bias: 2, kind: 3, door: 4, dest: 5, wp: 6, walk: 7, svc: 8, loop: 9, pdest: 10, tr: 11 };
+  // A roll is a hash of the traveller and the question. Stratified, the
+  // traveller's slot walks the unit interval in golden-ratio steps and the
+  // question only offsets it, so slot after slot covers the dice evenly.
+  const PHI = 0.6180339887498949;
+  const strat = !!cfg.sim.stratify;
+  const roll = (a, tag, x = 0, y = 0) => strat ? (a.ord * PHI + mix(seedHash, a.grp, tag, x, y)) % 1 : mix(seedHash, a.h, tag, x, y);
   const TICKS = mods.ticks || cfg.sim.ticks;
   const SPAWN_TICKS = mods.spawnTicks || cfg.sim.spawnTicks;
   const W = board.w, H = board.h, N = W * H;
@@ -216,6 +226,20 @@ export function simulateWeek(board, opts = {}) {
   const transportField = (ti, g) => field('T' + ti, transports[ti].doors, g);
   const cellField = (x, y, g) => field('C' + x + ',' + y, [[x, y]], g);
   const amenityField = (ai, g) => field('A' + ai, amenities[ai].targets, g);
+  // Shortest walk from an amenity's door on to a platform, for the time check.
+  const returns = new Map();
+  function returnDist(ai, ti, g) {
+    const k = ai + ':' + ti + (g ? ':o' : ':c');
+    let d = returns.get(k);
+    if (d === undefined) {
+      const f = transportField(ti, g);
+      d = INF;
+      for (const [x, y] of amenities[ai].targets) d = Math.min(d, f[y * W + x]);
+      returns.set(k, d);
+    }
+    return d;
+  }
+  const hurry = cfg.sim.hurry || { enabled: false, slack: 0 };
 
   // reachability between transports: 0 none, 1 direct, 2 via gate
   const reach = transports.map(() => new Int8Array(transports.length));
@@ -258,12 +282,12 @@ export function simulateWeek(board, opts = {}) {
   // A traveller picks where they want to go, whether or not you have left them
   // a way to get there. Walling a platform off does not redirect the crowd - it
   // strands them (see `lost`), which is what makes boxing people in a mistake.
-  function chooseDest(originIdx, tier) {
+  function chooseDest(a, originIdx, tier) {
     const t = Math.min(5, tier + mods.destTierShift);
     const cands = [];
     for (let b = 0; b < transports.length; b++) if (transports[b].doors.length) cands.push(b);
     if (!cands.length) return originIdx;
-    return rng.dest.weighted(cands, b => destWeight(t, transports[b].e.tier));
+    return weightedOf(roll(a, R.dest), cands, b => destWeight(t, transports[b].e.tier));
   }
 
   function snapCell(fx, fy, f) {
@@ -281,7 +305,8 @@ export function simulateWeek(board, opts = {}) {
     return null;
   }
 
-  function makeWaypoints(sx, sy, destIdx, gateOpen, same) {
+  // `leg` numbers the wander so a lost traveller's top-ups roll fresh points.
+  function makeWaypoints(a, sx, sy, destIdx, gateOpen, same, leg = 0) {
     const f = transportField(destIdx, gateOpen);
     const doors = transports[destIdx].doors;
     const [dx, dy] = doors[Math.floor(doors.length / 2)];
@@ -289,15 +314,17 @@ export function simulateWeek(board, opts = {}) {
     const n = cfg.sim.waypointCount;
     for (let i = 0; i < n; i++) {
       let px, py;
+      const k = leg * n + i;
+      const g1 = gaussOf(roll(a, R.wp, k, 0), roll(a, R.wp, k, 1)), g2 = gaussOf(roll(a, R.wp, k, 2), roll(a, R.wp, k, 3));
       if (same) {
         const s = cfg.sim.sameTileWanderSigma;
-        px = sx + rng.waypoint.gauss() * s; py = sy + rng.waypoint.gauss() * s;
+        px = sx + g1 * s; py = sy + g2 * s;
       } else {
         const lo = (i + 0.15) / n, hi = (i + 0.85) / n;
-        const t = rng.waypoint.range(lo, hi);
+        const t = lo + roll(a, R.wp, k, 4) * (hi - lo);
         const s = cfg.sim.waypointSigma;
-        px = sx + (dx - sx) * t + rng.waypoint.gauss() * s;
-        py = sy + (dy - sy) * t + rng.waypoint.gauss() * s;
+        px = sx + (dx - sx) * t + g1 * s;
+        py = sy + (dy - sy) * t + g2 * s;
       }
       const c = snapCell(px, py, f);
       if (c) wps.push(c);
@@ -309,21 +336,30 @@ export function simulateWeek(board, opts = {}) {
   // freezing on the spot. Returns false for anyone with a route to follow.
   function wanderOn(a, t) {
     if (!a.lost || t > TICKS) return false;
-    const wps = makeWaypoints(a.x, a.y, a.origin, a.gateOpen, true);
+    const wps = makeWaypoints(a, a.x, a.y, a.origin, a.gateOpen, true, ++a.legs);
     for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
     return a.ti < a.targets.length;
   }
 
-  function spawnAgent(originIdx, tier, kind, extra = {}) {
+  // A traveller's dice are their spawn slot: `grp` is the group they were
+  // spawned in (a transport, the charter, the VIPs) and `ord` their number in
+  // it, so the same slot rolls the same whatever else is on the board.
+  // `tier` may be a function of the slot.
+  function spawnAgent(grp, ord, originIdx, tier, kind, extra = {}) {
+    const key = grp + ':' + ord;
+    const slot = { key, grp: hashString(grp), ord, h: hashString(key) };
+    if (typeof tier === 'function') tier = tier(slot);
+    if (kind === 'roll') kind = pickRate > 0 && roll(slot, R.kind) < pickRate ? 'pickpocket' : 'traveller';
     const tr = transports[originIdx];
-    const door = rng.spawn.pick(tr.doors);
+    const door = tr.doors[Math.floor(roll(slot, R.door) * tr.doors.length)];
     const id = agents.length;
     let destIdx = originIdx, gateOpen = false;
     if (kind === 'pickpocket') {
-      destIdx = transports.length > 1 ? rng.dest.pick(transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx)) : originIdx;
+      const opts = transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx);
+      destIdx = transports.length > 1 ? opts[Math.floor(roll(slot, R.pdest) * opts.length)] : originIdx;
       gateOpen = true;
     } else {
-      destIdx = chooseDest(originIdx, tier);
+      destIdx = chooseDest(slot, originIdx, tier);
       // An open checkpoint lets anyone through to whatever is on the far side;
       // a filtering one only admits travellers whose platform is over there.
       gateOpen = hasGate && (!ckCfg.filter || reach[originIdx][destIdx] === 2);
@@ -331,16 +367,17 @@ export function simulateWeek(board, opts = {}) {
     const lost = kind !== 'pickpocket' && !reach[originIdx][destIdx];
     const tierInfo = cfg.tiers[tier - 1];
     const a = {
-      id, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1],
+      id, ...slot, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1], legs: 0,
       value: extra.value ?? tierInfo.base, budget: tierInfo.budget + mods.stopBudgetBonus + (extra.budgetBonus || 0), cleared: false,
       served: new Set(), balked: new Set(), chain: [], state: 'walking', spawnTick: currentTick, endTick: null,
       frames: [[door[0], door[1]]], events: [], targets: [], ti: 0, serve: null, serveTicks: 0, arrivedTick: -1,
-      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null, lost,
+      waitSlot: null, stacks: 0, gateOpen, robbed: new Set(), outcome: null, stuck: 0, serveDoor: null, lost, booth: null,
+      miss: new Float32Array(amenities.length).fill(1),
     };
     // A lost traveller has no route to follow, so they wander the concourse
     // looking for a way through and never reach a platform.
     const same = destIdx === originIdx;
-    for (const [wx, wy] of makeWaypoints(a.x, a.y, lost ? originIdx : destIdx, gateOpen, same || lost)) a.targets.push({ kind: 'wp', x: wx, y: wy });
+    for (const [wx, wy] of makeWaypoints(a, a.x, a.y, lost ? originIdx : destIdx, gateOpen, same || lost)) a.targets.push({ kind: 'wp', x: wx, y: wy });
     if (!lost) a.targets.push({ kind: 'dest', idx: destIdx });
     agents.push(a); live.push(a);
     counts.spawned++;
@@ -375,17 +412,21 @@ export function simulateWeek(board, opts = {}) {
       else if (Math.abs(d - bestD) < 1e-6 && d < here) cands.push(ni);
     }
     if (!cands.length) return false;
-    const ni = cands.length === 1 ? cands[0] : rng.walk.pick(cands);
+    const ni = cands.length === 1 ? cands[0] : cands[Math.floor(roll(a, R.walk, i) * cands.length)];
     a.x = ni % W; a.y = (ni - a.x) / W;
     heat[ni] += 1;
     // clearing a checkpoint booth: a chain link and extra stop budget, once per traveller
     const bo = a.kind === 'traveller' && !a.cleared ? booths.get(ni) : null;
     if (bo) {
       const before = a.value;
-      a.cleared = true; a.budget += bo.bonus; a.value *= bo.mult;
+      a.cleared = true; a.budget += bo.bonus;
       const st = tileStats[bo.tile.id];
-      st.serves++; st.points += a.value - before;
-      a.chain.push({ name: bo.tile.name, tileId: bo.tile.id, before, after: a.value, mult: bo.mult, flat: 0 });
+      st.serves++;
+      if (ckCfg.atExit) a.booth = bo;   // credited when they board (see board_)
+      else {
+        a.value *= bo.mult; st.points += a.value - before;
+        a.chain.push({ name: bo.tile.name, tileId: bo.tile.id, before, after: a.value, mult: bo.mult, flat: 0 });
+      }
       a.events.push({ t: currentTick, type: 'cleared', tileId: bo.tile.id, mult: bo.mult, value: a.value });
     }
     return f[ni] === 0;
@@ -404,9 +445,23 @@ export function simulateWeek(board, opts = {}) {
     a.events.push({ t, type: 'serve', tileId: am.tile.id, value: a.value, mult: e.mult, flat: e.flat });
   }
 
+  // Ticks the rest of a traveller's route takes: each waypoint in turn, then
+  // the platform. INF when a leg is unreachable.
+  function routeLeft(a) {
+    let x = a.x, y = a.y, d = 0;
+    for (let k = a.ti; k < a.targets.length; k++) {
+      const tg = a.targets[k];
+      d += targetField(a, tg)[y * W + x];
+      if (tg.kind !== 'wp') break;
+      x = tg.x; y = tg.y;
+    }
+    return d;
+  }
+
   function serviceRolls(a, t) {
     if (a.budget <= 0) return;
     const i = a.y * W + a.x;
+    const left = TICKS - t - hurry.slack;
     const inRange = [];
     for (const am of amenities) {
       if (am.e.closed || am.e.rate <= 0) continue;
@@ -414,7 +469,10 @@ export function simulateWeek(board, opts = {}) {
       // standing on a walk-through amenity (a park) counts as being beside it
       if ((d < 1 && !am.e.walkable) || d > am.e.radius) continue;
       if (a.served.has(am.idx)) continue;
-      if (amenityField(am.idx, a.gateOpen)[i] >= INF) continue; // walled off: no path to its door
+      const walk = amenityField(am.idx, a.gateOpen)[i];
+      if (walk >= INF) continue; // walled off: no path to its door
+      // no time to shop and still make the platform: walk on
+      if (hurry.enabled && !a.lost && walk + am.e.dur + returnDist(am.idx, a.dest, a.gateOpen) > left) continue;
       inRange.push([d, am]);
     }
     if (!inRange.length) return;
@@ -425,7 +483,14 @@ export function simulateWeek(board, opts = {}) {
       const tm = tierMatchTable[Math.min(gap, tierMatchTable.length - 1)];
       const fall = e.radius <= 1 || d <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
       const p = e.rate * tm * fall;
-      if (!rng.service.chance(p)) continue;
+      // One die per traveller and shop, thrown once: the pull accumulates cell
+      // by cell (1 - the chance of having missed at every cell so far) and the
+      // traveller stops at the first cell where it passes their throw. Cell by
+      // cell that is the same odds as a fresh roll at each, but a whole
+      // transport's travellers now share one evenly spread set of throws.
+      const miss = a.miss[am.idx] * (1 - p);
+      a.miss[am.idx] = miss;
+      if (1 - miss < roll(a, R.svc, am.tile.id)) continue;
       if (am.occ >= e.cap) {
         if (!a.balked.has(am.idx)) { a.balked.add(am.idx); tileStats[am.tile.id].balks++; }
         continue;
@@ -465,6 +530,12 @@ export function simulateWeek(board, opts = {}) {
     let v = a.value * e.mult + e.flat;
     let tierBonus = 1;
     if (a.tier === e.tier) { tierBonus = cfg.sim.tierMatchExitBonus; v *= tierBonus; }
+    if (a.booth) {
+      const bv = v * a.booth.mult;
+      a.chain.push({ name: a.booth.tile.name, tileId: a.booth.tile.id, before: v, after: bv, mult: a.booth.mult, flat: 0 });
+      tileStats[a.booth.tile.id].points += bv - v;
+      v = bv; a.booth = null;
+    }
     let waitMult = 1;
     if (a.waitSlot) {
       waitMult = 1 + a.stacks * a.waitSlot.e.stackValue;
@@ -486,9 +557,9 @@ export function simulateWeek(board, opts = {}) {
     a.events.push({ t, type: 'board', tileId: tr.tile.id, value: v });
     if (!best || v > best.value) best = { id: a.id, tier: a.tier, value: v, chain: a.chain.slice(), origin: transports[a.origin].tile.name, dest: tr.tile.name };
     // Loop terminal: re-enter with chain intact
-    if (e.def.special === 'loop' && t <= SPAWN_TICKS && rng.loop.chance(e.def.loopChance)) {
+    if (e.def.special === 'loop' && t <= SPAWN_TICKS && roll(a, R.loop) < e.def.loopChance) {
       counts.looped++;
-      const na = spawnAgent(a.dest, a.tier, 'traveller', { value: v });
+      const na = spawnAgent(a.key + ':loop', 0, a.dest, a.tier, 'traveller', { value: v });
       na.events.push({ t, type: 'loop' });
     }
   }
@@ -507,19 +578,24 @@ export function simulateWeek(board, opts = {}) {
       for (const tr of activeTransports) {
         if ((t - 1) % tr.e.arr !== 0) continue;
         for (let n = 0; n < tr.e.batch; n++) {
-          let tier = tr.e.tier;
-          const r = rng.spawn.next();
-          const sp = cfg.sim.tierSpread;
-          if (r < sp.down) tier = Math.max(1, tier - 1); else if (r < sp.down + sp.up) tier = Math.min(5, tier + 1);
-          if (mods.lowTierBias && tier > 2 && rng.spawn.chance(mods.lowTierBias)) tier = rng.spawn.chance(0.5) ? 1 : 2;
-          const kind = pickRate > 0 && rng.pick.chance(pickRate) ? 'pickpocket' : 'traveller';
-          spawnAgent(tr.idx, tier, kind);
+          const tierOf = slot => {
+            let tier = tr.e.tier;
+            const r = roll(slot, R.tier);
+            const sp = cfg.sim.tierSpread;
+            if (r < sp.down) tier = Math.max(1, tier - 1); else if (r < sp.down + sp.up) tier = Math.min(5, tier + 1);
+            if (mods.lowTierBias && tier > 2 && roll(slot, R.bias, 0) < mods.lowTierBias) tier = roll(slot, R.bias, 1) < 0.5 ? 1 : 2;
+            return tier;
+          };
+          spawnAgent('T' + tr.tile.id, tr.spawned++, tr.idx, tierOf, 'roll');
         }
       }
-      for (const ex of extraQueue) if (ex.tick === t) spawnAgent(rng.spawn.pick(activeTransports).idx, ex.tier, 'traveller');
+      const pickTr = slot => activeTransports[Math.floor(roll(slot, R.tr) * activeTransports.length)].idx;
+      const slotOf = (grp, ord) => ({ grp: hashString(grp), ord, h: hashString(grp + ':' + ord) });
+      let xi = 0;
+      for (const ex of extraQueue) { if (ex.tick === t) spawnAgent('X', xi, pickTr(slotOf('X', xi)), ex.tier, 'traveller'); xi++; }
       if (t === 1 && mods.vipCount > 0 && !vipDone.done) {
         vipDone.done = true;
-        for (let i = 0; i < mods.vipCount; i++) spawnAgent(rng.spawn.pick(activeTransports).idx, 5, 'traveller', { budgetBonus: mods.vipBudgetBonus });
+        for (let i = 0; i < mods.vipCount; i++) spawnAgent('V', i, pickTr(slotOf('V', i)), 5, 'traveller', { budgetBonus: mods.vipBudgetBonus });
       }
     }
 
@@ -538,6 +614,10 @@ export function simulateWeek(board, opts = {}) {
         a.serveTicks--;
         if (a.serveTicks <= 0) endService(a);
       } else if (a.state === 'walking' || a.state === 'detour') {
+        // Late in the week the wander no longer fits: head straight for the platform.
+        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > TICKS) {
+          a.ti = a.targets.length - 1; a.events.push({ t, type: 'hurry' });
+        }
         const onWalkway = isWalkway(a.y * W + a.x);
         const steps = onWalkway ? cfg.sim.walkwaySpeed : 1;
         let moved = false;
@@ -611,7 +691,7 @@ export function simulateWeek(board, opts = {}) {
     if (!tg) {
       // choose a new destination
       const opts = transports.filter((_, i) => reach[a.origin][i] || i === a.origin);
-      a.dest = rng.dest.pick(opts).idx;
+      a.dest = opts[Math.floor(roll(a, R.pdest, ++a.legs) * opts.length)].idx;
       a.targets = [{ kind: 'dest', idx: a.dest }]; a.ti = 0;
     }
     const f = targetField(a, a.targets[a.ti]);
@@ -667,7 +747,7 @@ export function simulateWeek(board, opts = {}) {
     scoreByTick,
     money: { fares: Math.round(fares), revenue: Math.round(revenue), total: Math.round(fares + revenue) },
     counts, best,
-    agents: agents.map(a => ({ id: a.id, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
+    agents: agents.map(a => ({ id: a.id, key: a.key, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
     tileStats,
     heat,
     w: W, h: H,
