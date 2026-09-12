@@ -511,13 +511,11 @@ export function settle(s) {
   const quota = quotaFor(s);
   s.money += r.money.total;
   const passed = r.score >= quota;
-  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, grace: !passed && s.week <= runRules(s).graceWeeks, event: currentEvent(s)?.name || null });
+  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, event: currentEvent(s)?.name || null });
   s.records.bestWeek = Math.max(s.records.bestWeek, s.week);
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
-  const grace = !passed && s.week <= runRules(s).graceWeeks;
-  if (!passed && !grace) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
-  if (grace) log(s, `Week ${s.week}: ${r.score} < quota ${quota}, but the first week is a practice run.`);
+  if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
   if (s.week === runRules(s).winWeek && !s.won) { s.won = true; s.phase = 'won'; }
   else s.phase = 'shop';
   advanceWeek(s);

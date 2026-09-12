@@ -14,11 +14,6 @@ export const CONFIG = {
     // Shift) and ordinances (Staff Expansion) add to it.
     startAP: 2,
     winWeek: 16,                // win screen fires here; play continues (endless)
-    // Weeks you may miss without the run ending. Week 1 is a target to aim at,
-    // not a filter: a careless opening loses it (the naive bot misses it two
-    // times in three, where the greedy bot clears it by 1.3x), and ending a run
-    // on turn one teaches nothing. 0 turns the grace off.
-    graceWeeks: 1,
     eventEvery: 4,              // every Nth week is an event week
     ordinanceWeeks: [5, 12, 20],
     ordinanceChoices: 3,

@@ -205,7 +205,7 @@ These are base quotas on Standard. Event weeks multiply them (§9, at half the s
 
 Quotas are shown as **stars**, one per 1,000 points, and always round to a whole star. Earned stars round down, so 2,400 points is two stars.
 
-**Week 1 is a target, not a filter.** `run.graceWeeks` (1) lets a run carry on after missing it. The greedy bot clears week 1 by 1.3×; a naive one — first legal cell, alternating transport and shop — misses it two weeks in three, and a run that ends on turn one over a badly placed first tile teaches nothing.
+**Week 1 counts like any other week.** Miss it and the run ends. It is a real target at the 11,000 base — the greedy bot clears it by about 1.3×, and a naive one (first legal cell, alternating transport and shop) misses it two weeks in three — so the opening hand is fixed (§8.1) to keep the first placement from turning on a shop roll.
 
 **Catch-up.** A run far ahead of the curve is measured against its own form instead: the quota is at least `catchUp.share` (0.72) of the player's best week so far, capped at `catchUp.cap` (2.2) times that week's own curve, and never taking an event multiplier on top (the curve already carries one). It only ever raises a target, so a run behind the curve is never punished for being behind. The timeline marks a week whose target came from form rather than schedule.
 
@@ -911,7 +911,9 @@ Changes from the original design, with the reason for each. Original values are 
 
   The rest of the trade was measured and left on the table, because it costs survival almost exactly as fast as it buys band: catch-up 0.9 gives 47% inside the band at 6/12 survived, and a steep curve with catch-up 0.7 gives 61% at 1/12. The quota is a pass/fail line, so parking it just under typical play means any bad week ends the run. Getting a 1.2–1.5 modal band *and* keeping runs alive needs something that absorbs one bad week — a banked surplus, or strikes — which is not built (§16).
 
-- **Week 1 is a practice run** (`run.graceWeeks` 1). At the new target the naive bot — first legal cell, alternating transport and shop — misses week 1 two times in three, where the greedy bot clears it by 1.3×. The target is meant to be worth aiming at; ending a run on turn one over a badly placed first tile is not a lesson.
+- **The UI smoke test needed a better bot before week 1 could bite.** Its throwaway autoplayer bought by kind (alternate transport and shop, first affordable card of each) and only chose *where* by estimate. On the pinned seed that scores 0.96× in week 1 — it had been living on the grace week. Picking the best (card, spot) pair instead, over the same sample of spots, puts it at 1.41× and it never drops below that to week 16.
+
+- **Week 1 was briefly a practice run** — a `run.graceWeeks` lever that let a missed week 1 carry on — and it is gone again. It answered a worry rather than a measurement: with the fixed opening hand, the greedy bot loses week 1 in 6 of 240 runs (40 seeds a level: Metroplex 3, Terminal, Junction and Waterfront 1 each, Sky Harbour and Terminus none). A rule that fires that rarely for a competent player is one more thing to explain on the summary screen, and it softened the one week the fixed hand was added to make fair. A careless opening does now lose the run; that is the same deal every other week offers.
 
 **Tiles**
 
