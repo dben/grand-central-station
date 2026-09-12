@@ -79,7 +79,7 @@ The Bridge/Overpass is an I3 tile laid along a claimed edge. It opens the edge s
 Travellers move one cell per tick in 8 directions, and may not cut diagonally past a corner.
 
 - **Solid:** tiles are walls by default, and amenities only serve travellers who can actually reach their door.
-- **Walk-through floor:** Waiting Area, Frequent Flier Club, Chrono Lounge, Green Space, WiFi Hotspot, Security Guard and the Security Checkpoint booth. Bridges, corridor lanes and driveways are walkable too.
+- **Walk-through floor:** Parking Lot, Waiting Area, Frequent Flier Club, Chrono Lounge, Green Space, WiFi Hotspot, Security Guard and the Security Checkpoint booth. Bridges, corridor lanes and driveways are walkable too. The first four of those are *ground* tiles: paving with nothing standing on it, drawn flush with the floor (§13.2).
 - **Moving Walkway:** travellers on it move 2 cells per tick.
 - **Checkpoint fences** are the only walls that sit *between* cells rather than on them (§7.5).
 
@@ -366,7 +366,7 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 | Tile | Shape | Terrain | Tier | Arr. | Batch | Dep. | Dwell | Mult | Flat | Cost | From week |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Bus Stop | I2 | road | $ | 4 | 5 | 4 | 1 | 1.04 | 12 | 60 | 1 |
-| Parking Lot | O4 | road | $ | 1 | 2 | 1 | 0 | 1.02 | 30 | 50 | 1 |
+| Parking Lotᵂ | O4 | road | $ | 1 | 2 | 1 | 0 | 1.02 | 30 | 50 | 1 |
 | Bike Rental | I2 | road | $ | 2 | 2 | 2 | 0 | 1.04 | 8 | 40 | 1 |
 | Taxi Stand | I2 | road | $$ | 2 | 2 | 2 | 0 | 1.07 | 9 | 90 | 1 |
 | Rideshare Zone | L3 | road | $$ | 1 | 2 | 1 | 0 | 1.05 | 11 | 80 | 1 |
@@ -394,6 +394,8 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 | Express Subway | I3 | underground, through | $$$ | 5 | 6 | 5 | 2 | 1.15 | 22 | 330 | 6 |
 | Underground Parking | L3 | underground, to road | $ | 1 | 2 | 1 | 0 | 1.02 | 30 | 110 | 3 |
 | Submarine Dock | I2 | underground, to water | $$$$ | 6 | 2 | 6 | 2 | 1.22 | 16 | 320 | 5 |
+
+ᵂ = walk-through floor: the Parking Lot is a car park, so travellers cross it rather than walk round it.
 
 Air tiles (helipad, balloon, jetways, private terminal, jetpack) are tagged `air` and go offline in a Weather Front. Underground tiles run their line on the tunnel layer (§3.5); Underground Parking has the Parking Lot's timing and pays for its freedom of placement. **Loop Terminal:** 30% of its departures during the spawn ticks re-enter as a new arrival with their chain value intact.
 
@@ -750,7 +752,9 @@ The **draw unit is the cell, not the tile.** Every occupied cell is sorted by `x
 | A checkpoint fence panel | `x + y − 0.6`, just behind the cell south or east of it |
 | A cell's walls and roof | `x + y` |
 
-The result is that someone who steps into a shop is covered by it. Walk-through tiles stand only 0.10 high, so the travellers on them stay visible.
+The result is that someone who steps into a shop is covered by it. Most walk-through tiles stand 0.10 high, so the travellers on them stay visible above the lip.
+
+**Ground tiles** (`ground: true` in `src/data/tiles.js`: Parking Lot, Green Space, Waiting Area, WiFi Hotspot) have no height at all. They are paving, so they cast no shadow, have no walls, and their whole face is painted in the floor layer with the crowd walking over the top of it. Their labels can't ride on a roof that isn't there, and the crowd walks over where they sit, so they are drawn last of all, after every cell and every traveller.
 
 Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd reads as flow rather than as counters. Chain-value popups are drawn last and are never hidden.
 
@@ -859,6 +863,8 @@ Changes from the original design, with the reason for each. Original values are 
 - **Green Space** is walk-through and serves travellers crossing it. Its median marginal value at week 6 rose from 1,545 to 2,307, and the share of negative placements fell from 15% to 1%.
 - **WiFi Hotspot** boosts everything in range and is walk-through. It used to be a solid one-cell wall that only raised shop pull, pulling travellers into detours they had no time for: negative in 47% of placements, median +52 points. Walkability alone makes it exactly neutral; the boosts make it never negative, with a median of +2,720.
 - **Moving Walkway** riders still roll for service. Suppressing rolls made the tile that *attracts* paths also cancel them, and it was negative in 36% of placements.
+- **The Parking Lot is walk-through**, and the four flattest tiles are drawn flat. A car park you have to walk round is a wall in the shape of a car park, which reads wrong next to the Green Space beside it. It now shares the walk-through flag, and it, the Green Space, the Waiting Area and the WiFi Hotspot are `ground` tiles with no height, painted under the crowd instead of standing 0.10 proud of it (§13.2). Measured: `marginal.mjs --week 6 --seeds 12` puts the Parking Lot at 45.4★/$100 against 45.7 before, and every other tile is identical, so walkability is worth nothing by itself — it buys freedom of placement. Autoplay over `--seed0 1000` and `2000` survives 14 of 16 both ways (deaths in weeks 8 and 16, and 12, before; in 12 and 12 after), and the score/quota band did not move, so the quota was left alone. On the one board probed under both builds (the bot's week-12 board 1002, dumped, 24 seeds) the landscape got slightly smoother: one-cell shift 3.4% → 2.9% of the week, rotation 3.1% → 2.9%, noise floor 2.0% → 1.8%, stranded 26% → 22%. The new build's own bot boards read shift 1.9%/1.8%/3.3%, rotate 2.0%/1.8%/3.3%, noise 0.9%/1.1%/1.7% and stranded 13%/23%/22% on boards 1000 and 1001 at week 9 and 1002 at week 12, all inside the bands in §14.2.
+
 - **Corridor lanes** are walkable (a lift could otherwise fence the board in two — this retired the *Open Borders* ordinance in favour of *Wayfinding Signs*). They follow the tile's long axis and are freed on delete.
 - **Long vehicles berth edgewise; jetways attach by the tip.**
 - **The underground layer** (§3.5) was added with four tiles. Priced from `marginal.mjs` on the standard boards: at week 6 Underground Parking is 14.2★/$100 (between the Bus Stop at 19.0 and the Coffee Shop at 13.5, and well under the Parking Lot's 32.9, which is the price of going anywhere with no driveway), the Subway Station 11.8 and the Express Subway 6.8 (the mid-game transport band); at week 10 they read 9.4, 9.3 and 4.7. The Submarine Dock, probed on a week-8 board with a ferry edge, is 2.65★/$100 at its best spot (median +8.6k, never negative), between the Helipad's 2.54 and the Marina's 1.99. Autoplay over `--seed0 1000` and `2000` survived 13 of 16 runs (10 of 16 before); the quota curve was left alone, since the bot's mean score/quota band (1.5–3.8×) did not move.

@@ -48,10 +48,13 @@ export function colorForDef(d) {
 // amenities grow with tier so a built-up board reads as a skyline.
 function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
+  // Parks, waiting areas, hotspots and car parks (`ground: true`) are paving,
+  // not buildings: no height at all, so the crowd walks across the top of them
+  // rather than round a lip. drawTileFloor paints them under the travellers.
+  if (d.ground) return 0;
   if (d.special === 'walkway') return 0.08;
-  // Lounges, parks, hotspots, guard posts and checkpoint booths are floor you
-  // walk across, so they stand barely proud of the ground: travellers on them
-  // stay visible above the lip instead of vanishing inside.
+  // The rest of the walk-through tiles stand barely proud of the ground, so
+  // travellers on them stay visible above the lip instead of vanishing inside.
   if (d.walkable) return 0.10;
   if (d.kind === 'transport') return 0.20;
   if (d.rate === 0) return 0.30;
@@ -270,13 +273,14 @@ export class BoardRenderer {
     // Depth is x + y; the fractional offsets below keep each sandwich intact
     // without disturbing the ordering between cells.
     const occAt = view.result && view.T != null ? Math.min(view.result.ticks, Math.max(0, Math.ceil(view.T))) : null;
-    const layers = [];
+    const layers = [], groundLabels = [];
     for (const t of board.tiles) {
       const info = this.tileInfo(t, view, occAt);
       for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
-        layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
+        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
       }
+      if (info.flush) groundLabels.push(info);
     }
     // Checkpoint fences stand on the grid lines between cells. A panel sorts
     // just behind the cell south (or east) of it, so a traveller or building
@@ -295,6 +299,9 @@ export class BoardRenderer {
     for (const d of dots) layers.push({ k: Math.floor(d.gx) + Math.floor(d.gy) - 0.5, fn: () => this.drawAgentDot(d) });
     layers.sort((a, b) => a.k - b.k);
     for (const l of layers) l.fn();
+    // A flush tile has no roof to hang its label on, and the crowd walks over
+    // where the label sits, so its label goes up after the travellers.
+    for (const info of groundLabels) this.drawTileLabel(info);
 
     // outlines sit above the buildings they mark
     if (view.ghost && view.ghost.def && view.ghost.def.kind === 'amenity' && view.ghost.def.radius > 0) {
@@ -694,8 +701,9 @@ export class BoardRenderer {
       }
       tf = shapeTransform(d.shape, t.rot, tipAt); base = shapeBaseSize(d.shape);
     }
+    const z = tileHeight(d);
     return {
-      tile: t, def: d, z: tileHeight(d), dim, img, floorImg, tf, base, bx0, by0, bw0, bh0,
+      tile: t, def: d, z, flush: z <= 0, dim, img, floorImg, tf, base, bx0, by0, bw0, bh0,
       color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
@@ -727,12 +735,15 @@ export class BoardRenderer {
   // and its interior art (seats, tiling) lands here with the crowd on top.
   drawTileFloor(x, y, info) {
     const ctx = this.ctx;
-    if (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y)) {
+    // Nothing standing up means nothing to cast a shadow, and no dark base
+    // course under the top face: a flush tile is only its own surface.
+    if (!info.flush && (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y))) {
       ctx.save(); ctx.globalAlpha = 0.3; ctx.translate(0, this.k * 0.035);
       this.cellPath(x, y); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
     }
     if (info.floorImg) this.drawCellSprite(x, y, info, info.floorImg, 0);
-    else { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    else if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    if (info.flush) this.drawTileRoof(x, y, info);
   }
 
   // The grid -> screen map is linear, so feeding it to the context as a
@@ -752,7 +763,9 @@ export class BoardRenderer {
     ctx.restore();
   }
 
-  // Over layer: everything from the floor up. Painted after the crowd.
+  // Over layer: everything from the floor up. Painted after the crowd, except
+  // on a flush tile, where there is nothing above the floor and drawTileFloor
+  // calls this itself so the crowd walks over the top of it.
   drawTileRoof(x, y, info) {
     const ctx = this.ctx, z = info.z;
     this.cellWalls(x, y, info);
