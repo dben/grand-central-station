@@ -416,6 +416,11 @@ const CONFIG = {
     // Shift) and ordinances (Staff Expansion) add to it.
     startAP: 2,
     winWeek: 16,                // win screen fires here; play continues (endless)
+    // Weeks you may miss without the run ending. Week 1 is a target to aim at,
+    // not a filter: a careless opening loses it (the naive bot misses it two
+    // times in three, where the greedy bot clears it by 1.3x), and ending a run
+    // on turn one teaches nothing. 0 turns the grace off.
+    graceWeeks: 1,
     eventEvery: 4,              // every Nth week is an event week
     ordinanceWeeks: [5, 12, 20],
     ordinanceChoices: 3,
@@ -448,7 +453,7 @@ const CONFIG = {
     // coasting. `share` 0 turns it off.
     // `cap` bounds it: the floor can never ask for more than this multiple of
     // the week's own curve, so one spike week cannot set an impossible target.
-    catchUp: { share: 0, from: 'best', cap: 1.6 },
+    catchUp: { share: 0.72, from: 'best', cap: 2.2 },
     // How hard an event week leans on the quota: the multiplier in data/events.js
     // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
     // event's quota has to be read against the headroom a normal week leaves:
@@ -2542,6 +2547,15 @@ function gameRules(s) {
 // value, so the card and the target always agree.
 function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
 const fmtMult = m => (Math.round(m * 100) / 100).toString();
+// Is this week's target set by the published curve, or by the player's own
+// form (the catch-up floor)? The timeline says which, so a quota that jumps
+// after a big week reads as a consequence rather than a glitch.
+function quotaFromForm(s, week = s.week) {
+  const c = CONFIG.quota.catchUp;
+  if (!c || !c.share) return false;
+  const ev = eventForWeek(s, week);
+  return quotaFor(s, week) > quotaForWeek(week, modeOf(s), eventMult(ev) * gameRules(s).quotaMult, difficultyOf(s));
+}
 function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
   const mult = eventMult(ev) * gameRules(s).quotaMult;
@@ -2962,11 +2976,13 @@ function settle(s) {
   const quota = quotaFor(s);
   s.money += r.money.total;
   const passed = r.score >= quota;
-  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, event: currentEvent(s)?.name || null });
+  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, grace: !passed && s.week <= runRules(s).graceWeeks, event: currentEvent(s)?.name || null });
   s.records.bestWeek = Math.max(s.records.bestWeek, s.week);
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
-  if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
+  const grace = !passed && s.week <= runRules(s).graceWeeks;
+  if (!passed && !grace) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
+  if (grace) log(s, `Week ${s.week}: ${r.score} < quota ${quota}, but the first week is a practice run.`);
   if (s.week === runRules(s).winWeek && !s.won) { s.won = true; s.phase = 'won'; }
   else s.phase = 'shop';
   advanceWeek(s);
@@ -3048,7 +3064,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -4665,7 +4681,8 @@ function renderTimeline() {
     const cls = ['tl-row', current ? 'current' : '', ev ? 'event' : (ord ? 'ordinance' : (ms ? 'milestone' : '')), w === state.week + 4 ? 'last' : ''].join(' ');
     const showQuota = current || known || !ev;
     const row = h('div', { class: cls }, h('span', { class: 'wk' }, `Week ${w}`),
-      h('span', { class: 'q', title: showQuota ? `${fmt(G.quotaFor(state, w))} points` : '' }, showQuota ? ['needs ', starNum(G.quotaStars(state, w))] : ''));
+      h('span', { class: 'q', title: showQuota ? `${fmt(G.quotaFor(state, w))} points${G.quotaFromForm(state, w) ? ' — your best week has raised what is expected of you' : ''}` : '' },
+        showQuota ? ['needs ', starNum(G.quotaStars(state, w)), G.quotaFromForm(state, w) ? h('span', { class: 'k', style: 'margin-left:4px' }, '▲') : null] : ''));
     if (ev) {
       const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
       if (known) {
@@ -5068,6 +5085,7 @@ function drawHistoryChart(canvas, history) {
 function showSummary() {
   const r = ui.pb.result; const quota = G.quotaFor(state);
   const passed = r.score >= quota;
+  const grace = !passed && state.week <= G.runRules(state).graceWeeks;
   const history = state.history.concat([{ week: state.week, score: r.score, quota, passed, money: r.money.total }]);
   const rows = Object.values(r.tileStats).sort((a, b) => b.points - a.points);
   const table = h('table', { class: 'stats' }, h('tr', {}, ...['Tile', 'Served', 'Turned away', 'Full', 'Earned', 'Points', 'Arrived', 'Boarded', 'Out of time'].map(x => h('th', {}, x))));
@@ -5085,11 +5103,11 @@ function showSummary() {
   openModal(
     h('h2', {}, `Week ${state.week}`, G.currentEvent(state) ? h('span', { class: 'event-tag accent', style: 'margin-left:8px' }, G.currentEvent(state).name) : null),
     h('div', { class: 'row summary-stars' }, starStrip(G.quotaStars(state), Math.max(0, starsOf(r.score))),
-      h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓ quota met' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
+      h('span', { class: passed ? 'good' : grace ? 'accent' : 'bad' }, passed ? '✓ quota met' : grace ? '✗ quota missed — the first week is a practice run, so you carry on' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
     h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${fmt(r.score)} points of ${fmt(quota)} · ${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}`),
     chart,
     h('details', {}, h('summary', {}, 'Tile by tile'), h('div', { style: 'max-height:240px;overflow:auto' }, table)),
-    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed ? 'Continue →' : 'See results')));
+    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed || grace ? 'Continue →' : 'See results')));
   requestAnimationFrame(() => drawHistoryChart(chart, history));
 }
 function showHeatBar() {
