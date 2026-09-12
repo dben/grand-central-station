@@ -136,6 +136,18 @@ ok(rls.reduce((n, r) => n + r.counts.lost, 0) > 0, 'travellers with no route to 
 ok(rl.agents.filter(a => a.outcome === 'lost').every(a => !a.events.some(e => e.type === 'board')), 'lost travellers never board');
 const rlOpen = simulateWeek(b, { seed: rl.seed, week: 6 });
 ok(rlOpen.score === rl.score, 'lost run is deterministic');
+// a cell walled in beside a platform is not a door: nobody steps out into it,
+// and it never makes the platform's travellers lost (the old first-door rule did)
+b = createBoard(12, 12);
+placeTile(b, 'bus_stop', 1, 5, 0);
+placeTile(b, 'helipad', 9, 5, 0);
+for (const [x, y] of [[2, 4], [3, 4], [4, 4], [4, 5], [4, 6], [3, 6], [2, 6]]) placeTile(b, 'vending', x, y, 0);   // (3,5) is a pocket next to the bus stop
+{
+  const rp = [1, 2, 3].map(seed => simulateWeek(b, { seed, week: 6 }));
+  ok(rp.every(r => r.counts.lost === 0), 'a pocket beside a platform strands nobody');
+  ok(rp.every(r => r.agents.every(a => !(a.frames[0][0] === 3 && a.frames[0][1] === 5))), 'nobody spawns in a pocket');
+  ok(rp.every(r => r.agents.every(a => a.frames.every(([x, y]) => !(x === 3 && y === 5)))), 'and nobody ever stands in one');
+}
 
 // security station clears pickpockets out of its radius
 b = createBoard(12, 12);
