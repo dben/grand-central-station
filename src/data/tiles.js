@@ -3,7 +3,8 @@
 // Transport fields: shape, terrain, tier, arr (arrival cadence), batch,
 //   dep (departure cadence), dwell, mult, flat, cost, minWeek, rare.
 // Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
-//   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall).
+//   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall),
+//   ground (paving: drawn flat, with the crowd walking over the top of it).
 // Terrain: road | rail | water | apron | corridor | free | underground
 // Underground tiles sit on the ground like any other but run a tunnel on a
 // second layer that nothing else shares (see checkPlacement): `line` says where
@@ -15,7 +16,7 @@
 
 export const TRANSPORTS = {
   bus_stop:        { name: 'Bus Stop',         shape: 'I2', terrain: 'road',     tier: 1, arr: 4,  batch: 5 , dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1 },
-  parking_lot:     { name: 'Parking Lot',      shape: 'O4', terrain: 'road',     tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30 , cost: 50,  minWeek: 1 },
+  parking_lot:     { name: 'Parking Lot',      shape: 'O4', terrain: 'road',     tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30 , cost: 50,  minWeek: 1, walkable: true, ground: true },
   bike_rental:     { name: 'Bike Rental',      shape: 'I2', terrain: 'road',     tier: 1, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.04, flat: 8 ,  cost: 40,  minWeek: 1 },
   taxi_stand:      { name: 'Taxi Stand',       shape: 'I2', terrain: 'road',     tier: 2, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.07, flat: 9 ,  cost: 90,  minWeek: 1 },
   rideshare:       { name: 'Rideshare Zone',   shape: 'L3', terrain: 'road',     tier: 2, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.05, flat: 11,  cost: 80,  minWeek: 1 },
@@ -54,13 +55,13 @@ export const AMENITIES = {
   pizza:          { name: 'Pizza Place',       shape: 'S4', tier: 2, radius: 3, rate: 0.54, mult: 2.57, flat: 110, cap: 18, dur: 3, revenue: 8,  cost: 53,  minWeek: 2, tags: ['food'] },
   coffee:         { name: 'Coffee Shop',       shape: 'I2', tier: 2, radius: 4, rate: 0.72, mult: 2.23, flat: 80, cap: 14, dur: 2, revenue: 7,  cost: 46,  minWeek: 2, tags: ['food'] },
   kiosk:          { name: 'Information Kiosk', shape: 'I1', tier: 1, radius: 4, rate: 0.54, mult: 1.35, flat: 40, cap: 10, dur: 1, revenue: 1,  cost: 14,  minWeek: 1 },
-  green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true },
+  green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 3, rate: 0.5 , mult: 2.93, flat: 140, cap: 16, dur: 4, revenue: 12, cost: 77 , minWeek: 4, tags: ['food'] },
   cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
   currency:       { name: 'Currency Exchange', shape: 'I2', tier: 3, radius: 3, rate: 0.45, mult: 2.75, flat: 88, cap: 6,  dur: 2, revenue: 15, cost: 67,  minWeek: 4 },
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
-  wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true },
-  waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true },
+  wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },
+  waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true, ground: true },
   walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway' },
   art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 4, rate: 0.4 , mult: 3.45, flat: 160, cap: 10, dur: 4, revenue: 18, cost: 115, minWeek: 6 },
   lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 3, rate: 0.54, mult: 3.27, flat: 120, cap: 14, dur: 3, revenue: 20, cost: 133, minWeek: 7 },

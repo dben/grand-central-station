@@ -618,7 +618,8 @@ const __m_src_data_tiles_js = (() => {
 // Transport fields: shape, terrain, tier, arr (arrival cadence), batch,
 //   dep (departure cadence), dwell, mult, flat, cost, minWeek, rare.
 // Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
-//   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall).
+//   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall),
+//   ground (paving: drawn flat, with the crowd walking over the top of it).
 // Terrain: road | rail | water | apron | corridor | free | underground
 // Underground tiles sit on the ground like any other but run a tunnel on a
 // second layer that nothing else shares (see checkPlacement): `line` says where
@@ -630,7 +631,7 @@ const __m_src_data_tiles_js = (() => {
 
 const TRANSPORTS = {
   bus_stop:        { name: 'Bus Stop',         shape: 'I2', terrain: 'road',     tier: 1, arr: 4,  batch: 5 , dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1 },
-  parking_lot:     { name: 'Parking Lot',      shape: 'O4', terrain: 'road',     tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30 , cost: 50,  minWeek: 1 },
+  parking_lot:     { name: 'Parking Lot',      shape: 'O4', terrain: 'road',     tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30 , cost: 50,  minWeek: 1, walkable: true, ground: true },
   bike_rental:     { name: 'Bike Rental',      shape: 'I2', terrain: 'road',     tier: 1, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.04, flat: 8 ,  cost: 40,  minWeek: 1 },
   taxi_stand:      { name: 'Taxi Stand',       shape: 'I2', terrain: 'road',     tier: 2, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.07, flat: 9 ,  cost: 90,  minWeek: 1 },
   rideshare:       { name: 'Rideshare Zone',   shape: 'L3', terrain: 'road',     tier: 2, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.05, flat: 11,  cost: 80,  minWeek: 1 },
@@ -669,13 +670,13 @@ const AMENITIES = {
   pizza:          { name: 'Pizza Place',       shape: 'S4', tier: 2, radius: 3, rate: 0.54, mult: 2.57, flat: 110, cap: 18, dur: 3, revenue: 8,  cost: 53,  minWeek: 2, tags: ['food'] },
   coffee:         { name: 'Coffee Shop',       shape: 'I2', tier: 2, radius: 4, rate: 0.72, mult: 2.23, flat: 80, cap: 14, dur: 2, revenue: 7,  cost: 46,  minWeek: 2, tags: ['food'] },
   kiosk:          { name: 'Information Kiosk', shape: 'I1', tier: 1, radius: 4, rate: 0.54, mult: 1.35, flat: 40, cap: 10, dur: 1, revenue: 1,  cost: 14,  minWeek: 1 },
-  green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true },
+  green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 3, rate: 0.5 , mult: 2.93, flat: 140, cap: 16, dur: 4, revenue: 12, cost: 77 , minWeek: 4, tags: ['food'] },
   cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
   currency:       { name: 'Currency Exchange', shape: 'I2', tier: 3, radius: 3, rate: 0.45, mult: 2.75, flat: 88, cap: 6,  dur: 2, revenue: 15, cost: 67,  minWeek: 4 },
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
-  wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true },
-  waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true },
+  wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },
+  waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true, ground: true },
   walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway' },
   art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 4, rate: 0.4 , mult: 3.45, flat: 160, cap: 10, dur: 4, revenue: 18, cost: 115, minWeek: 6 },
   lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 3, rate: 0.54, mult: 3.27, flat: 120, cap: 14, dur: 3, revenue: 20, cost: 133, minWeek: 7 },
@@ -3034,10 +3035,13 @@ function colorForDef(d) {
 // amenities grow with tier so a built-up board reads as a skyline.
 function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
+  // Parks, waiting areas, hotspots and car parks (`ground: true`) are paving,
+  // not buildings: no height at all, so the crowd walks across the top of them
+  // rather than round a lip. drawTileFloor paints them under the travellers.
+  if (d.ground) return 0;
   if (d.special === 'walkway') return 0.08;
-  // Lounges, parks, hotspots, guard posts and checkpoint booths are floor you
-  // walk across, so they stand barely proud of the ground: travellers on them
-  // stay visible above the lip instead of vanishing inside.
+  // The rest of the walk-through tiles stand barely proud of the ground, so
+  // travellers on them stay visible above the lip instead of vanishing inside.
   if (d.walkable) return 0.10;
   if (d.kind === 'transport') return 0.20;
   if (d.rate === 0) return 0.30;
@@ -3256,13 +3260,14 @@ class BoardRenderer {
     // Depth is x + y; the fractional offsets below keep each sandwich intact
     // without disturbing the ordering between cells.
     const occAt = view.result && view.T != null ? Math.min(view.result.ticks, Math.max(0, Math.ceil(view.T))) : null;
-    const layers = [];
+    const layers = [], groundLabels = [];
     for (const t of board.tiles) {
       const info = this.tileInfo(t, view, occAt);
       for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
-        layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
+        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
       }
+      if (info.flush) groundLabels.push(info);
     }
     // Checkpoint fences stand on the grid lines between cells. A panel sorts
     // just behind the cell south (or east) of it, so a traveller or building
@@ -3281,6 +3286,9 @@ class BoardRenderer {
     for (const d of dots) layers.push({ k: Math.floor(d.gx) + Math.floor(d.gy) - 0.5, fn: () => this.drawAgentDot(d) });
     layers.sort((a, b) => a.k - b.k);
     for (const l of layers) l.fn();
+    // A flush tile has no roof to hang its label on, and the crowd walks over
+    // where the label sits, so its label goes up after the travellers.
+    for (const info of groundLabels) this.drawTileLabel(info);
 
     // outlines sit above the buildings they mark
     if (view.ghost && view.ghost.def && view.ghost.def.kind === 'amenity' && view.ghost.def.radius > 0) {
@@ -3680,8 +3688,9 @@ class BoardRenderer {
       }
       tf = shapeTransform(d.shape, t.rot, tipAt); base = shapeBaseSize(d.shape);
     }
+    const z = tileHeight(d);
     return {
-      tile: t, def: d, z: tileHeight(d), dim, img, floorImg, tf, base, bx0, by0, bw0, bh0,
+      tile: t, def: d, z, flush: z <= 0, dim, img, floorImg, tf, base, bx0, by0, bw0, bh0,
       color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
@@ -3713,12 +3722,15 @@ class BoardRenderer {
   // and its interior art (seats, tiling) lands here with the crowd on top.
   drawTileFloor(x, y, info) {
     const ctx = this.ctx;
-    if (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y)) {
+    // Nothing standing up means nothing to cast a shadow, and no dark base
+    // course under the top face: a flush tile is only its own surface.
+    if (!info.flush && (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y))) {
       ctx.save(); ctx.globalAlpha = 0.3; ctx.translate(0, this.k * 0.035);
       this.cellPath(x, y); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
     }
     if (info.floorImg) this.drawCellSprite(x, y, info, info.floorImg, 0);
-    else { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    else if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    if (info.flush) this.drawTileRoof(x, y, info);
   }
 
   // The grid -> screen map is linear, so feeding it to the context as a
@@ -3738,7 +3750,9 @@ class BoardRenderer {
     ctx.restore();
   }
 
-  // Over layer: everything from the floor up. Painted after the crowd.
+  // Over layer: everything from the floor up. Painted after the crowd, except
+  // on a flush tile, where there is nothing above the floor and drawTileFloor
+  // calls this itself so the crowd walks over the top of it.
   drawTileRoof(x, y, info) {
     const ctx = this.ctx, z = info.z;
     this.cellWalls(x, y, info);
@@ -4271,6 +4285,7 @@ function describeTile(tile, def) {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
     rows.push(['Brings in', `${e.batch} ${CONFIG.tiers[def.tier - 1].symbol} travellers every ${ticks(e.arr)}`], ['Rides leave', `every ${ticks(e.dep)}${e.dwell ? `, after a ${ticks(e.dwell)} wait` : ''}`]);
     rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} when they board here`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
+    if (def.walkable) rows.push(['Floor', 'Travellers walk straight over it, so it never blocks a path']);
     if (def.terrain === 'underground') {
       const tn = tile && tile.tunnel;
       rows.push(['Tunnel', tn ? (tn.line === 'through' ? `Comes up at the ${EDGE_NAMES[tn.ends[0]]} and ${EDGE_NAMES[tn.ends[1]]} edges` : `${tn.cells.length} square${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);

@@ -86,6 +86,7 @@ function describeTile(tile, def) {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
     rows.push(['Brings in', `${e.batch} ${CONFIG.tiers[def.tier - 1].symbol} travellers every ${ticks(e.arr)}`], ['Rides leave', `every ${ticks(e.dep)}${e.dwell ? `, after a ${ticks(e.dwell)} wait` : ''}`]);
     rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} when they board here`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
+    if (def.walkable) rows.push(['Floor', 'Travellers walk straight over it, so it never blocks a path']);
     if (def.terrain === 'underground') {
       const tn = tile && tile.tunnel;
       rows.push(['Tunnel', tn ? (tn.line === 'through' ? `Comes up at the ${EDGE_NAMES[tn.ends[0]]} and ${EDGE_NAMES[tn.ends[1]]} edges` : `${tn.cells.length} square${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);
