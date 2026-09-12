@@ -19,7 +19,7 @@
 //              illegal one throws at run start rather than half-building.
 export const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 2.0,
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 1.7,
                 // A cramped board that gets its milestones early, and tunnels
                 // with them, since a tunnel costs no floor space. It ran an
                 // event every third week until the quota band tightened: five
