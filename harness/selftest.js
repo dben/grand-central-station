@@ -222,7 +222,7 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
 {
   const std = createRun({ seed: 3 }), hard = createRun({ seed: 3, diffKey: 'hard' }), ext = createRun({ seed: 3, diffKey: 'extreme' });
   ok(difficultyOf(std).name === 'Standard' && difficultyOf(createRun({ seed: 3, diffKey: 'nonsense' })).name === 'Standard', 'an unknown difficulty falls back to Standard');
-  ok(quotaFor(std, 1) === 5000 && JSON.stringify(computeMods(std)) === JSON.stringify(computeMods({ ...std, diffKey: 'standard' })), 'Standard leaves the quota and the simulator alone');
+  ok(quotaFor(std, 1) === CONFIG.quota.base && JSON.stringify(computeMods(std)) === JSON.stringify(computeMods({ ...std, diffKey: 'standard' })), 'Standard leaves the quota and the simulator alone');
   const q = (s, w) => quotaFor(s, w);
   const weeks = [1, 2, 4, 8, 12, 16];
   // quotas round to whole stars, so week 1 can tie between two difficulties
