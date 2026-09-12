@@ -168,6 +168,13 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .mode.locked { opacity: 0.5; cursor: default; }
 .mode .name { font-weight: 700; margin-bottom: 4px; color: var(--accent); }
 .mode .desc { font-size: 14px; color: var(--muted); }
+.diffs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 6px; }
+.diff { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; box-shadow: var(--hard); }
+.diff:hover { border-color: var(--accent); }
+.diff.on { border-color: var(--accent); background: var(--panel); }
+.diff .name { font-weight: 700; color: var(--accent); }
+.diff.on .name::after { content: ' \2713'; }
+.diff .desc { font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .btnrow { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
 table.stats { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -531,13 +538,16 @@ const CONFIG = {
   },
 };
 
-function quotaForWeek(week, mode, extraMult = 1) {
+// `diff` is the run's difficulty (src/data/difficulties.js): it scales the
+// whole curve by `quotaMult` and steepens it by `quotaGrowthAdd`, so a harder
+// run is not just uniformly higher but pulls away week by week.
+function quotaForWeek(week, mode, extraMult = 1, diff = null) {
   const q = CONFIG.quota;
-  const late = (mode && mode.quotaGrowth) || q.growth;
+  const late = ((mode && mode.quotaGrowth) || q.growth) + ((diff && diff.quotaGrowthAdd) || 0);
   const early = Math.max(late, q.earlyGrowth);
   let raw = q.base;
   for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1);
-  raw *= extraMult;
+  raw *= extraMult * ((diff && diff.quotaMult) || 1);
   const u = q.starUnit;
   return Math.max(u, Math.round(raw / u) * u);
 }
@@ -824,6 +834,38 @@ const MODES = {
 const MODE_KEYS = Object.keys(MODES);
 
 return { MODES, MODE_KEYS };
+})();
+// ---- src/data/difficulties.js
+const __m_src_data_difficulties_js = (() => {
+// Difficulty sits on top of the mode: the mode picks the board and its one
+// standing rule, the difficulty scales the pressure. It is chosen before the
+// run and never changes. Standard is the game as tuned, so every number below
+// is 1 (or absent) for it and the levers only bite on Hard and Extreme.
+//
+// Levers, all multipliers on what Standard does:
+//   quotaMult       flat multiplier on every week's quota
+//   quotaGrowthAdd  added to the per-week quota growth rate, so the gap widens
+//   costMult        tile prices (upgrades, cards and bridges are unaffected)
+//   startMoneyMult  cash at week 1
+//   mods            simulator modifiers, merged like an ordinance's
+const DIFFICULTIES = {
+  standard: {
+    name: 'Standard', desc: 'The game as tuned. Quota, prices and income at face value.',
+  },
+  hard: {
+    name: 'Hard', desc: 'Quota +15% and climbing faster, tiles cost 15% more, 15% less cash to start, fares and revenue -10%.',
+    quotaMult: 1.15, quotaGrowthAdd: 0.012, costMult: 1.15, startMoneyMult: 0.85,
+    mods: { revenueMult: 0.9, fareMult: 0.9 },
+  },
+  extreme: {
+    name: 'Extreme', desc: 'Quota +20% and climbing much faster, tiles cost 35% more, 20% less cash to start, fares and revenue -20%.',
+    quotaMult: 1.2, quotaGrowthAdd: 0.045, costMult: 1.35, startMoneyMult: 0.8,
+    mods: { revenueMult: 0.8, fareMult: 0.8 },
+  },
+};
+const DIFFICULTY_KEYS = Object.keys(DIFFICULTIES);
+
+return { DIFFICULTIES, DIFFICULTY_KEYS };
 })();
 // ---- src/sim/rng.js
 const __m_src_sim_rng_js = (() => {
@@ -2254,23 +2296,25 @@ const { EVENTS, EVENT_KEYS, MILESTONES } = __m_src_data_events_js;
 const { CARDS } = __m_src_data_cards_js;
 const { ORDINANCES, ORDINANCE_KEYS } = __m_src_data_ordinances_js;
 const { MODES } = __m_src_data_modes_js;
+const { DIFFICULTIES } = __m_src_data_difficulties_js;
 const { Rng, hashString } = __m_src_sim_rng_js;
 const { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } = __m_src_sim_board_js;
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
-function createRun({ modeKey = 'terminal', seed = null } = {}) {
+function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
+  const diff = DIFFICULTIES[diffKey] || DIFFICULTIES.standard;
   seed = seed ?? Math.floor(Math.random() * 1e9);
   const rng = new Rng(hashString(seed + ':events'));
   // event plan: shuffled cycles of all events
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    version: SAVE_VERSION, seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
-    money: CONFIG.run.startMoney,
+    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    money: Math.round(CONFIG.run.startMoney * (diff.startMoneyMult || 1)),
     board: createBoard(mode.w, mode.h, mode.preLock || {}),
     shop: { cards: [], rerolls: 0 },
     eventPlan: plan, surveyed: false,
@@ -2285,6 +2329,8 @@ function createRun({ modeKey = 'terminal', seed = null } = {}) {
 }
 
 const modeOf = s => MODES[s.modeKey];
+// A run made before difficulties existed, or one hand-built by the harness, is Standard.
+const difficultyOf = s => DIFFICULTIES[s.diffKey] || DIFFICULTIES.standard;
 // AP for the week: the mode's flat base, plus Extra Shift purchases, an
 // ordinance like Staff Expansion, and any timed effect (Temp Staff) still running.
 function apForRun(s) {
@@ -2312,12 +2358,12 @@ function gameRules(s) {
 }
 function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
-  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult);
+  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult, difficultyOf(s));
 }
 function tileCount(s) { return s.board.tiles.length; }
 function tileCost(s, def) {
   const m = modeOf(s);
-  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1) * gameRules(s).costMult;
+  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1) * (difficultyOf(s).costMult || 1) * gameRules(s).costMult;
   if (def.kind === 'transport' && m.terrainCostMult && m.terrainCostMult[def.terrain]) c *= m.terrainCostMult[def.terrain];
   return Math.round(c);
 }
@@ -2633,6 +2679,7 @@ function computeMods(s, week = s.week) {
     }
     list.push(m);
   }
+  list.push(difficultyOf(s).mods || {});
   for (const k of s.ordinances) list.push(ORDINANCES[k].mods || {});
   for (const e of s.effects) list.push(e.mods);
   return mergeMods(...list);
@@ -2778,7 +2825,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -3991,7 +4038,10 @@ function recordRun(meta, state) {
   meta.bestWeek = Math.max(meta.bestWeek, state.records.bestWeek);
   meta.bestScore = Math.max(meta.bestScore, state.records.bestScore);
   meta.bestTraveller = Math.max(meta.bestTraveller, state.records.bestTraveller);
-  const m = meta.byMode[state.modeKey] || (meta.byMode[state.modeKey] = { bestWeek: 0, bestScore: 0 });
+  // Records are per mode *and* difficulty: a week 16 on Extreme is not the
+  // same achievement as a week 16 on Standard.
+  const key = state.modeKey + ':' + (state.diffKey || 'standard');
+  const m = meta.byMode[key] || (meta.byMode[key] = { bestWeek: 0, bestScore: 0 });
   m.bestWeek = Math.max(m.bestWeek, state.records.bestWeek);
   m.bestScore = Math.max(m.bestScore, state.records.bestScore);
   saveMeta(meta);
@@ -4011,6 +4061,7 @@ const { CONFIG, starsOf, starTarget } = __m_src_config_js;
 const G = __m_src_game_run_js;
 const { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } = __m_src_data_tiles_js;
 const { MODES, MODE_KEYS } = __m_src_data_modes_js;
+const { DIFFICULTIES, DIFFICULTY_KEYS } = __m_src_data_difficulties_js;
 const { ORDINANCES } = __m_src_data_ordinances_js;
 const { CARDS } = __m_src_data_cards_js;
 const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
@@ -4019,7 +4070,7 @@ const { effTransport, effAmenity } = __m_src_sim_sim_js;
 const { BoardRenderer, colorForDef } = __m_src_ui_render_js;
 const { attachBoardInput } = __m_src_ui_boardinput_js;
 const { playTrack, isMuted, setMuted } = __m_src_ui_audio_js;
-const { loadMeta, recordRun, saveRun, loadRun, clearRun } = __m_src_ui_meta_js;
+const { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } = __m_src_ui_meta_js;
 const $ = id => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -4806,24 +4857,41 @@ function showStart() {
   const stale = !!saved && !G.saveIsCurrent(saved);
   if (stale) { clearRun(); saved = null; }
   const seedInput = h('input', { type: 'text', placeholder: 'seed (optional)', style: 'font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px;width:160px' });
+  // Difficulty is a second axis on top of the mode, so the records shown under
+  // each mode are the ones for the difficulty currently selected.
+  let diffKey = meta.lastDiff && DIFFICULTIES[meta.lastDiff] ? meta.lastDiff : 'standard';
+  const diffs = h('div', { class: 'diffs' });
   const modes = h('div', { class: 'modes' });
-  for (const k of MODE_KEYS) {
-    const m = MODES[k];
-    const unlocked = meta.bestWeek >= m.unlockWeek;
-    const rec = meta.byMode[k];
-    modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, seedInput.value.trim()) : null },
-      h('div', { class: 'name' }, m.name, unlocked ? '' : ` 🔒 reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
+  function paintModes() {
+    modes.innerHTML = '';
+    for (const k of MODE_KEYS) {
+      const m = MODES[k];
+      const unlocked = meta.bestWeek >= m.unlockWeek;
+      const rec = meta.byMode[k + ':' + diffKey];
+      modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, diffKey, seedInput.value.trim()) : null },
+        h('div', { class: 'name' }, m.name, unlocked ? '' : ` \u{1F512} reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best on ${DIFFICULTIES[diffKey].name}: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
+    }
   }
+  function paintDiffs() {
+    diffs.innerHTML = '';
+    for (const k of DIFFICULTY_KEYS) {
+      const d = DIFFICULTIES[k];
+      diffs.append(h('div', { class: 'diff' + (k === diffKey ? ' on' : ''), onclick: () => { diffKey = k; meta.lastDiff = k; saveMeta(meta); paintDiffs(); paintModes(); } },
+        h('div', { class: 'name' }, d.name), h('div', { class: 'desc' }, d.desc)));
+    }
+  }
+  paintDiffs(); paintModes();
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
     h('p', {}, 'You run a transit hub. Each week, expand the hub, and watch travelers wander through. Hit the satisfaction quota or the run ends.'),
     stale ? h('p', { class: 'warn' }, 'Your saved run is from an older version of the game and can\'t be resumed. Start a new run below.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
+    h('h3', {}, 'Choose a difficulty'), diffs,
     h('h3', {}, 'Choose a mode'), modes,
     h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));
 }
-function newRun(modeKey, seedText) {
+function newRun(modeKey, diffKey, seedText) {
   const seed = seedText ? (isNaN(Number(seedText)) ? seedText : Number(seedText)) : null;
-  state = G.createRun({ modeKey, seed });
+  state = G.createRun({ modeKey, diffKey, seed });
   ui.started = true;
   closeModal(); ui.mode = 'idle'; ui.selectedTileId = null; ui.heat = false; ui.pb.result = null;
   renderer.resize(state.board); renderer.fit(); // a new run always starts framed
@@ -4831,7 +4899,7 @@ function newRun(modeKey, seedText) {
 }
 function showMenu() {
   openModal(h('h2', {}, 'Menu'),
-    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Mode'), h('span', {}, MODES[state.modeKey].name), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed), h('span', { class: 'k' }, 'Week'), h('span', {}, state.week)),
+    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Mode'), h('span', {}, MODES[state.modeKey].name), h('span', { class: 'k' }, 'Difficulty'), h('span', {}, G.difficultyOf(state).name), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed), h('span', { class: 'k' }, 'Week'), h('span', {}, state.week)),
     h('h3', {}, 'History'), h('table', { class: 'stats' }, h('tr', {}, h('th', {}, 'Week'), h('th', {}, 'Stars'), h('th', {}, 'Needed'), h('th', {}, 'Money'), h('th', {}, 'Event')), ...state.history.map(x => h('tr', {}, h('td', {}, x.week), h('td', { class: x.passed ? 'good' : 'bad', title: fmt(x.score) + ' points' }, `${fmt(starsOf(x.score))}★`), h('td', {}, `${fmt(starTarget(x.quota))}★`), h('td', {}, '+$' + fmt(x.money)), h('td', {}, x.event || '')))),
     h('div', { class: 'btnrow' }, h('button', { class: 'danger', onclick: () => { clearRun(); closeModal(); showStart(); } }, 'Abandon run'), h('button', { class: 'primary', onclick: closeModal }, 'Back')));
 }

@@ -32,6 +32,7 @@ One week = one turn.
 The shape of a run:
 
 - **Every 4th week is an event week**, with a quota multiplier and a rule twist (§9). The next event is shown; the one after it is hidden.
+- **Difficulty** (Standard, Hard, Extreme) is picked with the mode and scales the quota, prices and income for the whole run (§10.1.1).
 - **Ordinances** are offered at weeks 5, 12 and 20 (§10.2).
 - **Milestones** change the run at set weeks (§10.5): pickpockets arrive at week 7, rare tiles at week 10, and Extra Shift appears in the shop at week 19.
 - **Week 16** shows the win screen, and play can continue in endless mode.
@@ -183,21 +184,21 @@ A station's output grows fast while it is small and slowly once it is built out.
 
 ```
 growth(i) = late + (early − late) × decay^(i − 1)
-Quota(week) = round(5400 × Π growth(i) for i = 1 … week−1  × eventMult × ordinanceMult, to 1000)
-early = 1.80, late = 1.125 (Junction: 1.16), decay = 0.675
+Quota(week) = round(5400 × Π growth(i) for i = 1 … week−1  × eventMult × ordinanceMult × difficultyMult, to 1000)
+early = 1.80, late = 1.125 (Junction: 1.16) + difficultyGrowthAdd, decay = 0.675
 ```
 
 | Week | Quota | Week | Quota |
 |---|---|---|---|
-| 1 | 5,000 | 10 | 67,000 |
-| 2 | 9,000 | 12 | 87,000 |
-| 3 | 14,000 | 14 | 112,000 |
-| 4 | 20,000 | 16 | 143,000 |
-| 5 | 27,000 | 20 | 230,000 |
-| 6 | 34,000 | 24 | 368,000 |
-| 8 | 50,000 | | |
+| 1 | 5,000 | 10 | 73,000 |
+| 2 | 10,000 | 12 | 94,000 |
+| 3 | 15,000 | 14 | 121,000 |
+| 4 | 22,000 | 16 | 154,000 |
+| 5 | 29,000 | 20 | 248,000 |
+| 6 | 37,000 | 24 | 398,000 |
+| 8 | 54,000 | | |
 
-These are base quotas. Event weeks multiply them (§9), and Night Service multiplies every week by 1.15.
+These are base quotas on Standard. Event weeks multiply them (§9), Night Service multiplies every week by 1.15, and the difficulty scales the whole curve and steepens it (§10.1.1).
 
 Quotas are shown as **stars**, one per 1,000 points, and always round to a whole star. Earned stars round down, so 2,400 points is two stars.
 
@@ -507,7 +508,7 @@ An event's real difficulty is its quota multiplier divided by how much it cuts t
 
 ### 10.1 Modes
 
-A mode sets the board and one standing rule. It is chosen before the run and unlocked by your **best week reached in any mode**.
+A mode sets the board and one standing rule. It is chosen before the run and unlocked by your **best week reached in any mode**. Difficulty (§10.1.1) is a separate choice made at the same time; any mode can be played at any difficulty.
 
 | Mode | Grid | Unlock | Levers (`src/data/modes.js`) |
 |---|---|---|---|
@@ -534,6 +535,32 @@ Greedy-bot results, 8 runs to week 16:
 | Terminus | 2 / 8 | Two runs died in **week 1**; one AP with a mostly-transport opening hand can miss the 5★ quota. The survivors cruise at 1.3–3×. |
 
 These were measured with the $ stop budget at 7; since it moved to 3, Terminal dropped to 10/16 over two seed sets (§14.2), and the other modes haven't been re-run. So Junction is front-loaded rather than hard, and Terminus has a week-1 cliff. The bot is greedy and one-step, so treat these as shape, not as final difficulty.
+
+### 10.1.1 Difficulty
+
+Difficulty is the second axis on the start screen. Where a mode changes the *shape* of a run, a difficulty only changes the *pressure*, so the same board reads the same way at every level. Unlike modes it is not gated: a player who wants a harder first run shouldn't have to grind a week-12 unlock for it.
+
+| Lever (`src/data/difficulties.js`) | Standard | Hard | Extreme |
+|---|---|---|---|
+| `quotaMult` — flat on every week's quota | 1 | 1.15 | 1.20 |
+| `quotaGrowthAdd` — added to the per-week growth | 0 | +0.012 | +0.045 |
+| `costMult` — tile prices | 1 | 1.15 | 1.35 |
+| `startMoneyMult` — cash at week 1 | 1 ($220) | 0.85 ($187) | 0.8 ($176) |
+| `mods.revenueMult`, `mods.fareMult` | 1 | 0.9 | 0.8 |
+
+The growth lever is what separates the two hard levels. A flat multiplier alone is felt in week 1 and then forgotten, since the board outgrows it; adding to the growth rate makes the gap widen every week instead. Standard's week-16 base quota is 154k, Hard's 200k (1.30×) and Extreme's 289k (1.88×), while their week-1 quotas are 5★, 6★ and 6★ — the star rounding ties the top two in week 1 on purpose. That shape was chosen after measurement: at `quotaMult` 1.35 Extreme killed five of sixteen bot runs in week 1 or 2, which is a coin flip on the opening hand rather than a difficulty (§15).
+
+`costMult` stacks with the mode's (Metroplex on Extreme is 1.25 × 1.35) and with the Staff Expansion ordinance, and like them it leaves upgrades, cards and bridges alone. The `mods` block is merged exactly like an ordinance's, so nothing in the simulator knows difficulty exists.
+
+Greedy bot, 8 runs to week 16 on Terminal, over `--seed0 1000` and `2000`:
+
+| Difficulty | Survived | Score/quota band from week 8 | Deaths |
+|---|---|---|---|
+| Standard | 14 / 16 | 1.9–2.8× | weeks 8, 12 |
+| Hard | 9 / 16 | 1.6–2.2× | weeks 3, 4, 7, 8, 12, 12, 16 |
+| Extreme | 2 / 16 | 1.2–1.5× | weeks 2, 2, 4 ×4, 8 ×3, 10, 16 ×2 |
+
+Records are kept per mode **and** difficulty: a week 16 on Extreme is not the same achievement as one on Standard.
 
 ### 10.2 Ordinances
 
@@ -595,7 +622,7 @@ Stored in `localStorage`.
 **Built:**
 
 - **Mode unlocks** by best week reached in any mode (8, 12, 16).
-- **Records:** best week, best week score and best single-traveller value, overall and per mode.
+- **Records:** best week, best week score and best single-traveller value, overall and per mode-and-difficulty.
 - **Save and resume:** the run saves after every action, and a lost run clears the save. Saves carry a `SAVE_VERSION` (in `src/game/run.js`) and are not migrated: a save from an older build is reported on the start screen and discarded. Bump the version whenever the saved state's shape changes.
 
 **Planned:**
@@ -669,7 +696,7 @@ Quotas are shown as stars, one per 1,000 points.
 - **Simulator:** `src/sim/sim.js` is headless and deterministic, with no DOM dependency; the same modules run in Node for the harness and in the browser for play. A week takes ~1.5 ms for a small board, so it runs inline — no worker — and is precomputed before playback. The renderer replays each traveller's recorded frames and events.
 - **Seeding:** every roll is stateless — a hash of the week seed, the traveller's *spawn slot* (which transport, and their number in its stream) and the question being decided (tier, destination, a waypoint, a shop's die, a tie-break at a cell). No stream is shared, so a board change re-rolls only the travellers whose route it touches; a tile out of everyone's way leaves the week identical, and the preview's before/after runs stay on the same random path. `sim.stratify` turns a slot's rolls into golden-ratio steps along the unit interval, so a transport's travellers cover the dice evenly (the tier mix and each shop's serves land near their expectation). The old per-subsystem streams (`makeStreams`) remain for the shop and cards.
 - **Pathing:** a Dijkstra distance field per target, memoised per week. Destinations are few and travellers many. Checkpoint fences are a per-step bitmask, since they lie between cells.
-- **Data-driven content:** every tile, event, card, ordinance and mode is a plain object in `src/data/`, and every tunable number lives in `src/config.js`. Unique mechanics are keyed by `special`: `wifi`, `walkway`, `waiting`, `gate`, `security`, `green`, `loop` and `anytier`. Underground tiles are keyed by `terrain: 'underground'` plus `line` (`through`, `road` or `water`); the placed tile records its tunnel as `tile.tunnel = { line, axis, ends, cells }`, and the layer's occupancy is derived from the tiles rather than stored, so nothing can drift out of sync.
+- **Data-driven content:** every tile, event, card, ordinance, mode and difficulty is a plain object in `src/data/`, and every tunable number lives in `src/config.js`. Unique mechanics are keyed by `special`: `wifi`, `walkway`, `waiting`, `gate`, `security`, `green`, `loop` and `anytier`. Underground tiles are keyed by `terrain: 'underground'` plus `line` (`through`, `road` or `water`); the placed tile records its tunnel as `tile.tunnel = { line, axis, ends, cells }`, and the layer's occupancy is derived from the tiles rather than stored, so nothing can drift out of sync.
 - **State:** a plain mutable run-state object with action functions (`src/game/run.js`); the UI re-renders after each action. `window.gcs` exposes the state, the game API and `refresh()` for debugging from the console.
 
 ### 13.2 The isometric view
@@ -716,7 +743,7 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 ```bash
 node harness/selftest.js                                              # invariants
 node harness/run.js harness/layouts/doc_example.json --seeds 50 --week 4   # one layout, p10/p50/p90 + saturation
-node harness/autoplay.js --runs 8 --weeks 16 [--mode junction] [--verbose]  # greedy bot plays full runs
+node harness/autoplay.js --runs 8 --weeks 16 [--mode junction] [--difficulty hard] [--verbose]  # greedy bot plays full runs
 node harness/marginal.mjs --week 6 --seeds 12                         # value of one more of each tile
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24           # placement landscape of each probe tile on a bot board
 node harness/ui-smoke.mjs                                             # Playwright drive of the real page
@@ -742,6 +769,7 @@ Transports bring travellers; amenities multiply what each traveller is worth. Bo
 
 - **`marginal.mjs`, week 6:** the cheap road transports lead at 24–38★ per $100. Good amenities sit at 13–20 and mid-game transports at 6–15. No ordinary tile is a trap: WiFi is 13.8 and the Checkpoint 6.1 (it is placement-sensitive by design).
 - **`autoplay.js --runs 8`, run with `--seed0 1000` and `--seed0 2000`:** the greedy bot (which now deletes a tile whose removal scores better) survives 14 of 16 runs to week 16 against the 5,400-base quota. Mean score/quota runs about 1.9–2.8× from week 8 on, and the two deaths fall on event weeks (8, 12). If a change moves that, the `quota` block holds the dials.
+- **`autoplay.js --difficulty`:** the same 16 runs survive 14 on Standard, 9 on Hard and 2 on Extreme (§10.1.1). Re-run all three after any change to the quota block or the economy — a change that only reads as "slightly tighter" on Standard can wipe Extreme out in week 2.
 - **`sensitivity.mjs`, 24 seeds on the bot's week-9 and week-12 boards:** moving an ordinary amenity one cell changes its value by 2–3.5% of the week's score, rotating it by 2–5%; the estimate's own noise floor is about 1%. Stranding runs 10–40% on those boards (it was 65–80% before travellers minded the clock). The one placement that still costs a quarter of the week is sealing a platform in, which the preview now names.
 
 **Event-week hazards:** re-check event weeks after any catalogue change. Inspection is the cautionary tale — once amenities carried half the score, closing every un-upgraded one made that week 5× harder than a normal week, so it now restricts them to 70% instead. Strike had the same hazard: on a one-terrain board it would score exactly zero, hence the skeleton service.
@@ -760,6 +788,8 @@ Changes from the original design, with the reason for each. Original values are 
 - **Action points stay at 2 all run.** The original ramp (3 AP at week 6, 4 at 12, 5 at 20) was removed; extra AP comes only from cards and ordinances (§4.1). The greedy bot survived *more* often with flat AP (5/8 vs 3/8), because money was already the binding limit, so the quota curve was left alone.
 - **Wait replaced by the early-finish bonus.** Wait paid 8% interest on held cash per unused AP (capped at $100/AP), which rewarded hoarding. Running early now pays a flat, week-scaled amount per unspent AP, and the Wait button is gone. Bot survival was unchanged.
 - **Rerolls are free** (they still cost 1 AP), replacing the original escalating fee (10, 25, 60, 150…).
+
+- **Difficulty levels** (§10.1.1). Standard is the game as tuned and every lever is 1, so nothing about the existing balance moved: autoplay over `--seed0 1000` and `2000` survives 14 of 16, the same reading as before the change. Hard (9/16) and Extreme (2/16) scale the quota, prices and income on top of it. Extreme was measured twice: at `quotaMult` 1.35 / `quotaGrowthAdd` 0.03 it survived 2 of 16 but killed five runs in week 1 or 2, which tests the opening hand rather than the player. Moving the pressure off the flat multiplier and onto the growth rate (1.20 / 0.045) kept survival at 2 of 16 and the week-16 quota slightly higher (289k against 281k) while the week-1 quota dropped a star (6★ from 7★) and the worst week-1 score went from 0.62× of quota to 1.08×, so the deaths now land on the event weeks where they belong.
 
 **Simulation**
 

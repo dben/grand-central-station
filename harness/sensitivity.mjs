@@ -4,7 +4,7 @@
 // tile on a board and reports the landscape (best / median / negative share)
 // and its roughness: the mean jump in value between a spot and the same tile
 // one cell over or rotated, next to the seed-noise floor of the estimate.
-//   node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 8 --tiles coffee,burger,gate
+//   node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 8 --tiles coffee,burger,gate [--difficulty hard]
 //   node harness/sensitivity.mjs --layout harness/layouts/amenity_chain.json --week 6
 //   --dump board.json writes the bot's board as a layout, so another build can probe the same one.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -13,6 +13,7 @@ import { simulateWeek } from '../src/sim/sim.js';
 import { tileDef } from '../src/data/tiles.js';
 import { orientationCount } from '../src/sim/shapes.js';
 import { MODES } from '../src/data/modes.js';
+import { DIFFICULTIES } from '../src/data/difficulties.js';
 import { CONFIG } from '../src/config.js';
 import { playRun, applySets, boardSpec } from './bot.mjs';
 import { loadLayout } from './run.js';
@@ -23,10 +24,10 @@ const WEEK = Number(opt('week', 9)), SEEDS = Number(opt('seeds', 8));
 const TILES = opt('tiles', 'coffee,burger,sports_bar,gate,walkway,tram_stop').split(',');
 const QUIET = args.includes('--quiet');
 
-let board, mode;
-if (opt('layout')) ({ board, mode } = loadLayout(JSON.parse(readFileSync(opt('layout'), 'utf8'))));
+let board, mode, diff = DIFFICULTIES[opt('difficulty', 'standard')] || DIFFICULTIES.standard;
+if (opt('layout')) ({ board, mode, diff } = loadLayout(JSON.parse(readFileSync(opt('layout'), 'utf8'))));
 else {
-  const { s } = playRun({ seed: Number(opt('bot', 1000)), weeks: WEEK, stopBefore: WEEK });
+  const { s } = playRun({ seed: Number(opt('bot', 1000)), weeks: WEEK, difficulty: opt('difficulty', 'standard'), stopBefore: WEEK });
   board = s.board; mode = MODES[s.modeKey];
   if (opt('dump')) writeFileSync(opt('dump'), JSON.stringify(boardSpec(s)));
 }
@@ -34,7 +35,7 @@ else {
 // probes the same layout.
 applySets(args);
 const seeds = Array.from({ length: SEEDS }, (_, i) => 5000 + i);
-const sims = b => seeds.map(sd => simulateWeek(b, { seed: sd, week: WEEK, mods: {} }));
+const sims = b => seeds.map(sd => simulateWeek(b, { seed: sd, week: WEEK, mods: diff.mods || {} }));
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
 const baseRuns = sims(board);

@@ -37,6 +37,18 @@ then keep going as long as you can.
 - **Watch the clock.** Anyone still walking when the week ends is stranded at half value, and a
   traveller with no route to their platform banks nothing at all.
 
+## Difficulty
+
+Picked with the mode, and open from the first run. It scales the pressure, never the rules.
+
+| | Quota | Tile prices | Starting cash | Fares and revenue |
+|---|---|---|---|---|
+| Standard | — | — | $220 | — |
+| Hard | +15%, climbing faster | +15% | $187 | −10% |
+| Extreme | +20%, climbing much faster | +35% | $176 | −20% |
+
+By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.9×.
+
 ## Modes
 
 | Mode | Board | Twist | Unlocks |
@@ -86,7 +98,7 @@ node harness/ui-smoke.mjs                        # Playwright drive of the real 
 
 ```
 src/config.js        every tunable number
-src/data/            tiles, events, cards, ordinances, modes
+src/data/            tiles, events, cards, ordinances, modes, difficulties
 src/sim/             board rules and the headless, deterministic week simulator
 src/game/run.js      run state, shop, actions, settlement
 src/ui/              isometric renderer, input, DOM chrome, audio

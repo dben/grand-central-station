@@ -181,13 +181,16 @@ export const CONFIG = {
   },
 };
 
-export function quotaForWeek(week, mode, extraMult = 1) {
+// `diff` is the run's difficulty (src/data/difficulties.js): it scales the
+// whole curve by `quotaMult` and steepens it by `quotaGrowthAdd`, so a harder
+// run is not just uniformly higher but pulls away week by week.
+export function quotaForWeek(week, mode, extraMult = 1, diff = null) {
   const q = CONFIG.quota;
-  const late = (mode && mode.quotaGrowth) || q.growth;
+  const late = ((mode && mode.quotaGrowth) || q.growth) + ((diff && diff.quotaGrowthAdd) || 0);
   const early = Math.max(late, q.earlyGrowth);
   let raw = q.base;
   for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1);
-  raw *= extraMult;
+  raw *= extraMult * ((diff && diff.quotaMult) || 1);
   const u = q.starUnit;
   return Math.max(u, Math.round(raw / u) * u);
 }

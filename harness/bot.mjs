@@ -106,8 +106,8 @@ export function naiveAction(s, rng) {
 // Play one run. `onWeek(s, result, quota)` is called after each week runs, before
 // settlement. Returns { s, died, ratios } where ratios[week] = score / quota.
 // `stopBefore` ends the run in the shop phase of that week (a board to probe).
-export function playRun({ seed, weeks = 16, mode = 'terminal', policy = 'greedy', cands = 10, verbose = false, stopBefore = null, onWeek = null, prune = true }) {
-  const s = G.createRun({ modeKey: mode, seed });
+export function playRun({ seed, weeks = 16, mode = 'terminal', difficulty = 'standard', policy = 'greedy', cands = 10, verbose = false, stopBefore = null, onWeek = null, prune = true }) {
+  const s = G.createRun({ modeKey: mode, diffKey: difficulty, seed });
   const rng = new Rng(seed);
   let died = null;
   const ratios = {};
@@ -133,4 +133,4 @@ export function playRun({ seed, weeks = 16, mode = 'terminal', policy = 'greedy'
   return { s, died, ratios };
 }
 
-export const boardSpec = s => ({ mode: s.modeKey, week: s.week, tiles: s.board.tiles.map(t => ({ key: t.key, x: t.x, y: t.y, rot: t.rot, level: t.level })) });
+export const boardSpec = s => ({ mode: s.modeKey, difficulty: s.diffKey, week: s.week, tiles: s.board.tiles.map(t => ({ key: t.key, x: t.x, y: t.y, rot: t.rot, level: t.level })) });

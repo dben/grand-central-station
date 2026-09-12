@@ -8,24 +8,26 @@ import { EVENTS, EVENT_KEYS, MILESTONES } from '../data/events.js';
 import { CARDS } from '../data/cards.js';
 import { ORDINANCES, ORDINANCE_KEYS } from '../data/ordinances.js';
 import { MODES } from '../data/modes.js';
+import { DIFFICULTIES } from '../data/difficulties.js';
 import { Rng, hashString } from '../sim/rng.js';
 import { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
 import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
-export function createRun({ modeKey = 'terminal', seed = null } = {}) {
+export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
+  const diff = DIFFICULTIES[diffKey] || DIFFICULTIES.standard;
   seed = seed ?? Math.floor(Math.random() * 1e9);
   const rng = new Rng(hashString(seed + ':events'));
   // event plan: shuffled cycles of all events
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    version: SAVE_VERSION, seed, modeKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
-    money: CONFIG.run.startMoney,
+    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    money: Math.round(CONFIG.run.startMoney * (diff.startMoneyMult || 1)),
     board: createBoard(mode.w, mode.h, mode.preLock || {}),
     shop: { cards: [], rerolls: 0 },
     eventPlan: plan, surveyed: false,
@@ -40,6 +42,8 @@ export function createRun({ modeKey = 'terminal', seed = null } = {}) {
 }
 
 export const modeOf = s => MODES[s.modeKey];
+// A run made before difficulties existed, or one hand-built by the harness, is Standard.
+export const difficultyOf = s => DIFFICULTIES[s.diffKey] || DIFFICULTIES.standard;
 // AP for the week: the mode's flat base, plus Extra Shift purchases, an
 // ordinance like Staff Expansion, and any timed effect (Temp Staff) still running.
 export function apForRun(s) {
@@ -67,12 +71,12 @@ export function gameRules(s) {
 }
 export function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
-  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult);
+  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult, difficultyOf(s));
 }
 export function tileCount(s) { return s.board.tiles.length; }
 export function tileCost(s, def) {
   const m = modeOf(s);
-  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1) * gameRules(s).costMult;
+  let c = def.cost * (1 + CONFIG.economy.tileCostScalePerTile * tileCount(s)) * (m.costMult || 1) * (difficultyOf(s).costMult || 1) * gameRules(s).costMult;
   if (def.kind === 'transport' && m.terrainCostMult && m.terrainCostMult[def.terrain]) c *= m.terrainCostMult[def.terrain];
   return Math.round(c);
 }
@@ -388,6 +392,7 @@ export function computeMods(s, week = s.week) {
     }
     list.push(m);
   }
+  list.push(difficultyOf(s).mods || {});
   for (const k of s.ordinances) list.push(ORDINANCES[k].mods || {});
   for (const e of s.effects) list.push(e.mods);
   return mergeMods(...list);

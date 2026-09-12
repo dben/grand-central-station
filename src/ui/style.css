@@ -158,6 +158,13 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .mode.locked { opacity: 0.5; cursor: default; }
 .mode .name { font-weight: 700; margin-bottom: 4px; color: var(--accent); }
 .mode .desc { font-size: 14px; color: var(--muted); }
+.diffs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 6px; }
+.diff { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; box-shadow: var(--hard); }
+.diff:hover { border-color: var(--accent); }
+.diff.on { border-color: var(--accent); background: var(--panel); }
+.diff .name { font-weight: 700; color: var(--accent); }
+.diff.on .name::after { content: ' \2713'; }
+.diff .desc { font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .btnrow { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
 table.stats { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
