@@ -28,15 +28,15 @@ export const CONFIG = {
 
   // ------------------------------------------------------------------- quota
   quota: {
-    base: 5400,                 // (was 5000) travellers who mind the clock board about 8% more value
+    base: 11000,                // week 1's target, and the whole curve's scale
     // A station's output grows fast while it is small and slowly once it is
     // built out, so a single per-week multiplier makes the first half free and
     // the last few weeks a cliff. Growth starts at `earlyGrowth` and decays
     // geometrically (by `growthDecay` per week) toward `growth`, which tracks
     // that curve and keeps every week about as hard as the last.
     growth: 1.125,              // the late, settled per-week multiplier
-    earlyGrowth: 1.80,          // week 1 -> 2
-    growthDecay: 0.675,         // how fast the rate falls from early to late
+    earlyGrowth: 1.25,          // week 1 -> 2
+    growthDecay: 0.70,          // how fast the rate falls from early to late
     starUnit: 1000,             // one star per this many points; quotas round to a whole star
     // Catch-up ("the city expects more of you"): the quota never sits further
     // below your own recent form than this. quota = max(curve, share * recent),
@@ -51,7 +51,7 @@ export const CONFIG = {
     // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
-    eventStrength: 1,
+    eventStrength: 0.5,
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -181,7 +181,7 @@ export const CONFIG = {
     // The opening hand. `fixed` names cards dealt to every run in order (see
     // generateShop); `transport` and `amenity` are rolled to fill what is left
     // of the shop. Bring people, then serve them.
-    week1: { fixed: [], transport: 3, amenity: 2 },
+    week1: { fixed: ['bus_stop', 'burger'], transport: 3, amenity: 2 },
     // Rarity: prefer tiles whose cost is close to targetCost(week)
     targetCostBase: 32,
     targetCostGrowth: 1.14,
