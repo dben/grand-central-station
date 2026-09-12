@@ -294,9 +294,10 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(minWeekOf(MODES.sky_harbour, 'jetway', tileDef('jetway')) === 2 && minWeekOf(MODES.terminal, 'jetway', tileDef('jetway')) === 6, 'a level can move a tile\'s week without touching the catalogue');
   ok(onSale('sky_harbour', 2).includes('jetway') && !onSale('terminal', 2).includes('jetway'), 'and Sky Harbour offers jetways in week 2 where Terminal does not');
   ok(!onSale('metroplex', 11).includes('private_terminal') && onSale('terminal', 11).includes('private_terminal'), 'a level can push the rare stock back too');
-  const jn = createRun({ modeKey: 'junction', seed: 5 }), tm = createRun({ modeKey: 'terminal', seed: 5 });
-  ok(runRules(jn).eventEvery === 3 && runRules(tm).eventEvery === 4 && isEventWeek(jn, 3) && !isEventWeek(tm, 3), 'a level sets its own event cadence');
+  const mx = createRun({ modeKey: 'metroplex', seed: 5 }), tm = createRun({ modeKey: 'terminal', seed: 5 });
+  ok(runRules(mx).eventEvery === 5 && runRules(tm).eventEvery === 4 && isEventWeek(mx, 5) && !isEventWeek(tm, 5), 'a level sets its own event cadence');
   ok(runRules(tm).startMoney === CONFIG.run.startMoney, 'and inherits every field it does not override');
+  const jn = createRun({ modeKey: 'junction', seed: 5 });
   ok(milestoneForWeek(jn, 5).key === 'crime_wave' && !milestoneForWeek(tm, 5), 'the specials start when the level says');
   // the crime wave reaches the simulator as a modifier, not as a mode
   const sh = createRun({ modeKey: 'sky_harbour', seed: 5 });
