@@ -194,7 +194,6 @@ function renderTop() {
   // wallet
   $('st-money').textContent = '$' + fmt(state.money);
   $('st-ap').textContent = state.ap;
-  $('btn-shop-expand').textContent = `▲ Shop · $${fmt(state.money)} · ${state.ap} AP`;
   const pips = $('ap-pips'); pips.innerHTML = '';
   const total = Math.max(state.ap, G.apForRun(state));
   for (let i = 0; i < total; i++) pips.append(h('span', { class: 'pip' + (i < state.ap ? '' : ' empty') }));
@@ -249,6 +248,9 @@ function cardBody(card) {
 }
 
 function renderShop() {
+  // Nothing in the tray can be spent once the week is running, so it folds
+  // itself away for the show and comes back with the next shop.
+  $('shop').classList.toggle('collapsed', state.phase !== 'shop' || ui.mode === 'playback' || ui.mode === 'heat');
   const wrap = $('shop-cards'); wrap.innerHTML = '';
   for (const card of state.shop.cards) {
     const cost = G.cardCost(state, card);
@@ -381,6 +383,8 @@ const holdingCard = () => !!ui.card && (ui.mode === 'place' || ui.mode === 'targ
 function renderCardBar() {
   const bar = $('card-bar');
   bar.classList.toggle('hidden', !holdingCard());
+  // on a narrow screen the bar sits where the cards are, so they stand down
+  $('main').classList.toggle('holding', holdingCard());
   if (!holdingCard()) { ui.barKey = null; return; }
   const card = ui.card, place = ui.mode === 'place', confirm = ui.mode === 'confirm';
   const cost = G.cardCost(state, card), ap = G.cardAPCost(state, card);
@@ -934,14 +938,11 @@ function boot() {
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
   const applyLayout = () => {
-    $('shop').classList.toggle('collapsed', !!layout.shopCollapsed);
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);
     $('side-tab').classList.toggle('hidden', !layout.sideCollapsed);
     saveLayout();
     if (state) renderer.resize(state.board);
   };
-  $('btn-shop-toggle').addEventListener('click', () => { layout.shopCollapsed = true; applyLayout(); });
-  $('btn-shop-expand').addEventListener('click', () => { layout.shopCollapsed = false; applyLayout(); });
   $('btn-run-big').addEventListener('click', confirmRunWeek);
   $('btn-side-toggle').addEventListener('click', () => { layout.sideCollapsed = true; applyLayout(); });
   $('side-tab').addEventListener('click', () => { layout.sideCollapsed = false; applyLayout(); });
@@ -951,7 +952,7 @@ function boot() {
   // can always bring whatever is underneath into view.
   const tray = $('shop');
   new ResizeObserver(() => {
-    $('board-wrap').style.setProperty('--tray-h', tray.offsetHeight + 'px');
+    document.documentElement.style.setProperty('--tray-h', tray.offsetHeight + 'px');
     renderer.setInsets({ bottom: tray.offsetHeight });
     if (state) renderer.resize(state.board);
   }).observe(tray);

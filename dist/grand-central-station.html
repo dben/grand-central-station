@@ -133,20 +133,17 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 
 /* ------------------------------------------------------------------- shop */
 /* Cards sit centred on the bottom edge of the board with the wallet and
-   Reroll/Wait docked to their left. Empty tray space lets drags through to
-   the board, and the camera is told how tall the tray is (--tray-h) so the
-   board can always be panned out from under it. */
+   Reroll/Wait docked to their left (the empty third column is what keeps them
+   centred). Empty tray space lets drags through to the board, and the camera
+   is told how tall the tray is (--tray-h) so the board can always be panned
+   out from under it. Nobody folds the tray by hand: it takes itself away for
+   the week's run and comes back with the next shop. */
 #shop { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr); align-items: end; gap: 12px; padding: 0 12px 12px; pointer-events: none; }
 #shop > * { pointer-events: auto; grid-row: 1; }
 #shop-actions { grid-column: 1; justify-self: end; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(26,16,51,0.92); border: 2px solid var(--line); border-radius: 6px; box-shadow: var(--hard); }
 #shop-actions button { min-width: 120px; line-height: 1.1; }
 #shop-cards { grid-column: 2; display: flex; gap: 8px; overflow-x: auto; padding: 8px 6px 6px 2px; }
-#shop-side { grid-column: 3; justify-self: start; }
-#btn-shop-toggle { background: rgba(37,23,77,0.92); color: var(--text); border: 2px solid var(--line); padding: 2px 10px; font-size: 18px; box-shadow: var(--hard); }
-#shop-collapsed { grid-column: 2; display: none; }
-#shop.collapsed #shop-cards, #shop.collapsed #shop-actions, #shop.collapsed #shop-side { display: none; }
-#shop.collapsed #shop-collapsed { display: block; }
-#btn-shop-expand { background: rgba(37,23,77,0.94); padding: 6px 16px; font-size: 18px; }
+#shop.collapsed { display: none; }
 /* Every card type has its own body colour and its own border (colour and
    line style), so the kind reads at a glance. --kc is the kind colour. */
 .card { --kc: var(--line); width: 112px; height: 180px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 3px solid var(--kc); border-radius: 6px; padding: 5px 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; flex-shrink: 0; text-align: center; gap: 2px; box-shadow: 4px 4px 0 rgba(10,5,32,0.75); transition: transform 0.1s; }
@@ -222,14 +219,21 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   /* a full-width handle across the top of the strip: it folds away downwards */
   #btn-side-toggle { position: static; width: 100%; min-height: 36px; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--accent); }
   #btn-side-toggle::after { content: '⌄'; font-size: 20px; }
-  #side-tab { padding: 16px 8px; min-height: 52px; color: var(--accent); }
+  /* the tab that brings the strip back sits at the bottom of the right edge,
+     just above the cards, where a thumb already is */
+  #side-tab { top: auto; bottom: calc(var(--tray-h, 0px) + 10px); right: 8px; border-right: 2px solid var(--line); border-radius: 6px; padding: 10px 14px; min-height: 44px; min-width: 44px; color: var(--accent); }
   #side-tab::after { content: '▲'; }
   /* too narrow to centre: actions on the left, cards scroll beside them */
   #shop { display: flex; align-items: flex-end; gap: 8px; padding: 0 8px 8px; }
   #shop-cards { flex: 1 1 auto; min-width: 0; }
-  #shop.collapsed { justify-content: center; }
   #board-tools button { width: 44px; height: 44px; font-size: 20px; }
   #card-bar { left: 8px; right: 8px; width: auto; transform: none; }
+  /* A card in hand takes the cards' own place rather than stacking above them:
+     the tray keeps its height (so the board does not jump) but hands the space
+     over, and ✕ gives it back. The timeline tab would sit under the bar. */
+  #main.holding #shop { visibility: hidden; }
+  #main.holding #card-bar { bottom: 8px; }
+  #main.holding #side-tab { display: none; }
   #card-bar-tools button { flex: 1; min-height: 46px; }
   #card-bar-tools #btn-place-cancel { flex: 0 0 auto; min-width: 56px; }
   #btn-card-info { padding: 8px 14px; }
@@ -263,7 +267,6 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
   #card-bar-desc { max-height: 22vh; }
-  #side-tab { top: 26%; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }
@@ -353,7 +356,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
         </div>
       </div>
       <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
-      <!-- the shop floats over the bottom edge of the board -->
+      <!-- The shop floats over the bottom edge of the board. It folds itself
+           away while the week runs, so the board gets the whole screen. -->
       <div id="shop">
         <div id="shop-actions">
           <div id="wallet">
@@ -365,8 +369,6 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
           <button id="btn-run" class="primary">Run Week ▶</button>
         </div>
         <div id="shop-cards"></div>
-        <div id="shop-side"><button id="btn-shop-toggle" class="toggle" title="Hide shop">⌄</button></div>
-        <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
       </div>
     </div>
     <!-- glyphs come from CSS: the panel sits on the right on a wide screen and
@@ -4326,7 +4328,6 @@ function renderTop() {
   // wallet
   $('st-money').textContent = '$' + fmt(state.money);
   $('st-ap').textContent = state.ap;
-  $('btn-shop-expand').textContent = `▲ Shop · $${fmt(state.money)} · ${state.ap} AP`;
   const pips = $('ap-pips'); pips.innerHTML = '';
   const total = Math.max(state.ap, G.apForRun(state));
   for (let i = 0; i < total; i++) pips.append(h('span', { class: 'pip' + (i < state.ap ? '' : ' empty') }));
@@ -4381,6 +4382,9 @@ function cardBody(card) {
 }
 
 function renderShop() {
+  // Nothing in the tray can be spent once the week is running, so it folds
+  // itself away for the show and comes back with the next shop.
+  $('shop').classList.toggle('collapsed', state.phase !== 'shop' || ui.mode === 'playback' || ui.mode === 'heat');
   const wrap = $('shop-cards'); wrap.innerHTML = '';
   for (const card of state.shop.cards) {
     const cost = G.cardCost(state, card);
@@ -4513,6 +4517,8 @@ const holdingCard = () => !!ui.card && (ui.mode === 'place' || ui.mode === 'targ
 function renderCardBar() {
   const bar = $('card-bar');
   bar.classList.toggle('hidden', !holdingCard());
+  // on a narrow screen the bar sits where the cards are, so they stand down
+  $('main').classList.toggle('holding', holdingCard());
   if (!holdingCard()) { ui.barKey = null; return; }
   const card = ui.card, place = ui.mode === 'place', confirm = ui.mode === 'confirm';
   const cost = G.cardCost(state, card), ap = G.cardAPCost(state, card);
@@ -5066,14 +5072,11 @@ function boot() {
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
   const applyLayout = () => {
-    $('shop').classList.toggle('collapsed', !!layout.shopCollapsed);
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);
     $('side-tab').classList.toggle('hidden', !layout.sideCollapsed);
     saveLayout();
     if (state) renderer.resize(state.board);
   };
-  $('btn-shop-toggle').addEventListener('click', () => { layout.shopCollapsed = true; applyLayout(); });
-  $('btn-shop-expand').addEventListener('click', () => { layout.shopCollapsed = false; applyLayout(); });
   $('btn-run-big').addEventListener('click', confirmRunWeek);
   $('btn-side-toggle').addEventListener('click', () => { layout.sideCollapsed = true; applyLayout(); });
   $('side-tab').addEventListener('click', () => { layout.sideCollapsed = false; applyLayout(); });
@@ -5083,7 +5086,7 @@ function boot() {
   // can always bring whatever is underneath into view.
   const tray = $('shop');
   new ResizeObserver(() => {
-    $('board-wrap').style.setProperty('--tray-h', tray.offsetHeight + 'px');
+    document.documentElement.style.setProperty('--tray-h', tray.offsetHeight + 'px');
     renderer.setInsets({ bottom: tray.offsetHeight });
     if (state) renderer.resize(state.board);
   }).observe(tray);
