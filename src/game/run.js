@@ -98,7 +98,8 @@ export function quotaFor(s, week = s.week) {
   // The floor takes no event multiplier: the curve already carries it, and
   // stacking the two makes a convention week on a strong run unsurvivable
   // (measured: every run died, most of them on the first big event, §15).
-  return Math.max(curve, Math.round(c.share * recent * grow / u) * u);
+  const floor = Math.min(c.share * recent * grow, (c.cap || Infinity) * curve);
+  return Math.max(curve, Math.round(floor / u) * u);
 }
 export function tileCount(s) { return s.board.tiles.length; }
 export function tileCost(s, def) {

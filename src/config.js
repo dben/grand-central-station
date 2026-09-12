@@ -44,7 +44,9 @@ export const CONFIG = {
     // It only ever raises the quota, so a run that is behind the curve is never
     // punished for it; what it does is stop a run that is 3x the curve from
     // coasting. `share` 0 turns it off.
-    catchUp: { share: 0, from: 'best' },
+    // `cap` bounds it: the floor can never ask for more than this multiple of
+    // the week's own curve, so one spike week cannot set an impossible target.
+    catchUp: { share: 0, from: 'best', cap: 1.6 },
     // How hard an event week leans on the quota: the multiplier in data/events.js
     // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
     // event's quota has to be read against the headroom a normal week leaves:
