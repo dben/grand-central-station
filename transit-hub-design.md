@@ -541,15 +541,18 @@ Some quirks in how the levers interact:
 - **Waterfront never offers a subway:** with the west and south edges under water, neither axis has two dry ends. Submarine Docks are on offer from week 3.
 - **Sky Harbour's weather.** Weather Front grounds everything that arrives by air or water, which on this level is most of the board. It is the one event that can take a Sky Harbour run apart, and its ×0.9 quota is the only discount for it.
 
-Greedy-bot results, 8 runs to week 16:
+Greedy-bot results, 16 runs to week 16 (`--runs 8` over `--seed0 1000` and `2000`), before and after the levels got their own clocks:
 
-| Mode | Survived | Pattern |
-|---|---|---|
-| Terminal | 5 / 8 | 1.6–4× over quota all run; deaths at weeks 9, 12, 16 |
-| Junction | 2 / 8 | Very easy early (3.7–5× through week 7), then the steeper quota and small board catch up; the week-16 average is 0.76× |
-| Terminus | 2 / 8 | Two runs died in **week 1**; one AP with a mostly-transport opening hand can miss the 5★ quota. The survivors cruise at 1.3–3×. |
+| Mode | Survived before | Survived after | Week-16 score/quota after | Pattern |
+|---|---|---|---|---|
+| Terminal | 14 / 16 | 14 / 16 | 1.9–2.8× | The baseline; it overrides nothing, so it did not move |
+| Junction | 12 / 16 | 14 / 16 | 3.4×, 4.8× | Was front-loaded and then brutal (four deaths in weeks 12–16); the earlier tunnels, rares and Extra Shift outweigh the extra event weeks |
+| Metroplex | 11 / 16 | 10 / 16 | 3.3×, 2.0× | Unmoved inside the noise; the six-cell tiles early pay for the slower milestones |
+| Waterfront | 12 / 16 | 14 / 16 | 4.2×, 2.6× | Boats from week 1 are worth about two runs |
+| Sky Harbour | 14 / 16 | 15 / 16 | 2.7×, 3.2× | The checkpoint is free and most travellers cross it, which offsets the airfield eating a whole edge |
+| Terminus | 10 / 16 | 12 / 16 | 2.9×, 3.9× | Cheap early overtime helps the mid-game; the week-1 cliff is untouched, because that is the opening hand, not the clock |
 
-These were measured with the $ stop budget at 7; since it moved to 3, Terminal dropped to 10/16 over two seed sets (§14.2), and the other modes haven't been re-run. So Junction is front-loaded rather than hard, and Terminus has a week-1 cliff. The bot is greedy and one-step, so treat these as shape, not as final difficulty.
+The bot is greedy and one-step, so treat these as shape, not as final difficulty. The levels end up a little easier on average (59 of 80 runs before, 65 after), which is the intended trade: each one now hands you the tiles it is named after instead of making you wait out the Terminal schedule for them. No quota was adjusted — Terminal, the mode the curve is tuned against, did not move, and 8 runs per point is too noisy to chase a one-run difference.
 
 ### 10.1.1 Difficulty
 
@@ -872,7 +875,7 @@ Changes from the original design, with the reason for each. Original values are 
 
 - **Levels re-time the run** (§10.1). Three data fields — `minWeek` per tile, a `run` block over `CONFIG.run`, and `startTiles` — let a mode move the weeks tiles go on sale, the event and milestone weeks, and what the board starts with. Terminal overrides nothing, so the baseline game is untouched: the same 16 autoplay runs survive 14 of 16, and `sensitivity.mjs --bot 1000 --week 9 --seeds 24` reads shift 1.9%, rotate 2.0%, noise 0.9% and stranded 13%, all as recorded in §14.2. The only piece the simulator needed was the crime-wave week, which travels as a modifier (`pickpocketsFromWeek`) rather than as a mode, so the sim still knows nothing about levels and the preview cache keys on it.
 - **Sky Harbour starts as an airport.** The level was "Terminal with two terrains banned"; it now opens with the north edge as apron, the south as road and a Security Checkpoint already built at (6,5)–(6,6), whose fence spans the board while the board is empty. Aircraft and security tiles go on sale in weeks 2–6 rather than 5–10, and the crime wave starts at week 5. The fence is what the level is for: with the apron on one side and the road on the other, most travellers cross the booth, so its ×1.3 is closer to a standing rule than to a placement gamble.
-- **The other levels got a clock of their own.** Junction runs an event every third week with ordinances at 4/9/15, the crime wave at 5, rares at 8 and Extra Shift at 12, plus tunnels early; Metroplex slows all of that down and puts the six-cell tiles on sale from week 3; Waterfront sells boats from week 1; Terminus gets rares at 8 and Extra Shift at week 8 for $320. Junction was the one §16 called out as "trivial early, brutal late": autoplay over `--seed0 1000` and `2000` goes from 12 of 16 surviving (deaths in weeks 12, 16, 16 and 16) to 14 of 16 (deaths in week 12 twice), and the week-16 score/quota band from 2.3× to 3.4–4.8×, so the earlier tools do more for it than the extra event weeks take away. That reads as *easier*, which is the point — it now sits where Terminal does (14 of 16) instead of dying to the same late cliff every run.
+- **The other levels got a clock of their own.** Junction runs an event every third week with ordinances at 4/9/15, the crime wave at 5, rares at 8 and Extra Shift at 12, plus tunnels early; Metroplex slows all of that down and puts the six-cell tiles on sale from week 3; Waterfront sells boats from week 1; Terminus gets rares at 8 and Extra Shift at week 8 for $320. Junction was the one §16 called out as "trivial early, brutal late": autoplay over `--seed0 1000` and `2000` goes from 12 of 16 surviving (deaths in weeks 12, 16, 16 and 16) to 14 of 16 (deaths in week 12 twice), and the week-16 score/quota band from 2.3× to 3.4–4.8×, so the earlier tools do more for it than the extra event weeks take away, and it now sits where Terminal does instead of dying to the same late cliff every run. Every level was measured the same way, before and after, in §10.1: Waterfront 12 → 14 of 16, Terminus 10 → 12, Sky Harbour 14 → 15, Metroplex 11 → 10. Terminal is unchanged at 14 of 16, so the quota block was left alone.
 
 **Tiles**
 
@@ -920,4 +923,4 @@ Changes from the original design, with the reason for each. Original values are 
 2. **Should terrain claims ever be reversible?** The Rezoning Permit exists as an escape hatch. If it becomes a must-take every run, terrain locking is too punishing.
 3. **Capacity model.** Concurrent capacity with a service duration is used because congestion is wanted. If saturation proves illegible, fall back to a flat serves-per-week number.
 4. **Endless ceiling.** Upgrade levels cap at 5 and the board saturates. Either add levels 6–10 at steep cost, or score endless runs on how far past 16 they went.
-5. **Mode balance after flat AP** (§10.1). Junction is trivial early and brutal late; a gentler `quotaGrowth` (or a 2-AP start with +1 later) would even it out. Terminus can lose in week 1; a lower week-1 quota or a guaranteed transport-plus-amenity pair in its first hand would fix that.
+5. **Mode balance after flat AP** (§10.1). Junction's late cliff is gone now that the level sets its own clock (12 → 14 of 16), but Terminus still loses runs in **week 1**: one AP against a mostly-transport opening hand misses the 5★ quota, and no amount of re-timing later weeks touches that. A `run.startMoney` for the level, a lower week-1 quota, or a guaranteed transport-plus-amenity pair in its first hand would fix it. Metroplex is now the hardest level at 10 of 16, which is one run below its own baseline — worth a second seed set before anyone moves a number for it.
