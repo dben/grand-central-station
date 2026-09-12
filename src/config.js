@@ -38,6 +38,13 @@ export const CONFIG = {
     earlyGrowth: 1.80,          // week 1 -> 2
     growthDecay: 0.675,         // how fast the rate falls from early to late
     starUnit: 1000,             // one star per this many points; quotas round to a whole star
+    // Catch-up ("the city expects more of you"): the quota never sits further
+    // below your own recent form than this. quota = max(curve, share * recent),
+    // where `recent` is your best week so far ('best') or the last one ('last').
+    // It only ever raises the quota, so a run that is behind the curve is never
+    // punished for it; what it does is stop a run that is 3x the curve from
+    // coasting. `share` 0 turns it off.
+    catchUp: { share: 0, from: 'best' },
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -164,7 +171,10 @@ export const CONFIG = {
     // three upgrades and two amenities, or five transports. Week 1 is the one
     // exception: a fixed opening hand (see generateShop).
     slotWeights: { transport: 30, amenity: 34, upgrade: 16, card: 10, namedUpgrade: 4, rare: 4, apUpgrade: 2, bridge: 0 },  // bridge: 0 = pulled from the shop for now (confusing to use)
-    week1: { transport: 3, amenity: 2 },   // the opening hand: bring people, then serve them
+    // The opening hand. `fixed` names cards dealt to every run in order (see
+    // generateShop); `transport` and `amenity` are rolled to fill what is left
+    // of the shop. Bring people, then serve them.
+    week1: { fixed: [], transport: 3, amenity: 2 },
     // Rarity: prefer tiles whose cost is close to targetCost(week)
     targetCostBase: 32,
     targetCostGrowth: 1.14,
