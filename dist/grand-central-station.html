@@ -913,7 +913,7 @@ const __m_src_data_modes_js = (() => {
 //              illegal one throws at run start rather than half-building.
 const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.16, quotaMult: 2.0,
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 2.0,
                 // A cramped board on a fast clock: an event every third week,
                 // and tunnels early, since they cost no floor space.
                 run: { eventEvery: 3, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
@@ -933,7 +933,7 @@ const MODES = {
                 startTiles: [{ key: 'gate', x: 6, y: 5, rot: 1 }],
                 run: { pickpocketsFromWeek: 5 },
                 minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
-  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.52,
+  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.52, quotaGrowth: 1.17,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
                 run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },

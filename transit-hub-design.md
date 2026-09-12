@@ -186,25 +186,30 @@ A station's output grows fast while it is small and slowly once it is built out.
 
 ```
 growth(i) = late + (early − late) × decay^(i − 1)
-Quota(week) = round(5400 × Π growth(i) for i = 1 … week−1  × eventMult × ordinanceMult × difficultyMult, to 1000)
-early = 1.80, late = 1.125 (Junction: 1.16) + difficultyGrowthAdd, decay = 0.675
+curve(week) = round(11000 × Π growth(i) for i = 1 … week−1  × eventMult × ordinanceMult × difficultyMult × modeMult, to 1000)
+Quota(week)  = max(curve(week), catchUp)          // see below
+early = 1.25, late = 1.125 (Junction: 1.16) + difficultyGrowthAdd, decay = 0.70
 ```
 
 | Week | Quota | Week | Quota |
 |---|---|---|---|
-| 1 | 5,000 | 10 | 73,000 |
-| 2 | 10,000 | 12 | 94,000 |
-| 3 | 15,000 | 14 | 121,000 |
-| 4 | 22,000 | 16 | 154,000 |
-| 5 | 29,000 | 20 | 248,000 |
-| 6 | 37,000 | 24 | 398,000 |
-| 8 | 54,000 | | |
+| 1 | 11,000 | 10 | 45,000 |
+| 2 | 14,000 | 12 | 57,000 |
+| 3 | 17,000 | 14 | 73,000 |
+| 4 | 20,000 | 16 | 92,000 |
+| 5 | 23,000 | 20 | 148,000 |
+| 6 | 27,000 | 24 | 236,000 |
+| 8 | 35,000 | | |
 
-These are base quotas on Standard. Event weeks multiply them (§9), Night Service multiplies every week by 1.15, and the difficulty scales the whole curve and steepens it (§10.1.1).
+These are base quotas on Standard. Event weeks multiply them (§9, at half the strength written in the data — `quota.eventStrength`), Night Service multiplies every week by 1.15, the difficulty scales the whole curve and steepens it (§10.1.1), and each mode scales it by its own `quotaMult` (§10.1).
 
 Quotas are shown as **stars**, one per 1,000 points, and always round to a whole star. Earned stars round down, so 2,400 points is two stars.
 
-The curve keeps the greedy bot's score/quota ratio at roughly 1.5–3.6× for the whole run, rather than swinging from 10× at week 5 to 1.3× at week 16. Event weeks are meant to spike out of that band. When refitting the curve, fit the quiet weeks and give event weeks a separate, lower target so they stay passable.
+**Week 1 is a target, not a filter.** `run.graceWeeks` (1) lets a run carry on after missing it. The greedy bot clears week 1 by 1.3×; a naive one — first legal cell, alternating transport and shop — misses it two weeks in three, and a run that ends on turn one over a badly placed first tile teaches nothing.
+
+**Catch-up.** A run far ahead of the curve is measured against its own form instead: the quota is at least `catchUp.share` (0.72) of the player's best week so far, capped at `catchUp.cap` (2.2) times that week's own curve, and never taking an event multiplier on top (the curve already carries one). It only ever raises a target, so a run behind the curve is never punished for being behind. The timeline marks a week whose target came from form rather than schedule.
+
+Where the curve sits, measured (greedy bot, Terminal, 12 runs to week 16): week 1 lands at 1.21–1.42× quota, and 37% of all weeks inside 1–2× with a median of 2.36×. Event weeks are meant to spike out of the band; when refitting the curve, fit the quiet weeks and let `eventStrength` hold the event weeks passable.
 
 ### 5.3 Money details
 
@@ -517,16 +522,17 @@ A mode sets the board, one standing rule, and its own run clock. It is chosen be
 | Mode | Grid | Unlock | Levers (`src/data/modes.js`) |
 |---|---|---|---|
 | **Terminal** | 12×12 | — | Baseline |
-| **Junction** | 9×9 | week 8 | `startAP: 3` — 3 AP every week instead of 2. `quotaGrowth: 1.16` — the late quota growth is steeper; weeks 1–3 match Terminal, then week 16 needs 202k instead of 143k. A fast clock: an event every 3rd week, ordinances at 4/9/15, crime wave week 5, rares week 8, Extra Shift week 12. Tunnels early (Subway 2, Garage 2, Express Subway 4, Limo 3), since they cost no floor. |
+| **Junction** | 9×9 | week 8 | `startAP: 3` — 3 AP every week instead of 2, so `quotaMult: 2.0` on the whole curve. `quotaGrowth: 1.16` — the late growth is steeper still, so its week 16 asks 262k against Terminal's 92k. A fast clock: an event every 3rd week, ordinances at 4/9/15, crime wave week 5, rares week 8, Extra Shift week 12. Tunnels early (Subway 2, Garage 2, Express Subway 4, Limo 3), since they cost no floor. |
 | **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected). A slow clock: an event every 5th week, ordinances at 6/13/20, crime wave week 9, rares week 12, Extra Shift week 16. The six-cell tiles early, since the board has room (Express Train 3, Cafeteria 3, Cruise Dock 5, Jumbo Jetway 6, Flier Club 7). |
 | **Waterfront** | 12×12 | week 8 | `preLock: W, S water` — two edges start locked to water. `terrainCostMult: water 0.6` — water transports −40%. Boats early: Ferry and Water Taxi from week 1, Sub Dock 3, Marina 4, Cruise Dock 5. |
 | **Sky Harbour** | 12×12 | week 12 | `banTerrains: rail, water` — removed from the shop and rejected on placement. `terrainCostMult: free 0.7` — Free-terrain transports −30%. `preLock: N apron, S road` and a Security Checkpoint already built at (6,5)–(6,6): the level starts as an airfield, a landside road and a fence between them. Aircraft early (Jetway 2, Balloon 2, Helipad 3, Jetpack 4, Jumbo Jetway 6, Private Terminal 8), security early (Station and Guard 3), crime wave week 5. |
-| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add). `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. |
+| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add), so `quotaMult: 0.52`. `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. |
 
 **A level re-times the run for itself.** Three data fields in `src/data/modes.js`, all optional, all read through the game layer so the simulator never learns that modes exist:
 
 | Field | What it does |
 |---|---|
+| `quotaMult` | Scales this level's whole quota curve. A level's target has to match what it can build in a week, and action points are most of that: measured over 40 seeds at a flat target, week 1 landed at 4.2× quota on three-action Junction and 1.3× on one-action Terminus. Junction carries 2.0 and Terminus 0.52; the rest are 1. |
 | `minWeek: { key: week }` | The week a tile goes on sale here, replacing the catalogue's own `minWeek` (`minWeekOf` in `data/modes.js`). Any key in `data/tiles.js`, earlier or later. |
 | `run: { ... }` | Overrides any field of `CONFIG.run`: `eventEvery`, `ordinanceWeeks`, `winWeek`, and the weeks the specials switch on — `pickpocketsFromWeek`, `rareTilesFromWeek`, `apUpgradeFromWeek` (and `apUpgradeCost`). Whatever is left out keeps the value in `src/config.js`. `runRules(s)` in `game/run.js` is the merged view; every caller reads that rather than `CONFIG.run`. |
 | `startTiles: [{ key, x, y, rot, level }]` | Tiles the level is already built with in week 1. `startBoard(mode)` in `sim/board.js` places them through the normal rules, so an illegal one throws at run start; the game layer and the harness both build their opening board with it. |
@@ -566,7 +572,7 @@ Difficulty is the second axis on the start screen. Where a mode changes the *sha
 | `startMoneyMult` — cash at week 1 | 1 ($220) | 0.85 ($187) | 0.8 ($176) |
 | `mods.revenueMult`, `mods.fareMult` | 1 | 0.9 | 0.8 |
 
-The growth lever is what separates the two hard levels. A flat multiplier alone is felt in week 1 and then forgotten, since the board outgrows it; adding to the growth rate makes the gap widen every week instead. Standard's week-16 base quota is 154k, Hard's 200k (1.30×) and Extreme's 289k (1.88×), while their week-1 quotas are 5★, 6★ and 6★ — the star rounding ties the top two in week 1 on purpose. That shape was chosen after measurement: at `quotaMult` 1.35 Extreme killed five of sixteen bot runs in week 1 or 2, which is a coin flip on the opening hand rather than a difficulty (§15).
+The growth lever is what separates the two hard levels. A flat multiplier alone is felt in week 1 and then forgotten, since the board outgrows it; adding to the growth rate makes the gap widen every week instead. Standard's week-16 base quota is 92k, Hard's 120k (1.30×) and Extreme's 174k (1.88×), while their week-1 quotas are 11★, 13★ and 13★ — the star rounding ties the top two in week 1 on purpose. That shape was chosen after measurement: at `quotaMult` 1.35 Extreme killed five of sixteen bot runs in week 1 or 2, which is a coin flip on the opening hand rather than a difficulty (§15).
 
 `costMult` stacks with the mode's (Metroplex on Extreme is 1.25 × 1.35) and with the Staff Expansion ordinance, and like them it leaves upgrades, cards and bridges alone. The `mods` block is merged exactly like an ordinance's, so nothing in the simulator knows difficulty exists.
 
@@ -877,6 +883,23 @@ Changes from the original design, with the reason for each. Original values are 
 - **Sky Harbour starts as an airport.** The level was "Terminal with two terrains banned"; it now opens with the north edge as apron, the south as road and a Security Checkpoint already built at (6,5)–(6,6), whose fence spans the board while the board is empty. Aircraft and security tiles go on sale in weeks 2–6 rather than 5–10, and the crime wave starts at week 5. The fence is what the level is for: with the apron on one side and the road on the other, most travellers cross the booth, so its ×1.3 is closer to a standing rule than to a placement gamble.
 - **The other levels got a clock of their own.** Junction runs an event every third week with ordinances at 4/9/15, the crime wave at 5, rares at 8 and Extra Shift at 12, plus tunnels early; Metroplex slows all of that down and puts the six-cell tiles on sale from week 3; Waterfront sells boats from week 1; Terminus gets rares at 8 and Extra Shift at week 8 for $320. Junction was the one §16 called out as "trivial early, brutal late": autoplay over `--seed0 1000` and `2000` goes from 12 of 16 surviving (deaths in weeks 12, 16, 16 and 16) to 14 of 16 (deaths in week 12 twice), and the week-16 score/quota band from 2.3× to 3.4–4.8×, so the earlier tools do more for it than the extra event weeks take away, and it now sits where Terminal does instead of dying to the same late cliff every run. Every level was measured the same way, before and after, in §10.1: Waterfront 12 → 14 of 16, Terminus 10 → 12, Sky Harbour 14 → 15, Metroplex 11 → 10. Terminal is unchanged at 14 of 16, so the quota block was left alone.
 
+**The opening and the band**
+
+- **Week 1 was the loosest week in the game.** Measured over 30–40 seeds a level, the greedy bot cleared it by 1.7–3.9× on the four two-action levels, 3.3–5.5× on Junction and 0.95–1.8× on Terminus — the only level near a sane target, and it got there by accident. Two causes. One roll of an empty board decided most of it: the same hand is most of week 1's variance when there is nothing else on the board. And one flat 5★ target was asked of a level with one action point and one with three. So:
+  - `shop.week1.fixed` deals a Bus Stop and a Burger Joint to every run before the three rolled cards. Week 1's spread (p90/p10) falls from 1.84 to 1.43; pinning all five cards would take it to 1.34, which was measured and not taken — it makes week 1 the same puzzle every run.
+  - `mode.quotaMult` scales a level's whole curve: Junction 2.0, Terminus 0.52.
+  - The base target is 11,000 (was 5,400).
+
+  Week 1 then reads, 40 seeds a level: Terminal p10 1.15 / p50 1.34 / p90 1.74 (98% inside 1–2×), Junction 1.04 / 1.31 / 1.54 (95%), Metroplex 1.08 / 1.37 / 1.60 (93%), Waterfront 1.11 / 1.34 / 1.74 (98%), Sky Harbour 1.18 / 1.46 / 1.80 (98%), Terminus 1.06 / 1.50 / 1.53 (100%).
+
+- **The early growth had to come down to pay for it** (1.25, was 1.80; decay 0.70, was 0.675). Doubling the whole curve instead killed three runs in four between weeks 8 and 13: the board cannot grow that fast on what a week pays, and neither a 43% income rise (3/12 → 4/12 survived) nor softer events (3/12) bought the runs back. Event weeks now lean half as hard (`quota.eventStrength` 0.5) for the same reason — with the slack gone, a ×1.8 week is a wipe rather than a test.
+
+- **A run that runs away is measured against itself.** `quota.catchUp`: the target is at least 0.72 of the player's best week so far, capped at 2.2× that week's own curve, and it takes no event multiplier on top (the curve already carries one). Two failures on the way there, both measured: with the event multiplier stacked on the floor, every one of 12 runs died, eight on the same event week; uncapped, a single spike week set a target the next week could not match (11 of 12 dead by week 8). On Terminal, 12 runs to week 16: weeks inside 1–2× go from 19% to 37%, the median week from 2.90× to 2.36×, survival 9/12 → 8/12.
+
+  The rest of the trade was measured and left on the table, because it costs survival almost exactly as fast as it buys band: catch-up 0.9 gives 47% inside the band at 6/12 survived, and a steep curve with catch-up 0.7 gives 61% at 1/12. The quota is a pass/fail line, so parking it just under typical play means any bad week ends the run. Getting a 1.2–1.5 modal band *and* keeping runs alive needs something that absorbs one bad week — a banked surplus, or strikes — which is not built (§16).
+
+- **Week 1 is a practice run** (`run.graceWeeks` 1). At the new target the naive bot — first legal cell, alternating transport and shop — misses week 1 two times in three, where the greedy bot clears it by 1.3×. The target is meant to be worth aiming at; ending a run on turn one over a badly placed first tile is not a lesson.
+
 **Tiles**
 
 - **Lounges** stack at 0.24 (Club 0.38, $$$+ only; Chrono 0.43) with radius 3. At the document's 0.10 and radius 2, a Waiting Area was a dead block: median marginal value 164 points, negative in 43% of placements. Making lounges walk-through removed the last of the downside (median 2,933, never negative).
@@ -923,4 +946,5 @@ Changes from the original design, with the reason for each. Original values are 
 2. **Should terrain claims ever be reversible?** The Rezoning Permit exists as an escape hatch. If it becomes a must-take every run, terrain locking is too punishing.
 3. **Capacity model.** Concurrent capacity with a service duration is used because congestion is wanted. If saturation proves illegible, fall back to a flat serves-per-week number.
 4. **Endless ceiling.** Upgrade levels cap at 5 and the board saturates. Either add levels 6–10 at steep cost, or score endless runs on how far past 16 they went.
-5. **Mode balance after flat AP** (§10.1). Junction's late cliff is gone now that the level sets its own clock (12 → 14 of 16), but Terminus still loses runs in **week 1**: one AP against a mostly-transport opening hand misses the 5★ quota, and no amount of re-timing later weeks touches that. A `run.startMoney` for the level, a lower week-1 quota, or a guaranteed transport-plus-amenity pair in its first hand would fix it. Metroplex is now the hardest level at 10 of 16, which is one run below its own baseline — worth a second seed set before anyone moves a number for it.
+5. **A buffer for the band.** The quota is pass/fail, so the band and the survival rate trade against each other one for one (§15). A reserve — surplus above the quota banks, and a later shortfall draws on it — or a strike system would break that trade and let the modal week sit at 1.2–1.5× without a bad week ending the run. Neither is built; `quota.catchUp.share` is the dial in the meantime.
+6. **Mode balance after flat AP** (§10.1). Junction's late cliff is gone now that the level sets its own clock (12 → 14 of 16), and Terminus no longer loses runs in week 1 now that its curve is scaled to its one action point. What is left is the shape *after* week 1: each level's `quotaMult` is one flat number, while a level's score pulls away from its target at its own rate, so a level can sit in band in week 1 and drift by week 12. `quotaGrowth` is the lever, and it has only been fitted for Junction.
