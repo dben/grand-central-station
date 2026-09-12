@@ -1,8 +1,9 @@
 // Basic invariants: determinism, placement rules, gate filtering.
-import { createBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
+import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf } from '../src/game/run.js';
-import { tileDef } from '../src/data/tiles.js';
+import { createRun, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool } from '../src/game/run.js';
+import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
+import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
 import { CONFIG } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
@@ -277,6 +278,46 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const rr = [3, 4, 5, 6].map(seed => simulateWeek(fb, { seed, week: 8, mods: { pickpocketRate: 0 } }));
   const cleared = rr.flatMap(r => r.agents).filter(a => a.outcome === 'boarded' && a.events.some(e => e.type === 'cleared') && a.chain.some(c => !c.exit && !c.name.includes('Checkpoint')));
   ok(cleared.length > 0 && cleared.every(a => a.chain.findIndex(c => c.name.includes('Checkpoint')) > a.chain.findLastIndex(c => !c.exit && !c.name.includes('Checkpoint'))), 'clearing the booth multiplies the finished chain');
+}
+
+// levels re-time the run for themselves: tile weeks, event cadence, specials
+{
+  // what the shop is allowed to draw on a level in a given week
+  const onSale = (modeKey, week) => {
+    const s = createRun({ modeKey, seed: 11 });
+    s.week = week;
+    return shopPool(s).map(d => d.key);
+  };
+  // every level's overrides name real tiles, or a typo would quietly do nothing
+  const keys = new Set([...Object.keys(TRANSPORTS), ...Object.keys(AMENITIES), ...Object.keys(NAMED_UPGRADES)]);
+  ok(MODE_KEYS.every(k => Object.keys(MODES[k].minWeek || {}).every(t => keys.has(t))), 'every per-level tile week names a tile that exists');
+  ok(minWeekOf(MODES.sky_harbour, 'jetway', tileDef('jetway')) === 2 && minWeekOf(MODES.terminal, 'jetway', tileDef('jetway')) === 6, 'a level can move a tile\'s week without touching the catalogue');
+  ok(onSale('sky_harbour', 2).includes('jetway') && !onSale('terminal', 2).includes('jetway'), 'and Sky Harbour offers jetways in week 2 where Terminal does not');
+  ok(!onSale('metroplex', 11).includes('private_terminal') && onSale('terminal', 11).includes('private_terminal'), 'a level can push the rare stock back too');
+  const jn = createRun({ modeKey: 'junction', seed: 5 }), tm = createRun({ modeKey: 'terminal', seed: 5 });
+  ok(runRules(jn).eventEvery === 3 && runRules(tm).eventEvery === 4 && isEventWeek(jn, 3) && !isEventWeek(tm, 3), 'a level sets its own event cadence');
+  ok(runRules(tm).startMoney === CONFIG.run.startMoney, 'and inherits every field it does not override');
+  ok(milestoneForWeek(jn, 5).key === 'crime_wave' && !milestoneForWeek(tm, 5), 'the specials start when the level says');
+  // the crime wave reaches the simulator as a modifier, not as a mode
+  const sh = createRun({ modeKey: 'sky_harbour', seed: 5 });
+  sh.week = 5;
+  ok(computeMods(sh).pickpocketsFromWeek === 5 && computeMods(tm).pickpocketsFromWeek === 7, 'and travels to the sim in the mods');
+}
+
+// a level can start with tiles already built
+{
+  const sh = startBoard(MODES.sky_harbour);
+  const gate = sh.tiles.find(t => t.key === 'gate');
+  ok(sh.edges.N === 'apron' && sh.edges.S === 'road', 'Sky Harbour starts with an airfield on one side and a road on the other');
+  ok(sh.tiles.length === 1 && gate, 'and one tile already built: the checkpoint');
+  const line = checkpointLine(gate.cells);
+  ok(line.axis === 'h' && line.line === 6 && line.gap === 6, 'whose fence runs across the middle of the board');
+  const f = checkpointFences(sh);
+  const crossings = [];
+  for (let x = 0; x < sh.w; x++) if (!fenceBlocked(f, sh.w, sh.h, x, 5, 0, 1)) crossings.push(x);
+  ok(crossings.length === 1 && crossings[0] === 6, 'and the booth is the only way from the airfield to the road');
+  ok(createRun({ modeKey: 'sky_harbour', seed: 7 }).board.tiles.length === 1, 'a new run is handed that board');
+  ok(startBoard(MODES.terminal).tiles.length === 0, 'a level with no starting tiles begins empty');
 }
 
 const rperf0 = performance.now();

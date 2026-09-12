@@ -2,10 +2,10 @@
 // Marginal-value probe: for a board state, try every catalogue tile at its best
 // legal spot and report the score delta (in stars) and stars per $100 spent.
 //   node harness/marginal.mjs --week 3 --seeds 12
-import { createBoard, cloneBoard, checkPlacement, placeTile } from '../src/sim/board.js';
+import { startBoard, cloneBoard, checkPlacement, placeTile } from '../src/sim/board.js';
 import { simulateWeek } from '../src/sim/sim.js';
 import { TRANSPORTS, AMENITIES, tileDef } from '../src/data/tiles.js';
-import { MODES } from '../src/data/modes.js';
+import { MODES, minWeekOf } from '../src/data/modes.js';
 import { CONFIG, starsOf } from '../src/config.js';
 
 const args = process.argv.slice(2);
@@ -22,7 +22,7 @@ const SEED_TILES = {
 };
 const pickSeed = w => SEED_TILES[Object.keys(SEED_TILES).map(Number).filter(k => k <= w).pop()] || SEED_TILES[1];
 
-const base = createBoard(mode.w, mode.h, mode.preLock || {});
+const base = startBoard(mode);
 for (const [key, x, y, rot] of pickSeed(WEEK)) {
   const c = checkPlacement(base, key, x, y, rot, mode);
   if (!c.ok) { console.error(`seed tile ${key} @${x},${y}: ${c.reason}`); continue; }
@@ -56,7 +56,7 @@ function probe(key) {
 const rows = [];
 for (const key of [...Object.keys(TRANSPORTS), ...Object.keys(AMENITIES)]) {
   const def = tileDef(key);
-  if (def.minWeek > WEEK || def.rare) continue;
+  if (minWeekOf(mode, key, def) > WEEK || def.rare) continue;
   const r = probe(key);
   if (r) rows.push(r);
 }

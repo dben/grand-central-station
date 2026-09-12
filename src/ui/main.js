@@ -331,11 +331,12 @@ function renderTimeline() {
   if (last) rows.push(h('div', { class: 'tl-row past ' + (last.passed ? 'ok' : 'fail') }, h('span', { class: 'wk' }, `Week ${last.week}`),
     h('span', { class: 'q', title: `${fmt(last.score)} points of ${fmt(last.quota)}` }, 'earned ', starNum(starsOf(last.score), last.passed ? 'good' : 'bad'))));
   const nextEv = G.nextEventWeek(state);
+  const rules = G.runRules(state);
   for (let w = state.week; w <= state.week + 4; w++) {
     const current = w === state.week;
     const ev = G.eventForWeek(state, w);
-    const known = ev && (w === nextEv || current || (state.surveyed && w === nextEv + CONFIG.run.eventEvery));
-    const ord = CONFIG.run.ordinanceWeeks.includes(w);
+    const known = ev && (w === nextEv || current || (state.surveyed && w === nextEv + rules.eventEvery));
+    const ord = rules.ordinanceWeeks.includes(w);
     const ms = G.milestoneForWeek(state, w);
     const cls = ['tl-row', current ? 'current' : '', ev ? 'event' : (ord ? 'ordinance' : (ms ? 'milestone' : '')), w === state.week + 4 ? 'last' : ''].join(' ');
     const showQuota = current || known || !ev;
@@ -729,7 +730,7 @@ function drawHistoryChart(canvas, history) {
     const y = ly(x.score), base = H - padB;
     g.fillStyle = x.passed ? 'rgba(77,255,110,0.85)' : 'rgba(255,79,122,0.85)';
     g.fillRect(cx - bw / 2, y, bw, base - y);
-    g.fillStyle = '#b8a8e8'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(x.week % CONFIG.run.eventEvery === 0 ? x.week + '⚡' : x.week, cx, base + 4);
+    g.fillStyle = '#b8a8e8'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(x.week % G.runRules(state).eventEvery === 0 ? x.week + '⚡' : x.week, cx, base + 4);
   });
   // quota line
   g.strokeStyle = '#ffd23f'; g.lineWidth = 2; g.beginPath();
@@ -846,7 +847,7 @@ function showOrdinance(onDone) {
     h('div', { class: 'choices' }, ...state.pendingOrdinance.map(k => h('div', { class: 'mode', onclick: () => { G.chooseOrdinance(state, k); closeModal(); renderAll(); if (onDone) onDone(); } }, h('div', { class: 'name' }, ORDINANCES[k].name), h('div', { class: 'desc' }, ORDINANCES[k].desc)))));
 }
 function showWin() {
-  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${CONFIG.run.winWeek}. The quota keeps climbing from here — how far can you get?`),
+  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${G.runRules(state).winWeek}. The quota keeps climbing from here — how far can you get?`),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); showStart(); } }, 'New run'), h('button', { class: 'primary', onclick: () => { G.continueAfterWin(state); closeModal(); afterWeekStart(); } }, 'Keep going →')));
 }
 function showGameOver() {

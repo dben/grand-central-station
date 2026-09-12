@@ -3,7 +3,7 @@
 // distribution plus per-tile saturation.
 //   node harness/run.js harness/layouts/week1_bus.json --seeds 50 --week 3
 import { readFileSync } from 'node:fs';
-import { createBoard, placeTile, checkPlacement } from '../src/sim/board.js';
+import { startBoard, placeTile, checkPlacement } from '../src/sim/board.js';
 import { simulateWeek, mergeMods } from '../src/sim/sim.js';
 import { MODES } from '../src/data/modes.js';
 import { DIFFICULTIES } from '../src/data/difficulties.js';
@@ -13,8 +13,12 @@ import { applySets } from './sets.mjs';
 export function loadLayout(spec) {
   const mode = MODES[spec.mode || 'terminal'];
   const diff = DIFFICULTIES[spec.difficulty] || DIFFICULTIES.standard;
-  const board = createBoard(mode.w, mode.h, mode.preLock || {});
+  const board = startBoard(mode);
   for (const t of spec.tiles) {
+    // A board dumped from a run lists the level's own starting tiles too, so a
+    // tile that is already standing where it says is adopted, not placed twice.
+    const built = board.tiles.find(o => o.key === t.key && o.x === t.x && o.y === t.y);
+    if (built) { if (t.level) built.level = t.level; continue; }
     const c = checkPlacement(board, t.key, t.x, t.y, t.rot || 0, mode);
     if (!c.ok) throw new Error(`Cannot place ${t.key} at ${t.x},${t.y}: ${c.reason}`);
     const tile = placeTile(board, t.key, t.x, t.y, t.rot || 0, c, mode);
@@ -32,8 +36,9 @@ export function pct(sorted, p) {
 export function runLayout(spec, { seeds = 30, week = spec.week || 1, mods = spec.mods || {} } = {}) {
   const { board, mode, diff } = loadLayout(spec);
   // a layout dumped from a harder run carries its difficulty, so the quota it
-  // is measured against and the income it earns are that run's
-  mods = mergeMods(diff.mods, mods);
+  // is measured against and the income it earns are that run's; the level's own
+  // crime-wave week rides along the same way
+  mods = mergeMods({ pickpocketsFromWeek: (mode.run || {}).pickpocketsFromWeek }, diff.mods, mods);
   const results = [];
   const t0 = performance.now();
   for (let s = 0; s < seeds; s++) results.push(simulateWeek(board, { seed: s + 1, week, mods }));

@@ -21,6 +21,18 @@ export function createBoard(w, h, preLock = {}) {
   };
 }
 
+// A level's opening board: the mode's pre-locked edges, plus any tiles it
+// starts already built (`startTiles` in data/modes.js). Used by the game layer
+// and the harness alike, so a bot board looks like a player's week 1.
+export function startBoard(mode) {
+  const b = createBoard(mode.w, mode.h, mode.preLock || {});
+  for (const t of mode.startTiles || []) {
+    const tile = placeTile(b, t.key, t.x, t.y, t.rot || 0, null, mode);
+    if (t.level) tile.level = t.level;
+  }
+  return b;
+}
+
 export function cloneBoard(b) {
   return JSON.parse(JSON.stringify(b));
 }
