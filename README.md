@@ -11,7 +11,7 @@ way forward is to make every traveller worth more than the last.
 
 1. **Build.** You have **2 action points** a week. Buying a tile, upgrading one, deleting one,
    rerolling the shop or playing a bonus card each costs 1 AP (plus money). Week 1 always deals a
-   Bus Stop and a Burger Joint alongside three rolled cards, so every run opens with a hand that
+   Parking Lot and a Burger Joint alongside three rolled cards, so every run opens with a hand that
    works.
 2. **Run the week.** Travellers arrive at your transports, pick a platform to leave from, and walk
    there, stopping at shops along the way. Action points you don't spend aren't wasted: starting the
