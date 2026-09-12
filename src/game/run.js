@@ -82,6 +82,15 @@ export function gameRules(s) {
 // value, so the card and the target always agree.
 export function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
 export const fmtMult = m => (Math.round(m * 100) / 100).toString();
+// Is this week's target set by the published curve, or by the player's own
+// form (the catch-up floor)? The timeline says which, so a quota that jumps
+// after a big week reads as a consequence rather than a glitch.
+export function quotaFromForm(s, week = s.week) {
+  const c = CONFIG.quota.catchUp;
+  if (!c || !c.share) return false;
+  const ev = eventForWeek(s, week);
+  return quotaFor(s, week) > quotaForWeek(week, modeOf(s), eventMult(ev) * gameRules(s).quotaMult, difficultyOf(s));
+}
 export function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
   const mult = eventMult(ev) * gameRules(s).quotaMult;
@@ -502,11 +511,13 @@ export function settle(s) {
   const quota = quotaFor(s);
   s.money += r.money.total;
   const passed = r.score >= quota;
-  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, event: currentEvent(s)?.name || null });
+  s.history.push({ week: s.week, score: r.score, quota, money: r.money.total + (s.earlyBonus || 0), passed, grace: !passed && s.week <= runRules(s).graceWeeks, event: currentEvent(s)?.name || null });
   s.records.bestWeek = Math.max(s.records.bestWeek, s.week);
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
-  if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
+  const grace = !passed && s.week <= runRules(s).graceWeeks;
+  if (!passed && !grace) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
+  if (grace) log(s, `Week ${s.week}: ${r.score} < quota ${quota}, but the first week is a practice run.`);
   if (s.week === runRules(s).winWeek && !s.won) { s.won = true; s.phase = 'won'; }
   else s.phase = 'shop';
   advanceWeek(s);

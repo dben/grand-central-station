@@ -26,10 +26,22 @@ const runWeekUI = async (page) => {
 };
 const cellPx = async (x, y) => page.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
 const edgePx = async (e) => page.evaluate((e) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.edgeCenterPx(e); return [b.left + px, b.top + py]; }, e);
-// auto-play weeks through the API (greedy-lite) up to a target week
+// auto-play weeks through the API (greedy-lite) up to a target week. It picks
+// the best of a sample of legal spots with the same estimate the player sees on
+// hover: the first legal cell is usually a corner, which loses week 1 outright.
 const fastForward = async (toWeek) => page.evaluate((toWeek) => {
   const { G } = window.gcs; let s = window.gcs.state;
-  const legal = (key) => { for (let y = 0; y < s.board.h; y++) for (let x = 0; x < s.board.w; x++) for (let r = 0; r < 4; r++) { const c = G.placementCheck(s, key, x, y, r); if (c.ok) return { x, y, r }; } return null; };
+  const legal = (key) => {
+    const spots = [];
+    for (let y = 0; y < s.board.h; y++) for (let x = 0; x < s.board.w; x++) for (let r = 0; r < 4; r++) if (G.placementCheck(s, key, x, y, r).ok) spots.push({ x, y, r });
+    if (!spots.length) return null;
+    let best = null;
+    for (let i = 0; i < spots.length; i += Math.max(1, Math.floor(spots.length / 12))) {
+      const e = G.estimatePlacement(s, key, spots[i].x, spots[i].y, spots[i].r, 2);
+      if (e && (!best || e.pts > best.pts)) best = { ...spots[i], pts: e.pts };
+    }
+    return best || spots[0];
+  };
   while (s.week < toWeek) {
     if (s.pendingOrdinance) G.chooseOrdinance(s, s.pendingOrdinance[0]);
     if (s.phase === 'won') G.continueAfterWin(s);
