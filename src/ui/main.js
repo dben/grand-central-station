@@ -345,7 +345,7 @@ function renderTimeline() {
     if (ev) {
       const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
       if (known) {
-        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${ev.quota}`), h('div', {}, ev.desc));
+        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${G.fmtMult(G.eventMult(ev))}`), h('div', {}, ev.desc));
         if (current && ev.mods.strike) {
           const terrains = G.transportTerrainsOnBoard(state);
           const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); } });
@@ -827,7 +827,7 @@ function showEventModal(onDone) {
     h('div', {}, h('span', { class: 'boss-star' }, '★')),
     h('div', { class: 'lbl' }, `Week ${state.week} · event week`),
     h('h2', {}, ev.name),
-    h('div', { class: 'event-mult' }, `Quota ×${ev.quota} → ${fmt(G.quotaStars(state))}★`),
+    h('div', { class: 'event-mult' }, `Quota ×${G.fmtMult(G.eventMult(ev))} → ${fmt(G.quotaStars(state))}★`),
     h('p', {}, ev.desc),
   ];
   if (ev.mods.strike) {

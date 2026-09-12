@@ -447,6 +447,11 @@ const CONFIG = {
     // punished for it; what it does is stop a run that is 3x the curve from
     // coasting. `share` 0 turns it off.
     catchUp: { share: 0, from: 'best' },
+    // How hard an event week leans on the quota: the multiplier in data/events.js
+    // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
+    // event's quota has to be read against the headroom a normal week leaves:
+    // the tighter the band, the less room a x1.8 week has to be survivable.
+    eventStrength: 1,
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -2524,9 +2529,14 @@ function gameRules(s) {
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
+// What an event actually multiplies the quota by, after quota.eventStrength
+// pulls the number in data/events.js toward 1. The UI quotes this, not the raw
+// value, so the card and the target always agree.
+function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
+const fmtMult = m => (Math.round(m * 100) / 100).toString();
 function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
-  const mult = (ev ? ev.quota : 1) * gameRules(s).quotaMult;
+  const mult = eventMult(ev) * gameRules(s).quotaMult;
   const curve = quotaForWeek(week, modeOf(s), mult, difficultyOf(s));
   const c = CONFIG.quota.catchUp;
   if (!c || !c.share) return curve;
@@ -2537,7 +2547,10 @@ function quotaFor(s, week = s.week) {
   if (recent <= 0) return curve;
   const grow = quotaForWeek(week, modeOf(s), 1, difficultyOf(s)) / quotaForWeek(Math.max(1, s.week), modeOf(s), 1, difficultyOf(s));
   const u = CONFIG.quota.starUnit;
-  return Math.max(curve, Math.round(c.share * recent * grow * mult / u) * u);
+  // The floor takes no event multiplier: the curve already carries it, and
+  // stacking the two makes a convention week on a strong run unsurvivable
+  // (measured: every run died, most of them on the first big event, §15).
+  return Math.max(curve, Math.round(c.share * recent * grow / u) * u);
 }
 function tileCount(s) { return s.board.tiles.length; }
 function tileCost(s, def) {
@@ -3026,7 +3039,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -4647,7 +4660,7 @@ function renderTimeline() {
     if (ev) {
       const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
       if (known) {
-        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${ev.quota}`), h('div', {}, ev.desc));
+        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${G.fmtMult(G.eventMult(ev))}`), h('div', {}, ev.desc));
         if (current && ev.mods.strike) {
           const terrains = G.transportTerrainsOnBoard(state);
           const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); } });
@@ -5129,7 +5142,7 @@ function showEventModal(onDone) {
     h('div', {}, h('span', { class: 'boss-star' }, '★')),
     h('div', { class: 'lbl' }, `Week ${state.week} · event week`),
     h('h2', {}, ev.name),
-    h('div', { class: 'event-mult' }, `Quota ×${ev.quota} → ${fmt(G.quotaStars(state))}★`),
+    h('div', { class: 'event-mult' }, `Quota ×${G.fmtMult(G.eventMult(ev))} → ${fmt(G.quotaStars(state))}★`),
     h('p', {}, ev.desc),
   ];
   if (ev.mods.strike) {
