@@ -65,7 +65,8 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         </div>
       </div>
       <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
-      <!-- the shop floats over the bottom edge of the board -->
+      <!-- The shop floats over the bottom edge of the board. It folds itself
+           away while the week runs, so the board gets the whole screen. -->
       <div id="shop">
         <div id="shop-actions">
           <div id="wallet">
@@ -77,8 +78,6 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
           <button id="btn-run" class="primary">Run Week ▶</button>
         </div>
         <div id="shop-cards"></div>
-        <div id="shop-side"><button id="btn-shop-toggle" class="toggle" title="Hide shop">⌄</button></div>
-        <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
       </div>
     </div>
     <!-- glyphs come from CSS: the panel sits on the right on a wide screen and

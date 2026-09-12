@@ -637,7 +637,7 @@ Stored in `localStorage`.
 
 ### 12.1 Screens
 
-**The board view is the whole game.** It shows an isometric board you can pan and zoom, with a run status bar along the top (week, quota stars, projection) and a timeline side panel on the right. The shop tray floats over the bottom of the board: the wallet, AP pips, **Reroll** and **Run Week** sit to the left of the cards.
+**The board view is the whole game.** It shows an isometric board you can pan and zoom, with a run status bar along the top (week, quota stars, projection) and a timeline side panel on the right. The shop tray floats over the bottom of the board: the wallet, AP pips, **Reroll** and **Run Week** sit to the left of the cards. Nothing in the tray can be spent once the week is running, so it takes itself away for the run and comes back with the next shop.
 
 Events, milestones, ordinance choices, the weekly summary and the start screen are modals.
 
@@ -692,7 +692,9 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
   name, its price in money and AP, and its full text — on a touch screen that bar is the only way
   to read a card at all. The bar's own button is what spends: **Build here** for a tile, **Play it**
   for a card that needs no target. **✕** or **Esc** puts the card back. **⌄** folds the text away
-  when it covers too much board, and the choice is remembered.
+  when it covers too much board, and the choice is remembered. On a narrow screen the bar takes the
+  cards' own place instead of stacking above them — the tray keeps its height, so the board does not
+  move — and **✕** hands the space back to the cards.
 - **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates.
 - **Touch** has no hover, so the first tap aims and a second tap builds.
 - **Tile details:** hover a card or tile to see them; click a tile to pin the popup, which carries
@@ -701,13 +703,17 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
   edges, for Rezoning Permit), and the bar says what to pick.
 - **Run Week** asks for confirmation only while AP is unspent, and says what running early pays. Once all AP is spent, a large Run Week button also appears on the board.
 - **Music:** **♪** or **M** mutes it, and the choice is remembered. The start screen and a lost run are silent.
-- **Panels:** the chevrons collapse the shop tray and the side panel. The side panel is a column
-  on the right of a wide screen and a strip along the bottom of a narrow one, so its handle turns
-  with it: a full-width **⌄** bar across the top of the strip, and **▲** on the tab that brings it
-  back. The handle sits outside the scrolling area, so it cannot be scrolled away.
+- **Panels:** the side panel's chevron collapses it; the shop tray has no hand control at all,
+  because it already knows when to go (the week's run, the summary, a lost run). The side panel is
+  a column on the right of a wide screen and a strip along the bottom of a narrow one, so its
+  handle turns with it: a full-width **⌄** bar across the top of the strip, and **▲** on the tab
+  that brings it back. On a narrow screen that tab sits at the bottom of the right edge, just above
+  the cards, where a thumb already is, and it stands down while a card is in hand. The handle sits
+  outside the scrolling area, so it cannot be scrolled away.
 - **On a phone:** the side panel starts collapsed, the top bar and cards shrink, the page is sized
-  to the visible viewport (`dvh`) so the tray is not hidden behind the address bar, and controls
-  take a tap without the double-tap zoom delay.
+  to the visible viewport (`dvh`) so the tray is not hidden behind the address bar, a card in hand
+  covers the cards rather than the board, and controls take a tap without the double-tap zoom
+  delay.
 
 ---
 
