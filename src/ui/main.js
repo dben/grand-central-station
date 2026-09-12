@@ -745,7 +745,6 @@ function drawHistoryChart(canvas, history) {
 function showSummary() {
   const r = ui.pb.result; const quota = G.quotaFor(state);
   const passed = r.score >= quota;
-  const grace = !passed && state.week <= G.runRules(state).graceWeeks;
   const history = state.history.concat([{ week: state.week, score: r.score, quota, passed, money: r.money.total }]);
   const rows = Object.values(r.tileStats).sort((a, b) => b.points - a.points);
   const table = h('table', { class: 'stats' }, h('tr', {}, ...['Tile', 'Served', 'Turned away', 'Full', 'Earned', 'Points', 'Arrived', 'Boarded', 'Out of time'].map(x => h('th', {}, x))));
@@ -763,11 +762,11 @@ function showSummary() {
   openModal(
     h('h2', {}, `Week ${state.week}`, G.currentEvent(state) ? h('span', { class: 'event-tag accent', style: 'margin-left:8px' }, G.currentEvent(state).name) : null),
     h('div', { class: 'row summary-stars' }, starStrip(G.quotaStars(state), Math.max(0, starsOf(r.score))),
-      h('span', { class: passed ? 'good' : grace ? 'accent' : 'bad' }, passed ? '✓ quota met' : grace ? '✗ quota missed — the first week is a practice run, so you carry on' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
+      h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓ quota met' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
     h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${fmt(r.score)} points of ${fmt(quota)} · ${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}`),
     chart,
     h('details', {}, h('summary', {}, 'Tile by tile'), h('div', { style: 'max-height:240px;overflow:auto' }, table)),
-    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed || grace ? 'Continue →' : 'See results')));
+    h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed ? 'Continue →' : 'See results')));
   requestAnimationFrame(() => drawHistoryChart(chart, history));
 }
 function showHeatBar() {

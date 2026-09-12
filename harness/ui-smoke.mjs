@@ -26,34 +26,31 @@ const runWeekUI = async (page) => {
 };
 const cellPx = async (x, y) => page.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
 const edgePx = async (e) => page.evaluate((e) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.edgeCenterPx(e); return [b.left + px, b.top + py]; }, e);
-// auto-play weeks through the API (greedy-lite) up to a target week. It picks
-// the best of a sample of legal spots with the same estimate the player sees on
-// hover: the first legal cell is usually a corner, which loses week 1 outright.
+// auto-play weeks through the API (greedy-lite) up to a target week. For each
+// action it takes the best (card, spot) pair it can afford, scored with the same
+// estimate the player sees on hover over a sample of legal spots. Both halves
+// matter: the first legal cell is usually a corner, and buying by kind instead
+// of by estimate loses week 1 outright (0.96x quota on the pinned seed, against
+// 1.41x for the pair it picks now).
 const fastForward = async (toWeek) => page.evaluate((toWeek) => {
   const { G } = window.gcs; let s = window.gcs.state;
-  const legal = (key) => {
-    const spots = [];
-    for (let y = 0; y < s.board.h; y++) for (let x = 0; x < s.board.w; x++) for (let r = 0; r < 4; r++) if (G.placementCheck(s, key, x, y, r).ok) spots.push({ x, y, r });
-    if (!spots.length) return null;
-    let best = null;
-    for (let i = 0; i < spots.length; i += Math.max(1, Math.floor(spots.length / 12))) {
-      const e = G.estimatePlacement(s, key, spots[i].x, spots[i].y, spots[i].r, 2);
-      if (e && (!best || e.pts > best.pts)) best = { ...spots[i], pts: e.pts };
-    }
-    return best || spots[0];
-  };
   while (s.week < toWeek) {
     if (s.pendingOrdinance) G.chooseOrdinance(s, s.pendingOrdinance[0]);
     if (s.phase === 'won') G.continueAfterWin(s);
     let guard = 0;
     while (s.ap > 0 && guard++ < 10) {
-      const cards = s.shop.cards.filter(c => c.type === 'tile' && G.cardCost(s, c) <= s.money);
-      const tr = cards.find(c => c.kind === 'transport'), am = cards.find(c => c.kind === 'amenity');
-      const nTr = s.board.tiles.filter(t => t.kind === 'transport').length, nAm = s.board.tiles.length - nTr;
-      const pick = (nTr <= nAm && tr) ? tr : (am || tr);
-      if (!pick) break;
-      const p = legal(pick.key); if (!p) break;
-      const r = G.buyTile(s, pick, p.x, p.y, p.r); if (!r.ok) break;
+      let best = null;
+      for (const card of s.shop.cards.filter(c => c.type === 'tile' && G.cardCost(s, c) <= s.money)) {
+        const spots = [];
+        for (let y = 0; y < s.board.h; y++) for (let x = 0; x < s.board.w; x++) for (let r = 0; r < 4; r++) if (G.placementCheck(s, card.key, x, y, r).ok) spots.push({ x, y, r });
+        if (!spots.length) continue;
+        for (let i = 0; i < spots.length; i += Math.max(1, Math.floor(spots.length / 12))) {
+          const e = G.estimatePlacement(s, card.key, spots[i].x, spots[i].y, spots[i].r, 2);
+          if (e && (!best || e.pts > best.pts)) best = { card, ...spots[i], pts: e.pts };
+        }
+      }
+      if (!best) break;
+      if (!G.buyTile(s, best.card, best.x, best.y, best.r).ok) break;
     }
     G.runWeek(s); const st = G.settle(s);
     if (!st.passed) return { died: s.week };

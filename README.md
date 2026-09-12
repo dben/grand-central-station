@@ -17,8 +17,7 @@ way forward is to make every traveller worth more than the last.
    there, stopping at shops along the way. Action points you don't spend aren't wasted: starting the
    week early pays a cash bonus for each one left.
 3. **Settle up.** Your score is compared against the quota, shown as stars (one per 1,000 points).
-   Fares and shop revenue pay out as money for next week. Miss the quota and the run ends — except
-   in week 1, which is a practice run you can fail and carry on from.
+   Fares and shop revenue pay out as money for next week. Miss the quota and the run ends.
 
 Get far enough ahead and the quota starts chasing you: it never sits below about 70% of your best
 week so far, so a run that has run away from the schedule still has something to beat. The timeline
