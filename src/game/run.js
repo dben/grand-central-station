@@ -79,7 +79,18 @@ export function gameRules(s) {
 }
 export function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
-  return quotaForWeek(week, modeOf(s), (ev ? ev.quota : 1) * gameRules(s).quotaMult, difficultyOf(s));
+  const mult = (ev ? ev.quota : 1) * gameRules(s).quotaMult;
+  const curve = quotaForWeek(week, modeOf(s), mult, difficultyOf(s));
+  const c = CONFIG.quota.catchUp;
+  if (!c || !c.share) return curve;
+  // Catch-up: a run well ahead of the curve is measured against its own form
+  // instead. The floor rides the curve's growth, so weeks further out still
+  // climb rather than flattening at what you scored last week.
+  const recent = c.from === 'last' ? (s.history.length ? s.history[s.history.length - 1].score : 0) : (s.records.bestScore || 0);
+  if (recent <= 0) return curve;
+  const grow = quotaForWeek(week, modeOf(s), 1, difficultyOf(s)) / quotaForWeek(Math.max(1, s.week), modeOf(s), 1, difficultyOf(s));
+  const u = CONFIG.quota.starUnit;
+  return Math.max(curve, Math.round(c.share * recent * grow * mult / u) * u);
 }
 export function tileCount(s) { return s.board.tiles.length; }
 export function tileCost(s, def) {
@@ -217,8 +228,18 @@ export function generateShop(s) {
   // Week 1 is a fixed opening hand so the first turn always makes sense:
   // something to bring people in, and something to serve them with.
   if (s.week === 1) {
-    const { transport, amenity } = CONFIG.shop.week1;
+    const { transport, amenity, fixed } = CONFIG.shop.week1;
     let slot = 0;
+    // The named cards come first and are the same in every run: a fixed opening
+    // is what holds week 1 inside its band (§15), since one roll of the shop is
+    // most of the spread when the board is empty. Anything a level has banned
+    // (no rail or water in Sky Harbour) is skipped and rolled instead.
+    for (const key of fixed || []) {
+      if (slot >= nSlots) break;
+      const d = tileDef(key);
+      if (d.kind === 'transport' && (m.banTerrains || []).includes(d.terrain)) continue;
+      used.add(key); cards.push(tileCard(d, slot)); slot++;
+    }
     for (let i = 0; i < transport && slot < nSlots; i++, slot++) addTransport(slot);
     for (let i = 0; i < amenity && slot < nSlots; i++, slot++) addAmenity(slot);
     while (slot < nSlots) { addAmenity(slot); slot++; }
