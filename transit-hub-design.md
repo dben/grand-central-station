@@ -755,7 +755,7 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 - **Geometry:** each sprite is drawn in the shape's base orientation at 32 px per cell. The renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one image per tile type is enough. Because the isometric map is linear, the canvas transform lays top-down art flat on the ground plane.
 - **Two layers:** `SPRITES` is the over layer (walls, roof) and `SPRITES_FLOOR` the under layer (`<key>_floor.png`).
 - **Fallback:** tiles without art draw as flat coloured blocks. Missing sprites show up as harmless 404s when served; none are committed yet. The old 4-cell `gate.png` no longer fits the 2-cell checkpoint booth.
-- **Music:** `src/ui/audio.js` plays `assets/music/GCS.mp3` during a run, fading in and out. The mute choice is remembered in `localStorage`.
+- **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`.
 
 ---
 

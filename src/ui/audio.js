@@ -1,26 +1,54 @@
-// Background music. One looping track at a time; switching crossfades.
+// Background music. One playlist at a time; switching crossfades.
+// A track is a list of files: the list is shuffled when it starts and then
+// played in that order, looping back to the top when the last file ends.
 // Browsers only start audio after a user gesture. Every track change here
 // follows a click (starting a run, pressing Continue), so play() normally
 // succeeds; if the browser refuses, the game simply stays silent.
-// The bundler (harness/build.js) inlines these as data URIs in dist/.
+// The bundler (harness/build.js) inlines these as data URIs in dist/, and
+// nulls out any file it cannot find - hence the filter in list().
 export const TRACKS = {
-  main: 'assets/music/GCS.mp3',
+  main: ['assets/music/GCS1.mp3', 'assets/music/GCS2.mp3'],
 };
 const VOLUME = 0.5, FADE_MS = 800;
 
-const players = {};
+const players = {};   // url -> Audio
+const lists = {};     // TRACKS key -> { urls, i }
 let current = null;
 let muted = (() => { try { return localStorage.getItem('gcs.muted') === '1'; } catch { return false; } })();
 
-function player(name) {
-  if (!TRACKS[name]) return null;
-  if (!players[name]) {
-    const a = new Audio(TRACKS[name]);
-    a.loop = true; a.preload = 'auto'; a.volume = 0;
-    players[name] = a;
-  }
-  return players[name];
+function shuffled(urls) {
+  const a = urls.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
 }
+function list(name) {
+  if (!TRACKS[name]) return null;
+  if (!lists[name]) {
+    const urls = [].concat(TRACKS[name]).filter(Boolean);
+    if (!urls.length) return null;
+    lists[name] = { urls, i: 0 };
+  }
+  return lists[name];
+}
+function player(l) {
+  const url = l.urls[l.i];
+  if (!players[url]) {
+    const a = new Audio(url);
+    a.preload = 'auto'; a.volume = 0;
+    players[url] = a;
+  }
+  const a = players[url];
+  a.loop = l.urls.length === 1;   // a lone file loops itself; a playlist advances on 'ended'
+  a.onended = () => advance(l);
+  return a;
+}
+function advance(l) {
+  l.i = (l.i + 1) % l.urls.length;
+  const a = player(l);
+  a.currentTime = 0;
+  if (!muted) start(a);
+}
+function currentPlayer() { const l = current && list(current); return l ? player(l) : null; }
 
 // Ramp a player's volume on wall-clock time, so a throttled background tab
 // still finishes the fade instead of freezing halfway.
@@ -48,15 +76,20 @@ function stop(a, rewind) {
 // playing leaves it alone, so callers can sync on every week change.
 export function playTrack(name) {
   if (name === current) return;
-  if (current) stop(players[current], true);
+  const old = currentPlayer();
+  if (old) { old.onended = null; stop(old, true); }
   current = name;
-  if (name && !muted) { const a = player(name); if (a) { a.currentTime = 0; start(a); } }
+  const l = list(name);
+  if (!l) return;
+  l.urls = shuffled(l.urls); l.i = 0;   // a fresh start reshuffles, so runs don't always open the same way
+  if (!muted) { const a = player(l); a.currentTime = 0; start(a); }
 }
 
 export function isMuted() { return muted; }
 export function setMuted(m) {
   muted = !!m;
   try { localStorage.setItem('gcs.muted', muted ? '1' : '0'); } catch {}
-  if (!current) return;
-  if (muted) stop(players[current], false); else start(player(current));
+  const a = currentPlayer();
+  if (!a) return;
+  if (muted) stop(a, false); else start(a);
 }
