@@ -20,9 +20,11 @@
 export const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
   junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 2.0,
-                // A cramped board on a fast clock: an event every third week,
-                // and tunnels early, since they cost no floor space.
-                run: { eventEvery: 3, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
+                // A cramped board that gets its milestones early, and tunnels
+                // with them, since a tunnel costs no floor space. It ran an
+                // event every third week until the quota band tightened: five
+                // event weeks on a 9x9 board killed two runs in three (§15).
+                run: { ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
                 minWeek: { subway: 2, express_subway: 4, under_parking: 2, limo: 3 } },
   metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. A roomy 16x16 board and the big tiles early, but tiles cost 25% more and the weeks are slower to turn.', unlockWeek: 12, costMult: 1.25,
                 // Room for the six-cell tiles, so they come on sale early; in
