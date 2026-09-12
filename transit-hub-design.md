@@ -588,7 +588,7 @@ Modes don't create variance between two runs of the same mode; **ordinances do**
 
 ### 10.4 Bonus cards
 
-Consumables from the shop. Each costs 1 AP to play, plus its price — except the Rezoning Permit, which costs no AP (§4.1).
+Consumables from the shop. Each costs 1 AP to play, plus its price — except the Rezoning Permit, which costs no AP (§4.1). Playing one takes two steps like every other card: picking it only puts it in the card bar, and its **Play it** button is what spends (§12.6).
 
 | Card | Cost | Effect |
 |---|---|---|
@@ -688,13 +688,26 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
 ### 12.6 Controls
 
 - **Camera:** drag to pan, scroll or pinch to zoom; **+ / − / Fit** buttons or the **+**, **−** and **0** keys.
-- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates, and **Esc** cancels.
-- **Touch** has no hover, so the first tap aims and a second tap builds. A bar above the shop offers **Rotate**, **Build here** and cancel.
-- **Tile details:** hover a card or tile to see them; click a tile to pin the popup, which has the Delete button.
-- **Targeted cards:** upgrades and bonus cards that need a target highlight the valid tiles (or edges, for Rezoning Permit).
+- **Picking a card spends nothing.** It goes into the card bar over the shop tray, which shows its
+  name, its price in money and AP, and its full text — on a touch screen that bar is the only way
+  to read a card at all. The bar's own button is what spends: **Build here** for a tile, **Play it**
+  for a card that needs no target. **✕** or **Esc** puts the card back. **⌄** folds the text away
+  when it covers too much board, and the choice is remembered.
+- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates.
+- **Touch** has no hover, so the first tap aims and a second tap builds.
+- **Tile details:** hover a card or tile to see them; click a tile to pin the popup, which carries
+  the Delete button and a close button, and stays inside the screen on a phone.
+- **Targeted cards:** upgrades and bonus cards that need a target highlight the valid tiles (or
+  edges, for Rezoning Permit), and the bar says what to pick.
 - **Run Week** asks for confirmation only while AP is unspent, and says what running early pays. Once all AP is spent, a large Run Week button also appears on the board.
 - **Music:** **♪** or **M** mutes it, and the choice is remembered. The start screen and a lost run are silent.
-- **Panels:** the chevrons collapse the shop tray and the side panel.
+- **Panels:** the chevrons collapse the shop tray and the side panel. The side panel is a column
+  on the right of a wide screen and a strip along the bottom of a narrow one, so its handle turns
+  with it: a full-width **⌄** bar across the top of the strip, and **▲** on the tab that brings it
+  back. The handle sits outside the scrolling area, so it cannot be scrolled away.
+- **On a phone:** the side panel starts collapsed, the top bar and cards shrink, the page is sized
+  to the visible viewport (`dvh`) so the tray is not hidden behind the address bar, and controls
+  take a tap without the double-tap zoom delay.
 
 ---
 

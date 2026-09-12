@@ -60,11 +60,16 @@ const meta = loadMeta();
 const ui = {
   mode: 'idle', card: null, rot: 0, hover: null, edgeHover: null, selectedTileId: null, hoverTileId: null,
   ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
-  pb: { result: null, T: 0, speed: 2, playing: false, last: 0 }, heat: false, summaryShown: false, started: false,
+  pb: { result: null, T: 0, speed: 2, playing: false, last: 0 }, heat: false, summaryShown: false, started: false, barKey: null,
   starKey: null,
 };
 const renderer = new BoardRenderer($('board'));
 let boardInput = null;
+// Panel preferences that survive a reload. First visit on a phone hands the
+// whole screen to the board.
+const layout = (() => { try { return JSON.parse(localStorage.getItem('gcs.layout') || 'null'); } catch { return null; } })()
+  || (window.innerWidth < 700 ? { sideCollapsed: true } : {});
+const saveLayout = () => { try { localStorage.setItem('gcs.layout', JSON.stringify(layout)); } catch {} };
 const TICKS_PER_SEC = 2;
 
 // --------------------------------------------------------------- helpers
@@ -73,12 +78,13 @@ function tileAtCell(x, y) { return state.board.tiles.find(t => t.cells.some(c =>
 function mods() { return G.computeMods(state); }
 function persist() { if (ui.started && state && state.phase !== 'lost') saveRun(G.serialize(state)); }
 
+const ticks = n => `${n} tick${n === 1 ? '' : 's'}`;
 function describeTile(tile, def) {
   const m = mods();
   const rows = [];
   if (def.kind === 'transport') {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
-    rows.push(['Brings in', `${e.batch} ${CONFIG.tiers[def.tier - 1].symbol} travellers every ${e.arr} ticks`], ['Rides leave', `every ${e.dep} ticks${e.dwell ? `, after a ${e.dwell} tick wait` : ''}`]);
+    rows.push(['Brings in', `${e.batch} ${CONFIG.tiers[def.tier - 1].symbol} travellers every ${ticks(e.arr)}`], ['Rides leave', `every ${ticks(e.dep)}${e.dwell ? `, after a ${ticks(e.dwell)} wait` : ''}`]);
     rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} when they board here`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
     if (def.terrain === 'underground') {
       const tn = tile && tile.tunnel;
@@ -108,7 +114,7 @@ function describeTile(tile, def) {
     else if (def.special === 'waiting') rows.push(['Effect', `Travellers are worth more the longer they sit here: +${e.stackValue.toFixed(2)} a tick`], ['Limit', 'Richer travellers will sit for longer'], ['Range', e.radius], ['Holds', e.cap], ...(e.revenue >= 0.05 ? [['Earns', `$${e.revenue.toFixed(1)} per guest`]] : []), ...(e.minTier > 1 ? [['Only for', CONFIG.tiers[e.minTier - 1].symbol + ' travellers and up']] : []));
     else {
       rows.push(['Best for', def.special === 'anytier' ? 'travellers of any tier' : `${CONFIG.tiers[def.tier - 1].symbol} travellers`], ['Draws in', `up to ${(e.rate * 100).toFixed(0)}% of travellers within ${e.radius} squares`]);
-      rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} for everyone who stops`], ['Serves', `${e.cap} at a time, ${e.dur} tick${e.dur === 1 ? '' : 's'} each`]);
+      rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} for everyone who stops`], ['Serves', `${e.cap} at a time, ${ticks(e.dur)} each`]);
       if (e.revenue >= 0.05) rows.push(['Earns', `$${e.revenue.toFixed(1)} per visit`]);
       if (def.special === 'green') rows.push(['Special', 'A free stop: travellers get back the stop they spend here'], ...walk);
 
@@ -220,6 +226,13 @@ function cardKindLabel(card) {
 function cardDetails(card) {
   const box = h('div');
   box.append(h('h4', {}, card.name));
+  box.append(cardBody(card));
+  return box;
+}
+// Everything a card says apart from its name: the same text the hover popup
+// shows, so the card bar can carry it on a screen that cannot hover.
+function cardBody(card) {
+  const box = h('div');
   if (card.type === 'tile' || card.type === 'bridge') {
     const def = tileDef(card.key);
     box.append(describeTile(null, def));
@@ -266,6 +279,8 @@ function renderShop() {
 // ------------------------------------------------------------ popup
 function showPopup(content, x, y, sticky) {
   const p = $('popup'); p.innerHTML = ''; p.append(content);
+  // a pinned popup has to be closable without a keyboard or a spare click
+  if (sticky) p.append(h('button', { class: 'popup-close', title: 'Close', onclick: () => { ui.selectedTileId = null; hidePopup(true); renderInfo(); } }, '✕'));
   p.classList.remove('hidden'); p.classList.toggle('sticky', !!sticky); p.dataset.sticky = sticky ? '1' : '';
   positionPopup(x, y);
 }
@@ -274,8 +289,11 @@ function positionPopup(x, y) {
   const r = p.getBoundingClientRect();
   let px = x + 16, py = y + 16;
   if (px + r.width > window.innerWidth - 8) px = x - r.width - 12;
-  if (py + r.height > window.innerHeight - 8) py = Math.max(8, y - r.height - 12);
-  p.style.left = px + 'px'; p.style.top = py + 'px';
+  if (py + r.height > window.innerHeight - 8) py = y - r.height - 12;
+  // a flip can run off the other side of a narrow screen, so pin it inside
+  const fit = (v, size, limit) => Math.min(Math.max(8, v), Math.max(8, limit - size - 8));
+  p.style.left = fit(px, r.width, window.innerWidth) + 'px';
+  p.style.top = fit(py, r.height, window.innerHeight) + 'px';
 }
 function hidePopup(force) {
   const p = $('popup');
@@ -352,25 +370,48 @@ function renderSide() {
   renderInfo();
 }
 
+// A card in hand is one of three things: a tile being aimed, a card looking for
+// a target, or a card that fires the moment it is played.
+const holdingCard = () => !!ui.card && (ui.mode === 'place' || ui.mode === 'target' || ui.mode === 'confirm');
+
+// The bar over the shop tray is where a picked card lives: its name, its price,
+// the text a touch screen cannot hover for, and the button that spends the
+// money. Rebuilt only when the card or the mode changes, because aiming calls
+// this on every cursor move.
+function renderCardBar() {
+  const bar = $('card-bar');
+  bar.classList.toggle('hidden', !holdingCard());
+  if (!holdingCard()) { ui.barKey = null; return; }
+  const card = ui.card, place = ui.mode === 'place', confirm = ui.mode === 'confirm';
+  const cost = G.cardCost(state, card), ap = G.cardAPCost(state, card);
+  const key = `${card.id}|${ui.mode}|${cost}|${ap}`;
+  if (ui.barKey !== key) {
+    ui.barKey = key;
+    const title = $('card-bar-title'); title.innerHTML = '';
+    title.append(h('b', {}, card.name), h('span', { class: 'price' }, `$${fmt(cost)}${ap ? ` · ${ap} AP` : ''}`));
+    const desc = $('card-bar-desc'); desc.innerHTML = ''; desc.append(cardBody(card));
+    desc.scrollTop = 0;
+  }
+  $('card-bar-prompt').textContent = ui.mode === 'target'
+    ? (card.target === 'edge' ? 'Pick one of the highlighted edges.' : card.type === 'upgrade' ? `Pick a ${card.tileName} to raise it.` : 'Pick one of the highlighted tiles.')
+    : (place && !ui.ghost) ? 'Pick a square on the board.' : '';
+  $('card-bar-desc').classList.toggle('hidden', !!layout.cardInfoCollapsed);
+  $('btn-card-info').textContent = layout.cardInfoCollapsed ? '⌃' : '⌄';
+  $('btn-rotate').classList.toggle('hidden', !place);
+  if (place) $('btn-rotate').disabled = orientationCount(tileDef(card.key).shape) < 2;
+  const go = $('btn-place');
+  go.classList.toggle('hidden', !place && !confirm);
+  go.textContent = place ? 'Build here' : 'Play it';
+  go.disabled = place && !(ui.ghost && ui.ghost.ok);
+}
+
 function renderInfo() {
   const panel = $('info-panel'), title = $('info-title'), body = $('info-body'); body.innerHTML = '';
   panel.classList.remove('hidden');
-  const placing = ui.mode === 'place' && !!ui.card;
-  $('place-tools').classList.toggle('hidden', !placing);
-  if (placing) {
-    $('btn-rotate').disabled = orientationCount(tileDef(ui.card.key).shape) < 2;
-    $('btn-place').disabled = !(ui.ghost && ui.ghost.ok);
-  }
+  renderCardBar();
   if (ui.mode === 'playback') { title.textContent = 'Running the week'; body.textContent = 'Shops that are full go grey. Skip ahead any time.'; return; }
-  // Placement feedback lives on the board itself (stars over the ghost), so the
-  // side panel stays out of the way while you aim.
-  if (ui.mode === 'place' && ui.card) { panel.classList.add('hidden'); return; }
-  if (ui.mode === 'target' && ui.card) {
-    title.textContent = ui.card.name;
-    body.append(h('div', { class: 'accent' }, ui.card.target === 'edge' ? 'Click one of the claimed edges.' : ui.card.type === 'upgrade' ? `Click a ${ui.card.tileName} to raise it.` : 'Click one of the highlighted tiles.'),
-      h('div', { style: 'font-size:12px;color:var(--muted);margin-top:6px' }, 'Press Esc to cancel'));
-    return;
-  }
+  // With a card in hand the board says it all — stars over the ghost, the card
+  // bar underneath — so the side panel stays out of the way.
   panel.classList.add('hidden');
 }
 
@@ -411,19 +452,32 @@ function scheduleEstimate() {
 }
 
 // ------------------------------------------------------------ interaction
+// Picking a card never spends anything: it puts the card in the bar, where its
+// text can be read and its own button does the spending.
 function selectCard(card) {
   if (state.phase !== 'shop' || ui.mode === 'playback') return;
+  hint(''); // whatever the last card was told to do no longer applies
   if (ui.card && ui.card.id === card.id) { cancelMode(); return; }
   ui.card = card; ui.rot = 0; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; hidePopup(true);
   if (card.type === 'tile' || card.type === 'bridge') ui.mode = 'place';
   else if (card.type === 'upgrade' || card.type === 'named_upgrade') {
-    if (card.type === 'named_upgrade' && card.target === 'waiting_all') { const anyT = state.board.tiles[0]; if (!anyT) { hint('You have nothing to upgrade yet'); return; } const r = G.upgradeTile(state, card, anyT.id); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); return; }
-    ui.mode = 'target';
+    // an "every lounge" upgrade has nothing to aim at, so it confirms instead
+    if (card.type === 'named_upgrade' && card.target === 'waiting_all') {
+      if (!state.board.tiles.length) { hint('You have nothing to upgrade yet'); cancelMode(); return; }
+      ui.mode = 'confirm';
+    } else ui.mode = 'target';
   } else if (card.type === 'card' || card.type === 'ap') {
-    if (card.target === 'none' || card.type === 'ap') { const r = G.playCard(state, card); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); return; }
-    ui.mode = 'target';
+    ui.mode = (card.target === 'none' || card.type === 'ap') ? 'confirm' : 'target';
   }
   renderShop(); renderInfo(); updateGhost();
+}
+// The second half of playing a card that needs no target: the Play it button.
+function playSelected() {
+  if (ui.mode !== 'confirm' || !ui.card) return;
+  const card = ui.card;
+  const r = card.type === 'named_upgrade' ? G.upgradeTile(state, card, state.board.tiles[0]?.id) : G.playCard(state, card);
+  if (!r.ok) hint(r.reason);
+  cancelMode(); renderAll();
 }
 function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.estimate = null; hidePopup(true); renderShop(); renderInfo(); }
 
@@ -484,6 +538,7 @@ function commitPlacement() {
 
 function onBoardTap(cell, edge, e) {
   if (ui.mode === 'playback') return;
+  if (ui.mode === 'confirm') { hint('Play it or cancel first'); return; }
   // Touch has no hover, so the first tap aims the ghost and the second builds.
   const twoStage = e.pointerType === 'touch';
   if (ui.mode === 'place' && ui.card) {
@@ -528,7 +583,7 @@ function onBoardTap(cell, edge, e) {
 function onKey(e) {
   if (e.target.closest && e.target.closest('input, select, textarea')) return; // typing a seed is not a shortcut
   if (e.key === 'm' || e.key === 'M') toggleMusic();
-  if (e.key === 'Escape') { hidePopup(true); if (ui.mode === 'place' || ui.mode === 'target') cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
+  if (e.key === 'Escape') { hidePopup(true); if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
   if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
   if (e.key === ' ' && ui.mode === 'playback') { e.preventDefault(); ui.pb.playing = !ui.pb.playing; }
   if (!boardInput) return;
@@ -872,19 +927,17 @@ function boot() {
   $('btn-zoom-out').addEventListener('click', () => boardInput.zoomBy(1 / 1.35));
   $('btn-zoom-fit').addEventListener('click', () => boardInput.fit());
   $('btn-rotate').addEventListener('click', () => rotate(1));
-  $('btn-place').addEventListener('click', commitPlacement);
+  $('btn-place').addEventListener('click', () => { if (ui.mode === 'confirm') playSelected(); else commitPlacement(); });
   $('btn-place-cancel').addEventListener('click', () => cancelMode());
+  $('btn-card-info').addEventListener('click', () => { layout.cardInfoCollapsed = !layout.cardInfoCollapsed; saveLayout(); renderInfo(); });
   $('btn-run').addEventListener('click', confirmRunWeek);
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
-  const layout = (() => { try { return JSON.parse(localStorage.getItem('gcs.layout') || 'null'); } catch { return null; } })()
-    // first visit on a phone: hand the whole screen to the board
-    || (window.innerWidth < 700 ? { sideCollapsed: true } : {});
   const applyLayout = () => {
     $('shop').classList.toggle('collapsed', !!layout.shopCollapsed);
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);
     $('side-tab').classList.toggle('hidden', !layout.sideCollapsed);
-    try { localStorage.setItem('gcs.layout', JSON.stringify(layout)); } catch {}
+    saveLayout();
     if (state) renderer.resize(state.board);
   };
   $('btn-shop-toggle').addEventListener('click', () => { layout.shopCollapsed = true; applyLayout(); });

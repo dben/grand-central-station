@@ -49,10 +49,20 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <button id="btn-zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <button id="btn-zoom-fit" title="Fit board (0)" aria-label="Fit board">Fit</button>
       </div>
-      <div id="place-tools" class="hidden">
-        <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
-        <button id="btn-place" class="primary">Build here</button>
-        <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
+      <!-- the card in hand: its name, its details (the only way to read them
+           on a touch screen) and the action that spends the money -->
+      <div id="card-bar" class="hidden">
+        <div id="card-bar-head">
+          <span id="card-bar-title"></span>
+          <button id="btn-card-info" class="toggle" title="Show or hide the details">⌄</button>
+        </div>
+        <div id="card-bar-prompt"></div>
+        <div id="card-bar-desc"></div>
+        <div id="card-bar-tools">
+          <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
+          <button id="btn-place" class="primary">Build here</button>
+          <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
+        </div>
       </div>
       <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
       <!-- the shop floats over the bottom edge of the board -->
@@ -71,21 +81,25 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
       </div>
     </div>
-    <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
+    <!-- glyphs come from CSS: the panel sits on the right on a wide screen and
+         along the bottom on a narrow one, so the arrows have to turn with it -->
+    <button id="side-tab" class="toggle hidden" title="Show the timeline" aria-label="Show the timeline"></button>
     <aside id="side">
-      <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
-      <section id="info-panel" class="panel hidden">
-        <h3 id="info-title">Placing</h3>
-        <div id="info-body"></div>
-      </section>
-      <section id="timeline-panel" class="panel">
-        <h3>Timeline</h3>
-        <div id="timeline"></div>
-      </section>
-      <section id="rules-panel" class="panel hidden">
-        <h3>Ordinances &amp; effects</h3>
-        <div id="rules-body"></div>
-      </section>
+      <button id="btn-side-toggle" class="toggle" title="Hide the timeline" aria-label="Hide the timeline"></button>
+      <div id="side-panels">
+        <section id="info-panel" class="panel hidden">
+          <h3 id="info-title">Placing</h3>
+          <div id="info-body"></div>
+        </section>
+        <section id="timeline-panel" class="panel">
+          <h3>Timeline</h3>
+          <div id="timeline"></div>
+        </section>
+        <section id="rules-panel" class="panel hidden">
+          <h3>Ordinances &amp; effects</h3>
+          <div id="rules-body"></div>
+        </section>
+      </div>
     </aside>
   </main>
 </div>

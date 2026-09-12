@@ -7,8 +7,10 @@
   --stripe: linear-gradient(90deg, #ff4fd8, #ffd23f 33%, #35d4ff 66%, #4dff6e);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 100% "VT323", sans-serif; }
-button { font: inherit; color: var(--text); background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; box-shadow: var(--hard); }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 100% "VT323", sans-serif; overscroll-behavior: none; }
+/* mobile browsers count their address bar in 100%, so the tray ends up under it */
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+button { font: inherit; color: var(--text); background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; box-shadow: var(--hard); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:hover { border-color: var(--accent); }
 button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 button:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
@@ -34,9 +36,13 @@ small { color: var(--muted); }
 .val.blocky { font-family: "Courier New", Courier, ui-monospace, monospace; font-weight: 800; font-size: 24px; letter-spacing: 1px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color: transparent; color: var(--muted); background: transparent; box-shadow: none; }
+/* The side panel is a column on the right of a wide screen and a strip along
+   the bottom of a narrow one, so both chevrons point the way the panel goes. */
 #side { position: relative; }
-#btn-side-toggle { position: absolute; top: 4px; right: 6px; }
-#side-tab { position: fixed; right: 0; top: 50%; z-index: 5; background: var(--panel); border: 2px solid var(--line); border-right: none; border-radius: 6px 0 0 6px; padding: 10px 4px; }
+#btn-side-toggle { position: absolute; top: 2px; right: 4px; z-index: 2; min-width: 34px; min-height: 30px; font-size: 16px; }
+#btn-side-toggle::after { content: '▶'; }
+#side-tab { position: fixed; right: 0; top: 50%; z-index: 5; background: var(--panel); border: 2px solid var(--line); border-right: none; border-radius: 6px 0 0 6px; padding: 14px 6px; font-size: 16px; }
+#side-tab::after { content: '◀'; }
 #main.side-collapsed { grid-template-columns: 1fr; }
 #main.side-collapsed #side { display: none; }
 #wallet { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 2px; }
@@ -101,8 +107,19 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #board-tools button { width: 40px; height: 40px; padding: 0; font-size: 20px; font-weight: 600; line-height: 1; background: rgba(37,23,77,0.92); }
 #board-tools #btn-zoom-fit { width: auto; padding: 0 10px; font-size: 18px; }
 #btn-music.off { color: var(--muted); text-decoration: line-through; }
-#place-tools { position: absolute; left: 50%; bottom: calc(var(--tray-h, 0px) + 10px); transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; background: rgba(26,16,51,0.92); border: 2px solid var(--line); border-radius: 6px; padding: 6px; box-shadow: var(--hard); }
-#place-tools button { min-height: 40px; padding: 6px 14px; }
+/* The card in hand. A touch screen has no hover, so this bar is where the
+   card's own text lives; ⌄ folds it away when it covers too much board. */
+#card-bar { position: absolute; left: 50%; bottom: calc(var(--tray-h, 0px) + 10px); transform: translateX(-50%); width: min(360px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 6px; z-index: 5; background: rgba(26,16,51,0.94); border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; box-shadow: var(--hard); }
+#card-bar-head { display: flex; align-items: baseline; gap: 8px; }
+#card-bar-title { flex: 1; min-width: 0; font-size: 16px; color: var(--accent); }
+#card-bar-title .price { color: var(--muted); font-size: 14px; margin-left: 6px; white-space: nowrap; }
+#btn-card-info { font-size: 16px; line-height: 1; padding: 6px 12px; color: var(--accent); }
+#card-bar-prompt { color: var(--accent); font-size: 14px; }
+#card-bar-prompt:empty { display: none; }
+#card-bar-desc { max-height: min(200px, 28vh); overflow-y: auto; font-size: 14px; }
+#card-bar-tools { display: flex; gap: 8px; }
+#card-bar-tools button { min-height: 40px; padding: 6px 14px; }
+#btn-place { flex: 1; }
 
 /* ------------------------------------------------------------------- shop */
 /* Cards sit centred on the bottom edge of the board with the wallet and
@@ -143,7 +160,9 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .tier1 { color: var(--t1); } .tier2 { color: var(--t2); } .tier3 { color: var(--t3); } .tier4 { color: var(--t4); } .tier5 { color: var(--t5); }
 
 /* ------------------------------------------------------------ side, modal */
-#side { border-left: 3px solid var(--line); background: var(--panel); overflow-y: auto; display: flex; flex-direction: column; }
+#side { border-left: 3px solid var(--line); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+/* the panels scroll, the collapse button does not go with them */
+#side-panels { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
 .panel { padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .panel h3 { margin: 0 0 8px; font-family: "Press Start 2P", ui-monospace, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--pink); }
 #log-body { font-size: 14px; color: var(--muted); max-height: 160px; overflow-y: auto; }
@@ -187,15 +206,23 @@ table.stats th { color: var(--muted); font-weight: 500; }
 select { font: inherit; background: var(--panel2); color: var(--text); border: 2px solid var(--line); border-radius: 4px; padding: 4px; }
 @media (max-width: 900px) {
   #main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-  #side { border-left: none; border-top: 3px solid var(--line); max-height: 34vh; flex-direction: row; overflow-x: auto; }
+  #side { border-left: none; border-top: 3px solid var(--line); max-height: 34vh; }
+  #side-panels { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
   .panel { min-width: 240px; border-bottom: none; border-right: 1px solid var(--line); }
+  /* a full-width handle across the top of the strip: it folds away downwards */
+  #btn-side-toggle { position: static; width: 100%; min-height: 36px; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--accent); }
+  #btn-side-toggle::after { content: '⌄'; font-size: 20px; }
+  #side-tab { padding: 16px 8px; min-height: 52px; color: var(--accent); }
+  #side-tab::after { content: '▲'; }
   /* too narrow to centre: actions on the left, cards scroll beside them */
   #shop { display: flex; align-items: flex-end; gap: 8px; padding: 0 8px 8px; }
   #shop-cards { flex: 1 1 auto; min-width: 0; }
   #shop.collapsed { justify-content: center; }
   #board-tools button { width: 44px; height: 44px; font-size: 20px; }
-  #place-tools { left: 8px; right: 8px; transform: none; justify-content: center; }
-  #place-tools button { flex: 1; min-height: 46px; }
+  #card-bar { left: 8px; right: 8px; width: auto; transform: none; }
+  #card-bar-tools button { flex: 1; min-height: 46px; }
+  #card-bar-tools #btn-place-cancel { flex: 0 0 auto; min-width: 56px; }
+  #btn-card-info { padding: 8px 14px; }
 }
 @media (pointer: coarse) {
   #popup { max-width: 240px; font-size: 14px; }
@@ -225,11 +252,13 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
+  #card-bar-desc { max-height: 22vh; }
   #side-tab { top: 26%; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }
-#popup.sticky { pointer-events: auto; }
+#popup.sticky { pointer-events: auto; padding-right: 30px; }
+.popup-close { position: absolute; top: 4px; right: 4px; padding: 2px 7px; font-size: 14px; line-height: 1.2; box-shadow: none; }
 #popup h4 { margin: 0 0 4px; font-size: 16px; color: var(--accent); }
 #popup .desc { color: var(--muted); font-size: 14px; margin-top: 4px; }
 #popup .kv { font-size: 14px; }

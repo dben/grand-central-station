@@ -133,7 +133,7 @@ export function tileUpgrade(key) {
     key, levels, radiusBonus: u.radiusBonus || 0, costMult: u.costMult || 1,
     name: u.name || `${def.name} Refit`,
     tileName: def.name,
-    desc: `Raise a ${def.name} by ${levels > 1 ? levels + ' levels' : 'one level'}${u.radiusBonus ? `, and let it reach ${u.radiusBonus} square${u.radiusBonus === 1 ? '' : 's'} further` : ''}.`,
+    desc: `Raise one ${def.name} by ${levels > 1 ? levels + ' levels' : 'one level'}${u.radiusBonus ? `, and let it reach ${u.radiusBonus} square${u.radiusBonus === 1 ? '' : 's'} further` : ''}.`,
   };
 }
 
