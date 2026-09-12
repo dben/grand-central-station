@@ -1713,6 +1713,29 @@ function simulateWeek(board, opts = {}) {
     for (const [x, y] of t.cells) booths.set(y * W + x, { tile: t, mult, bonus: ckCfg.budgetBonus });
   }
 
+  // Walkable regions, by the same step rule as the fields (fences, no corner
+  // cutting), so a platform's doors can be judged by where they lead.
+  const region = new Int16Array(N).fill(-1);
+  let regions = 0;
+  for (let s0 = 0; s0 < N; s0++) {
+    if (!passOpen[s0] || region[s0] >= 0) continue;
+    const stack = [s0]; region[s0] = regions;
+    while (stack.length) {
+      const i = stack.pop(), x = i % W, y = (i - x) / W;
+      for (let di = 0; di < 8; di++) {
+        const [dx, dy] = DIRS[di];
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const ni = ny * W + nx;
+        if (!passOpen[ni] || region[ni] >= 0 || (blocked[i] & (1 << di))) continue;
+        if (dx && dy && !(passOpen[y * W + nx] && passOpen[ny * W + x])) continue;
+        region[ni] = regions; stack.push(ni);
+      }
+    }
+    regions++;
+  }
+  const regionOf = ([x, y]) => region[y * W + x];
+
   // ---- tiles
   const transports = [], amenities = [], waitingAreas = [], security = [];
   const tileStats = {};
@@ -1786,16 +1809,36 @@ function simulateWeek(board, opts = {}) {
   }
   const hurry = cfg.sim.hurry || { enabled: false, slack: 0 };
 
-  // reachability between transports: 0 none, 1 direct, 2 via gate
+  // Can platform b be walked to from door [x, y]? 0 no, 1 directly, 2 via a gate.
+  function reachFrom([x, y], b) {
+    if (!transports[b].doors.length) return 0;
+    if (transportField(b, false)[y * W + x] < INF) return 1;
+    return hasGate && transportField(b, true)[y * W + x] < INF ? 2 : 0;
+  }
+  // A platform's doors are the ones that lead somewhere: the doors that reach
+  // the most other platforms (and a shop), then the most floor. On an open
+  // board every door ties, so nothing changes; a cell walled in beside the
+  // platform loses, so nobody steps out into it. A platform sealed in on every
+  // side keeps all its doors, so its travellers still spawn, and are lost.
+  const regionSize = new Int32Array(regions);
+  for (let i = 0; i < N; i++) if (region[i] >= 0) regionSize[region[i]]++;
+  const shopsIn = new Uint8Array(regions);
+  for (const am of amenities) for (const c of am.targets) shopsIn[regionOf(c)] = 1;
+  const concourse = new Uint8Array(regions);
+  for (const tr of transports) {
+    const worth = d => { let n = shopsIn[regionOf(d)]; for (let b = 0; b < transports.length; b++) if (b !== tr.idx && reachFrom(d, b)) n++; return n * N + regionSize[regionOf(d)]; };
+    const scored = tr.doors.map(d => [worth(d), d]);
+    const top = Math.max(0, ...scored.map(p => p[0]));
+    tr.live = scored.filter(p => p[0] === top).map(p => p[1]);
+    for (const d of tr.live) concourse[regionOf(d)] = 1;
+  }
+  // A shop's door in a pocket nobody stands in is not a way in, and must not
+  // count as a zero-length walk back to a platform on the far side of it.
+  for (const am of amenities) { const t = am.targets.filter(c => concourse[regionOf(c)]); if (t.length) am.targets = t; }
+  // reachability between transports, from any of a's doors: 0 none, 1 direct, 2 via gate
   const reach = transports.map(() => new Int8Array(transports.length));
-  for (let a = 0; a < transports.length; a++) {
-    if (!transports[a].doors.length) continue;
-    const [sx, sy] = transports[a].doors[0];
-    for (let b = 0; b < transports.length; b++) {
-      if (!transports[b].doors.length) continue;
-      if (transportField(b, false)[sy * W + sx] < INF) reach[a][b] = 1;
-      else if (hasGate && transportField(b, true)[sy * W + sx] < INF) reach[a][b] = 2;
-    }
+  for (let a = 0; a < transports.length; a++) for (let b = 0; b < transports.length; b++) {
+    for (const d of transports[a].live) { const r = reachFrom(d, b); if (r && (!reach[a][b] || r < reach[a][b])) reach[a][b] = r; }
   }
 
   // ---- state
@@ -1896,20 +1939,28 @@ function simulateWeek(board, opts = {}) {
     if (typeof tier === 'function') tier = tier(slot);
     if (kind === 'roll') kind = pickRate > 0 && roll(slot, R.kind) < pickRate ? 'pickpocket' : 'traveller';
     const tr = transports[originIdx];
-    const door = tr.doors[Math.floor(roll(slot, R.door) * tr.doors.length)];
     const id = agents.length;
-    let destIdx = originIdx, gateOpen = false;
+    let destIdx = originIdx, gateOpen = false, lost = false, pool = tr.live;
     if (kind === 'pickpocket') {
       const opts = transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx);
       destIdx = transports.length > 1 ? opts[Math.floor(roll(slot, R.pdest) * opts.length)] : originIdx;
       gateOpen = true;
     } else {
       destIdx = chooseDest(slot, originIdx, tier);
-      // An open checkpoint lets anyone through to whatever is on the far side;
-      // a filtering one only admits travellers whose platform is over there.
-      gateOpen = hasGate && (!ckCfg.filter || reach[originIdx][destIdx] === 2);
+      // They step out of a door that leads to their platform: the concourse
+      // doors if any do, else whichever door does (a platform whose doors open
+      // on to two halves of the board sends each traveller out the right side).
+      if (destIdx !== originIdx) {
+        const to = ds => ds.filter(d => reachFrom(d, destIdx));
+        pool = to(tr.live);
+        if (!pool.length) pool = to(tr.doors);
+        if (!pool.length) { pool = tr.live; lost = true; }
+      }
     }
-    const lost = kind !== 'pickpocket' && !reach[originIdx][destIdx];
+    const door = pool[Math.floor(roll(slot, R.door) * pool.length)];
+    // An open checkpoint lets anyone through to whatever is on the far side;
+    // a filtering one only admits travellers whose platform is over there.
+    if (kind !== 'pickpocket') gateOpen = hasGate && (!ckCfg.filter || (!lost && reachFrom(door, destIdx) === 2));
     const tierInfo = cfg.tiers[tier - 1];
     const a = {
       id, ...slot, tier, kind, origin: originIdx, dest: destIdx, x: door[0], y: door[1], legs: 0,
