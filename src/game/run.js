@@ -77,9 +77,14 @@ export function gameRules(s) {
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
+// What an event actually multiplies the quota by, after quota.eventStrength
+// pulls the number in data/events.js toward 1. The UI quotes this, not the raw
+// value, so the card and the target always agree.
+export function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
+export const fmtMult = m => (Math.round(m * 100) / 100).toString();
 export function quotaFor(s, week = s.week) {
   const ev = eventForWeek(s, week);
-  const mult = (ev ? ev.quota : 1) * gameRules(s).quotaMult;
+  const mult = eventMult(ev) * gameRules(s).quotaMult;
   const curve = quotaForWeek(week, modeOf(s), mult, difficultyOf(s));
   const c = CONFIG.quota.catchUp;
   if (!c || !c.share) return curve;
@@ -90,7 +95,10 @@ export function quotaFor(s, week = s.week) {
   if (recent <= 0) return curve;
   const grow = quotaForWeek(week, modeOf(s), 1, difficultyOf(s)) / quotaForWeek(Math.max(1, s.week), modeOf(s), 1, difficultyOf(s));
   const u = CONFIG.quota.starUnit;
-  return Math.max(curve, Math.round(c.share * recent * grow * mult / u) * u);
+  // The floor takes no event multiplier: the curve already carries it, and
+  // stacking the two makes a convention week on a strong run unsurvivable
+  // (measured: every run died, most of them on the first big event, §15).
+  return Math.max(curve, Math.round(c.share * recent * grow / u) * u);
 }
 export function tileCount(s) { return s.board.tiles.length; }
 export function tileCost(s, def) {

@@ -45,6 +45,11 @@ export const CONFIG = {
     // punished for it; what it does is stop a run that is 3x the curve from
     // coasting. `share` 0 turns it off.
     catchUp: { share: 0, from: 'best' },
+    // How hard an event week leans on the quota: the multiplier in data/events.js
+    // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
+    // event's quota has to be read against the headroom a normal week leaves:
+    // the tighter the band, the less room a x1.8 week has to be survivable.
+    eventStrength: 1,
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
