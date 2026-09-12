@@ -18,7 +18,7 @@ python3 -m http.server 8080                        # play at http://localhost:80
 node harness/selftest.js                           # invariants: rules, sim, checkpoints, rezoning (run after any change)
 node harness/build.js                              # rebuild dist/grand-central-station.html (commit it)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
-node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--no-prune: never deletes)
+node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
 node harness/marginal.mjs --week 6 --seeds 12      # value of one more of each tile, in stars/$100
 node harness/run.js harness/layouts/amenity_chain.json --seeds 50 --week 4
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24   # placement landscape of a tile: best/median/negative share, jump per cell or rotation
@@ -35,7 +35,7 @@ board as a layout so another build can probe the same one with `--layout`.
 
 ```
 src/config.js        every tunable number: quota curve, AP, economy, tiers, sim constants
-src/data/            tiles (catalogue + upgrades), events + milestones, cards, ordinances, modes
+src/data/            tiles (catalogue + upgrades), events + milestones, cards, ordinances, modes, difficulties
 src/sim/board.js     grid, terrain claims, placement legality, walk map, checkpoint fences
 src/sim/sim.js       headless deterministic week simulator (no DOM)
 src/game/run.js      run state, shop generation, actions, settlement, save format

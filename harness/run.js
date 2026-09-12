@@ -4,13 +4,15 @@
 //   node harness/run.js harness/layouts/week1_bus.json --seeds 50 --week 3
 import { readFileSync } from 'node:fs';
 import { createBoard, placeTile, checkPlacement } from '../src/sim/board.js';
-import { simulateWeek } from '../src/sim/sim.js';
+import { simulateWeek, mergeMods } from '../src/sim/sim.js';
 import { MODES } from '../src/data/modes.js';
+import { DIFFICULTIES } from '../src/data/difficulties.js';
 import { quotaForWeek, starsOf, starTarget } from '../src/config.js';
 import { applySets } from './sets.mjs';
 
 export function loadLayout(spec) {
   const mode = MODES[spec.mode || 'terminal'];
+  const diff = DIFFICULTIES[spec.difficulty] || DIFFICULTIES.standard;
   const board = createBoard(mode.w, mode.h, mode.preLock || {});
   for (const t of spec.tiles) {
     const c = checkPlacement(board, t.key, t.x, t.y, t.rot || 0, mode);
@@ -18,7 +20,7 @@ export function loadLayout(spec) {
     const tile = placeTile(board, t.key, t.x, t.y, t.rot || 0, c, mode);
     if (t.level) tile.level = t.level;
   }
-  return { board, mode };
+  return { board, mode, diff };
 }
 
 export function pct(sorted, p) {
@@ -28,7 +30,10 @@ export function pct(sorted, p) {
 }
 
 export function runLayout(spec, { seeds = 30, week = spec.week || 1, mods = spec.mods || {} } = {}) {
-  const { board, mode } = loadLayout(spec);
+  const { board, mode, diff } = loadLayout(spec);
+  // a layout dumped from a harder run carries its difficulty, so the quota it
+  // is measured against and the income it earns are that run's
+  mods = mergeMods(diff.mods, mods);
   const results = [];
   const t0 = performance.now();
   for (let s = 0; s < seeds; s++) results.push(simulateWeek(board, { seed: s + 1, week, mods }));
@@ -43,7 +48,7 @@ export function runLayout(spec, { seeds = 30, week = spec.week || 1, mods = spec
   }
   for (const t of Object.values(tiles)) for (const k of Object.keys(t)) if (k !== 'name') t[k] /= seeds;
   const counts = { spawned: mean(results.map(r => r.counts.spawned)), boarded: mean(results.map(r => r.counts.boarded)), stranded: mean(results.map(r => r.counts.stranded)), lost: mean(results.map(r => r.counts.lost)) };
-  return { board, mode, week, quota: quotaForWeek(week, mode), score: { mean: mean(scores), p10: pct(scores, 0.1), p50: pct(scores, 0.5), p90: pct(scores, 0.9) }, money: { mean: mean(money), p10: pct(money, 0.1), p90: pct(money, 0.9) }, tiles, counts, msPerWeek: ms, results };
+  return { board, mode, diff, week, quota: quotaForWeek(week, mode, 1, diff), score: { mean: mean(scores), p10: pct(scores, 0.1), p50: pct(scores, 0.5), p90: pct(scores, 0.9) }, money: { mean: mean(money), p10: pct(money, 0.1), p90: pct(money, 0.9) }, tiles, counts, msPerWeek: ms, results };
 }
 
 export function report(r) {

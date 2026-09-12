@@ -1,7 +1,8 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, playCard, rezoningVictims, deleteTile } from '../src/game/run.js';
+import { createRun, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf } from '../src/game/run.js';
+import { tileDef } from '../src/data/tiles.js';
 import { CONFIG } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
@@ -202,6 +203,22 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(playCard(s, card, { edge: 'W' }).ok && s.board.edges.W === 'green', 'rezoning a road edge opens it, and costs no AP');
   ok(!s.board.tiles.some(t => t.key === 'bus_stop') && s.board.driveways.length === 0, 'the road tile and its driveway are demolished');
   ok(['train_station', 'helipad', 'coffee'].every(k => s.board.tiles.some(t => t.key === k)), 'tiles on other edges and inland are untouched');
+}
+
+// difficulty: standard is the game as tuned, the others only scale it
+{
+  const std = createRun({ seed: 3 }), hard = createRun({ seed: 3, diffKey: 'hard' }), ext = createRun({ seed: 3, diffKey: 'extreme' });
+  ok(difficultyOf(std).name === 'Standard' && difficultyOf(createRun({ seed: 3, diffKey: 'nonsense' })).name === 'Standard', 'an unknown difficulty falls back to Standard');
+  ok(quotaFor(std, 1) === 5000 && JSON.stringify(computeMods(std)) === JSON.stringify(computeMods({ ...std, diffKey: 'standard' })), 'Standard leaves the quota and the simulator alone');
+  const q = (s, w) => quotaFor(s, w);
+  const weeks = [1, 2, 4, 8, 12, 16];
+  // quotas round to whole stars, so week 1 can tie between two difficulties
+  ok(weeks.every(w => q(ext, w) >= q(hard, w) && q(hard, w) >= q(std, w)) && q(ext, 4) > q(hard, 4), 'a harder run needs more every week');
+  // the growth lever is the point: the gap has to widen, not just sit there
+  ok(q(hard, 16) / q(std, 16) > q(hard, 1) / q(std, 1) && q(ext, 16) / q(std, 16) > q(ext, 1) / q(std, 1), 'and the gap widens by week 16');
+  const cost = s => tileCost(s, tileDef('coffee'));
+  ok(cost(hard) > cost(std) && cost(ext) > cost(hard) && ext.money < hard.money && hard.money < std.money, 'tiles cost more and the opening cash is smaller');
+  ok(computeMods(ext).revenueMult < computeMods(hard).revenueMult && computeMods(hard).revenueMult < 1, 'and amenity revenue is squeezed');
 }
 
 // undoing a placement costs money, not the week

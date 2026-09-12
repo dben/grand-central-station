@@ -50,8 +50,16 @@ try {
   await page.goto('http://localhost:8791/', { waitUntil: 'load' });
   await page.waitForTimeout(400);
   await page.locator('#modal-box input').fill('7');
+  // the difficulty picker sits above the modes; Hard then back to Standard, so
+  // the run below is the baseline one every later check assumes
+  await page.locator('.diff', { hasText: 'Hard' }).first().click();
+  await page.waitForTimeout(100);
+  check('picking a difficulty selects it', await page.locator('.diff.on .name').first().innerText() === 'Hard', await page.locator('.diff.on .name').first().innerText());
+  await page.locator('.diff', { hasText: 'Standard' }).first().click();
+  await page.waitForTimeout(100);
   await page.locator('.mode', { hasText: 'Terminal' }).first().click();
   await page.waitForTimeout(300);
+  check('the run records its difficulty', await page.evaluate(() => window.gcs.state.diffKey) === 'standard', await page.evaluate(() => window.gcs.state.diffKey));
   const cards1 = await page.locator('.card .name').allTextContents();
   check('week-1 shop has no upgrade token or bridge', !cards1.includes('Upgrade Token') && !cards1.some(c => c.includes('Bridge')), cards1.join(','));
   // isometric camera: round-trip a few cells, then zoom/pan and round-trip again

@@ -10,7 +10,10 @@ export function recordRun(meta, state) {
   meta.bestWeek = Math.max(meta.bestWeek, state.records.bestWeek);
   meta.bestScore = Math.max(meta.bestScore, state.records.bestScore);
   meta.bestTraveller = Math.max(meta.bestTraveller, state.records.bestTraveller);
-  const m = meta.byMode[state.modeKey] || (meta.byMode[state.modeKey] = { bestWeek: 0, bestScore: 0 });
+  // Records are per mode *and* difficulty: a week 16 on Extreme is not the
+  // same achievement as a week 16 on Standard.
+  const key = state.modeKey + ':' + (state.diffKey || 'standard');
+  const m = meta.byMode[key] || (meta.byMode[key] = { bestWeek: 0, bestScore: 0 });
   m.bestWeek = Math.max(m.bestWeek, state.records.bestWeek);
   m.bestScore = Math.max(m.bestScore, state.records.bestScore);
   saveMeta(meta);

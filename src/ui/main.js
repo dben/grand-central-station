@@ -5,6 +5,7 @@ import { CONFIG, starsOf, starTarget } from '../config.js';
 import * as G from '../game/run.js';
 import { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } from '../data/tiles.js';
 import { MODES, MODE_KEYS } from '../data/modes.js';
+import { DIFFICULTIES, DIFFICULTY_KEYS } from '../data/difficulties.js';
 import { ORDINANCES } from '../data/ordinances.js';
 import { CARDS } from '../data/cards.js';
 import { orientationCount, shapeCells } from '../sim/shapes.js';
@@ -13,7 +14,7 @@ import { effTransport, effAmenity } from '../sim/sim.js';
 import { BoardRenderer, colorForDef } from './render.js';
 import { attachBoardInput } from './boardinput.js';
 import { playTrack, isMuted, setMuted } from './audio.js';
-import { loadMeta, recordRun, saveRun, loadRun, clearRun } from './meta.js';
+import { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } from './meta.js';
 
 const $ = id => document.getElementById(id);
 function h(tag, attrs = {}, ...children) {
@@ -801,24 +802,41 @@ function showStart() {
   const stale = !!saved && !G.saveIsCurrent(saved);
   if (stale) { clearRun(); saved = null; }
   const seedInput = h('input', { type: 'text', placeholder: 'seed (optional)', style: 'font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px;width:160px' });
+  // Difficulty is a second axis on top of the mode, so the records shown under
+  // each mode are the ones for the difficulty currently selected.
+  let diffKey = meta.lastDiff && DIFFICULTIES[meta.lastDiff] ? meta.lastDiff : 'standard';
+  const diffs = h('div', { class: 'diffs' });
   const modes = h('div', { class: 'modes' });
-  for (const k of MODE_KEYS) {
-    const m = MODES[k];
-    const unlocked = meta.bestWeek >= m.unlockWeek;
-    const rec = meta.byMode[k];
-    modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, seedInput.value.trim()) : null },
-      h('div', { class: 'name' }, m.name, unlocked ? '' : ` 🔒 reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
+  function paintModes() {
+    modes.innerHTML = '';
+    for (const k of MODE_KEYS) {
+      const m = MODES[k];
+      const unlocked = meta.bestWeek >= m.unlockWeek;
+      const rec = meta.byMode[k + ':' + diffKey];
+      modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, diffKey, seedInput.value.trim()) : null },
+        h('div', { class: 'name' }, m.name, unlocked ? '' : ` \u{1F512} reach week ${m.unlockWeek}`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best on ${DIFFICULTIES[diffKey].name}: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
+    }
   }
+  function paintDiffs() {
+    diffs.innerHTML = '';
+    for (const k of DIFFICULTY_KEYS) {
+      const d = DIFFICULTIES[k];
+      diffs.append(h('div', { class: 'diff' + (k === diffKey ? ' on' : ''), onclick: () => { diffKey = k; meta.lastDiff = k; saveMeta(meta); paintDiffs(); paintModes(); } },
+        h('div', { class: 'name' }, d.name), h('div', { class: 'desc' }, d.desc)));
+    }
+  }
+  paintDiffs(); paintModes();
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
     h('p', {}, 'You run a transit hub. Each week, expand the hub, and watch travelers wander through. Hit the satisfaction quota or the run ends.'),
     stale ? h('p', { class: 'warn' }, 'Your saved run is from an older version of the game and can\'t be resumed. Start a new run below.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
+    h('h3', {}, 'Choose a difficulty'), diffs,
     h('h3', {}, 'Choose a mode'), modes,
     h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));
 }
-function newRun(modeKey, seedText) {
+function newRun(modeKey, diffKey, seedText) {
   const seed = seedText ? (isNaN(Number(seedText)) ? seedText : Number(seedText)) : null;
-  state = G.createRun({ modeKey, seed });
+  state = G.createRun({ modeKey, diffKey, seed });
   ui.started = true;
   closeModal(); ui.mode = 'idle'; ui.selectedTileId = null; ui.heat = false; ui.pb.result = null;
   renderer.resize(state.board); renderer.fit(); // a new run always starts framed
@@ -826,7 +844,7 @@ function newRun(modeKey, seedText) {
 }
 function showMenu() {
   openModal(h('h2', {}, 'Menu'),
-    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Mode'), h('span', {}, MODES[state.modeKey].name), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed), h('span', { class: 'k' }, 'Week'), h('span', {}, state.week)),
+    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Mode'), h('span', {}, MODES[state.modeKey].name), h('span', { class: 'k' }, 'Difficulty'), h('span', {}, G.difficultyOf(state).name), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed), h('span', { class: 'k' }, 'Week'), h('span', {}, state.week)),
     h('h3', {}, 'History'), h('table', { class: 'stats' }, h('tr', {}, h('th', {}, 'Week'), h('th', {}, 'Stars'), h('th', {}, 'Needed'), h('th', {}, 'Money'), h('th', {}, 'Event')), ...state.history.map(x => h('tr', {}, h('td', {}, x.week), h('td', { class: x.passed ? 'good' : 'bad', title: fmt(x.score) + ' points' }, `${fmt(starsOf(x.score))}★`), h('td', {}, `${fmt(starTarget(x.quota))}★`), h('td', {}, '+$' + fmt(x.money)), h('td', {}, x.event || '')))),
     h('div', { class: 'btnrow' }, h('button', { class: 'danger', onclick: () => { clearRun(); closeModal(); showStart(); } }, 'Abandon run'), h('button', { class: 'primary', onclick: closeModal }, 'Back')));
 }
