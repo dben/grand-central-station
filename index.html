@@ -49,10 +49,20 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <button id="btn-zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <button id="btn-zoom-fit" title="Fit board (0)" aria-label="Fit board">Fit</button>
       </div>
-      <div id="place-tools" class="hidden">
-        <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
-        <button id="btn-place" class="primary">Build here</button>
-        <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
+      <!-- the card in hand: its name, its details (the only way to read them
+           on a touch screen) and the action that spends the money -->
+      <div id="card-bar" class="hidden">
+        <div id="card-bar-head">
+          <span id="card-bar-title"></span>
+          <button id="btn-card-info" class="toggle" title="Show or hide the details">⌄</button>
+        </div>
+        <div id="card-bar-prompt"></div>
+        <div id="card-bar-desc"></div>
+        <div id="card-bar-tools">
+          <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
+          <button id="btn-place" class="primary">Build here</button>
+          <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
+        </div>
       </div>
       <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
       <!-- the shop floats over the bottom edge of the board -->

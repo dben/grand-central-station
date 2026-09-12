@@ -7,8 +7,10 @@
   --stripe: linear-gradient(90deg, #ff4fd8, #ffd23f 33%, #35d4ff 66%, #4dff6e);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 100% "VT323", sans-serif; }
-button { font: inherit; color: var(--text); background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; box-shadow: var(--hard); }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 100% "VT323", sans-serif; overscroll-behavior: none; }
+/* mobile browsers count their address bar in 100%, so the tray ends up under it */
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+button { font: inherit; color: var(--text); background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; box-shadow: var(--hard); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:hover { border-color: var(--accent); }
 button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 button:disabled { opacity: 0.45; cursor: default; border-color: var(--line); }
@@ -101,8 +103,19 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #board-tools button { width: 40px; height: 40px; padding: 0; font-size: 20px; font-weight: 600; line-height: 1; background: rgba(37,23,77,0.92); }
 #board-tools #btn-zoom-fit { width: auto; padding: 0 10px; font-size: 18px; }
 #btn-music.off { color: var(--muted); text-decoration: line-through; }
-#place-tools { position: absolute; left: 50%; bottom: calc(var(--tray-h, 0px) + 10px); transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; background: rgba(26,16,51,0.92); border: 2px solid var(--line); border-radius: 6px; padding: 6px; box-shadow: var(--hard); }
-#place-tools button { min-height: 40px; padding: 6px 14px; }
+/* The card in hand. A touch screen has no hover, so this bar is where the
+   card's own text lives; ⌄ folds it away when it covers too much board. */
+#card-bar { position: absolute; left: 50%; bottom: calc(var(--tray-h, 0px) + 10px); transform: translateX(-50%); width: min(360px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 6px; z-index: 5; background: rgba(26,16,51,0.94); border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; box-shadow: var(--hard); }
+#card-bar-head { display: flex; align-items: baseline; gap: 8px; }
+#card-bar-title { flex: 1; min-width: 0; font-size: 16px; color: var(--accent); }
+#card-bar-title .price { color: var(--muted); font-size: 14px; margin-left: 6px; white-space: nowrap; }
+#btn-card-info { font-size: 16px; line-height: 1; padding: 6px 12px; color: var(--accent); }
+#card-bar-prompt { color: var(--accent); font-size: 14px; }
+#card-bar-prompt:empty { display: none; }
+#card-bar-desc { max-height: min(200px, 28vh); overflow-y: auto; font-size: 14px; }
+#card-bar-tools { display: flex; gap: 8px; }
+#card-bar-tools button { min-height: 40px; padding: 6px 14px; }
+#btn-place { flex: 1; }
 
 /* ------------------------------------------------------------------- shop */
 /* Cards sit centred on the bottom edge of the board with the wallet and
@@ -194,8 +207,10 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #shop-cards { flex: 1 1 auto; min-width: 0; }
   #shop.collapsed { justify-content: center; }
   #board-tools button { width: 44px; height: 44px; font-size: 20px; }
-  #place-tools { left: 8px; right: 8px; transform: none; justify-content: center; }
-  #place-tools button { flex: 1; min-height: 46px; }
+  #card-bar { left: 8px; right: 8px; width: auto; transform: none; }
+  #card-bar-tools button { flex: 1; min-height: 46px; }
+  #card-bar-tools #btn-place-cancel { flex: 0 0 auto; min-width: 56px; }
+  #btn-card-info { padding: 8px 14px; }
 }
 @media (pointer: coarse) {
   #popup { max-width: 240px; font-size: 14px; }
@@ -225,11 +240,13 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
+  #card-bar-desc { max-height: 22vh; }
   #side-tab { top: 26%; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }
-#popup.sticky { pointer-events: auto; }
+#popup.sticky { pointer-events: auto; padding-right: 30px; }
+.popup-close { position: absolute; top: 4px; right: 4px; padding: 2px 7px; font-size: 14px; line-height: 1.2; box-shadow: none; }
 #popup h4 { margin: 0 0 4px; font-size: 16px; color: var(--accent); }
 #popup .desc { color: var(--muted); font-size: 14px; margin-top: 4px; }
 #popup .kv { font-size: 14px; }

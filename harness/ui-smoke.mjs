@@ -119,8 +119,9 @@ try {
     await page.evaluate(() => { window.gcs.state.money += 2000; window.gcs.refresh(); });
     await page.locator('.card').nth(upCard.idx).click();
     await page.waitForTimeout(150);
-    const infoT = await page.locator('#info-title').innerText();
+    const infoT = await page.locator('#card-bar-title').innerText();
     check('target mode prompt names the card', infoT.toLowerCase().includes(upCard.name.toLowerCase()), infoT);
+    check('the card bar carries the card text', (await page.locator('#card-bar-desc').innerText()).length > 40, await page.locator('#card-bar-desc').innerText());
     // an upgrade card must refuse a tile of the wrong type
     const wrong = await page.evaluate((key) => { const s = window.gcs.state; const t = s.board.tiles.find(t => t.key !== key && t.kind !== 'bridge'); return t ? { x: t.cells[0][0], y: t.cells[0][1], id: t.id, level: t.level } : null; }, upCard.key);
     if (wrong) {
@@ -135,6 +136,20 @@ try {
     const after = await page.evaluate((id) => window.gcs.state.board.tiles.find(t => t.id === id).level, upCard.tileId);
     check('tile upgraded via click', after === Math.min(5, upCard.level + upCard.levels), `level ${upCard.level} -> ${after} (card grants ${upCard.levels})`);
   }
+  // a bonus card that needs no target waits for its Play it button
+  await page.evaluate(() => { const s = window.gcs.state; s.money += 500; s.ap = 2;
+    s.shop.cards.push({ id: 'test-ot', slot: 4, type: 'card', key: 'overtime', name: 'Overtime', cost: 40, desc: 'Two extra action points, this week only.', target: 'none' });
+    window.gcs.refresh(); });
+  await page.waitForTimeout(150);
+  const before = await page.evaluate(() => ({ money: window.gcs.state.money, ap: window.gcs.state.ap }));
+  await page.locator('.card', { hasText: 'Overtime' }).click();
+  await page.waitForTimeout(150);
+  const held = await page.evaluate(() => ({ money: window.gcs.state.money, ap: window.gcs.state.ap, mode: window.gcs.ui.mode }));
+  check('picking a bonus card spends nothing yet', held.money === before.money && held.ap === before.ap && held.mode === 'confirm', JSON.stringify(held));
+  check('the bonus card shows its text in the bar', (await page.locator('#card-bar-desc').innerText()).includes('action point'), await page.locator('#card-bar-desc').innerText());
+  await page.locator('#btn-place').click(); await page.waitForTimeout(200);
+  const played = await page.evaluate(() => ({ money: window.gcs.state.money, ap: window.gcs.state.ap }));
+  check('Play it spends the card', played.money === before.money - 40 && played.ap === before.ap + 1, `${JSON.stringify(before)} -> ${JSON.stringify(played)}`);
   // rezoning card on an edge
   await page.evaluate(() => { const s = window.gcs.state; s.money += 500; s.ap = Math.max(s.ap, 2); const locked = Object.keys(s.board.edges).find(e => s.board.edges[e] !== 'green'); if (!locked) { s.board.edges.N = 'rail'; } s.shop.cards.push({ id: 'test-rez', slot: 4, type: 'card', key: 'rezoning', name: 'Rezoning Permit', cost: 120, desc: 'Unlock one locked edge back to greenfield.', target: 'edge' }); window.gcs.refresh(); });
   await page.waitForTimeout(150);
