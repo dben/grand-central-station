@@ -81,21 +81,25 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
       </div>
     </div>
-    <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
+    <!-- glyphs come from CSS: the panel sits on the right on a wide screen and
+         along the bottom on a narrow one, so the arrows have to turn with it -->
+    <button id="side-tab" class="toggle hidden" title="Show the timeline" aria-label="Show the timeline"></button>
     <aside id="side">
-      <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
-      <section id="info-panel" class="panel hidden">
-        <h3 id="info-title">Placing</h3>
-        <div id="info-body"></div>
-      </section>
-      <section id="timeline-panel" class="panel">
-        <h3>Timeline</h3>
-        <div id="timeline"></div>
-      </section>
-      <section id="rules-panel" class="panel hidden">
-        <h3>Ordinances &amp; effects</h3>
-        <div id="rules-body"></div>
-      </section>
+      <button id="btn-side-toggle" class="toggle" title="Hide the timeline" aria-label="Hide the timeline"></button>
+      <div id="side-panels">
+        <section id="info-panel" class="panel hidden">
+          <h3 id="info-title">Placing</h3>
+          <div id="info-body"></div>
+        </section>
+        <section id="timeline-panel" class="panel">
+          <h3>Timeline</h3>
+          <div id="timeline"></div>
+        </section>
+        <section id="rules-panel" class="panel hidden">
+          <h3>Ordinances &amp; effects</h3>
+          <div id="rules-body"></div>
+        </section>
+      </div>
     </aside>
   </main>
 </div>

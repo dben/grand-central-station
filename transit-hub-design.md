@@ -701,7 +701,10 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
   edges, for Rezoning Permit), and the bar says what to pick.
 - **Run Week** asks for confirmation only while AP is unspent, and says what running early pays. Once all AP is spent, a large Run Week button also appears on the board.
 - **Music:** **♪** or **M** mutes it, and the choice is remembered. The start screen and a lost run are silent.
-- **Panels:** the chevrons collapse the shop tray and the side panel.
+- **Panels:** the chevrons collapse the shop tray and the side panel. The side panel is a column
+  on the right of a wide screen and a strip along the bottom of a narrow one, so its handle turns
+  with it: a full-width **⌄** bar across the top of the strip, and **▲** on the tab that brings it
+  back. The handle sits outside the scrolling area, so it cannot be scrolled away.
 - **On a phone:** the side panel starts collapsed, the top bar and cards shrink, the page is sized
   to the visible viewport (`dvh`) so the tray is not hidden behind the address bar, and controls
   take a tap without the double-tap zoom delay.

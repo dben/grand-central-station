@@ -46,9 +46,13 @@ small { color: var(--muted); }
 .val.blocky { font-family: "Courier New", Courier, ui-monospace, monospace; font-weight: 800; font-size: 24px; letter-spacing: 1px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color: transparent; color: var(--muted); background: transparent; box-shadow: none; }
+/* The side panel is a column on the right of a wide screen and a strip along
+   the bottom of a narrow one, so both chevrons point the way the panel goes. */
 #side { position: relative; }
-#btn-side-toggle { position: absolute; top: 4px; right: 6px; }
-#side-tab { position: fixed; right: 0; top: 50%; z-index: 5; background: var(--panel); border: 2px solid var(--line); border-right: none; border-radius: 6px 0 0 6px; padding: 10px 4px; }
+#btn-side-toggle { position: absolute; top: 2px; right: 4px; z-index: 2; min-width: 34px; min-height: 30px; font-size: 16px; }
+#btn-side-toggle::after { content: '▶'; }
+#side-tab { position: fixed; right: 0; top: 50%; z-index: 5; background: var(--panel); border: 2px solid var(--line); border-right: none; border-radius: 6px 0 0 6px; padding: 14px 6px; font-size: 16px; }
+#side-tab::after { content: '◀'; }
 #main.side-collapsed { grid-template-columns: 1fr; }
 #main.side-collapsed #side { display: none; }
 #wallet { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 2px; }
@@ -166,7 +170,9 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .tier1 { color: var(--t1); } .tier2 { color: var(--t2); } .tier3 { color: var(--t3); } .tier4 { color: var(--t4); } .tier5 { color: var(--t5); }
 
 /* ------------------------------------------------------------ side, modal */
-#side { border-left: 3px solid var(--line); background: var(--panel); overflow-y: auto; display: flex; flex-direction: column; }
+#side { border-left: 3px solid var(--line); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+/* the panels scroll, the collapse button does not go with them */
+#side-panels { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
 .panel { padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .panel h3 { margin: 0 0 8px; font-family: "Press Start 2P", ui-monospace, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--pink); }
 #log-body { font-size: 14px; color: var(--muted); max-height: 160px; overflow-y: auto; }
@@ -210,8 +216,14 @@ table.stats th { color: var(--muted); font-weight: 500; }
 select { font: inherit; background: var(--panel2); color: var(--text); border: 2px solid var(--line); border-radius: 4px; padding: 4px; }
 @media (max-width: 900px) {
   #main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-  #side { border-left: none; border-top: 3px solid var(--line); max-height: 34vh; flex-direction: row; overflow-x: auto; }
+  #side { border-left: none; border-top: 3px solid var(--line); max-height: 34vh; }
+  #side-panels { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
   .panel { min-width: 240px; border-bottom: none; border-right: 1px solid var(--line); }
+  /* a full-width handle across the top of the strip: it folds away downwards */
+  #btn-side-toggle { position: static; width: 100%; min-height: 36px; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--accent); }
+  #btn-side-toggle::after { content: '⌄'; font-size: 20px; }
+  #side-tab { padding: 16px 8px; min-height: 52px; color: var(--accent); }
+  #side-tab::after { content: '▲'; }
   /* too narrow to centre: actions on the left, cards scroll beside them */
   #shop { display: flex; align-items: flex-end; gap: 8px; padding: 0 8px 8px; }
   #shop-cards { flex: 1 1 auto; min-width: 0; }
@@ -357,21 +369,25 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
         <div id="shop-collapsed"><button id="btn-shop-expand">▲ Shop</button></div>
       </div>
     </div>
-    <button id="side-tab" class="toggle hidden" title="Show side panel">◀</button>
+    <!-- glyphs come from CSS: the panel sits on the right on a wide screen and
+         along the bottom on a narrow one, so the arrows have to turn with it -->
+    <button id="side-tab" class="toggle hidden" title="Show the timeline" aria-label="Show the timeline"></button>
     <aside id="side">
-      <button id="btn-side-toggle" class="toggle" title="Collapse side panel">▶</button>
-      <section id="info-panel" class="panel hidden">
-        <h3 id="info-title">Placing</h3>
-        <div id="info-body"></div>
-      </section>
-      <section id="timeline-panel" class="panel">
-        <h3>Timeline</h3>
-        <div id="timeline"></div>
-      </section>
-      <section id="rules-panel" class="panel hidden">
-        <h3>Ordinances &amp; effects</h3>
-        <div id="rules-body"></div>
-      </section>
+      <button id="btn-side-toggle" class="toggle" title="Hide the timeline" aria-label="Hide the timeline"></button>
+      <div id="side-panels">
+        <section id="info-panel" class="panel hidden">
+          <h3 id="info-title">Placing</h3>
+          <div id="info-body"></div>
+        </section>
+        <section id="timeline-panel" class="panel">
+          <h3>Timeline</h3>
+          <div id="timeline"></div>
+        </section>
+        <section id="rules-panel" class="panel hidden">
+          <h3>Ordinances &amp; effects</h3>
+          <div id="rules-body"></div>
+        </section>
+      </div>
     </aside>
   </main>
 </div>
