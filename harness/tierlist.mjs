@@ -16,7 +16,7 @@ import { cloneBoard, checkPlacement, placeTile } from '../src/sim/board.js';
 import { simulateWeek } from '../src/sim/sim.js';
 import { TRANSPORTS, AMENITIES, tileDef } from '../src/data/tiles.js';
 import { orientationCount, shapeCells } from '../src/sim/shapes.js';
-import { MODES } from '../src/data/modes.js';
+import { MODES, minWeekOf } from '../src/data/modes.js';
 import { CONFIG } from '../src/config.js';
 import { playRun, applySets } from './bot.mjs';
 
@@ -60,7 +60,7 @@ function era(week) {
   const rows = [];
   for (const key of KEYS) {
     const def = tileDef(key);
-    if (def.minWeek > week) continue;
+    if (minWeekOf(mode, key, def) > week) continue;
     const spots = [];
     for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) for (let r = 0; r < orientationCount(def.shape); r++) {
       if (checkPlacement(board, key, x, y, r, mode).ok) spots.push([x, y, r]);

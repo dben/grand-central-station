@@ -869,17 +869,56 @@ return { ORDINANCES, ORDINANCE_KEYS };
 const __m_src_data_modes_js = (() => {
 // Game modes act as character select. `unlockWeek` is the week any run must
 // reach (in any mode) before this mode becomes available.
+//
+// Beyond the board size and its one standing rule, a mode can re-time the run
+// for itself:
+//   minWeek    per tile key, the week it starts turning up in the shop. Any key
+//              in data/tiles.js (transports, amenities, named upgrades) - it
+//              replaces that tile's own `minWeek`, earlier or later.
+//   run        overrides for any field of CONFIG.run: the event cadence
+//              (`eventEvery`), the ordinance weeks, and the weeks the specials
+//              switch on (`pickpocketsFromWeek`, `rareTilesFromWeek`,
+//              `apUpgradeFromWeek`). Whatever is left out keeps the value in
+//              src/config.js.
+//   startTiles tiles the level is already built with in week 1: { key, x, y,
+//              rot, level }. They are placed through the normal rules, so an
+//              illegal one throws at run start rather than half-building.
 const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.16 },
-  metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. A roomy 16x16 board, but tiles cost 25% more.', unlockWeek: 12, costMult: 1.25 },
-  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, and anything that floats costs 40% less.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 } },
-  sky_harbour:{ name: 'Sky Harbour', w: 12, h: 12, desc: 'No trains and no boats. Anything that needs no terrain at all costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 } },
-  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8 },
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaGrowth: 1.16,
+                // A cramped board on a fast clock: an event every third week,
+                // and tunnels early, since they cost no floor space.
+                run: { eventEvery: 3, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
+                minWeek: { subway: 2, express_subway: 4, under_parking: 2, limo: 3 } },
+  metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. A roomy 16x16 board and the big tiles early, but tiles cost 25% more and the weeks are slower to turn.', unlockWeek: 12, costMult: 1.25,
+                // Room for the six-cell tiles, so they come on sale early; in
+                // exchange the run's own milestones are pushed back.
+                run: { eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
+                minWeek: { express_train: 3, cruise_dock: 5, jumbo_jetway: 6, cafeteria: 3, flier_club: 7 } },
+  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, anything that floats costs 40% less, and boats are on sale from week one.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
+                minWeek: { ferry: 1, water_taxi: 1, marina: 4, cruise_dock: 5, sub_dock: 3 } },
+  sky_harbour:{ name: 'Sky Harbour', w: 12, h: 12, desc: 'An airfield on one side, a road on the other and a security checkpoint across the middle. No trains and no boats, but aircraft arrive early and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 },
+                preLock: { N: 'apron', S: 'road' },
+                // The booth sits on the middle line with its fence running the
+                // width of the board: everyone landing airside has to clear it
+                // to reach the road. Hence security tiles and the crime wave early.
+                startTiles: [{ key: 'gate', x: 6, y: 5, rot: 1 }],
+                run: { pickpocketsFromWeek: 5 },
+                minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
+  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8,
+                // One move a week, so the week clock is slower and the things
+                // that buy you more moves arrive sooner.
+                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
 };
 const MODE_KEYS = Object.keys(MODES);
 
-return { MODES, MODE_KEYS };
+// The week a tile starts appearing in the shop on this level.
+function minWeekOf(mode, key, def) {
+  const over = mode && mode.minWeek && mode.minWeek[key];
+  return over != null ? over : def.minWeek;
+}
+
+return { MODES, MODE_KEYS, minWeekOf };
 })();
 // ---- src/data/difficulties.js
 const __m_src_data_difficulties_js = (() => {
@@ -1111,6 +1150,18 @@ function createBoard(w, h, preLock = {}) {
     lanes: [],
     driveways: [],
   };
+}
+
+// A level's opening board: the mode's pre-locked edges, plus any tiles it
+// starts already built (`startTiles` in data/modes.js). Used by the game layer
+// and the harness alike, so a bot board looks like a player's week 1.
+function startBoard(mode) {
+  const b = createBoard(mode.w, mode.h, mode.preLock || {});
+  for (const t of mode.startTiles || []) {
+    const tile = placeTile(b, t.key, t.x, t.y, t.rot || 0, null, mode);
+    if (t.level) tile.level = t.level;
+  }
+  return b;
 }
 
 function cloneBoard(b) {
@@ -1541,7 +1592,7 @@ function boardSummary(b) {
   return b.tiles.map(t => `${t.name}@${t.x},${t.y} L${t.level}`).join('; ');
 }
 
-return { EDGES, LOCK_TERRAINS, createBoard, cloneBoard, inBounds, occupancyMap, undergroundCells, tunnelEnds, lineAvailable, tileAt, edgesTouched, checkPlacement, placeTile, edgeDependents, removeTile, buildWalkMap, cutOffTransports, checkpointLine, checkpointFences, fenceBlocked, fenceSegments, boardSummary };
+return { EDGES, LOCK_TERRAINS, createBoard, startBoard, cloneBoard, inBounds, occupancyMap, undergroundCells, tunnelEnds, lineAvailable, tileAt, edgesTouched, checkPlacement, placeTile, edgeDependents, removeTile, buildWalkMap, cutOffTransports, checkpointLine, checkpointFences, fenceBlocked, fenceSegments, boardSummary };
 })();
 // ---- src/sim/sim.js
 const __m_src_sim_sim_js = (() => {
@@ -1562,7 +1613,7 @@ const DEFAULT_MODS = {
   closedBelowLevel: 0, rateBonusTags: {}, destTierShift: 0, stopBudgetBonus: 0,
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
-  ticks: null, spawnTicks: null, pickpocketRate: null, amenityRadiusBonus: 0,
+  ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, amenityRadiusBonus: 0,
 };
 
 function mergeMods(...list) {
@@ -1854,7 +1905,8 @@ function simulateWeek(board, opts = {}) {
   const dw = cfg.destinationWeights;
   // The crime wave phases in over `pickpocketRamp` weeks rather than landing
   // at full strength the week it is announced.
-  const crimeAge = week - cfg.run.pickpocketsFromWeek + 1;
+  const crimeFrom = mods.pickpocketsFromWeek != null ? mods.pickpocketsFromWeek : cfg.run.pickpocketsFromWeek;
+  const crimeAge = week - crimeFrom + 1;
   const pickRate = mods.pickpocketRate != null ? mods.pickpocketRate
     : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / cfg.sim.pickpocketRamp) : 0);
 
@@ -2393,18 +2445,19 @@ const { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef, tileUpgrade } = 
 const { EVENTS, EVENT_KEYS, MILESTONES } = __m_src_data_events_js;
 const { CARDS } = __m_src_data_cards_js;
 const { ORDINANCES, ORDINANCE_KEYS } = __m_src_data_ordinances_js;
-const { MODES } = __m_src_data_modes_js;
+const { MODES, minWeekOf } = __m_src_data_modes_js;
 const { DIFFICULTIES } = __m_src_data_difficulties_js;
 const { Rng, hashString } = __m_src_sim_rng_js;
-const { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } = __m_src_sim_board_js;
+const { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } = __m_src_sim_board_js;
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
   const diff = DIFFICULTIES[diffKey] || DIFFICULTIES.standard;
+  const rules = { ...CONFIG.run, ...(mode.run || {}) };
   seed = seed ?? Math.floor(Math.random() * 1e9);
   const rng = new Rng(hashString(seed + ':events'));
   // event plan: shuffled cycles of all events
@@ -2412,8 +2465,8 @@ function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } =
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
     version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
-    money: Math.round(CONFIG.run.startMoney * (diff.startMoneyMult || 1)),
-    board: createBoard(mode.w, mode.h, mode.preLock || {}),
+    money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
+    board: startBoard(mode),
     shop: { cards: [], rerolls: 0 },
     eventPlan: plan, surveyed: false,
     ordinances: [], pendingOrdinance: null,
@@ -2427,6 +2480,12 @@ function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } =
 }
 
 const modeOf = s => MODES[s.modeKey];
+// Run-flow numbers for this level: CONFIG.run with the mode's `run` block on
+// top, so a level can move its event cadence, ordinance weeks and the weeks the
+// specials switch on without a second copy of the defaults.
+function runRules(s) { return { ...CONFIG.run, ...(modeOf(s).run || {}) }; }
+// The week a tile goes on sale here, which the level may have moved.
+function tileMinWeek(s, key, def) { return minWeekOf(modeOf(s), key, def); }
 // A run made before difficulties existed, or one hand-built by the harness, is Standard.
 const difficultyOf = s => DIFFICULTIES[s.diffKey] || DIFFICULTIES.standard;
 // AP for the week: the mode's flat base, plus Extra Shift purchases, an
@@ -2437,18 +2496,19 @@ function apForRun(s) {
   if (m.fixedAP) return m.fixedAP + extra;
   return apForWeek(s.week, m) + extra;
 }
-function isEventWeek(s, week = s.week) { return week % CONFIG.run.eventEvery === 0; }
+function isEventWeek(s, week = s.week) { return week % runRules(s).eventEvery === 0; }
 function eventForWeek(s, week) {
   if (!isEventWeek(s, week)) return null;
-  const k = s.eventPlan[(week / CONFIG.run.eventEvery - 1) % s.eventPlan.length];
+  const k = s.eventPlan[(week / runRules(s).eventEvery - 1) % s.eventPlan.length];
   return { key: k, ...EVENTS[k] };
 }
 function currentEvent(s) { return eventForWeek(s, s.week); }
 // The milestone that switches on at this exact week, if any.
 function milestoneForWeek(s, week) {
-  return MILESTONES.find(m => CONFIG.run[m.week] === week) || null;
+  const rules = runRules(s);
+  return MILESTONES.find(m => rules[m.week] === week) || null;
 }
-function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
+function nextEventWeek(s) { const e = runRules(s).eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 function gameRules(s) {
   const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
@@ -2501,7 +2561,7 @@ function upgradeCardCost(s, card) {
 function namedUpgradeKeys(s) {
   const below = t => (t.level || 1) < CONFIG.economy.maxLevel;
   return Object.entries(NAMED_UPGRADES).filter(([k, d]) => {
-    if (d.minWeek > s.week) return false;
+    if (tileMinWeek(s, k, d) > s.week) return false;
     if (d.target === 'waiting_all') return s.board.tiles.some(t => tileDef(t.key).special === 'waiting' && below(t));
     if (d.target === 'transport') return s.board.tiles.some(t => t.kind === 'transport' && below(t));
     if (d.target === 'amenity') return s.board.tiles.some(t => t.kind === 'amenity' && tileDef(t.key).rate > 0 && below(t));
@@ -2530,19 +2590,28 @@ function tileWeight(def, week) {
 // Underground tiles only turn up while their tunnel has somewhere to go: a
 // garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
-  const m = modeOf(s);
-  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  const m = modeOf(s), rareWeek = runRules(s).rareTilesFromWeek;
+  return Object.entries(TRANSPORTS).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
-  return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
+  const m = modeOf(s);
+  return Object.entries(AMENITIES).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
 }
+// Every tile the shop can draw from this week on this level, rares included
+// once they are unlocked. The roll below picks from these pools; the harness and
+// the tests read them to see what a level has put on sale.
+function shopPool(s) {
+  const rare = s.week >= runRules(s).rareTilesFromWeek;
+  return [...transportPool(s), ...amenityPool(s), ...(rare ? [...transportPool(s, true), ...amenityPool(s, true)] : [])];
+}
+
 let cardSeq = 0;
 const nextId = () => 'c' + (++cardSeq);
 function tileCard(def, slot) { return { id: nextId(), slot, type: 'tile', key: def.key, name: def.name, kind: def.kind, cost: def.cost, desc: '' }; }
 
 function generateShop(s) {
   const rng = new Rng(hashString(`${s.seed}:shop:${s.week}:${s.shop.rerolls}`));
-  const m = modeOf(s);
+  const m = modeOf(s), rules = runRules(s);
   const nSlots = m.shopSlots || CONFIG.shop.slots;
   const cards = [];
   const used = new Set();          // avoid two of the same tile in one shop
@@ -2578,7 +2647,7 @@ function generateShop(s) {
     cards.push({ id: nextId(), slot, type: 'card', key: k, name: CARDS[k].name, cost: CARDS[k].cost, desc: CARDS[k].desc, target: CARDS[k].target });
     return true;
   };
-  const addAP = slot => { if (used.has('ap')) return false; used.add('ap'); cards.push({ id: nextId(), slot, type: 'ap', name: 'Extra Shift', cost: CONFIG.run.apUpgradeCost, desc: 'Permanent +1 AP per week.' }); return true; };
+  const addAP = slot => { if (used.has('ap')) return false; used.add('ap'); cards.push({ id: nextId(), slot, type: 'ap', name: 'Extra Shift', cost: rules.apUpgradeCost, desc: 'Permanent +1 AP per week.' }); return true; };
   const addBridge = slot => { cards.push({ id: nextId(), slot, type: 'bridge', key: 'bridge', name: BRIDGE.name, kind: 'bridge', cost: BRIDGE.cost, desc: 'Place along a claimed edge: opens that span so any transport type may attach there. Walkable.' }); return true; };
   const ADD = { transport: addTransport, amenity: addAmenity, upgrade: addUpgrade, namedUpgrade: addNamedUpgrade, card: addBonusCard, rare: addRare, apUpgrade: addAP, bridge: addBridge };
 
@@ -2597,8 +2666,8 @@ function generateShop(s) {
   // with nothing playable behind them are weighted out rather than substituted.
   for (let i = 0; i < nSlots; i++) {
     const w = { ...CONFIG.shop.slotWeights };
-    if (s.week < CONFIG.run.rareTilesFromWeek) w.rare = 0;
-    if (s.week < CONFIG.run.apUpgradeFromWeek) w.apUpgrade = 0;
+    if (s.week < rules.rareTilesFromWeek) w.rare = 0;
+    if (s.week < rules.apUpgradeFromWeek) w.apUpgrade = 0;
     if (!upgradableKeys(s).length) w.upgrade = 0;
     if (!namedUpgradeKeys(s).length) w.namedUpgrade = 0;
     // guarantee at least one thing you can actually build
@@ -2762,7 +2831,9 @@ function chooseOrdinance(s, key) {
 
 // --------------------------------------------------------------- modifiers
 function computeMods(s, week = s.week) {
-  const list = [];
+  // The level's own crime-wave week travels to the sim as a modifier, so the
+  // simulator stays free of modes and the preview cache keys on it.
+  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek }];
   const ev = eventForWeek(s, week);
   if (ev) {
     const m = { ...ev.mods };
@@ -2843,7 +2914,7 @@ function settle(s) {
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
   if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
-  if (s.week === CONFIG.run.winWeek && !s.won) { s.won = true; s.phase = 'won'; }
+  if (s.week === runRules(s).winWeek && !s.won) { s.won = true; s.phase = 'won'; }
   else s.phase = 'shop';
   advanceWeek(s);
   return { ok: true, passed: true };
@@ -2860,10 +2931,11 @@ function advanceWeek(s) {
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false;
   s.shop.cards = generateShop(s);
-  if (CONFIG.run.ordinanceWeeks.includes(s.week)) {
+  const rules = runRules(s);
+  if (rules.ordinanceWeeks.includes(s.week)) {
     const rng = new Rng(hashString(`${s.seed}:ord:${s.week}`));
     const pool = ORDINANCE_KEYS.filter(k => !s.ordinances.includes(k));
-    s.pendingOrdinance = rng.shuffle(pool).slice(0, CONFIG.run.ordinanceChoices);
+    s.pendingOrdinance = rng.shuffle(pool).slice(0, rules.ordinanceChoices);
   }
 }
 
@@ -2923,7 +2995,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -4530,11 +4602,12 @@ function renderTimeline() {
   if (last) rows.push(h('div', { class: 'tl-row past ' + (last.passed ? 'ok' : 'fail') }, h('span', { class: 'wk' }, `Week ${last.week}`),
     h('span', { class: 'q', title: `${fmt(last.score)} points of ${fmt(last.quota)}` }, 'earned ', starNum(starsOf(last.score), last.passed ? 'good' : 'bad'))));
   const nextEv = G.nextEventWeek(state);
+  const rules = G.runRules(state);
   for (let w = state.week; w <= state.week + 4; w++) {
     const current = w === state.week;
     const ev = G.eventForWeek(state, w);
-    const known = ev && (w === nextEv || current || (state.surveyed && w === nextEv + CONFIG.run.eventEvery));
-    const ord = CONFIG.run.ordinanceWeeks.includes(w);
+    const known = ev && (w === nextEv || current || (state.surveyed && w === nextEv + rules.eventEvery));
+    const ord = rules.ordinanceWeeks.includes(w);
     const ms = G.milestoneForWeek(state, w);
     const cls = ['tl-row', current ? 'current' : '', ev ? 'event' : (ord ? 'ordinance' : (ms ? 'milestone' : '')), w === state.week + 4 ? 'last' : ''].join(' ');
     const showQuota = current || known || !ev;
@@ -4928,7 +5001,7 @@ function drawHistoryChart(canvas, history) {
     const y = ly(x.score), base = H - padB;
     g.fillStyle = x.passed ? 'rgba(77,255,110,0.85)' : 'rgba(255,79,122,0.85)';
     g.fillRect(cx - bw / 2, y, bw, base - y);
-    g.fillStyle = '#b8a8e8'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(x.week % CONFIG.run.eventEvery === 0 ? x.week + '⚡' : x.week, cx, base + 4);
+    g.fillStyle = '#b8a8e8'; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(x.week % G.runRules(state).eventEvery === 0 ? x.week + '⚡' : x.week, cx, base + 4);
   });
   // quota line
   g.strokeStyle = '#ffd23f'; g.lineWidth = 2; g.beginPath();
@@ -5045,7 +5118,7 @@ function showOrdinance(onDone) {
     h('div', { class: 'choices' }, ...state.pendingOrdinance.map(k => h('div', { class: 'mode', onclick: () => { G.chooseOrdinance(state, k); closeModal(); renderAll(); if (onDone) onDone(); } }, h('div', { class: 'name' }, ORDINANCES[k].name), h('div', { class: 'desc' }, ORDINANCES[k].desc)))));
 }
 function showWin() {
-  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${CONFIG.run.winWeek}. The quota keeps climbing from here — how far can you get?`),
+  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${G.runRules(state).winWeek}. The quota keeps climbing from here — how far can you get?`),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); showStart(); } }, 'New run'), h('button', { class: 'primary', onclick: () => { G.continueAfterWin(state); closeModal(); afterWeekStart(); } }, 'Keep going →')));
 }
 function showGameOver() {

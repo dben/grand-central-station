@@ -7,19 +7,20 @@ import { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef, tileUpgrade } f
 import { EVENTS, EVENT_KEYS, MILESTONES } from '../data/events.js';
 import { CARDS } from '../data/cards.js';
 import { ORDINANCES, ORDINANCE_KEYS } from '../data/ordinances.js';
-import { MODES } from '../data/modes.js';
+import { MODES, minWeekOf } from '../data/modes.js';
 import { DIFFICULTIES } from '../data/difficulties.js';
 import { Rng, hashString } from '../sim/rng.js';
-import { createBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
+import { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
 import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
   const diff = DIFFICULTIES[diffKey] || DIFFICULTIES.standard;
+  const rules = { ...CONFIG.run, ...(mode.run || {}) };
   seed = seed ?? Math.floor(Math.random() * 1e9);
   const rng = new Rng(hashString(seed + ':events'));
   // event plan: shuffled cycles of all events
@@ -27,8 +28,8 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
     version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
-    money: Math.round(CONFIG.run.startMoney * (diff.startMoneyMult || 1)),
-    board: createBoard(mode.w, mode.h, mode.preLock || {}),
+    money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
+    board: startBoard(mode),
     shop: { cards: [], rerolls: 0 },
     eventPlan: plan, surveyed: false,
     ordinances: [], pendingOrdinance: null,
@@ -42,6 +43,12 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
 }
 
 export const modeOf = s => MODES[s.modeKey];
+// Run-flow numbers for this level: CONFIG.run with the mode's `run` block on
+// top, so a level can move its event cadence, ordinance weeks and the weeks the
+// specials switch on without a second copy of the defaults.
+export function runRules(s) { return { ...CONFIG.run, ...(modeOf(s).run || {}) }; }
+// The week a tile goes on sale here, which the level may have moved.
+export function tileMinWeek(s, key, def) { return minWeekOf(modeOf(s), key, def); }
 // A run made before difficulties existed, or one hand-built by the harness, is Standard.
 export const difficultyOf = s => DIFFICULTIES[s.diffKey] || DIFFICULTIES.standard;
 // AP for the week: the mode's flat base, plus Extra Shift purchases, an
@@ -52,18 +59,19 @@ export function apForRun(s) {
   if (m.fixedAP) return m.fixedAP + extra;
   return apForWeek(s.week, m) + extra;
 }
-export function isEventWeek(s, week = s.week) { return week % CONFIG.run.eventEvery === 0; }
+export function isEventWeek(s, week = s.week) { return week % runRules(s).eventEvery === 0; }
 export function eventForWeek(s, week) {
   if (!isEventWeek(s, week)) return null;
-  const k = s.eventPlan[(week / CONFIG.run.eventEvery - 1) % s.eventPlan.length];
+  const k = s.eventPlan[(week / runRules(s).eventEvery - 1) % s.eventPlan.length];
   return { key: k, ...EVENTS[k] };
 }
 export function currentEvent(s) { return eventForWeek(s, s.week); }
 // The milestone that switches on at this exact week, if any.
 export function milestoneForWeek(s, week) {
-  return MILESTONES.find(m => CONFIG.run[m.week] === week) || null;
+  const rules = runRules(s);
+  return MILESTONES.find(m => rules[m.week] === week) || null;
 }
-export function nextEventWeek(s) { const e = CONFIG.run.eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
+export function nextEventWeek(s) { const e = runRules(s).eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 export function gameRules(s) {
   const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
@@ -116,7 +124,7 @@ export function upgradeCardCost(s, card) {
 export function namedUpgradeKeys(s) {
   const below = t => (t.level || 1) < CONFIG.economy.maxLevel;
   return Object.entries(NAMED_UPGRADES).filter(([k, d]) => {
-    if (d.minWeek > s.week) return false;
+    if (tileMinWeek(s, k, d) > s.week) return false;
     if (d.target === 'waiting_all') return s.board.tiles.some(t => tileDef(t.key).special === 'waiting' && below(t));
     if (d.target === 'transport') return s.board.tiles.some(t => t.kind === 'transport' && below(t));
     if (d.target === 'amenity') return s.board.tiles.some(t => t.kind === 'amenity' && tileDef(t.key).rate > 0 && below(t));
@@ -145,19 +153,28 @@ function tileWeight(def, week) {
 // Underground tiles only turn up while their tunnel has somewhere to go: a
 // garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
-  const m = modeOf(s);
-  return Object.entries(TRANSPORTS).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < CONFIG.run.rareTilesFromWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  const m = modeOf(s), rareWeek = runRules(s).rareTilesFromWeek;
+  return Object.entries(TRANSPORTS).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
-  return Object.entries(AMENITIES).filter(([k, d]) => d.minWeek <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
+  const m = modeOf(s);
+  return Object.entries(AMENITIES).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
 }
+// Every tile the shop can draw from this week on this level, rares included
+// once they are unlocked. The roll below picks from these pools; the harness and
+// the tests read them to see what a level has put on sale.
+export function shopPool(s) {
+  const rare = s.week >= runRules(s).rareTilesFromWeek;
+  return [...transportPool(s), ...amenityPool(s), ...(rare ? [...transportPool(s, true), ...amenityPool(s, true)] : [])];
+}
+
 let cardSeq = 0;
 const nextId = () => 'c' + (++cardSeq);
 function tileCard(def, slot) { return { id: nextId(), slot, type: 'tile', key: def.key, name: def.name, kind: def.kind, cost: def.cost, desc: '' }; }
 
 export function generateShop(s) {
   const rng = new Rng(hashString(`${s.seed}:shop:${s.week}:${s.shop.rerolls}`));
-  const m = modeOf(s);
+  const m = modeOf(s), rules = runRules(s);
   const nSlots = m.shopSlots || CONFIG.shop.slots;
   const cards = [];
   const used = new Set();          // avoid two of the same tile in one shop
@@ -193,7 +210,7 @@ export function generateShop(s) {
     cards.push({ id: nextId(), slot, type: 'card', key: k, name: CARDS[k].name, cost: CARDS[k].cost, desc: CARDS[k].desc, target: CARDS[k].target });
     return true;
   };
-  const addAP = slot => { if (used.has('ap')) return false; used.add('ap'); cards.push({ id: nextId(), slot, type: 'ap', name: 'Extra Shift', cost: CONFIG.run.apUpgradeCost, desc: 'Permanent +1 AP per week.' }); return true; };
+  const addAP = slot => { if (used.has('ap')) return false; used.add('ap'); cards.push({ id: nextId(), slot, type: 'ap', name: 'Extra Shift', cost: rules.apUpgradeCost, desc: 'Permanent +1 AP per week.' }); return true; };
   const addBridge = slot => { cards.push({ id: nextId(), slot, type: 'bridge', key: 'bridge', name: BRIDGE.name, kind: 'bridge', cost: BRIDGE.cost, desc: 'Place along a claimed edge: opens that span so any transport type may attach there. Walkable.' }); return true; };
   const ADD = { transport: addTransport, amenity: addAmenity, upgrade: addUpgrade, namedUpgrade: addNamedUpgrade, card: addBonusCard, rare: addRare, apUpgrade: addAP, bridge: addBridge };
 
@@ -212,8 +229,8 @@ export function generateShop(s) {
   // with nothing playable behind them are weighted out rather than substituted.
   for (let i = 0; i < nSlots; i++) {
     const w = { ...CONFIG.shop.slotWeights };
-    if (s.week < CONFIG.run.rareTilesFromWeek) w.rare = 0;
-    if (s.week < CONFIG.run.apUpgradeFromWeek) w.apUpgrade = 0;
+    if (s.week < rules.rareTilesFromWeek) w.rare = 0;
+    if (s.week < rules.apUpgradeFromWeek) w.apUpgrade = 0;
     if (!upgradableKeys(s).length) w.upgrade = 0;
     if (!namedUpgradeKeys(s).length) w.namedUpgrade = 0;
     // guarantee at least one thing you can actually build
@@ -377,7 +394,9 @@ export function chooseOrdinance(s, key) {
 
 // --------------------------------------------------------------- modifiers
 export function computeMods(s, week = s.week) {
-  const list = [];
+  // The level's own crime-wave week travels to the sim as a modifier, so the
+  // simulator stays free of modes and the preview cache keys on it.
+  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek }];
   const ev = eventForWeek(s, week);
   if (ev) {
     const m = { ...ev.mods };
@@ -458,7 +477,7 @@ export function settle(s) {
   s.records.bestScore = Math.max(s.records.bestScore, r.score);
   if (r.best) s.records.bestTraveller = Math.max(s.records.bestTraveller, Math.round(r.best.value));
   if (!passed) { s.phase = 'lost'; log(s, `Week ${s.week}: ${r.score} < quota ${quota}. Run over.`); return { ok: true, passed: false }; }
-  if (s.week === CONFIG.run.winWeek && !s.won) { s.won = true; s.phase = 'won'; }
+  if (s.week === runRules(s).winWeek && !s.won) { s.won = true; s.phase = 'won'; }
   else s.phase = 'shop';
   advanceWeek(s);
   return { ok: true, passed: true };
@@ -475,10 +494,11 @@ function advanceWeek(s) {
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false;
   s.shop.cards = generateShop(s);
-  if (CONFIG.run.ordinanceWeeks.includes(s.week)) {
+  const rules = runRules(s);
+  if (rules.ordinanceWeeks.includes(s.week)) {
     const rng = new Rng(hashString(`${s.seed}:ord:${s.week}`));
     const pool = ORDINANCE_KEYS.filter(k => !s.ordinances.includes(k));
-    s.pendingOrdinance = rng.shuffle(pool).slice(0, CONFIG.run.ordinanceChoices);
+    s.pendingOrdinance = rng.shuffle(pool).slice(0, rules.ordinanceChoices);
   }
 }
 

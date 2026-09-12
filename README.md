@@ -19,7 +19,9 @@ way forward is to make every traveller worth more than the last.
 
 Every fourth week is an **event** that bends the rules. At weeks 5, 12 and 20 you pick a permanent
 **ordinance**. Pickpockets turn up from week 7 and rare tiles from week 10. Clear week 16 to win,
-then keep going as long as you can.
+then keep going as long as you can. Each mode runs its own clock, so those weeks move: Junction
+throws an event every third week, Metroplex every fifth, and each mode puts different tiles on sale
+early.
 
 ## Ideas that matter
 
@@ -55,11 +57,11 @@ By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.
 | Mode | Board | Twist | Unlocks |
 |---|---|---|---|
 | Terminal | 12×12 | The baseline | — |
-| Junction | 9×9 | 3 AP a week, but the quota climbs faster | Reach week 8 |
-| Waterfront | 12×12 | Two edges start as water; water transports are cheap | Reach week 8 |
-| Metroplex | 16×16 | Room to spread out; tiles cost 25% more | Reach week 12 |
-| Sky Harbour | 12×12 | No rail or water; free-standing transports are cheap | Reach week 12 |
-| Terminus | 12×12 | 1 AP a week, but an 8-card shop | Reach week 16 |
+| Junction | 9×9 | 3 AP a week, a fast clock, and the quota climbs faster | Reach week 8 |
+| Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1 | Reach week 8 |
+| Metroplex | 16×16 | Room to spread out and the big tiles early; tiles cost 25% more | Reach week 12 |
+| Sky Harbour | 12×12 | An airfield, a road and a security checkpoint already across the middle. No rail or water; aircraft early | Reach week 12 |
+| Terminus | 12×12 | 1 AP a week, an 8-card shop, and cheap overtime from week 8 | Reach week 16 |
 
 ## Controls
 

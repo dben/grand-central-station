@@ -512,23 +512,34 @@ An event's real difficulty is its quota multiplier divided by how much it cuts t
 
 ### 10.1 Modes
 
-A mode sets the board and one standing rule. It is chosen before the run and unlocked by your **best week reached in any mode**. Difficulty (§10.1.1) is a separate choice made at the same time; any mode can be played at any difficulty.
+A mode sets the board, one standing rule, and its own run clock. It is chosen before the run and unlocked by your **best week reached in any mode**. Difficulty (§10.1.1) is a separate choice made at the same time; any mode can be played at any difficulty.
 
 | Mode | Grid | Unlock | Levers (`src/data/modes.js`) |
 |---|---|---|---|
 | **Terminal** | 12×12 | — | Baseline |
-| **Junction** | 9×9 | week 8 | `startAP: 3` — 3 AP every week instead of 2. `quotaGrowth: 1.16` — the late quota growth is steeper; weeks 1–3 match Terminal, then week 16 needs 202k instead of 143k. |
-| **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected) |
-| **Waterfront** | 12×12 | week 8 | `preLock: W, S water` — two edges start locked to water. `terrainCostMult: water 0.6` — water transports −40% |
-| **Sky Harbour** | 12×12 | week 12 | `banTerrains: rail, water` — removed from the shop and rejected on placement. `terrainCostMult: free 0.7` — Free-terrain transports −30%. |
-| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add). `shopSlots: 8` |
+| **Junction** | 9×9 | week 8 | `startAP: 3` — 3 AP every week instead of 2. `quotaGrowth: 1.16` — the late quota growth is steeper; weeks 1–3 match Terminal, then week 16 needs 202k instead of 143k. A fast clock: an event every 3rd week, ordinances at 4/9/15, crime wave week 5, rares week 8, Extra Shift week 12. Tunnels early (Subway 2, Garage 2, Express Subway 4, Limo 3), since they cost no floor. |
+| **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected). A slow clock: an event every 5th week, ordinances at 6/13/20, crime wave week 9, rares week 12, Extra Shift week 16. The six-cell tiles early, since the board has room (Express Train 3, Cafeteria 3, Cruise Dock 5, Jumbo Jetway 6, Flier Club 7). |
+| **Waterfront** | 12×12 | week 8 | `preLock: W, S water` — two edges start locked to water. `terrainCostMult: water 0.6` — water transports −40%. Boats early: Ferry and Water Taxi from week 1, Sub Dock 3, Marina 4, Cruise Dock 5. |
+| **Sky Harbour** | 12×12 | week 12 | `banTerrains: rail, water` — removed from the shop and rejected on placement. `terrainCostMult: free 0.7` — Free-terrain transports −30%. `preLock: N apron, S road` and a Security Checkpoint already built at (6,5)–(6,6): the level starts as an airfield, a landside road and a fence between them. Aircraft early (Jetway 2, Balloon 2, Helipad 3, Jetpack 4, Jumbo Jetway 6, Private Terminal 8), security early (Station and Guard 3), crime wave week 5. |
+| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add). `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. |
+
+**A level re-times the run for itself.** Three data fields in `src/data/modes.js`, all optional, all read through the game layer so the simulator never learns that modes exist:
+
+| Field | What it does |
+|---|---|
+| `minWeek: { key: week }` | The week a tile goes on sale here, replacing the catalogue's own `minWeek` (`minWeekOf` in `data/modes.js`). Any key in `data/tiles.js`, earlier or later. |
+| `run: { ... }` | Overrides any field of `CONFIG.run`: `eventEvery`, `ordinanceWeeks`, `winWeek`, and the weeks the specials switch on — `pickpocketsFromWeek`, `rareTilesFromWeek`, `apUpgradeFromWeek` (and `apUpgradeCost`). Whatever is left out keeps the value in `src/config.js`. `runRules(s)` in `game/run.js` is the merged view; every caller reads that rather than `CONFIG.run`. |
+| `startTiles: [{ key, x, y, rot, level }]` | Tiles the level is already built with in week 1. `startBoard(mode)` in `sim/board.js` places them through the normal rules, so an illegal one throws at run start; the game layer and the harness both build their opening board with it. |
+
+The crime-wave week is the one of these the simulator has to know, so `computeMods` sends it as a modifier (`pickpocketsFromWeek`) exactly like an event's — which also keeps it in the preview's cache key.
 
 Some quirks in how the levers interact:
 
 - **Junction and Terminus shifted with flat AP.** Now that AP is 2 all run, Junction's 3 AP is a permanent 50% advantage; under the old ramp it lasted only until week 6. Likewise, Terminus is 1 AP against 2 rather than against the old 2–5.
-- **Waterfront's edges can be rezoned.** Its pre-locked edges count as claimed, so a Rezoning Permit can turn them back into open ground.
-- **Sky Harbour keeps road and apron,** so jetways are still available.
-- **Waterfront never offers a subway:** with the west and south edges under water, neither axis has two dry ends. Submarine Docks are on offer from week 5.
+- **Waterfront's edges can be rezoned.** Its pre-locked edges count as claimed, so a Rezoning Permit can turn them back into open ground. So can Sky Harbour's, and its starting Checkpoint can be deleted like any other tile — the fence is a level, not a law.
+- **Sky Harbour's fence spans the board** at week 1: with nothing built, `checkpoint.fence: 'walls'` runs the panels to both edges, so the booth at (6,5)–(6,6) is the only way from the apron side to the road side. As the board fills the fence shortens, because it stops at the first solid tile on either side of the line (§7.5).
+- **Waterfront never offers a subway:** with the west and south edges under water, neither axis has two dry ends. Submarine Docks are on offer from week 3.
+- **Sky Harbour's weather.** Weather Front grounds everything that arrives by air or water, which on this level is most of the board. It is the one event that can take a Sky Harbour run apart, and its ×0.9 quota is the only discount for it.
 
 Greedy-bot results, 8 runs to week 16:
 
@@ -729,7 +740,7 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
 - **Simulator:** `src/sim/sim.js` is headless and deterministic, with no DOM dependency; the same modules run in Node for the harness and in the browser for play. A week takes ~1.5 ms for a small board, so it runs inline — no worker — and is precomputed before playback. The renderer replays each traveller's recorded frames and events.
 - **Seeding:** every roll is stateless — a hash of the week seed, the traveller's *spawn slot* (which transport, and their number in its stream) and the question being decided (tier, destination, a waypoint, a shop's die, a tie-break at a cell). No stream is shared, so a board change re-rolls only the travellers whose route it touches; a tile out of everyone's way leaves the week identical, and the preview's before/after runs stay on the same random path. `sim.stratify` turns a slot's rolls into golden-ratio steps along the unit interval, so a transport's travellers cover the dice evenly (the tier mix and each shop's serves land near their expectation). The old per-subsystem streams (`makeStreams`) remain for the shop and cards.
 - **Pathing:** a Dijkstra distance field per target, memoised per week. Destinations are few and travellers many. Checkpoint fences are a per-step bitmask, since they lie between cells.
-- **Data-driven content:** every tile, event, card, ordinance, mode and difficulty is a plain object in `src/data/`, and every tunable number lives in `src/config.js`. Unique mechanics are keyed by `special`: `wifi`, `walkway`, `waiting`, `gate`, `security`, `green`, `loop` and `anytier`. Underground tiles are keyed by `terrain: 'underground'` plus `line` (`through`, `road` or `water`); the placed tile records its tunnel as `tile.tunnel = { line, axis, ends, cells }`, and the layer's occupancy is derived from the tiles rather than stored, so nothing can drift out of sync.
+- **Data-driven content:** every tile, event, card, ordinance, mode and difficulty is a plain object in `src/data/`, and every tunable number lives in `src/config.js`. A mode can also re-time the run for itself — per-tile shop weeks, the event and milestone weeks, and tiles the board starts with — all as data (§10.1). Unique mechanics are keyed by `special`: `wifi`, `walkway`, `waiting`, `gate`, `security`, `green`, `loop` and `anytier`. Underground tiles are keyed by `terrain: 'underground'` plus `line` (`through`, `road` or `water`); the placed tile records its tunnel as `tile.tunnel = { line, axis, ends, cells }`, and the layer's occupancy is derived from the tiles rather than stored, so nothing can drift out of sync.
 - **State:** a plain mutable run-state object with action functions (`src/game/run.js`); the UI re-renders after each action. `window.gcs` exposes the state, the game API and `refresh()` for debugging from the console.
 
 ### 13.2 The isometric view
@@ -787,7 +798,7 @@ node harness/ui-smoke.mjs                                             # Playwrig
 `autoplay.js`, `run.js` and `sensitivity.mjs` accept `--set <config path>=<value>` to A/B a rule (`--set sim.hurry.enabled=false`), and `autoplay.js --no-prune` stops the bot deleting tiles.
 
 - **Sensitivity** (`harness/sensitivity.mjs`) sweeps every legal placement of a few probe tiles on a board (a layout, or the bot's board at a given week via `harness/bot.mjs`) and reports each tile's landscape — best, median and worst spot, share of losing spots — and its *roughness*: the mean jump in value between a spot and the same tile one cell over or rotated, next to the seed-noise floor of the estimate, so a real cliff can be told from a noisy one. `--dump` saves the bot's board as a layout for another build to probe.
-- **Layouts:** `harness/layouts/*.json` describe a board: `{ "mode": "terminal", "week": 4, "tiles": [{ "key": "train_station", "x": 4, "y": 0, "rot": 0, "level": 1 }] }`. `amenity_chain.json` and `transport_spam.json` are the two ends of the strategy space, and the quickest way to see whether a change moved the right thing.
+- **Layouts:** `harness/layouts/*.json` describe a board: `{ "mode": "terminal", "week": 4, "tiles": [{ "key": "train_station", "x": 4, "y": 0, "rot": 0, "level": 1 }] }`. The board opens as that mode's own (pre-locked edges and starting tiles, §10.1) and the listed tiles go on top; a tile the level has already built where the layout says is adopted rather than placed twice, so a board dumped from a run reloads as itself. `amenity_chain.json` and `transport_spam.json` are the two ends of the strategy space, and the quickest way to see whether a change moved the right thing.
 - **Selftest** covers shape orientations, placement and attachment rules, terrain locks, bridges, determinism, lost travellers, checkpoint fences (edge to edge, crossed only at the booth), walk-through tiles, WiFi boosts, pickpocket removal, and the underground layer (tunnels to both ends or to the nearest road or water edge, no crossings, no surfacing into water, building over a tunnel, and shop availability).
 - **UI smoke test** (`npm i playwright && npx playwright install chromium`) starts a run, places tiles, runs playback, opens the summary and heatmap, picks an ordinance, upgrades and deletes via the UI, plays a Rezoning Permit, uses the strike selector, reloads and resumes, checks game-over and the start screen, and verifies draw order.
 
@@ -856,6 +867,12 @@ Changes from the original design, with the reason for each. Original values are 
 - **Travellers step inside** an amenity for the service duration instead of pausing beside it.
 - **Lost travellers.** Sealing a transport into an amenity pocket used to be the strongest play on the board (+33% score on a test layout), because it turned every walk into a guaranteed round trip. Travellers with no route to their platform now bank nothing, and the same play costs about 14%.
 - **Amenities only pull travellers who can reach their door.**
+
+**Modes**
+
+- **Levels re-time the run** (§10.1). Three data fields — `minWeek` per tile, a `run` block over `CONFIG.run`, and `startTiles` — let a mode move the weeks tiles go on sale, the event and milestone weeks, and what the board starts with. Terminal overrides nothing, so the baseline game is untouched: the same 16 autoplay runs survive 14 of 16, and `sensitivity.mjs --bot 1000 --week 9 --seeds 24` reads shift 1.9%, rotate 2.0%, noise 0.9% and stranded 13%, all as recorded in §14.2. The only piece the simulator needed was the crime-wave week, which travels as a modifier (`pickpocketsFromWeek`) rather than as a mode, so the sim still knows nothing about levels and the preview cache keys on it.
+- **Sky Harbour starts as an airport.** The level was "Terminal with two terrains banned"; it now opens with the north edge as apron, the south as road and a Security Checkpoint already built at (6,5)–(6,6), whose fence spans the board while the board is empty. Aircraft and security tiles go on sale in weeks 2–6 rather than 5–10, and the crime wave starts at week 5. The fence is what the level is for: with the apron on one side and the road on the other, most travellers cross the booth, so its ×1.3 is closer to a standing rule than to a placement gamble.
+- **The other levels got a clock of their own.** Junction runs an event every third week with ordinances at 4/9/15, the crime wave at 5, rares at 8 and Extra Shift at 12, plus tunnels early; Metroplex slows all of that down and puts the six-cell tiles on sale from week 3; Waterfront sells boats from week 1; Terminus gets rares at 8 and Extra Shift at week 8 for $320. Junction was the one §16 called out as "trivial early, brutal late": autoplay over `--seed0 1000` and `2000` goes from 12 of 16 surviving (deaths in weeks 12, 16, 16 and 16) to 14 of 16 (deaths in week 12 twice), and the week-16 score/quota band from 2.3× to 3.4–4.8×, so the earlier tools do more for it than the extra event weeks take away. That reads as *easier*, which is the point — it now sits where Terminal does (14 of 16) instead of dying to the same late cliff every run.
 
 **Tiles**
 

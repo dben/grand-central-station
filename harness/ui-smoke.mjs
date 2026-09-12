@@ -1,13 +1,16 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 // UI smoke test. Requires: npm i playwright && npx playwright install chromium
+// (or PW_CHROME=/path/to/chrome to use one that is already installed)
 // Usage: node harness/ui-smoke.mjs [screenshot-dir]
 import { mkdirSync } from 'node:fs';
 const SP = process.argv[2] || 'harness/screenshots';
 mkdirSync(SP, { recursive: true });
 const server = spawn('python3', ['-m', 'http.server', '8791'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 1200));
-const browser = await chromium.launch();
+// PW_CHROME points the test at a chromium already on the machine, for boxes
+// where `npx playwright install` cannot fetch the build Playwright wants.
+const browser = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const errors = [];
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
@@ -320,6 +323,20 @@ try {
   check('a garage on the subway row is refused as a crossing', !!gBad && !gBad.ok && /cross/.test(gBad.reason), JSON.stringify(gBad));
   await page.screenshot({ path: SP + '/shot14_underground_cross.png' });
   await page.keyboard.press('Escape');
+  // A level that starts part-built: Sky Harbour opens with its two edges claimed
+  // and the checkpoint already across the middle, and the renderer has to draw
+  // that board before the player has touched anything.
+  await page.evaluate(() => window.gcs.showStart());
+  await page.waitForTimeout(300);
+  await page.locator('.mode:not(.locked)', { hasText: 'Sky Harbour' }).first().click().catch(() => {});
+  await page.waitForTimeout(400);
+  const sky = await page.evaluate(() => {
+    const s = window.gcs.state;
+    const gate = s.board.tiles.find(t => t.key === 'gate');
+    return { mode: s.modeKey, edges: s.board.edges, tiles: s.board.tiles.length, gate: gate ? gate.cells : null };
+  });
+  check('Sky Harbour starts airside, roadside and gated', sky.mode === 'sky_harbour' && sky.edges.N === 'apron' && sky.edges.S === 'road' && sky.tiles === 1 && !!sky.gate, JSON.stringify(sky));
+  await page.screenshot({ path: SP + '/shot15_sky_harbour.png' });
 } catch (e) { results.push('TEST ERROR ' + e.message.split('\n').slice(0, 25).join(' | ')); await page.screenshot({ path: SP + '/shot_err2.png' }); }
 console.log(results.join('\n'));
 console.log('console errors:', errors.length ? errors.join('\n') : 'none');
