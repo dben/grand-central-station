@@ -91,7 +91,7 @@ export const TILE_UPGRADES = {
   coffee:        { name: 'Espresso Bar',       levels: 2, radiusBonus: 1 },
   bus_stop:      { name: 'Shelter & Timetable' },
   train_station: { name: 'Platform Extension' },
-  ferry:         { name: 'Deeper Berth' },
+  ferry:         { name: 'Deeper Dock' },
   newsstand:     { name: 'Corner Franchise' },
   restroom:      { name: 'Attendant Service' },
   food_stand:    { name: 'Second Cart' },
@@ -103,10 +103,10 @@ export const TILE_UPGRADES = {
   sports_bar:    { name: 'Big Screen' },
   cafeteria:     { name: 'Extra Serving Line' },
   currency:      { name: 'Better Rates' },
-  clothing:      { name: 'Flagship Fitout' },
+  clothing:      { name: 'Flagship Remodel' },
   art_gallery:   { name: 'Touring Exhibition' },
   lounge:        { name: 'Members Wing' },
-  designer:      { name: 'Atelier Floor' },
+  designer:      { name: 'Private Fitting Rooms' },
   waiting_area:  { name: 'More Seating' },
   flier_club:    { name: 'Club Expansion' },
   wifi:          { name: 'Signal Booster' },
@@ -114,9 +114,9 @@ export const TILE_UPGRADES = {
   gate:          { name: 'Fast Track Lane' },
   security:      { name: 'Extra Patrol', radiusBonus: 1 },
   guard:         { name: 'Radio Kit', radiusBonus: 1 },
-  tram_stop:     { name: 'Longer Consist' },
+  tram_stop:     { name: 'Second Car' },
   monorail:      { name: 'Third Car' },
-  express_train: { name: 'Double-Decker Stock' },
+  express_train: { name: 'Double-Decker Carriages' },
   jetway:        { name: 'Wide-Body Bridge' },
   subway:        { name: 'Longer Platforms' },
   express_subway:{ name: 'Extra Carriages' },
@@ -133,16 +133,16 @@ export function tileUpgrade(key) {
     key, levels, radiusBonus: u.radiusBonus || 0, costMult: u.costMult || 1,
     name: u.name || `${def.name} Refit`,
     tileName: def.name,
-    desc: `Upgrade a ${def.name} ${levels > 1 ? levels + ' levels' : 'one level'}${u.radiusBonus ? ` and add +${u.radiusBonus} radius` : ''}.`,
+    desc: `Raise a ${def.name} by ${levels > 1 ? levels + ' levels' : 'one level'}${u.radiusBonus ? `, and let it reach ${u.radiusBonus} square${u.radiusBonus === 1 ? '' : 's'} further` : ''}.`,
   };
 }
 
 // Named upgrades that hit a whole category rather than one tile type. These stay
 // separate because they are premium wildcard cards, not the routine upgrade path.
 export const NAMED_UPGRADES = {
-  concourse_ext:  { name: 'Concourse Extension', target: 'waiting_all', levels: 1, cost: 150, minWeek: 6, desc: 'Every Waiting Area and Club you own gains one level.' },
-  double_shift:   { name: 'Double Shift',        target: 'transport', levels: 2, cost: 220, minWeek: 6, desc: 'Upgrade any transport tile two levels.' },
-  renovation:     { name: 'Renovation',          target: 'amenity',   levels: 2, cost: 240, minWeek: 8, desc: 'Upgrade any amenity two levels.' },
+  concourse_ext:  { name: 'Concourse Extension', target: 'waiting_all', levels: 1, cost: 150, minWeek: 6, desc: 'Every Waiting Area and Club you own goes up a level.' },
+  double_shift:   { name: 'Double Shift',        target: 'transport', levels: 2, cost: 220, minWeek: 6, desc: 'Raise any one transport tile by two levels.' },
+  renovation:     { name: 'Renovation',          target: 'amenity',   levels: 2, cost: 240, minWeek: 8, desc: 'Raise any one shop by two levels.' },
 };
 
 export function tileDef(key) {
@@ -153,17 +153,17 @@ export function tileDef(key) {
 }
 
 export const TERRAIN_INFO = {
-  road:     { label: 'Road',     claim: 'road',     desc: 'Claims the edge as road. Tiles can sit up to 4 cells inland with a driveway.' },
-  rail:     { label: 'Rail',     claim: 'lock',     desc: 'The whole edge becomes a railway.' },
-  water:    { label: 'Water',    claim: 'lock',     desc: 'The whole edge becomes water.' },
-  apron:    { label: 'Apron',    claim: 'lock',     desc: 'The whole edge becomes an airfield.' },
-  corridor: { label: 'Corridor', claim: 'corridor', desc: 'Reserves a straight lane to the nearest edge. The lane is unbuildable.' },
-  free:     { label: 'Free',     claim: 'none',     desc: 'No terrain relationship. Goes anywhere with room.' },
-  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel on the underground layer. Anything can be built over a tunnel and travellers walk across it, but tunnels can never cross each other.' },
+  road:     { label: 'Road',     claim: 'road',     desc: 'Turns that side of the board into a road. Road tiles can sit a few squares back, with a driveway out to it.' },
+  rail:     { label: 'Rail',     claim: 'lock',     desc: 'Locks that whole side of the board as railway. Nothing else can use it.' },
+  water:    { label: 'Water',    claim: 'lock',     desc: 'Locks that whole side of the board as water. Nothing else can use it.' },
+  apron:    { label: 'Apron',    claim: 'lock',     desc: 'Locks that whole side of the board as airfield. Nothing else can use it.' },
+  corridor: { label: 'Corridor', claim: 'corridor', desc: 'Keeps a straight lane clear to the nearest side of the board. You cannot build in the lane.' },
+  free:     { label: 'Free',     claim: 'none',     desc: 'Needs no terrain at all. Goes anywhere there is room.' },
+  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel under the board. Build anything you like on top and travellers walk right over it, but two tunnels can never cross.' },
 };
 // What an underground tile's tunnel does, for the catalogue and the tile popup.
 export const LINE_INFO = {
-  through: 'Tunnels along its length to both ends of the board. Neither end may surface into water.',
-  road:    'Tunnels straight to the nearest road edge. Offered only while an edge is road.',
-  water:   'Tunnels straight to the nearest water edge. Offered only while an edge is water.',
+  through: 'Tunnels the long way to both ends of the board. Neither end can come up in water.',
+  road:    'Tunnels straight to the nearest road. Only sold while one side of the board is a road.',
+  water:   'Tunnels straight to the nearest water. Only sold while one side of the board is water.',
 };

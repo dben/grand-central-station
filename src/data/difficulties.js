@@ -11,15 +11,15 @@
 //   mods            simulator modifiers, merged like an ordinance's
 export const DIFFICULTIES = {
   standard: {
-    name: 'Standard', desc: 'The game as tuned. Quota, prices and income at face value.',
+    name: 'Standard', desc: 'The game as intended. Normal quota, normal prices, normal income.',
   },
   hard: {
-    name: 'Hard', desc: 'Quota +15% and climbing faster, tiles cost 15% more, 15% less cash to start, fares and revenue -10%.',
+    name: 'Hard', desc: 'The quota is 15% higher and climbs faster. Tiles cost more, you start with less cash, and everything pays 10% less.',
     quotaMult: 1.15, quotaGrowthAdd: 0.012, costMult: 1.15, startMoneyMult: 0.85,
     mods: { revenueMult: 0.9, fareMult: 0.9 },
   },
   extreme: {
-    name: 'Extreme', desc: 'Quota +20% and climbing much faster, tiles cost 35% more, 20% less cash to start, fares and revenue -20%.',
+    name: 'Extreme', desc: 'The quota is 20% higher and climbs much faster. Tiles cost a third more, you start with less cash, and everything pays 20% less.',
     quotaMult: 1.2, quotaGrowthAdd: 0.045, costMult: 1.35, startMoneyMult: 0.8,
     mods: { revenueMult: 0.8, fareMult: 0.8 },
   },
