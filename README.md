@@ -10,12 +10,19 @@ way forward is to make every traveller worth more than the last.
 ## How a week works
 
 1. **Build.** You have **2 action points** a week. Buying a tile, upgrading one, deleting one,
-   rerolling the shop or playing a bonus card each costs 1 AP (plus money).
+   rerolling the shop or playing a bonus card each costs 1 AP (plus money). Week 1 always deals a
+   Bus Stop and a Burger Joint alongside three rolled cards, so every run opens with a hand that
+   works.
 2. **Run the week.** Travellers arrive at your transports, pick a platform to leave from, and walk
    there, stopping at shops along the way. Action points you don't spend aren't wasted: starting the
    week early pays a cash bonus for each one left.
 3. **Settle up.** Your score is compared against the quota, shown as stars (one per 1,000 points).
-   Fares and shop revenue pay out as money for next week.
+   Fares and shop revenue pay out as money for next week. Miss the quota and the run ends — except
+   in week 1, which is a practice run you can fail and carry on from.
+
+Get far enough ahead and the quota starts chasing you: it never sits below about 70% of your best
+week so far, so a run that has run away from the schedule still has something to beat. The timeline
+marks a week whose target came from your own form rather than the schedule.
 
 Every fourth week is an **event** that bends the rules. At weeks 5, 12 and 20 you pick a permanent
 **ordinance**. Pickpockets turn up from week 7 and rare tiles from week 10. Clear week 16 to win,
