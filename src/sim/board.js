@@ -6,6 +6,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 
 export const EDGES = ['N', 'E', 'S', 'W'];
+const EDGE_NAME = { N: 'north', E: 'east', S: 'south', W: 'west' };
 export const LOCK_TERRAINS = new Set(['rail', 'water', 'apron']);
 
 export function createBoard(w, h, preLock = {}) {
@@ -138,35 +139,35 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
   const res = { ok: false, reason: '', cells, claims: [], lane: [], driveway: [], opens: [], def };
   const occ = occupancyMap(b);
   for (const [cx, cy] of cells) {
-    if (!inBounds(b, cx, cy)) { res.reason = 'Out of bounds'; return res; }
+    if (!inBounds(b, cx, cy)) { res.reason = 'That hangs off the board'; return res; }
     const o = occ[cy * b.w + cx];
-    if (o) { res.reason = o.type === 'tile' ? 'Overlaps ' + o.tile.name : o.type === 'lane' ? 'Blocked by a corridor lane' : 'Blocked by a driveway'; return res; }
+    if (o) { res.reason = o.type === 'tile' ? 'Sits on top of ' + o.tile.name : o.type === 'lane' ? 'A reserved lane runs through here' : 'A driveway runs through here'; return res; }
   }
   if (def.kind === 'amenity') { res.ok = true; return res; }
 
   if (def.kind === 'bridge') {
     const touched = edgesTouched(b, cells);
     const lockedTouched = touched.filter(e => b.edges[e] !== 'green');
-    if (lockedTouched.length === 0) { res.reason = 'A bridge must touch a claimed edge (road, rail, water or apron)'; return res; }
+    if (lockedTouched.length === 0) { res.reason = 'A bridge has to touch an edge that is already road, rail, water or airfield'; return res; }
     for (const e of lockedTouched) for (const i of edgeIndices(b, cells, e)) res.opens.push({ edge: e, idx: i });
     res.ok = true; return res;
   }
 
   const terrain = def.terrain;
-  if (mode && mode.banTerrains && mode.banTerrains.includes(terrain)) { res.reason = `${terrain} transport not permitted in this mode`; return res; }
+  if (mode && mode.banTerrains && mode.banTerrains.includes(terrain)) { res.reason = `No ${terrain} transport in this mode`; return res; }
 
   if (terrain === 'free') { res.ok = true; return res; }
 
   if (LOCK_TERRAINS.has(terrain)) {
     const touched = edgesTouched(b, cells);
-    if (touched.length === 0) { res.reason = `${def.name} must touch an edge`; return res; }
+    if (touched.length === 0) { res.reason = `A ${def.name} has to touch the edge of the board`; return res; }
     if (def.attach === 'tip') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `${def.name} must point the tip of its L at the edge with the foot inland (rotate or mirror it)`; return res; }
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; return res; }
     }
     // Long vehicles berth alongside, not nose-in: every cell has to sit on the
     // same edge, which pins a straight tile to the two orientations that lie flat.
     if (def.attach === 'edgewise') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `${def.name} must lie lengthwise along a single edge (rotate it)`; return res; }
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `A ${def.name} has to lie flat along one edge — rotate it`; return res; }
     }
     const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
     for (const e of touched) {
@@ -174,10 +175,10 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
       const idx = edgeIndices(b, cells, e);
       const allOpen = idx.every(i => spanOpen(b, e, i));
       // a subway line surfaces at this edge, and a tunnel can't end in the sea
-      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway line surfaces at the ${e} edge, so it can't become water`; return res; }
+      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway comes up at the ${EDGE_NAME[e]} edge, so that edge can't become water`; return res; }
       if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
       else if (cur === terrain || allOpen) { /* fine */ }
-      else { res.reason = `${e} edge is ${cur}; ${terrain} cannot attach there (needs a bridge)`; return res; }
+      else { res.reason = `The ${EDGE_NAME[e]} edge is already ${cur}, so nothing on ${terrain} can attach there without a bridge`; return res; }
     }
     res.attachEdges = touched;
     res.ok = true; return res;
@@ -195,7 +196,7 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
       if (!lineClear(occ, b, line.cells, true)) continue;
       options.push({ e, line, cur });
     }
-    if (options.length === 0) { res.reason = 'No road access: needs a clear straight path (max 4 cells) to a greenfield or road edge'; return res; }
+    if (options.length === 0) { res.reason = `No way in by road: needs a clear straight run of ${reach} squares or less to a road or an open edge`; return res; }
     options.sort((a, c) => a.line.dist - c.line.dist);
     const pick = options[0];
     res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
@@ -219,7 +220,7 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
       const ends = vertical ? ['N', 'S'] : ['W', 'E'];
       res.tunnel = { line: 'through', axis: vertical ? 'v' : 'h', ends, cells: line };
       const wet = ends.find(e => b.edges[e] === 'water');
-      if (wet) { res.reason = `${def.name} can't surface into the water on the ${wet} edge (rotate it)`; return res; }
+      if (wet) { res.reason = `A ${def.name} can't come up in the water at the ${EDGE_NAME[wet]} edge — rotate it`; return res; }
     } else {
       // straight to the nearest edge of the wanted terrain, however far
       let best = null;
@@ -228,13 +229,13 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
         const line = lineToEdge(b, cells, e);
         if (best === null || line.dist < best.line.dist) best = { e, line };
       }
-      if (!best) { res.reason = `${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      if (!best) { res.reason = `A ${def.name} needs a ${def.line} edge to tunnel to`; return res; }
       res.tunnel = { line: def.line, axis: best.e === 'N' || best.e === 'S' ? 'v' : 'h', ends: [best.e], cells: best.line.cells };
       res.attachEdges = [best.e];
     }
     const under = undergroundCells(b);
     const hit = cells.concat(res.tunnel.cells).find(([cx, cy]) => under.has(cx + ',' + cy));
-    if (hit) { res.reason = `Underground lines can't cross (tunnel at ${hit[0]},${hit[1]})`; return res; }
+    if (hit) { res.reason = `Two tunnels can't cross — one already runs through ${hit[0]},${hit[1]}`; return res; }
     res.ok = true; return res;
   }
 
@@ -249,7 +250,7 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
       if (!lineClear(occ, b, line.cells, false)) continue;
       if (best === null || line.dist < best.line.dist) best = { e, line };
     }
-    if (!best) { res.reason = `${def.name} needs a clear straight lane to the ${vertical ? 'north or south' : 'east or west'} edge (rotate it to reach another edge)`; return res; }
+    if (!best) { res.reason = `A ${def.name} needs a clear straight lane to the ${vertical ? 'north or south' : 'east or west'} edge — rotate it to aim at a different one`; return res; }
     res.lane = best.line.cells;
     res.laneEdge = best.e;
     res.ok = true; return res;

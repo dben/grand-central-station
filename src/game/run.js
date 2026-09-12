@@ -235,8 +235,8 @@ function removeCard(s, card) { s.shop.cards = s.shop.cards.filter(c => c.id !== 
 export function placementCheck(s, key, x, y, rot) { return checkPlacement(s.board, key, x, y, rot, modeOf(s)); }
 
 export function buyTile(s, card, x, y, rot) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
-  if (s.ap < 1) return fail('No action points left');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
+  if (s.ap < 1) return fail('No action points left this week');
   const cost = cardCost(s, card);
   if (s.money < cost) return fail(`Need $${cost}`);
   const c = placementCheck(s, card.key, x, y, rot);
@@ -251,16 +251,16 @@ export function buyTile(s, card, x, y, rot) {
 }
 
 export function upgradeTile(s, card, tileId) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
-  if (s.ap < 1) return fail('No action points left');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
+  if (s.ap < 1) return fail('No action points left this week');
   const tile = s.board.tiles.find(t => t.id === tileId);
-  if (!tile || tile.kind === 'bridge') return fail('Pick a tile to upgrade');
+  if (!tile || tile.kind === 'bridge') return fail('Pick a tile to raise a level');
   const def = tileDef(tile.key);
   const maxL = CONFIG.economy.maxLevel;
   if (card.type === 'upgrade') {
     // tile-specific: the card names the type it upgrades
     if (tile.key !== card.key) return fail(`${card.name} needs ${card.tileName || tileDef(card.key).name}`);
-    if ((tile.level || 1) >= maxL) return fail('Already at max level');
+    if ((tile.level || 1) >= maxL) return fail('That tile is already at its top level');
     const cost = upgradeCost(tile, card.levels, card.costMult);
     if (s.money < cost) return fail(`Need $${cost}`);
     tile.level = Math.min(maxL, (tile.level || 1) + card.levels);
@@ -272,12 +272,12 @@ export function upgradeTile(s, card, tileId) {
   if (card.type === 'named_upgrade') {
     const nu = NAMED_UPGRADES[card.key];
     if (s.money < nu.cost) return fail(`Need $${nu.cost}`);
-    if (nu.target === 'transport' && tile.kind !== 'transport') return fail('Needs a transport tile');
-    if (nu.target === 'amenity' && (tile.kind !== 'amenity' || def.rate <= 0)) return fail('Needs a service amenity');
+    if (nu.target === 'transport' && tile.kind !== 'transport') return fail('That card needs a transport tile');
+    if (nu.target === 'amenity' && (tile.kind !== 'amenity' || def.rate <= 0)) return fail('That card needs a shop');
     if (nu.target === 'waiting_all') {
       for (const t of s.board.tiles) if (tileDef(t.key).special === 'waiting') t.level = Math.min(maxL, t.level + nu.levels);
     } else {
-      if ((tile.level || 1) >= maxL) return fail('Already at max level');
+      if ((tile.level || 1) >= maxL) return fail('That tile is already at its top level');
       tile.level = Math.min(maxL, tile.level + nu.levels);
       if (nu.radiusBonus) tile.radiusBonus = (tile.radiusBonus || 0) + nu.radiusBonus;
     }
@@ -285,15 +285,15 @@ export function upgradeTile(s, card, tileId) {
     log(s, `${nu.name} applied`);
     return { ok: true };
   }
-  return fail('Not an upgrade card');
+  return fail('That is not an upgrade card');
 }
 
 export function deleteTile(s, tileId) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
   const rules = gameRules(s);
-  if (!rules.deleteFreeAP && s.ap < 1) return fail('No action points left');
+  if (!rules.deleteFreeAP && s.ap < 1) return fail('No action points left this week');
   const t = removeTile(s.board, tileId);
-  if (!t) return fail('No such tile');
+  if (!t) return fail('No tile there');
   if (!rules.deleteFreeAP) s.ap -= 1;
   const refund = Math.round((t.paid || 0) * rules.deleteRefund);
   s.money += refund;
@@ -302,8 +302,8 @@ export function deleteTile(s, tileId) {
 }
 
 export function reroll(s) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
-  if (s.ap < 1) return fail('No action points left');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
+  if (s.ap < 1) return fail('No action points left this week');
   const fee = rerollFee(s);
   if (s.money < fee) return fail(`Need $${fee}`);
   s.money -= fee; s.ap -= 1; s.shop.rerolls++;
@@ -313,7 +313,7 @@ export function reroll(s) {
 }
 
 export function buyAP(s, card) {
-  if (s.ap < 1) return fail('No action points left');
+  if (s.ap < 1) return fail('No action points left this week');
   if (s.money < card.cost) return fail(`Need $${card.cost}`);
   s.money -= card.cost; s.ap -= 1; s.apPermanentBonus++; removeCard(s, card);
   log(s, 'Bought a permanent +1 AP');
@@ -321,11 +321,11 @@ export function buyAP(s, card) {
 }
 
 export function playCard(s, card, target = null) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
   if (card.type === 'ap') return buyAP(s, card);
-  if (card.type !== 'card') return fail('Not a bonus card');
+  if (card.type !== 'card') return fail('That is not a bonus card');
   const apCost = cardAPCost(s, card);
-  if (s.ap < apCost) return fail('No action points left');
+  if (s.ap < apCost) return fail('No action points left this week');
   if (s.money < card.cost) return fail(`Need $${card.cost}`);
   const def = CARDS[card.key];
   const tile = target && target.tileId != null ? s.board.tiles.find(t => t.id === target.tileId) : null;
@@ -335,7 +335,7 @@ export function playCard(s, card, target = null) {
     case 'temp_staff': s.ap += def.ap; s.effects.push({ name: def.name, weeksLeft: def.weeks, mods: {}, ap: def.ap }); break;
     case 'rezoning': {
       const e = target && target.edge;
-      if (!e || s.board.edges[e] === 'green') return fail('Pick a claimed edge');
+      if (!e || s.board.edges[e] === 'green') return fail('Pick an edge that is already claimed');
       // Everything attached to the edge goes with it: a train station on open
       // ground, or a bus stop whose road is gone, is a state the rules can't hold.
       for (const t of rezoningVictims(s, e)) { removeTile(s.board, t.id); log(s, `Rezoning demolished ${t.name}`); }
@@ -344,7 +344,7 @@ export function playCard(s, card, target = null) {
       break;
     }
     case 'grand_opening':
-      if (!tile || tile.kind !== 'amenity' || tileDef(tile.key).rate <= 0) return fail('Pick a service amenity');
+      if (!tile || tile.kind !== 'amenity' || tileDef(tile.key).rate <= 0) return fail('Pick a shop');
       s.effects.push({ name: def.name + ': ' + tile.name, weeksLeft: 1, mods: { grandOpeningTileId: tile.id } }); break;
     case 'timetable': {
       if (!tile || tile.kind !== 'transport') return fail('Pick a transport tile');
@@ -369,7 +369,7 @@ export function rezoningVictims(s, edge) { return edgeDependents(s.board, edge);
 export function setStrike(s, terrain) { s.strikeChoice = terrain; return { ok: true }; }
 
 export function chooseOrdinance(s, key) {
-  if (!s.pendingOrdinance || !s.pendingOrdinance.includes(key)) return fail('Not offered');
+  if (!s.pendingOrdinance || !s.pendingOrdinance.includes(key)) return fail('That was not one of the three on offer');
   s.ordinances.push(key); s.pendingOrdinance = null;
   log(s, `Ordinance: ${ORDINANCES[key].name}`);
   return { ok: true };
@@ -431,7 +431,7 @@ function spread(dp, dm) {
 }
 
 export function runWeek(s) {
-  if (s.phase !== 'shop') return fail('Not in shop phase');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
   const ev = currentEvent(s);
   if (ev && ev.mods.strike && !s.strikeChoice) {
     const terrains = transportTerrainsOnBoard(s);
@@ -448,7 +448,7 @@ export function runWeek(s) {
 }
 
 export function settle(s) {
-  if (s.phase !== 'summary' || !s.lastResult) return fail('Nothing to settle');
+  if (s.phase !== 'summary' || !s.lastResult) return fail('There is nothing to settle yet');
   const r = s.lastResult;
   const quota = quotaFor(s);
   s.money += r.money.total;

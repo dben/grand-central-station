@@ -163,7 +163,7 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(!cross.ok && cross.reason.includes('cross') && cross.tunnel && cross.tunnel.axis === 'v', 'a vertical subway cannot cross a horizontal one, and the preview still carries its line');
   ok(checkPlacement(b, 'subway', 2, 8, 0).ok, 'a parallel subway is fine');
   ok(!checkPlacement(b, 'express_subway', 4, 5, 1).ok, 'a tunnel cannot pass under another station');
-  ok(!checkPlacement(b, 'water_taxi', 0, 2, 1).ok && checkPlacement(b, 'water_taxi', 0, 2, 1).reason.includes('surfaces'), 'an edge where a subway surfaces cannot become water');
+  ok(!checkPlacement(b, 'water_taxi', 0, 2, 1).ok && checkPlacement(b, 'water_taxi', 0, 2, 1).reason.includes('comes up at'), 'an edge where a subway surfaces cannot become water');
   ok(checkPlacement(b, 'water_taxi', 2, 0, 0).ok, 'the other edges can');
   placeTile(b, 'water_taxi', 2, 0, 0);
   const wet = checkPlacement(b, 'subway', 7, 8, 1);

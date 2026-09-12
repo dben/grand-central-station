@@ -459,16 +459,16 @@ Upgrade level is the exponential axis of the game. Because the board is fixed an
 | Coffee Shop | Espresso Bar (+2 levels, +1 radius) | | Security Station | Extra Patrol (+1 radius) |
 | Security Guard | Radio Kit (+1 radius) | | Security Checkpoint | Fast Track Lane |
 | Bus Stop | Shelter & Timetable | | Train Station | Platform Extension |
-| Ferry Terminal | Deeper Berth | | Tram Stop | Longer Consist |
-| Monorail | Third Car | | Express Train | Double-Decker Stock |
+| Ferry Terminal | Deeper Dock | | Tram Stop | Second Car |
+| Monorail | Third Car | | Express Train | Double-Decker Carriages |
 | Jetway | Wide-Body Bridge | | Newsstand | Corner Franchise |
 | Restroom | Attendant Service | | Food Stand | Second Cart |
 | Burger Joint | Drive-Thru Window | | Pizza Place | Stone Oven |
 | Vending Machine | Restock Contract | | Information Kiosk | Concierge Desk |
 | Green Space | Landscaping Budget | | Sports Bar | Big Screen |
 | Cafeteria | Extra Serving Line | | Currency Exchange | Better Rates |
-| Clothing Store | Flagship Fitout | | Art Gallery | Touring Exhibition |
-| Travel Lounge | Members Wing | | Designer Shop | Atelier Floor |
+| Clothing Store | Flagship Remodel | | Art Gallery | Touring Exhibition |
+| Travel Lounge | Members Wing | | Designer Shop | Private Fitting Rooms |
 | Waiting Area | More Seating | | Frequent Flier Club | Club Expansion |
 | WiFi Hotspot | Signal Booster | | Moving Walkway | Belt Overhaul |
 
@@ -647,10 +647,10 @@ The single most important UI element. While aiming a tile:
 
 - **The shape as a ghost** at its real height, green if legal and red with the reason if not.
 - **Pull radius** shaded on the ground, with the existing amenities whose radius overlaps outlined.
-- **Terrain effects:** driveways and corridor lanes drawn, and a pulsing highlight on any edge the placement would claim, with a warning line ("Locks the N edge to rail").
+- **Terrain effects:** driveways and corridor lanes drawn, and a pulsing highlight on any edge the placement would claim, with a warning line ("Locks the whole north edge to rail, for good").
 - **The tunnel** for an underground tile, with the rest of the underground layer lifted into view so a crossing is obvious (§3.5). An illegal line is still drawn, in red, so you can see what it hit.
 - **The whole fence line** for a checkpoint.
-- **A cut-off warning** naming any platform the placement would seal in ("Cuts off Taxi Stand: travellers bound there are lost"). Sealing a platform is the one placement that still costs a quarter of the week, so it is called out in words, not just red stars.
+- **A cut-off warning** naming any platform the placement would seal in ("Walls in Taxi Stand: nobody heading there can reach it"). Sealing a platform is the one placement that still costs a quarter of the week, so it is called out in words, not just red stars.
 - **A star badge** with what the placement is worth this week: the mean over 8 estimate seeds, rounded down (`placement.previewSeeds`). The "without" runs are cached for the phase, so a preview costs one sim per seed. Losing placements show red stars blinking to black. Upgrade cards show the same badge over whichever owned tile is hovered.
 
 ### 12.3 Stars and the top bar
@@ -674,6 +674,16 @@ Quotas are shown as stars, one per 1,000 points.
 - Chain multipliers, boarding values, `cleared ×1.30`, `caught!` and robberies pop as floating text over the traveller.
 - Travellers are small dots coloured by tier; pickpockets are dark with a red ring.
 - Skip is always available, and nothing requires watching the sim.
+
+**Wording.** Everything a player reads is written for someone who has never seen the design
+document. The internal names — dwell, batch, cadence, pull, rate, chain, stop budget, tier match,
+balk, spawn, radius — stay in the code and never reach the screen. On screen they are said plainly:
+a *wait at the platform*, *how many arrive and how often*, *how many stop*, a *boost*, *stops on the
+way*, *turned away*, *range in squares*. One phrase per idea, used everywhere: a traveller still
+walking at the last tick *ran out of time*, one who never reached a platform *never got there*. An
+amenity is a *shop* in running text. Numbers are kept where a player would act on them (a multiplier,
+a price, a percentage) and dropped where they only decorate ("far more people", "much more likely
+to"). A refusal says what to do next — "rotate it", "needs a bridge" — not which rule it broke.
 
 ### 12.6 Controls
 
