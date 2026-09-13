@@ -16,7 +16,7 @@ export const DEFAULT_MODS = {
   closedBelowLevel: 0, rateBonusTags: {}, destTierShift: 0, stopBudgetBonus: 0,
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
-  ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, amenityRadiusBonus: 0,
+  ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, pickpocketRamp: null, amenityRadiusBonus: 0,
 };
 
 export function mergeMods(...list) {
@@ -310,8 +310,9 @@ export function simulateWeek(board, opts = {}) {
   // at full strength the week it is announced.
   const crimeFrom = mods.pickpocketsFromWeek != null ? mods.pickpocketsFromWeek : cfg.run.pickpocketsFromWeek;
   const crimeAge = week - crimeFrom + 1;
+  const crimeRamp = mods.pickpocketRamp != null ? mods.pickpocketRamp : cfg.sim.pickpocketRamp;
   const pickRate = mods.pickpocketRate != null ? mods.pickpocketRate
-    : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / cfg.sim.pickpocketRamp) : 0);
+    : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / crimeRamp) : 0);
 
   function destWeight(travTier, transTier) {
     const gap = travTier - transTier;

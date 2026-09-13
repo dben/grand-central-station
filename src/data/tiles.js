@@ -14,6 +14,9 @@
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
 //         'broadside' = the long arm has to lie along one edge, with the short foot inland - the
 //           mirror of 'tip', for a hull that ties up side-on.
+// reach: a lock-terrain tile may instead sit this many squares inland, with a
+//        jetty or taxiway run out to the water or apron - the road rule, for
+//        small craft. modes: the level keys that sell the tile at all.
 // ============================================================================
 
 export const TRANSPORTS = {
@@ -30,12 +33,21 @@ export const TRANSPORTS = {
   monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 5 , dep: 5,  dwell: 2, mult: 1.14, flat: 21,  cost: 280, minWeek: 5 },
   ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    attach: 'broadside', tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
   water_taxi:      { name: 'Water Taxi',       shape: 'I2', terrain: 'water',     attach: 'edgewise', tier: 3, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.14, flat: 11,  cost: 150,  minWeek: 3 },
+  // Waterfront's own small craft. A dinghy needs no berth on the shore, so it
+  // sits inland on a jetty the way a bus stop sits inland on a driveway: cheap,
+  // tier 1, and the thing you actually open a water map with.
+  water_bus:       { name: 'Water Bus Stop',   shape: 'I2', terrain: 'water',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['waterfront'] },
+  pontoon:         { name: 'Pontoon Moorings', shape: 'O4', terrain: 'water',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['waterfront'], walkable: true, ground: true },
   marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
   helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
   balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 10, batch: 2,  dep: 10, dwell: 5, mult: 1.19, flat: 18,  cost: 260, minWeek: 4, tags: ['air'] },
   jetway:          { name: 'Jetway',           shape: 'L3', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 8,  batch: 11, dep: 8,  dwell: 4, mult: 1.18, flat: 27,  cost: 400, minWeek: 6, tags: ['air'] },
   jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L5', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
+  // Sky Harbour's own light aircraft, the airside mirror of the bus stop and
+  // the car park. Both taxi in from the apron rather than parking on it.
+  prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'] },
+  hardstand:       { name: 'Hardstand',        shape: 'O4', terrain: 'apron',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'], walkable: true, ground: true },
   private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 10, batch: 2,  dep: 10, dwell: 4, mult: 1.35, flat: 24,  cost: 760, minWeek: 10, rare: true, tags: ['air'] },
   ski_lift:        { name: 'Ski Lift',         shape: 'I4', terrain: 'corridor', tier: 2, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.09, flat: 12,  cost: 120,  minWeek: 2 },
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },
@@ -57,6 +69,17 @@ export const AMENITIES = {
   pizza:          { name: 'Pizza Place',       shape: 'S4', tier: 2, radius: 3, rate: 0.54, mult: 2.57, flat: 110, cap: 18, dur: 3, revenue: 8,  cost: 53,  minWeek: 2, tags: ['food'] },
   coffee:         { name: 'Coffee Shop',       shape: 'I2', tier: 2, radius: 4, rate: 0.72, mult: 2.23, flat: 80, cap: 14, dur: 2, revenue: 7,  cost: 46,  minWeek: 2, tags: ['food'] },
   kiosk:          { name: 'Information Kiosk', shape: 'I1', tier: 1, radius: 4, rate: 0.54, mult: 1.35, flat: 40, cap: 10, dur: 1, revenue: 1,  cost: 14,  minWeek: 1 },
+  // One-square shops. Each is its full-size counterpart with the bonus cut and
+  // the footprint cut harder, so on a cramped board it is the better buy per
+  // square and on a roomy one the four-cell version still wins (§15).
+  coffee_cart:    { name: 'Coffee Cart',       shape: 'I1', tier: 2, radius: 4, rate: 0.63, mult: 1.72, flat: 44, cap: 7,  dur: 1, revenue: 4,  cost: 24,  minWeek: 2, tags: ['food'] },
+  souvenir_cart:  { name: 'Souvenir Cart',     shape: 'I1', tier: 2, radius: 3, rate: 0.5,  mult: 2.3,  flat: 75, cap: 6,  dur: 2, revenue: 8,  cost: 32,  minWeek: 3 },
+  // The one that is bought for the till rather than the score: low points, the
+  // best revenue per dollar in the catalogue outside the tier-3 shops.
+  atm:            { name: 'Cash Machine',      shape: 'I1', tier: 3, radius: 3, rate: 0.45, mult: 2.2,  flat: 55, cap: 4,  dur: 1, revenue: 13, cost: 34,  minWeek: 4 },
+  // Green space cut down to one square: the same walk-through park rule and the
+  // same budget refund, for a board with no room for the four-square version.
+  pocket_park:    { name: 'Pocket Park',       shape: 'I1', tier: 1, radius: 3, rate: 0.45, mult: 1.62, flat: 32, cap: 14, dur: 1, revenue: 0,  cost: 15,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 3, rate: 0.5 , mult: 2.93, flat: 140, cap: 16, dur: 4, revenue: 12, cost: 77 , minWeek: 4, tags: ['food'] },
   cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
@@ -103,6 +126,14 @@ export const TILE_UPGRADES = {
   vending:       { name: 'Restock Contract' },
   kiosk:         { name: 'Concierge Desk' },
   green_space:   { name: 'Landscaping Budget' },
+  pocket_park:   { name: 'Planter Boxes' },
+  coffee_cart:   { name: 'Bigger Urn' },
+  souvenir_cart: { name: 'Wider Range' },
+  atm:           { name: 'Second Machine' },
+  water_bus:     { name: 'Longer Jetty' },
+  pontoon:       { name: 'Extra Berths' },
+  prop_stand:    { name: 'Second Aircraft' },
+  hardstand:     { name: 'Repaved Apron' },
   sports_bar:    { name: 'Big Screen' },
   cafeteria:     { name: 'Extra Serving Line' },
   currency:      { name: 'Better Rates' },
@@ -153,6 +184,15 @@ export function tileDef(key) {
   if (AMENITIES[key]) return { key, kind: 'amenity', ...AMENITIES[key] };
   if (key === 'bridge') return { key, kind: 'bridge', ...BRIDGE };
   throw new Error('Unknown tile ' + key);
+}
+
+// A `reach` tile's terrain line reads differently: it does not need the shore
+// itself, only a clear run out to it.
+export function terrainDesc(def) {
+  const base = TERRAIN_INFO[def.terrain];
+  if (!def.reach) return base.desc;
+  const what = def.terrain === 'water' ? 'a jetty' : def.terrain === 'apron' ? 'a taxiway' : 'a spur';
+  return `${base.desc.split('.')[0]}. This one can sit up to ${def.reach} squares back from it, with ${what} run out.`;
 }
 
 export const TERRAIN_INFO = {

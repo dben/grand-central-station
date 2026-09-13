@@ -7,7 +7,7 @@ import { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef, tileUpgrade } f
 import { EVENTS, EVENT_KEYS, MILESTONES } from '../data/events.js';
 import { CARDS } from '../data/cards.js';
 import { ORDINANCES, ORDINANCE_KEYS } from '../data/ordinances.js';
-import { MODES, minWeekOf } from '../data/modes.js';
+import { MODES, minWeekOf, soldOnLevel } from '../data/modes.js';
 import { DIFFICULTIES } from '../data/difficulties.js';
 import { Rng, hashString } from '../sim/rng.js';
 import { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
@@ -15,7 +15,7 @@ import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -184,11 +184,11 @@ function tileWeight(def, week) {
 // garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
   const m = modeOf(s), rareWeek = runRules(s).rareTilesFromWeek;
-  return Object.entries(TRANSPORTS).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  return Object.entries(TRANSPORTS).filter(([k, d]) => soldOnLevel(m, d) && minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
   const m = modeOf(s);
-  return Object.entries(AMENITIES).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
+  return Object.entries(AMENITIES).filter(([k, d]) => soldOnLevel(m, d) && minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
 }
 // Every tile the shop can draw from this week on this level, rares included
 // once they are unlocked. The roll below picks from these pools; the harness and
@@ -247,7 +247,7 @@ export function generateShop(s) {
   // Week 1 is a fixed opening hand so the first turn always makes sense:
   // something to bring people in, and something to serve them with.
   if (s.week === 1) {
-    const { transport, amenity, fixed } = CONFIG.shop.week1;
+    const { transport, amenity, fixed } = { ...CONFIG.shop.week1, ...(m.week1 || {}) };
     let slot = 0;
     // The named cards come first and are the same in every run: a fixed opening
     // is what holds week 1 inside its band (§15), since one roll of the shop is
@@ -256,6 +256,7 @@ export function generateShop(s) {
     for (const key of fixed || []) {
       if (slot >= nSlots) break;
       const d = tileDef(key);
+      if (!soldOnLevel(m, d)) continue;
       if (d.kind === 'transport' && (m.banTerrains || []).includes(d.terrain)) continue;
       used.add(key); cards.push(tileCard(d, slot)); slot++;
     }
@@ -436,7 +437,7 @@ export function chooseOrdinance(s, key) {
 export function computeMods(s, week = s.week) {
   // The level's own crime-wave week travels to the sim as a modifier, so the
   // simulator stays free of modes and the preview cache keys on it.
-  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek }];
+  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek, pickpocketRamp: runRules(s).pickpocketRamp }];
   const ev = eventForWeek(s, week);
   if (ev) {
     const m = { ...ev.mods };

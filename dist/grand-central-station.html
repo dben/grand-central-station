@@ -701,6 +701,9 @@ const __m_src_data_tiles_js = (() => {
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
 //         'broadside' = the long arm has to lie along one edge, with the short foot inland - the
 //           mirror of 'tip', for a hull that ties up side-on.
+// reach: a lock-terrain tile may instead sit this many squares inland, with a
+//        jetty or taxiway run out to the water or apron - the road rule, for
+//        small craft. modes: the level keys that sell the tile at all.
 // ============================================================================
 
 const TRANSPORTS = {
@@ -717,12 +720,21 @@ const TRANSPORTS = {
   monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 5 , dep: 5,  dwell: 2, mult: 1.14, flat: 21,  cost: 280, minWeek: 5 },
   ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    attach: 'broadside', tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
   water_taxi:      { name: 'Water Taxi',       shape: 'I2', terrain: 'water',     attach: 'edgewise', tier: 3, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.14, flat: 11,  cost: 150,  minWeek: 3 },
+  // Waterfront's own small craft. A dinghy needs no berth on the shore, so it
+  // sits inland on a jetty the way a bus stop sits inland on a driveway: cheap,
+  // tier 1, and the thing you actually open a water map with.
+  water_bus:       { name: 'Water Bus Stop',   shape: 'I2', terrain: 'water',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['waterfront'] },
+  pontoon:         { name: 'Pontoon Moorings', shape: 'O4', terrain: 'water',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['waterfront'], walkable: true, ground: true },
   marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
   helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
   balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 10, batch: 2,  dep: 10, dwell: 5, mult: 1.19, flat: 18,  cost: 260, minWeek: 4, tags: ['air'] },
   jetway:          { name: 'Jetway',           shape: 'L3', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 8,  batch: 11, dep: 8,  dwell: 4, mult: 1.18, flat: 27,  cost: 400, minWeek: 6, tags: ['air'] },
   jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L5', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
+  // Sky Harbour's own light aircraft, the airside mirror of the bus stop and
+  // the car park. Both taxi in from the apron rather than parking on it.
+  prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'] },
+  hardstand:       { name: 'Hardstand',        shape: 'O4', terrain: 'apron',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'], walkable: true, ground: true },
   private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 10, batch: 2,  dep: 10, dwell: 4, mult: 1.35, flat: 24,  cost: 760, minWeek: 10, rare: true, tags: ['air'] },
   ski_lift:        { name: 'Ski Lift',         shape: 'I4', terrain: 'corridor', tier: 2, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.09, flat: 12,  cost: 120,  minWeek: 2 },
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },
@@ -744,6 +756,17 @@ const AMENITIES = {
   pizza:          { name: 'Pizza Place',       shape: 'S4', tier: 2, radius: 3, rate: 0.54, mult: 2.57, flat: 110, cap: 18, dur: 3, revenue: 8,  cost: 53,  minWeek: 2, tags: ['food'] },
   coffee:         { name: 'Coffee Shop',       shape: 'I2', tier: 2, radius: 4, rate: 0.72, mult: 2.23, flat: 80, cap: 14, dur: 2, revenue: 7,  cost: 46,  minWeek: 2, tags: ['food'] },
   kiosk:          { name: 'Information Kiosk', shape: 'I1', tier: 1, radius: 4, rate: 0.54, mult: 1.35, flat: 40, cap: 10, dur: 1, revenue: 1,  cost: 14,  minWeek: 1 },
+  // One-square shops. Each is its full-size counterpart with the bonus cut and
+  // the footprint cut harder, so on a cramped board it is the better buy per
+  // square and on a roomy one the four-cell version still wins (§15).
+  coffee_cart:    { name: 'Coffee Cart',       shape: 'I1', tier: 2, radius: 4, rate: 0.63, mult: 1.72, flat: 44, cap: 7,  dur: 1, revenue: 4,  cost: 24,  minWeek: 2, tags: ['food'] },
+  souvenir_cart:  { name: 'Souvenir Cart',     shape: 'I1', tier: 2, radius: 3, rate: 0.5,  mult: 2.3,  flat: 75, cap: 6,  dur: 2, revenue: 8,  cost: 32,  minWeek: 3 },
+  // The one that is bought for the till rather than the score: low points, the
+  // best revenue per dollar in the catalogue outside the tier-3 shops.
+  atm:            { name: 'Cash Machine',      shape: 'I1', tier: 3, radius: 3, rate: 0.45, mult: 2.2,  flat: 55, cap: 4,  dur: 1, revenue: 13, cost: 34,  minWeek: 4 },
+  // Green space cut down to one square: the same walk-through park rule and the
+  // same budget refund, for a board with no room for the four-square version.
+  pocket_park:    { name: 'Pocket Park',       shape: 'I1', tier: 1, radius: 3, rate: 0.45, mult: 1.62, flat: 32, cap: 14, dur: 1, revenue: 0,  cost: 15,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 3, rate: 0.5 , mult: 2.93, flat: 140, cap: 16, dur: 4, revenue: 12, cost: 77 , minWeek: 4, tags: ['food'] },
   cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
@@ -790,6 +813,14 @@ const TILE_UPGRADES = {
   vending:       { name: 'Restock Contract' },
   kiosk:         { name: 'Concierge Desk' },
   green_space:   { name: 'Landscaping Budget' },
+  pocket_park:   { name: 'Planter Boxes' },
+  coffee_cart:   { name: 'Bigger Urn' },
+  souvenir_cart: { name: 'Wider Range' },
+  atm:           { name: 'Second Machine' },
+  water_bus:     { name: 'Longer Jetty' },
+  pontoon:       { name: 'Extra Berths' },
+  prop_stand:    { name: 'Second Aircraft' },
+  hardstand:     { name: 'Repaved Apron' },
   sports_bar:    { name: 'Big Screen' },
   cafeteria:     { name: 'Extra Serving Line' },
   currency:      { name: 'Better Rates' },
@@ -842,6 +873,15 @@ function tileDef(key) {
   throw new Error('Unknown tile ' + key);
 }
 
+// A `reach` tile's terrain line reads differently: it does not need the shore
+// itself, only a clear run out to it.
+function terrainDesc(def) {
+  const base = TERRAIN_INFO[def.terrain];
+  if (!def.reach) return base.desc;
+  const what = def.terrain === 'water' ? 'a jetty' : def.terrain === 'apron' ? 'a taxiway' : 'a spur';
+  return `${base.desc.split('.')[0]}. This one can sit up to ${def.reach} squares back from it, with ${what} run out.`;
+}
+
 const TERRAIN_INFO = {
   road:     { label: 'Road',     claim: 'road',     desc: 'Turns that side of the board into a road. Road tiles can sit a few squares back, with a driveway out to it.' },
   rail:     { label: 'Rail',     claim: 'lock',     desc: 'Locks that whole side of the board as railway. Nothing else can use it.' },
@@ -858,7 +898,7 @@ const LINE_INFO = {
   water:   'Tunnels straight to the nearest water. Only sold while one side of the board is water.',
 };
 
-return { TRANSPORTS, AMENITIES, BRIDGE, TILE_UPGRADES, tileUpgrade, NAMED_UPGRADES, tileDef, TERRAIN_INFO, LINE_INFO };
+return { TRANSPORTS, AMENITIES, BRIDGE, TILE_UPGRADES, tileUpgrade, NAMED_UPGRADES, tileDef, terrainDesc, TERRAIN_INFO, LINE_INFO };
 })();
 // ---- src/data/events.js
 const __m_src_data_events_js = (() => {
@@ -960,6 +1000,9 @@ const __m_src_data_modes_js = (() => {
 //   startTiles tiles the level is already built with in week 1: { key, x, y,
 //              rot, level }. They are placed through the normal rules, so an
 //              illegal one throws at run start rather than half-building.
+//   week1      the opening hand, overriding CONFIG.shop.week1 field by field,
+//              so a level can deal the transport its own terrain needs.
+// A tile with a `modes` list is sold on those levels only (see soldOnLevel).
 const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
   junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota climbs faster and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 1.7,
@@ -974,15 +1017,27 @@ const MODES = {
                 // exchange the run's own milestones are pushed back.
                 run: { eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
                 minWeek: { express_train: 3, cruise_dock: 5, jumbo_jetway: 6, cafeteria: 3, flier_club: 7 } },
-  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, anything that floats costs 40% less, and boats are on sale from week one.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
+  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, anything that floats costs 40% less, and boats are on sale from week one - starting with the water bus and the pontoon, which nowhere else sells.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
+                // Opened by water: the hand deals the pontoon in place of the
+                // car park, which is the same tile on a different terrain, and
+                // leaves the other three slots rolling as usual.
+                week1: { fixed: ['pontoon', 'burger'] },
                 minWeek: { ferry: 1, water_taxi: 1, marina: 4, cruise_dock: 5, sub_dock: 3 } },
-  sky_harbour:{ name: 'Sky Harbour', w: 12, h: 12, desc: 'An airfield on one side, a road on the other and a security checkpoint across the middle. No trains and no boats, but aircraft arrive early and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 },
+  // A long, narrow board rather than a square one: the checkpoint across its
+  // waist splits 8x16 into two 8x8 halves, airside and landside, each about the
+  // size of a Junction board. That is the level's whole shape - build a station
+  // twice, once either side of the fence, and walk every traveller through it.
+  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 },
                 preLock: { N: 'apron', S: 'road' },
-                // The booth sits on the middle line with its fence running the
+                // The booth straddles the line y=8 with its fence running the
                 // width of the board: everyone landing airside has to clear it
                 // to reach the road. Hence security tiles and the crime wave early.
-                startTiles: [{ key: 'gate', x: 6, y: 5, rot: 1 }],
-                run: { pickpocketsFromWeek: 5 },
+                startTiles: [{ key: 'gate', x: 3, y: 7, rot: 1 }],
+                // Pickpockets are the level's signature, so they start almost at
+                // once - but over six weeks rather than three, so week 3 is a
+                // nuisance to build against and not a wall.
+                run: { pickpocketsFromWeek: 3, pickpocketRamp: 6 },
+                week1: { fixed: ['prop_stand', 'parking_lot', 'burger'], transport: 1, amenity: 1 },
                 minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
   terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.52, quotaGrowth: 1.17,
                 // One move a week, so the week clock is slower and the things
@@ -990,6 +1045,11 @@ const MODES = {
                 run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
 };
 const MODE_KEYS = Object.keys(MODES);
+for (const [k, m] of Object.entries(MODES)) m.key = k;
+
+// Is this tile sold here at all? A tile with no `modes` list is sold everywhere;
+// one with a list belongs to those levels, and nowhere else.
+function soldOnLevel(mode, def) { return !def.modes || (!!mode && def.modes.includes(mode.key)); }
 
 // The week a tile starts appearing in the shop on this level.
 function minWeekOf(mode, key, def) {
@@ -997,7 +1057,7 @@ function minWeekOf(mode, key, def) {
   return over != null ? over : def.minWeek;
 }
 
-return { MODES, MODE_KEYS, minWeekOf };
+return { MODES, MODE_KEYS, soldOnLevel, minWeekOf };
 })();
 // ---- src/data/difficulties.js
 const __m_src_data_difficulties_js = (() => {
@@ -1367,6 +1427,31 @@ function lineClear(occ, b, line, allowDriveway) {
   return true;
 }
 
+// A lock-terrain tile sitting back from its shore: the same straight, clear run
+// a road tile uses, but aimed only at edges that are already its terrain (or
+// still open, which it then claims and locks). The run becomes a driveway,
+// tagged with the terrain so the renderer paints a jetty rather than tarmac.
+function reachInland(b, occ, res, def, cells, terrain) {
+  const options = [];
+  for (const e of EDGES) {
+    const line = lineToEdge(b, cells, e);
+    if (line.dist > def.reach) continue;
+    const cur = b.edges[e];
+    const open = spanOpen(b, e, line.edgeIndex);   // a bridge has opened this span to any terrain
+    if (!(cur === terrain || open || (cur === 'green' && !(terrain === 'water' && tunnelEnds(b).has(e))))) continue;
+    if (!lineClear(occ, b, line.cells, true)) continue;
+    options.push({ e, line, cur });
+  }
+  if (!options.length) { res.reason = `No way out to the ${terrain}: a ${def.name} needs a clear straight run of ${def.reach} squares or less to it`; return res; }
+  options.sort((a, c) => a.line.dist - c.line.dist);
+  const pick = options[0];
+  res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]).map(([lx, ly]) => [lx, ly, terrain]);
+  if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain, lock: true });
+  res.attachEdges = [pick.e];
+  res.ok = true;
+  return res;
+}
+
 /**
  * Check whether a tile can be placed. Returns a result object:
  * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}] }
@@ -1398,6 +1483,10 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
 
   if (LOCK_TERRAINS.has(terrain)) {
     const touched = edgesTouched(b, cells);
+    // A small boat or a prop plane does not need a berth on the shore itself:
+    // `reach` lets it sit that many squares inland, with a jetty or a taxiway
+    // run out to the water or the apron, exactly the way a road tile does.
+    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain);
     if (touched.length === 0) { res.reason = `A ${def.name} has to touch the edge of the board`; return res; }
     if (def.attach === 'tip') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; return res; }
@@ -1713,7 +1802,7 @@ const DEFAULT_MODS = {
   closedBelowLevel: 0, rateBonusTags: {}, destTierShift: 0, stopBudgetBonus: 0,
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
-  ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, amenityRadiusBonus: 0,
+  ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, pickpocketRamp: null, amenityRadiusBonus: 0,
 };
 
 function mergeMods(...list) {
@@ -2007,8 +2096,9 @@ function simulateWeek(board, opts = {}) {
   // at full strength the week it is announced.
   const crimeFrom = mods.pickpocketsFromWeek != null ? mods.pickpocketsFromWeek : cfg.run.pickpocketsFromWeek;
   const crimeAge = week - crimeFrom + 1;
+  const crimeRamp = mods.pickpocketRamp != null ? mods.pickpocketRamp : cfg.sim.pickpocketRamp;
   const pickRate = mods.pickpocketRate != null ? mods.pickpocketRate
-    : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / cfg.sim.pickpocketRamp) : 0);
+    : (crimeAge > 0 ? cfg.sim.pickpocketRate * Math.min(1, crimeAge / crimeRamp) : 0);
 
   function destWeight(travTier, transTier) {
     const gap = travTier - transTier;
@@ -2545,14 +2635,14 @@ const { TRANSPORTS, AMENITIES, NAMED_UPGRADES, BRIDGE, tileDef, tileUpgrade } = 
 const { EVENTS, EVENT_KEYS, MILESTONES } = __m_src_data_events_js;
 const { CARDS } = __m_src_data_cards_js;
 const { ORDINANCES, ORDINANCE_KEYS } = __m_src_data_ordinances_js;
-const { MODES, minWeekOf } = __m_src_data_modes_js;
+const { MODES, minWeekOf, soldOnLevel } = __m_src_data_modes_js;
 const { DIFFICULTIES } = __m_src_data_difficulties_js;
 const { Rng, hashString } = __m_src_sim_rng_js;
 const { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } = __m_src_sim_board_js;
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2721,11 +2811,11 @@ function tileWeight(def, week) {
 // garage needs a road edge, a dock a water edge, a subway an axis clear of water.
 function transportPool(s, rareOnly = false) {
   const m = modeOf(s), rareWeek = runRules(s).rareTilesFromWeek;
-  return Object.entries(TRANSPORTS).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
+  return Object.entries(TRANSPORTS).filter(([k, d]) => soldOnLevel(m, d) && minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly && !(m.banTerrains || []).includes(d.terrain) && !(d.rare && s.week < rareWeek) && lineAvailable(s.board, d)).map(([k, d]) => ({ key: k, kind: 'transport', ...d }));
 }
 function amenityPool(s, rareOnly = false) {
   const m = modeOf(s);
-  return Object.entries(AMENITIES).filter(([k, d]) => minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
+  return Object.entries(AMENITIES).filter(([k, d]) => soldOnLevel(m, d) && minWeekOf(m, k, d) <= s.week && !!d.rare === rareOnly).map(([k, d]) => ({ key: k, kind: 'amenity', ...d }));
 }
 // Every tile the shop can draw from this week on this level, rares included
 // once they are unlocked. The roll below picks from these pools; the harness and
@@ -2784,7 +2874,7 @@ function generateShop(s) {
   // Week 1 is a fixed opening hand so the first turn always makes sense:
   // something to bring people in, and something to serve them with.
   if (s.week === 1) {
-    const { transport, amenity, fixed } = CONFIG.shop.week1;
+    const { transport, amenity, fixed } = { ...CONFIG.shop.week1, ...(m.week1 || {}) };
     let slot = 0;
     // The named cards come first and are the same in every run: a fixed opening
     // is what holds week 1 inside its band (§15), since one roll of the shop is
@@ -2793,6 +2883,7 @@ function generateShop(s) {
     for (const key of fixed || []) {
       if (slot >= nSlots) break;
       const d = tileDef(key);
+      if (!soldOnLevel(m, d)) continue;
       if (d.kind === 'transport' && (m.banTerrains || []).includes(d.terrain)) continue;
       used.add(key); cards.push(tileCard(d, slot)); slot++;
     }
@@ -2973,7 +3064,7 @@ function chooseOrdinance(s, key) {
 function computeMods(s, week = s.week) {
   // The level's own crime-wave week travels to the sim as a modifier, so the
   // simulator stays free of modes and the preview cache keys on it.
-  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek }];
+  const list = [{ pickpocketsFromWeek: runRules(s).pickpocketsFromWeek, pickpocketRamp: runRules(s).pickpocketRamp }];
   const ev = eventForWeek(s, week);
   if (ev) {
     const m = { ...ev.mods };
@@ -3524,7 +3615,7 @@ class BoardRenderer {
     const ghost = view.ghost ? this.ghostInfo(view.ghost, board) : null;
     if (ghost) {
       for (const [x, y] of ghost.lane) this.hatchCell(x, y, 'rgba(31,207,176,0.85)');
-      for (const [x, y] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, 'rgba(120,120,130,0.5)');
+      for (const [x, y, terr] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, terr === 'water' ? 'rgba(30,160,234,0.5)' : 'rgba(120,120,130,0.5)');
     }
     // Aiming or inspecting an underground tile lifts the whole tunnel layer
     // above the buildings, so a crossing is visible even where a tile covers it.
@@ -3807,9 +3898,11 @@ class BoardRenderer {
   drawGround(view, board) {
     const ctx = this.ctx;
     for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
-    for (const [x, y] of board.driveways) {
-      this.fillCell(x, y, TERRAIN_COLORS.road);
-      this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, '#6d7288');
+    // A driveway carries the terrain it runs out to, so a boat's jetty and a
+    // prop plane's taxiway read as water and tarmac rather than as tarmac road.
+    for (const [x, y, terr] of board.driveways) {
+      this.fillCell(x, y, TERRAIN_COLORS[terr || 'road']);
+      this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, terr === 'water' ? 'rgba(255,255,255,0.55)' : '#6d7288');
     }
     for (const [x, y] of board.lanes) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
@@ -4603,7 +4696,7 @@ const __m_src_ui_main_js = (() => {
 // ============================================================================
 const { CONFIG, starsOf, starTarget } = __m_src_config_js;
 const G = __m_src_game_run_js;
-const { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } = __m_src_data_tiles_js;
+const { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES, terrainDesc } = __m_src_data_tiles_js;
 const { MODES, MODE_KEYS } = __m_src_data_modes_js;
 const { DIFFICULTIES, DIFFICULTY_KEYS } = __m_src_data_difficulties_js;
 const { ORDINANCES } = __m_src_data_ordinances_js;
@@ -4882,7 +4975,7 @@ function cardBody(card) {
   if (card.type === 'tile' || card.type === 'bridge') {
     const def = tileDef(card.key);
     box.append(describeTile(null, def));
-    if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, TERRAIN_INFO[def.terrain].desc));
+    if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, terrainDesc(def)));
   } else box.append(h('div', { class: 'desc' }, card.desc || ''));
   if (card.type === 'upgrade' || card.type === 'named_upgrade') box.append(h('div', { class: 'desc' }, 'Every level draws more people to a shop, serves more of them at once, and pays more. A transport brings bigger crowds and gives a bigger boost when they board.'));
   if (card.type === 'upgrade') {
