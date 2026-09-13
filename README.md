@@ -26,8 +26,8 @@ marks a week whose target came from your own form rather than the schedule.
 Every fourth week is an **event** that bends the rules. At weeks 5, 12 and 20 you pick a permanent
 **ordinance**. Pickpockets turn up from week 7 and rare tiles from week 10. Clear week 16 to win,
 then keep going as long as you can. Each mode runs its own clock, so those weeks move: Junction
-throws an event every third week, Metroplex every fifth, and each mode puts different tiles on sale
-early.
+picks its ordinances and starts its crime wave early, Metroplex and Terminus run an event every fifth
+week instead of every fourth, and each mode puts different tiles on sale early.
 
 ## Ideas that matter
 
@@ -68,7 +68,7 @@ the points and the shop back to how the week started. Hard and Extreme don't: a 
 | Mode | Board | Twist | Unlocks |
 |---|---|---|---|
 | Terminal | 12×12 | The baseline | — |
-| Junction | 9×9 | 3 AP a week, a fast clock, and the quota climbs faster | Reach week 8 |
+| Junction | 9×9 | 3 AP a week and a fast clock, against a quota 70% higher | Reach week 8 |
 | Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1, starting with a water bus and a pontoon sold nowhere else | Reach week 8 |
 | Metroplex | 16×16 | Room to spread out and the big tiles early; tiles cost 25% more | Reach week 12 |
 | Sky Harbour | 8×16 | A long board: airfield at one end, road at the other, a security checkpoint across the waist. No rail or water; light aircraft from week 1 and pickpockets from week 3 | Reach week 12 |
