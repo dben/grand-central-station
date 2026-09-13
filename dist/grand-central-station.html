@@ -527,6 +527,9 @@ const CONFIG = {
     // can be fixed and rebuilt in the same week.
     deleteCostsAP: false,
     rezoningCostsAP: false,
+    // ...and deleting a tile placed this week hands its action point back, so
+    // the rebuild is the same move over again rather than the week's other one.
+    deleteRefundsAP: true,
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -2642,7 +2645,7 @@ const { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDepen
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2701,7 +2704,7 @@ function milestoneForWeek(s, week) {
 }
 function nextEventWeek(s) { const e = runRules(s).eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 function gameRules(s) {
-  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, deleteRefundsAP: CONFIG.economy.deleteRefundsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
@@ -2928,6 +2931,7 @@ function buyTile(s, card, x, y, rot) {
   if (!c.ok) return fail(c.reason);
   const tile = placeTile(s.board, card.key, x, y, rot, c, modeOf(s));
   tile.paid = cost;
+  tile.placedWeek = s.week;   // deleting it this same week hands the action point back
   s.money -= cost; s.ap -= 1;
   removeCard(s, card);
   log(s, `Placed ${tile.name} for $${cost}`);
@@ -2973,17 +2977,23 @@ function upgradeTile(s, card, tileId) {
   return fail('That is not an upgrade card');
 }
 
+// Does pulling this tile hand its action point back? Only for one bought this
+// week: an older tile would be a free move rather than an undo.
+function deleteGivesAPBack(s, t) { return !!t && !!gameRules(s).deleteRefundsAP && t.placedWeek === s.week; }
+
 function deleteTile(s, tileId) {
   if (s.phase !== 'shop') return fail('You can only do that while building');
   const rules = gameRules(s);
   if (!rules.deleteFreeAP && s.ap < 1) return fail('No action points left this week');
+  const apBack = deleteGivesAPBack(s, s.board.tiles.find(t => t.id === tileId));
   const t = removeTile(s.board, tileId);
   if (!t) return fail('No tile there');
   if (!rules.deleteFreeAP) s.ap -= 1;
+  if (apBack) s.ap += 1;
   const refund = Math.round((t.paid || 0) * rules.deleteRefund);
   s.money += refund;
-  log(s, `Deleted ${t.name}${refund ? ` (refund $${refund})` : ''}`);
-  return { ok: true };
+  log(s, `Deleted ${t.name}${refund ? ` (refund $${refund})` : ''}${apBack ? ' (action point back)' : ''}`);
+  return { ok: true, apBack };
 }
 
 function reroll(s) {
@@ -3252,7 +3262,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteGivesAPBack, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -5057,7 +5067,8 @@ function tileDetails(t, sticky) {
     const upCard = state.shop.cards.find(c => c.type === 'upgrade' && c.key === t.key);
     const up = upCard ? G.upgradeCost(t, upCard.levels, upCard.costMult) : null;
     box.append(h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
-      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); ui.selectedTileId = null; hidePopup(true); renderAll(); } }, rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
+      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); else if (r.apBack) hint('That action point is back'); ui.selectedTileId = null; hidePopup(true); renderAll(); } },
+        G.deleteGivesAPBack(state, t) ? 'Delete (action point back)' : rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
       up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name} is $${fmt(up)} in the shop right now`) : null));
   }
   return box;
@@ -5391,7 +5402,7 @@ function startWeek() {
   if (!r.ok) { hint(r.reason); return; }
   ui.mode = 'playback'; ui.pb.result = r.result; ui.pb.T = 0; ui.pb.playing = true; ui.pb.last = performance.now(); ui.pb.flashed = false; ui.summaryShown = false; ui.heat = false;
   ui.selectedTileId = null; hidePopup(true);
-  renderTop(); renderInfo(); renderShop();
+  renderTop(); renderShop(); renderSide();
   if (ui.pb.speed === 'skip') finishPlayback();
 }
 function finishPlayback() {

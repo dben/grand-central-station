@@ -365,7 +365,8 @@ function tileDetails(t, sticky) {
     const upCard = state.shop.cards.find(c => c.type === 'upgrade' && c.key === t.key);
     const up = upCard ? G.upgradeCost(t, upCard.levels, upCard.costMult) : null;
     box.append(h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
-      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); ui.selectedTileId = null; hidePopup(true); renderAll(); } }, rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
+      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); else if (r.apBack) hint('That action point is back'); ui.selectedTileId = null; hidePopup(true); renderAll(); } },
+        G.deleteGivesAPBack(state, t) ? 'Delete (action point back)' : rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
       up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name} is $${fmt(up)} in the shop right now`) : null));
   }
   return box;
@@ -699,7 +700,7 @@ function startWeek() {
   if (!r.ok) { hint(r.reason); return; }
   ui.mode = 'playback'; ui.pb.result = r.result; ui.pb.T = 0; ui.pb.playing = true; ui.pb.last = performance.now(); ui.pb.flashed = false; ui.summaryShown = false; ui.heat = false;
   ui.selectedTileId = null; hidePopup(true);
-  renderTop(); renderInfo(); renderShop();
+  renderTop(); renderShop(); renderSide();
   if (ui.pb.speed === 'skip') finishPlayback();
 }
 function finishPlayback() {

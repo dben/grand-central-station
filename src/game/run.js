@@ -15,7 +15,7 @@ import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -74,7 +74,7 @@ export function milestoneForWeek(s, week) {
 }
 export function nextEventWeek(s) { const e = runRules(s).eventEvery; return isEventWeek(s) ? s.week + e : Math.ceil(s.week / e) * e; }
 export function gameRules(s) {
-  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
+  const r = { deleteRefund: CONFIG.economy.deleteRefund, deleteFreeAP: !CONFIG.economy.deleteCostsAP, deleteRefundsAP: CONFIG.economy.deleteRefundsAP, quotaMult: 1, apBonus: 0, costMult: 1 };
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
@@ -301,6 +301,7 @@ export function buyTile(s, card, x, y, rot) {
   if (!c.ok) return fail(c.reason);
   const tile = placeTile(s.board, card.key, x, y, rot, c, modeOf(s));
   tile.paid = cost;
+  tile.placedWeek = s.week;   // deleting it this same week hands the action point back
   s.money -= cost; s.ap -= 1;
   removeCard(s, card);
   log(s, `Placed ${tile.name} for $${cost}`);
@@ -346,17 +347,23 @@ export function upgradeTile(s, card, tileId) {
   return fail('That is not an upgrade card');
 }
 
+// Does pulling this tile hand its action point back? Only for one bought this
+// week: an older tile would be a free move rather than an undo.
+export function deleteGivesAPBack(s, t) { return !!t && !!gameRules(s).deleteRefundsAP && t.placedWeek === s.week; }
+
 export function deleteTile(s, tileId) {
   if (s.phase !== 'shop') return fail('You can only do that while building');
   const rules = gameRules(s);
   if (!rules.deleteFreeAP && s.ap < 1) return fail('No action points left this week');
+  const apBack = deleteGivesAPBack(s, s.board.tiles.find(t => t.id === tileId));
   const t = removeTile(s.board, tileId);
   if (!t) return fail('No tile there');
   if (!rules.deleteFreeAP) s.ap -= 1;
+  if (apBack) s.ap += 1;
   const refund = Math.round((t.paid || 0) * rules.deleteRefund);
   s.money += refund;
-  log(s, `Deleted ${t.name}${refund ? ` (refund $${refund})` : ''}`);
-  return { ok: true };
+  log(s, `Deleted ${t.name}${refund ? ` (refund $${refund})` : ''}${apBack ? ' (action point back)' : ''}`);
+  return { ok: true, apBack };
 }
 
 export function reroll(s) {

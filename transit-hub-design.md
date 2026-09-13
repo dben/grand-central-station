@@ -116,12 +116,12 @@ The tunnel layer is drawn faintly under the ground. Aiming an underground tile, 
 |---|---|---|
 | Buy and place a tile | 1 | tile cost (§5.3) |
 | Upgrade a tile | 1 | upgrade cost (§8.4) |
-| Delete a tile | **0** | 0 — the terrain claim stays |
+| Delete a tile | **0**, and a tile placed this week hands its point back | 0 — the terrain claim stays |
 | Reroll the shop | 1 | free |
 | Play a bonus card | 1 (a Rezoning Permit: 0) | card cost |
 | **Run Week** with AP left | — | pays an **early-finish bonus** for each unspent AP |
 
-Undoing a placement costs the money already spent, never the week: deleting a tile and playing a Rezoning Permit take no action points (`economy.deleteCostsAP`, `rezoningCostsAP`), so a tile that turned out to sit in everyone's way can be pulled and rebuilt in the same turn.
+Undoing a placement costs the money already spent, never the week: deleting a tile and playing a Rezoning Permit take no action points (`economy.deleteCostsAP`, `rezoningCostsAP`), and pulling a tile bought *this* week gives its action point back (`economy.deleteRefundsAP`), so a tile that turned out to sit in everyone's way can be pulled and rebuilt on the same move. The refund is the week's own placement only — the tile records the week it was bought — because handing a point back for last week's tiles would be a free move rather than an undo. The money is the brake: nothing is refunded, so churning a spot costs its full price every time. A Rezoning Permit's demolitions give nothing back — the permit is its own play rather than an undo.
 
 The early-finish bonus is `$10 + $5 × (week − 1)` per unspent point: $10 in week 1, $25 in week 4, $55 in week 10 and $85 in week 16 (`economy.earlyFinishBase`, `earlyFinishPerWeek`). It is paid the moment the week runs. It replaced the old *Wait* action, which paid interest on held cash and so rewarded hoarding.
 
@@ -1005,6 +1005,10 @@ Changes from the original design, with the reason for each. Original values are 
 - **Events:** Inspection restricts to 70% (was a full closure at ×1.4 quota); Strike falls back to a skeleton service on one-terrain boards.
 
 - **The week-1 fixed transport is the Parking Lot** (was the Bus Stop). It is $50 against $60, brings far fewer people (arr 1, batch 2 against 4 and 5) and carries a much larger flat (30 against 12), and it is walkable ground, so the opening tile shapes paths instead of blocking them. Measured on Terminal, week 1 only, 80 runs (`--seed0 1000` and `5000`, 40 each, A/B with `--set shop.week1.fixed.0=`): mean score/quota 1.43 and 1.52 with the Parking Lot against 1.41 and 1.53 with the Bus Stop, and 76 of 80 runs cleared week 1 against 79 of 80. Full runs, `--runs 8 --weeks 16`: `--seed0 1000` 5 of 8 (deaths in weeks 1, 1, 16) against 6 of 8 (weeks 10, 12), `--seed0 2000` 7 of 8 (week 8) against 8 of 8. So the mean opening is unchanged and the floor is a little lower: the Parking Lot's small batch leaves a bad roll of the other three cards with less to work with. The quota block was left alone; if week-1 deaths climb past a few percent, `quota.base` is the dial, not this tile.
+
+- **A delete hands its action point back, if the tile was bought this week** (§10.1). Deleting already cost nothing, but the point spent *placing* the tile stayed spent, so pulling a bad spot and rebuilding it took both of a Terminal week's two moves — which made the delete button nearly worthless in practice, and contradicted what this section already claimed the rule was. `buyTile` now records the week on the tile and `deleteTile` returns the point when it is the current one (`economy.deleteRefundsAP`). An older tile gives nothing back, since that would be a free move rather than an undo, and no money is ever refunded, so churning a spot is paid for every time. It does not move the balance: `autoplay.js --runs 8 --weeks 16` reads 4 of 8 surviving on `--seed0 1000` (deaths in weeks 1, 1, 8, 16, week-1 mean 1.35×) and 7 of 8 on `--seed0 2000` (week 8, mean 1.49×) — the §14.2 numbers to the digit, because the greedy bot deletes roughly once in 60 weeks and hardly ever a tile from the same week. `SAVE_VERSION` went to 8 for the new tile field.
+
+- **Redo Week leaves the screen the moment the week runs.** Starting a week redrew the top bar, the shop and the board but not the side panel, so the offer under the timeline stayed up through the playback, the summary and a lost run: a take-back that clicked to nothing, since `weekTouched` is false outside the shop phase. `startWeek` rebuilds the side panel now, which is what §10.1.1 always said happened.
 
 ---
 

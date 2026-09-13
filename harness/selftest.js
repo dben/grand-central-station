@@ -259,6 +259,19 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const t = placeTile(s.board, 'coffee', 5, 3, 0);
   s.ap = 0;
   ok(deleteTile(s, t.id).ok && s.board.tiles.length === 0, 'deleting a tile costs no AP');
+  // A tile bought this week hands its action point back when it is pulled, so a
+  // bad spot can be rebuilt with the same move. One from an earlier week does
+  // not: that would be a free move rather than an undo.
+  const u = createRun({ seed: 3 });
+  const card = u.shop.cards.find(c => c.type === 'tile');
+  let bought = null;
+  for (let y = 0; y < 12 && !bought; y++) for (let x = 0; x < 12 && !bought; x++) for (let r = 0; r < 4 && !bought; r++) { const res = buyTile(u, card, x, y, r); if (res.ok) bought = res.tile; }
+  const apAfterBuy = u.ap;
+  ok(bought && deleteTile(u, bought.id).apBack && u.ap === apAfterBuy + 1, 'deleting this week\'s own placement hands the action point back');
+  const old = placeTile(u.board, 'coffee', 5, 3, 0);
+  old.placedWeek = u.week - 1;
+  const apBefore = u.ap;
+  ok(!deleteTile(u, old.id).apBack && u.ap === apBefore, 'deleting an older tile does not');
 }
 
 // time-aware travellers: no detour they cannot make the platform from

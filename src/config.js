@@ -73,6 +73,9 @@ export const CONFIG = {
     // can be fixed and rebuilt in the same week.
     deleteCostsAP: false,
     rezoningCostsAP: false,
+    // ...and deleting a tile placed this week hands its action point back, so
+    // the rebuild is the same move over again rather than the week's other one.
+    deleteRefundsAP: true,
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
