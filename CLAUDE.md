@@ -89,11 +89,13 @@ A change that touches scoring, the economy or the catalogue isn't done until it'
 3. **Placement sensitivity.** Anything that touches paths, service rolls, stranding or the
    checkpoint must also keep the landscape smooth: run `sensitivity.mjs` on the bot boards
    (`--bot 1000 --week 9`, `--bot 1001 --week 9`, `--bot 1002 --week 12`, 24 seeds) and compare
-   the `REL` line with design doc §14.2. Watch three things: the *shift* and *rotate* jumps
-   (2–3.5% and 2–5% of the week's score now), the *noise* floor (about 1%; if it climbs, a roll
-   has stopped being keyed by traveller and question), and *stranded* (10–40%; the clock rule in
-   `sim.hurry` is what holds it there). A/B a rule on the same board with `--set` rather than by
-   editing config, and `--dump` a board if you need to probe it under another build.
+   the `REL` line with design doc §14.2. Board 1000 is a two-tile board — seed 1000 dies in
+   week 1 — so read 1001 and 1002 for the landscape, and 1000 as the small-board end of the
+   range. Watch three things: the *shift* and *rotate* jumps (1.7–4.1% and 2.0–4.7% of the
+   week's score now), the *noise* floor (about 1%; if it climbs, a roll has stopped being keyed
+   by traveller and question), and *stranded* (10–40%; the clock rule in `sim.hurry` is what
+   holds it there). A/B a rule on the same board with `--set` rather than by editing config, and
+   `--dump` a board if you need to probe it under another build.
 4. If survival or the score/quota band moves, adjust the `quota` block in `src/config.js`, not
    individual tiles.
 5. Record what you measured in the design doc.
