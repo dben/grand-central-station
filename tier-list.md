@@ -44,9 +44,9 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Cost | Median | Best | Per $100 | Cash | Why |
 |---|---|---|---|---|---|---|---|
-| Coupon Book | card | 30 | 48.1 | 48.1 | **160.4** | — | Twice the crowd for two weeks. Half fares barely dent it, because fares are a small share of the score. The outlier of the whole list. |
 | Pontoon Moorings ᴬ | transport | 39 | 23.3 | 31.1 | **59.8** | 119 | The Parking Lot's numbers at 60% of the price, because Waterfront discounts water by 40%. |
 | Charter Bus | card | 50 | 28.9 | 28.9 | **57.8** | — | 40 extra travellers who walk the chain you already built. Pure upside. |
+| Coupon Book | card | 60 | 24.1 | 24.1 | **40.1** | — | Twice the crowd for one week, at half fares and half takings. Worth most on a board with room to serve them: on the bot's week-9 boards it reads anywhere from +8★ to −16★. |
 | Water Bus Stop ᴬ | transport | 47 | 17.7 | 24.4 | **37.6** | 91 | The Bus Stop, discounted the same way. |
 | Parking Lot | transport | 65 | 21.9 | 30.9 | **33.6** | 116 | Two travellers every single tick, and you can walk over it. The reason it is the week-1 card. |
 | Hardstand ᴬ | transport | 68 | 21.3 | 39.5 | **31.4** | 109 | The Parking Lot airside, at full price. Its best spot is nearly twice its median — it wants to be on the walking line. |
@@ -174,10 +174,11 @@ quota the ordinance adds, on the bench it suited best.
   level-exclusive water and air tiles all sit at 19–60★ per $100, against 13–21 for good shops
   and 4–7 for the big late transports. That is the intended shape: a platform is what feeds the
   chain, and the chain is where the points are, so a cheap feeder beats an expensive one.
-- **Coupon Book is out of line** at 160★ per $100, five times the best tile and nearly three
-  times the next card. Twice the crowd for two weeks at half fares barely costs anything, because
-  fares are a small share of the score (`economy.fareScale` is 0.35). It is the first thing to
-  look at if cards ever get a pass.
+- **Coupon Book was the outlier and has been cut.** It read 160★ per $100 — five times the best
+  tile — as two weeks of double crowd for $30, and half fares cost almost nothing because fares
+  are a small share of the score (`economy.fareScale` is 0.35). It now runs one week at $60 and
+  halves shop takings as well as fares, which reads 40.1 and puts it under Charter Bus, the other
+  card that buys a crowd (§15).
 - **Action points are the real currency.** Overtime and Temp Staff grade S on nothing but the
   tiles they let you buy, and Staff Expansion is the best ordinance for the same reason.
 - **Utility tiles grade low and that is correct.** WiFi Hotspot, Moving Walkway, Waiting Area and
