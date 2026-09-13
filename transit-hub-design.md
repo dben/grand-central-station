@@ -166,7 +166,7 @@ These rules shape every hand:
 - **Lost** travellers — those with no route to their chosen platform — wander for the rest of the week and bank **nothing**.
 - **Travellers mind the clock** (§6.3): nobody takes a detour they can't get back from before the last call, so stranding is mostly late arrivals with a long walk, not shoppers who lost track of time.
 
-Playback speed is ½×, 1×, 2× or Skip. The simulation is deterministic for a given seed, so playback speed never changes the result.
+Playback speed is ½×, 1×, 2× or Skip. The simulation is deterministic for a given seed, so playback speed never changes the result. Progress through the week is read off the top bar's line (§12.3), not a counter.
 
 ---
 
@@ -700,6 +700,7 @@ Quotas are shown as stars, one per 1,000 points.
 - **Up to ten stars** are drawn as glyphs that light up as the week plays, with the current projection dimly pre-filling the ones it would reach.
 - **Past ten,** the row becomes a `7 / 13 ★` counter. The two styles are never shown together.
 - **The top bar is a gradient** from dark red through orange and green to lime as the projection passes the quota, and it turns gold at double. Hover it for the numbers.
+- **While the week runs** the bar drops the gradient and shows a progress line along its bottom edge instead of a tick counter: a bright playhead walks left to right with the ticks, the stretch behind it takes the same heat colour from the running score against the quota (dark red under half, orange short of it, green exactly at it, lime past it, gold at double), and the stretch ahead stays the bar's purple. The tick the score first meets the quota, the whole bar flashes white once.
 
 ### 12.4 Weekly summary
 

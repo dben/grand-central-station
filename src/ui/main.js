@@ -60,7 +60,7 @@ const meta = loadMeta();
 const ui = {
   mode: 'idle', card: null, rot: 0, hover: null, edgeHover: null, selectedTileId: null, hoverTileId: null,
   ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
-  pb: { result: null, T: 0, speed: 2, playing: false, last: 0 }, heat: false, summaryShown: false, started: false, barKey: null,
+  pb: { result: null, T: 0, speed: 2, playing: false, last: 0, flashed: false }, heat: false, summaryShown: false, started: false, barKey: null,
   starKey: null,
 };
 const renderer = new BoardRenderer($('board'));
@@ -166,11 +166,46 @@ function quotaHeat(ratio) {
   return Math.min(1, 0.6 + (ratio - 1) / 0.6 * 0.4);
 }
 
+// The same ramp as the bar's gradient, sampled for a single colour: dark red
+// below half the quota, orange short of it, green exactly at it, then lime and
+// gold for the weeks that run away with it.
+const HEAT_RAMP = [[0, [74, 6, 18]], [0.5, [184, 38, 26]], [0.8, [255, 138, 31]], [1, [47, 158, 58]], [1.4, [142, 230, 58]], [2, [245, 214, 122]]];
+function heatColor(ratio) {
+  let i = 0;
+  while (i < HEAT_RAMP.length - 2 && ratio > HEAT_RAMP[i + 1][0]) i++;
+  const [a, ca] = HEAT_RAMP[i], [b, cb] = HEAT_RAMP[i + 1];
+  const f = Math.max(0, Math.min(1, (ratio - a) / (b - a)));
+  return `rgb(${ca.map((v, k) => Math.round(v + (cb[k] - v) * f)).join(',')})`;
+}
+
+// The week's progress line, in place of a tick counter: it walks the bottom of
+// the bar as the ticks play, coloured behind the playhead by how the running
+// score stands against the quota. Meeting the quota flashes the bar white once.
+function renderWeekLine() {
+  const on = ui.mode === 'playback' && !!ui.pb.result;
+  $('topbar').classList.toggle('running', on);
+  $('wk-line').classList.toggle('hidden', !on);
+  if (!on) return;
+  const r = ui.pb.result, t = Math.min(r.ticks, Math.max(0, Math.floor(ui.pb.T)));
+  const score = r.scoreByTick ? r.scoreByTick[t] : r.score;
+  const ratio = score / Math.max(1, G.quotaFor(state));
+  const fill = $('wk-line-fill');
+  fill.style.width = (Math.min(1, ui.pb.T / Math.max(1, r.ticks)) * 100).toFixed(2) + '%';
+  fill.style.backgroundColor = heatColor(ratio);
+  if (ratio >= 1 && !ui.pb.flashed) { ui.pb.flashed = true; flashBar(); }
+}
+function flashBar() {
+  const b = $('topbar');
+  b.classList.remove('flash'); void b.offsetWidth;   // restart the animation
+  b.classList.add('flash');
+  setTimeout(() => b.classList.remove('flash'), 700);
+}
+
 function renderTop() {
   const quota = G.quotaFor(state);
   $('st-week').textContent = state.week + (G.isEventWeek(state) ? ' ⚡' : '');
   $('st-quota').textContent = fmt(quota);
-  ui.starKey = null; renderQuotaStars();
+  ui.starKey = null; renderQuotaStars(); renderWeekLine();
   const bar = $('topbar');
   if (state.phase !== 'shop') { bar.classList.remove('gold', 'tinted'); bar.title = ''; $('st-proj').textContent = ''; }
   else if (ui.projection) {
@@ -651,15 +686,14 @@ function startWeek() {
   cancelMode();
   const r = G.runWeek(state);
   if (!r.ok) { hint(r.reason); return; }
-  ui.mode = 'playback'; ui.pb.result = r.result; ui.pb.T = 0; ui.pb.playing = true; ui.pb.last = performance.now(); ui.summaryShown = false; ui.heat = false;
+  ui.mode = 'playback'; ui.pb.result = r.result; ui.pb.T = 0; ui.pb.playing = true; ui.pb.last = performance.now(); ui.pb.flashed = false; ui.summaryShown = false; ui.heat = false;
   ui.selectedTileId = null; hidePopup(true);
   renderTop(); renderInfo(); renderShop();
   if (ui.pb.speed === 'skip') finishPlayback();
 }
 function finishPlayback() {
   ui.pb.T = ui.pb.result.ticks; ui.pb.playing = false;
-  $('pb-tick').textContent = `tick ${ui.pb.result.ticks}/${ui.pb.result.ticks}`;
-  renderQuotaStars();   // Skip jumps straight here, so light the final stars
+  renderQuotaStars(); renderWeekLine();   // Skip jumps straight here, so light the final stars
   if (!ui.summaryShown) { ui.summaryShown = true; showSummary(); }
 }
 function setSpeed(s) {
@@ -674,8 +708,7 @@ function frame(now) {
       const dt = (now - ui.pb.last) / 1000;
       ui.pb.T += dt * TICKS_PER_SEC * (ui.pb.speed === 'skip' ? 1000 : ui.pb.speed);
       if (ui.pb.T >= ui.pb.result.ticks) finishPlayback();
-      $('pb-tick').textContent = `tick ${Math.min(ui.pb.result.ticks, Math.floor(ui.pb.T))}/${ui.pb.result.ticks}`;
-      renderQuotaStars();
+      renderQuotaStars(); renderWeekLine();
     }
     ui.pb.last = now;
     const m = mods();
