@@ -34,6 +34,10 @@ const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
 const H_UNIT = 0.62;
 // Edge strips, in grid units, laid outside the board.
 const EDGE_MARGIN = 0.85;
+// Outer radius of the bend a railway turns through where it meets the shore.
+// Two strip widths, so the turn sweeps a 2x2 square instead of pivoting on a
+// point: a quarter turn inside one strip width reads as a notch, not as track.
+const TURN_R = 2 * EDGE_MARGIN;
 // Room left under the board when framing it, in units of tile height.
 const FIT_ROOM = 0.30;
 // Height of a checkpoint fence panel, in grid units.
@@ -186,6 +190,17 @@ export class BoardRenderer {
     if (e === 'W') return [-m, 0, m, this.h];
     return [this.w, 0, m, this.h];
   }
+  // The part of an edge strip that is drawn straight. A railway that meets the
+  // sea gives up the last square at that end to the curve which turns it along
+  // the shore, so the two never overlap. Picking still uses the whole strip.
+  edgeStripRegion(board, e) {
+    const [gx, gy, gw, gh] = this.edgeRegion(e);
+    if (board.edges[e] !== 'rail') return [gx, gy, gw, gh];
+    const horiz = e === 'N' || e === 'S';
+    const lo = board.edges[horiz ? 'W' : 'N'] === 'water' ? TURN_R : 0;
+    const hi = board.edges[horiz ? 'E' : 'S'] === 'water' ? TURN_R : 0;
+    return horiz ? [gx + lo, gy, gw - lo - hi, gh] : [gx, gy + lo, gw, gh - lo - hi];
+  }
   // Screen positions used by tests and by "look at this" camera moves.
   cellCenterPx(x, y) { return this.project(x + 0.5, y + 0.5); }
   // How tall a tile of this key stands, in grid units; multiply by `hz` for px.
@@ -222,6 +237,26 @@ export class BoardRenderer {
       for (let i = 1; i < 4; i++) ctx.lineTo(p[i][0], p[i][1] - dz);
       ctx.closePath();
     }
+  }
+  // Arc of a circle in grid space, added to the current path. The grid -> screen
+  // map is linear, so a circle of grid points comes out as the ellipse the
+  // camera should see; 12 segments a quarter turn is past the eye's resolution.
+  arcPath(cx, cy, r, a0, a1, steps = 12, join = false) {
+    const ctx = this.ctx;
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + (a1 - a0) * i / steps;
+      const [sx, sy] = this.project(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      (i || join) ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy);
+    }
+  }
+  // The slice of ring between two radii, filled: a quarter of one is a band of
+  // constant width turning a corner.
+  fillRing(cx, cy, r0, r1, a0, a1, color) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    this.arcPath(cx, cy, r1, a0, a1);
+    this.arcPath(cx, cy, r0, a1, a0, 12, true);
+    ctx.closePath(); ctx.fillStyle = color; ctx.fill();
   }
   line(g0, g1, z = 0) {
     const dz = z * this.hz;
@@ -440,21 +475,45 @@ export class BoardRenderer {
   }
 
   // A railway can't run into the sea, so where one meets a water edge the track
-  // swings 90 degrees and carries on along the shore until it leaves the view.
+  // curves 90 degrees and carries on along the shore until it leaves the view.
+  // The bend is a quarter of a ring of the same width as the strip, and the
+  // strip gives up its last TURN_R to it (see edgeStripRegion), so the rails
+  // run off the straight track and round the curve at the same radius rather
+  // than mitring into a notch with a stub of track pointing at the water.
   drawShoreTurns(e, board, vb) {
-    const m = EDGE_MARGIN, horiz = e === 'N' || e === 'S';
+    const ctx = this.ctx, m = EDGE_MARGIN, R = TURN_R, horiz = e === 'N' || e === 'S';
     for (const n of horiz ? ['W', 'E'] : ['N', 'S']) {
       if (board.edges[n] !== 'water') continue;
-      // a band of land m wide hugging the shore, running away from the board
-      const band = horiz ? (n === 'W' ? 0 : this.w - m) : (n === 'N' ? 0 : this.h - m);
-      let r;
-      if (e === 'N') r = [band, vb.y0, m, -m - vb.y0];
-      else if (e === 'S') r = [band, this.h + m, m, vb.y1 - this.h - m];
-      else if (e === 'W') r = [vb.x0, band, -m - vb.x0, m];
-      else r = [this.w + m, band, vb.x1 - this.w - m, m];
-      if (r[2] <= 0 || r[3] <= 0) continue;
-      this.fillRegion(...r, TERRAIN_COLORS.rail);
-      this.edgeTexture(n, 'rail', ...r);   // the turn runs along n, so its sleepers do too
+      // The bend's centre sits R back from the board along the strip and R back
+      // from the sea across the band, so the arc at radius R - v runs straight
+      // into the rail that edgeTexture lays across a strip at the same v.
+      const eOut = e === 'N' ? -R : e === 'S' ? this.h + R : e === 'W' ? -R : this.w + R;
+      const nOut = n === 'N' ? R : n === 'S' ? this.h - R : n === 'W' ? R : this.w - R;
+      const [cx, cy] = horiz ? [nOut, eOut] : [eOut, nOut];
+      // The wedge opens from the strip the track leaves toward the shore it joins.
+      const aStrip = horiz ? (e === 'N' ? Math.PI / 2 : -Math.PI / 2) : (e === 'W' ? 0 : Math.PI);
+      const aShore = horiz ? (n === 'W' ? Math.PI : 0) : (n === 'N' ? -Math.PI / 2 : Math.PI / 2);
+      const a1 = aStrip + Math.atan2(Math.sin(aShore - aStrip), Math.cos(aShore - aStrip));
+      // the straight run along the shore, from the end of the bend outwards
+      const band = n === 'W' || n === 'N' ? 0 : (n === 'E' ? this.w : this.h) - m;
+      const r = e === 'N' ? [band, vb.y0, m, cy - vb.y0] : e === 'S' ? [band, cy, m, vb.y1 - cy]
+        : e === 'W' ? [vb.x0, band, cx - vb.x0, m] : [cx, band, vb.x1 - cx, m];
+      if (r[2] > 0 && r[3] > 0) {
+        this.fillRegion(...r, TERRAIN_COLORS.rail);
+        this.edgeTexture(n, 'rail', ...r);   // the run follows n, so its sleepers do too
+      }
+      this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail);
+      // the same two rails and sleepers edgeTexture lays, bent round the bend
+      ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045);
+      ctx.beginPath();
+      for (const v of [0.35, 0.65]) this.arcPath(cx, cy, R - v * m, aStrip, a1);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(0.6, this.k * 0.03); ctx.beginPath();
+      for (const f of [1 / 8, 3 / 8, 5 / 8, 7 / 8]) {
+        const a = aStrip + (a1 - aStrip) * f, c = Math.cos(a), sn = Math.sin(a);
+        this.line([cx + c * (R - 0.78 * m), cy + sn * (R - 0.78 * m)], [cx + c * (R - 0.22 * m), cy + sn * (R - 0.22 * m)]);
+      }
+      ctx.stroke();
     }
   }
 
@@ -488,8 +547,9 @@ export class BoardRenderer {
       const terrain = board.edges[e];
       // a water strip is just the near shore of the sea drawWorld painted
       if (terrain !== 'water') {
-        this.fillRegion(gx, gy, gw, gh, TERRAIN_COLORS[terrain] || '#333');
-        this.edgeTexture(e, terrain, gx, gy, gw, gh);
+        const strip = this.edgeStripRegion(board, e);
+        this.fillRegion(...strip, TERRAIN_COLORS[terrain] || '#333');
+        this.edgeTexture(e, terrain, ...strip);
       }
       // Subway portals: where a line leaves the board it dives under the strip
       // and the track carries on out of the view, the way a railway does. A
