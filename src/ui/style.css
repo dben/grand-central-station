@@ -33,6 +33,16 @@ small { color: var(--muted); }
 #topbar.gold { background: linear-gradient(100deg, #6b4f12 0%, #b8892a 30%, #f5d67a 50%, #b8892a 70%, #6b4f12 100%); background-size: 300% 100%; animation: glint 3s linear infinite; color: #1a1408; }
 #topbar.gold .lbl, #topbar.gold .title { color: #3a2c0a; text-shadow: none; }
 @keyframes glint { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+/* While the week plays the bar keeps its purple and a line walks it instead:
+   behind the playhead is the running score's heat colour (JS sets it from the
+   same ramp as the projection tint), ahead of it the bar's own purple. */
+#topbar.running::after { display: none; }
+#wk-line { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--panel2); }
+#wk-line-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #4a0612; transition: background-color 0.35s linear; }
+#wk-line-fill::after { content: ''; position: absolute; right: -1px; top: -3px; bottom: -3px; width: 3px; background: var(--text); box-shadow: 0 0 7px rgba(255,255,255,0.85); }
+/* hitting the quota mid-week: one white flash of the whole bar */
+#topbar.flash { animation: bar-flash 0.7s ease-out; }
+@keyframes bar-flash { 0% { background-color: #ffffff; } 45% { background-color: #fff8e7; } 100% { background-color: var(--panel); } }
 .val.blocky { font-family: "Courier New", Courier, ui-monospace, monospace; font-weight: 800; font-size: 24px; letter-spacing: 1px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color: transparent; color: var(--muted); background: transparent; box-shadow: none; }
@@ -242,7 +252,6 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .stars.numeric .glyph { font-size: 14px; }
   #playback { gap: 2px; }
   #playback button.speed { padding: 4px 6px; font-size: 14px; }
-  #pb-tick { display: none; }
   #btn-menu { padding: 6px 10px; }
   #side { max-height: 28vh; }
   #btn-run { padding: 6px; font-size: 14px; }

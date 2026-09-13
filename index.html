@@ -30,13 +30,14 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
     <span id="st-proj" class="sr-only"></span>
     <div class="spacer"></div>
     <div id="playback" class="hidden">
-      <span id="pb-tick" class="lbl">tick 0/20</span>
       <button data-speed="1" class="speed">½×</button>
       <button data-speed="2" class="speed active">1×</button>
       <button data-speed="4" class="speed">2×</button>
       <button data-speed="skip" class="speed">Skip</button>
     </div>
     <button id="btn-menu" title="Menu">☰</button>
+    <!-- the week's progress line: hidden until the week runs (see renderWeekLine) -->
+    <div id="wk-line" class="hidden"><div id="wk-line-fill"></div></div>
   </header>
 
   <main id="main">
