@@ -64,7 +64,12 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
-      <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
+      <!-- Nothing left to spend: the big go button, and on Standard the way
+           back out of the week under it -->
+      <div id="run-stack" class="hidden">
+        <button id="btn-run-big" class="primary">Run Week ▶</button>
+        <button id="btn-redo-big" class="hidden">↺ Redo Week</button>
+      </div>
       <!-- The shop floats over the bottom edge of the board. It folds itself
            away while the week runs, so the board gets the whole screen. -->
       <div id="shop">

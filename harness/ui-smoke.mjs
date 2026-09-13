@@ -74,6 +74,36 @@ try {
   check('the run records its difficulty', await page.evaluate(() => window.gcs.state.diffKey) === 'standard', await page.evaluate(() => window.gcs.state.diffKey));
   const cards1 = await page.locator('.card .name').allTextContents();
   check('week-1 shop has no upgrade token or bridge', !cards1.includes('Upgrade Token') && !cards1.some(c => c.includes('Bridge')), cards1.join(','));
+  // Redo Week: Standard only, offered from the first move of the week, and it
+  // puts the board, the cash and the action points back where they started.
+  const weekState = () => page.evaluate(() => { const s = window.gcs.state; return { money: s.money, ap: s.ap, tiles: s.board.tiles.length, cards: s.shop.cards.length }; });
+  const buyOne = () => page.evaluate(() => {
+    const s = window.gcs.state, G = window.gcs.G;
+    const card = s.shop.cards.find(c => c.type === 'tile' && G.cardCost(s, c) <= s.money);
+    if (!card) return false;
+    for (let y = 0; y < s.board.h; y++) for (let x = 0; x < s.board.w; x++) for (let r = 0; r < 4; r++)
+      if (G.placementCheck(s, card.key, x, y, r).ok && G.buyTile(s, card, x, y, r).ok) { window.gcs.refresh(); return true; }
+    return false;
+  });
+  const week1 = await weekState();
+  check('no redo offered before the first move of the week', await page.locator('#tl-redo').count() === 0);
+  await buyOne(); await page.waitForTimeout(120);
+  check('redo appears under the timeline on the first move', await page.locator('#tl-redo button').count() === 1);
+  check('but not over the board while there are points left', await page.locator('#run-stack:not(.hidden)').count() === 0);
+  while ((await weekState()).ap > 0 && await buyOne()) await page.waitForTimeout(60);
+  await page.waitForTimeout(150);
+  const spent = await weekState();
+  check('spending the last point puts Run Week on the board', await page.locator('#run-stack:not(.hidden)').count() === 1, JSON.stringify(spent));
+  check('with Redo Week under it', await page.locator('#btn-redo-big:not(.hidden)').count() === 1);
+  await page.locator('#btn-redo-big').click(); await page.waitForTimeout(150);
+  await page.locator('#btn-redo-confirm').click(); await page.waitForTimeout(250);
+  const back = await weekState();
+  check('redo puts the week back exactly as it started', JSON.stringify(back) === JSON.stringify(week1), `${JSON.stringify(spent)} -> ${JSON.stringify(back)} (was ${JSON.stringify(week1)})`);
+  check('and takes its own buttons away again', await page.locator('#tl-redo').count() === 0 && await page.locator('#btn-redo-big:not(.hidden)').count() === 0);
+  check('Hard never offers it', await page.evaluate(() => {
+    const G = window.gcs.G, h = G.createRun({ modeKey: 'terminal', diffKey: 'hard', seed: 1 });
+    return !h.weekStart && !G.weekTouched(h) && !G.redoWeek(h).ok;
+  }));
   // isometric camera: round-trip a few cells, then zoom/pan and round-trip again
   const roundTrip = () => page.evaluate(() => {
     const r = window.gcs.renderer; const bad = [];

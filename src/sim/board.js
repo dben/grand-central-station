@@ -88,6 +88,19 @@ export function edgesTouched(b, cells) {
   return [...out];
 }
 
+// Cells in the longest straight run of a footprint, in either axis: the L4's
+// stem of three, an I5's whole length. A broadside berth has to lay that run
+// along the edge.
+function longestRun(cells) {
+  let best = 0;
+  for (const axis of [0, 1]) {
+    const rows = new Map();
+    for (const c of cells) rows.set(c[1 - axis], (rows.get(c[1 - axis]) || 0) + 1);
+    for (const n of rows.values()) best = Math.max(best, n);
+  }
+  return best;
+}
+
 // Indices along an edge that a set of cells touches (x for N/S, y for E/W)
 function edgeIndices(b, cells, edge) {
   const out = [];
@@ -180,6 +193,11 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     // same edge, which pins a straight tile to the two orientations that lie flat.
     if (def.attach === 'edgewise') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `A ${def.name} has to lie flat along one edge — rotate it`; return res; }
+    }
+    // Broadside is the mirror of tip: a hull ties up along its long side, so the
+    // whole long arm sits on the water and only the short foot points inland.
+    if (def.attach === 'broadside') {
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== longestRun(cells)) { res.reason = `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; return res; }
     }
     const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
     for (const e of touched) {

@@ -281,8 +281,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
 /* Run Week lives in the shop tray under Reroll; its second line is the early-finish bonus */
 #btn-run { width: 100%; padding: 8px 10px; font-size: 16px; }
 #btn-run small { font-size: 12px; font-weight: 700; color: inherit; opacity: 0.85; }
-#btn-run-big { position: absolute; left: 50%; top: calc(50% - var(--tray-h, 0px) / 2); transform: translate(-50%, -50%); font-size: 24px; padding: 16px 32px; border-radius: 6px; box-shadow: 5px 5px 0 var(--ink); animation: breathe 1.6s ease-in-out infinite; z-index: 5; }
-@keyframes breathe { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.06); } }
+/* The stack is what sits in the middle of the board, so the redo button below
+   Run Week rides with it instead of needing its own placement. */
+#run-stack { position: absolute; left: 50%; top: calc(50% - var(--tray-h, 0px) / 2); transform: translate(-50%, -50%); z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#btn-run-big { font-size: 24px; padding: 16px 32px; border-radius: 6px; box-shadow: 5px 5px 0 var(--ink); animation: breathe 1.6s ease-in-out infinite; }
+#btn-redo-big { font-size: 15px; padding: 8px 16px; border-radius: 6px; box-shadow: 3px 3px 0 var(--ink); }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+/* Taking the week back: offered under the timeline from the first move on */
+#tl-redo { margin: 8px 0 2px; }
+#tl-redo button { width: 100%; font-size: 14px; }
+#tl-redo .desc { color: var(--muted); font-size: 12px; margin-top: 3px; }
 #timeline { position: relative; padding-left: 18px; }
 #timeline::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
 .tl-row { position: relative; padding: 6px 8px; margin: 3px 0; border-radius: 4px; font-size: 14px; }
@@ -355,7 +363,12 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
-      <button id="btn-run-big" class="primary hidden">Run Week ▶</button>
+      <!-- Nothing left to spend: the big go button, and on Standard the way
+           back out of the week under it -->
+      <div id="run-stack" class="hidden">
+        <button id="btn-run-big" class="primary">Run Week ▶</button>
+        <button id="btn-redo-big" class="hidden">↺ Redo Week</button>
+      </div>
       <!-- The shop floats over the bottom edge of the board. It folds itself
            away while the week runs, so the board gets the whole screen. -->
       <div id="shop">
@@ -647,6 +660,8 @@ const __m_src_data_tiles_js = (() => {
 // 'road' and 'water' tunnel straight to the nearest edge of that terrain.
 // attach: 'tip' = only the tip of the L (top of the stem) may touch the edge; the foot points inland.
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
+//         'broadside' = the long arm has to lie along one edge, with the short foot inland - the
+//           mirror of 'tip', for a hull that ties up side-on.
 // ============================================================================
 
 const TRANSPORTS = {
@@ -661,7 +676,7 @@ const TRANSPORTS = {
   train_station:   { name: 'Train Station',    shape: 'I4', terrain: 'rail',     attach: 'edgewise', tier: 2, arr: 6,  batch: 6 , dep: 6,  dwell: 2, mult: 1.1 , flat: 18,  cost: 180,  minWeek: 2 },
   express_train:   { name: 'Express Train',    shape: 'I5', terrain: 'rail',     attach: 'edgewise', tier: 3, arr: 8,  batch: 9 , dep: 8,  dwell: 3, mult: 1.16, flat: 24,  cost: 320, minWeek: 5 },
   monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 5 , dep: 5,  dwell: 2, mult: 1.14, flat: 21,  cost: 280, minWeek: 5 },
-  ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
+  ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    attach: 'broadside', tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
   water_taxi:      { name: 'Water Taxi',       shape: 'I2', terrain: 'water',     attach: 'edgewise', tier: 3, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.14, flat: 11,  cost: 150,  minWeek: 3 },
   marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
@@ -697,7 +712,7 @@ const AMENITIES = {
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
   wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },
   waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true, ground: true },
-  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway' },
+  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway', ground: true },
   art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 4, rate: 0.4 , mult: 3.45, flat: 160, cap: 10, dur: 4, revenue: 18, cost: 115, minWeek: 6 },
   lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 3, rate: 0.54, mult: 3.27, flat: 120, cap: 14, dur: 3, revenue: 20, cost: 133, minWeek: 7 },
   designer:       { name: 'Designer Shop',     shape: 'L4', tier: 4, radius: 3, rate: 0.36, mult: 4.15, flat: 180, cap: 8,  dur: 4, revenue: 35, cost: 168, minWeek: 8 },
@@ -958,9 +973,12 @@ const __m_src_data_difficulties_js = (() => {
 //   costMult        tile prices (upgrades, cards and bridges are unaffected)
 //   startMoneyMult  cash at week 1
 //   mods            simulator modifiers, merged like an ordinance's
+//   redo            the week can be taken back and replayed from the start. Only
+//                   Standard gets it: on Hard and Extreme a bad move is the game.
 const DIFFICULTIES = {
   standard: {
-    name: 'Standard', desc: 'The game as intended. Normal quota, normal prices, normal income.',
+    name: 'Standard', desc: 'The game as intended. Normal quota, normal prices, normal income, and you can take a week back before you run it.',
+    redo: true,
   },
   hard: {
     name: 'Hard', desc: 'The quota is 15% higher and climbs faster. Tiles cost more, you start with less cash, and everything pays 10% less.',
@@ -1244,6 +1262,19 @@ function edgesTouched(b, cells) {
   return [...out];
 }
 
+// Cells in the longest straight run of a footprint, in either axis: the L4's
+// stem of three, an I5's whole length. A broadside berth has to lay that run
+// along the edge.
+function longestRun(cells) {
+  let best = 0;
+  for (const axis of [0, 1]) {
+    const rows = new Map();
+    for (const c of cells) rows.set(c[1 - axis], (rows.get(c[1 - axis]) || 0) + 1);
+    for (const n of rows.values()) best = Math.max(best, n);
+  }
+  return best;
+}
+
 // Indices along an edge that a set of cells touches (x for N/S, y for E/W)
 function edgeIndices(b, cells, edge) {
   const out = [];
@@ -1336,6 +1367,11 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     // same edge, which pins a straight tile to the two orientations that lie flat.
     if (def.attach === 'edgewise') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `A ${def.name} has to lie flat along one edge — rotate it`; return res; }
+    }
+    // Broadside is the mirror of tip: a hull ties up along its long side, so the
+    // whole long arm sits on the water and only the short foot points inland.
+    if (def.attach === 'broadside') {
+      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== longestRun(cells)) { res.reason = `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; return res; }
     }
     const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
     for (const e of touched) {
@@ -2477,7 +2513,7 @@ const { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDepen
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2501,6 +2537,7 @@ function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } =
   };
   state.ap = apForRun(state);
   state.shop.cards = generateShop(state);
+  snapshotWeek(state);
   return state;
 }
 
@@ -3001,6 +3038,32 @@ function advanceWeek(s) {
     const pool = ORDINANCE_KEYS.filter(k => !s.ordinances.includes(k));
     s.pendingOrdinance = rng.shuffle(pool).slice(0, rules.ordinanceChoices);
   }
+  snapshotWeek(s);
+}
+
+// ------------------------------------------------------------ taking a week back
+// Standard lets a player unpick a week they have not run yet, so a misplaced
+// tile is a mistake rather than a dead run. The week is kept as the same JSON
+// the save uses: restoring it is one parse, and nothing in it can hold a live
+// reference back into the run.
+function stateJson(s) { const { weekStart, lastResult, ...rest } = s; return JSON.stringify(rest); }
+function snapshotWeek(s) { s.weekStart = difficultyOf(s).redo ? stateJson(s) : null; }
+// Has anything actually been done this week? That is what puts the button on
+// screen, so it appears on the first move and not before.
+function weekTouched(s) { return !!s.weekStart && s.phase === 'shop' && stateJson(s) !== s.weekStart; }
+function redoWeek(s) {
+  if (!s.weekStart) return fail('This difficulty does not let you take a week back');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
+  const snap = JSON.parse(s.weekStart);
+  // The state object is shared with the UI, so put the week back in place
+  // rather than handing out a new one. The snapshot itself stays: a second
+  // redo has to land on the same board as the first.
+  const weekStart = s.weekStart;
+  for (const k of Object.keys(s)) delete s[k];
+  Object.assign(s, snap, { weekStart, lastResult: null });
+  log(s, 'Took the week back to the start');
+  snapshotWeek(s);   // that log line aside, this is the start of the week again
+  return { ok: true };
 }
 
 // ----------------------------------------------------------- estimates
@@ -3059,7 +3122,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteTile, reroll, buyAP, playCard, rezoningVictims, setStrike, chooseOrdinance, computeMods, transportTerrainsOnBoard, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -3145,6 +3208,11 @@ const WORLD_LAND = '#3f9b3f';
 const BOARD_CELLS = ['#8d929c', '#848993'];   // concourse floor, a grey checker against the grass
 // Edge terrains that carry on past the board's corners into the distance.
 const RUNS = new Set(['road', 'rail']);
+// The airfield beyond an apron strip: two squares of runway, so a locked
+// airfield edge reads three deep. Dark tarmac, a painted kerb, white markings.
+// It stops at the board's corners, the way a real runway ends in a threshold,
+// rather than carrying on to the horizon across whatever the next side is.
+const RUNWAY = { depth: 2, fill: '#3b404d', border: '#79839a', paint: 'rgba(255,255,255,0.85)' };
 
 // Camera limits. `k` is the screen width of one cell's diamond in CSS pixels.
 const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
@@ -3171,11 +3239,11 @@ function colorForDef(d) {
 // amenities grow with tier so a built-up board reads as a skyline.
 function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
-  // Parks, waiting areas, hotspots and car parks (`ground: true`) are paving,
-  // not buildings: no height at all, so the crowd walks across the top of them
-  // rather than round a lip. drawTileFloor paints them under the travellers.
+  // Parks, waiting areas, hotspots, car parks and moving walkways
+  // (`ground: true`) are paving, not buildings: no height at all, so the crowd
+  // walks across the top of them rather than round a lip. drawTileFloor paints
+  // them under the travellers.
   if (d.ground) return 0;
-  if (d.special === 'walkway') return 0.08;
   // The rest of the walk-through tiles stand barely proud of the ground, so
   // travellers on them stay visible above the lip instead of vanishing inside.
   if (d.walkable) return 0.10;
@@ -3480,7 +3548,11 @@ class BoardRenderer {
       }
       ctx.stroke();
     }
+    // the runway lies outside the apron strip, so it goes down before the runs
+    for (const e of EDGES) if (board.edges[e] === 'apron') this.drawRunway(e);
     for (const e of EDGES) if (RUNS.has(board.edges[e])) this.drawRun(e, board, vb);
+    // A railway that runs into the sea turns the corner and follows the shore.
+    for (const e of EDGES) if (board.edges[e] === 'rail') this.drawShoreTurns(e, board, vb);
     // Where two runs cross just off a corner, lay a clean junction: asphalt
     // if either is a road, with any railway over it as a level crossing.
     for (const [a, b] of [['N', 'E'], ['E', 'S'], ['S', 'W'], ['W', 'N']]) {
@@ -3525,6 +3597,53 @@ class BoardRenderer {
     }
   }
 
+  // Two squares of runway beyond an apron strip, so a locked airfield edge is
+  // three deep: the grey apron the aircraft park on, then dark tarmac inside a
+  // painted kerb. The markings are the ones that say runway from the air - a
+  // stripe down each side, a dashed centre line, and piano keys at both ends.
+  drawRunway(e) {
+    const ctx = this.ctx, m = EDGE_MARGIN, d = RUNWAY.depth;
+    const along = e === 'N' || e === 'S' ? this.w : this.h;
+    const r = e === 'N' ? [0, -m - d, along, d] : e === 'S' ? [0, this.h + m, along, d]
+      : e === 'W' ? [-m - d, 0, d, along] : [this.w + m, 0, d, along];
+    this.fillRegion(...r, RUNWAY.fill);
+    this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
+    // u runs the length of the runway, v across it
+    const horiz = e === 'N' || e === 'S';
+    const at = (u, v) => horiz ? [r[0] + u, r[1] + v * d] : [r[0] + v * d, r[1] + u];
+    ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
+    ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
+    this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
+    for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
+    ctx.stroke();
+    if (this.k < 12) return;   // the keys turn to mush below that
+    ctx.lineWidth = Math.max(1, this.k * 0.055); ctx.beginPath();
+    for (const [u0, u1] of [[0.2, 1.0], [along - 1.0, along - 0.2]])
+      for (const v of [0.17, 0.29, 0.41, 0.59, 0.71, 0.83]) this.line(at(u0, v), at(u1, v));
+    ctx.stroke();
+  }
+
+  // A railway can't run into the sea, so where one meets a water edge the track
+  // swings 90 degrees and carries on along the shore until it leaves the view.
+  drawShoreTurns(e, board, vb) {
+    const m = EDGE_MARGIN, horiz = e === 'N' || e === 'S';
+    for (const n of horiz ? ['W', 'E'] : ['N', 'S']) {
+      if (board.edges[n] !== 'water') continue;
+      // a band of land m wide hugging the shore, running away from the board
+      const band = horiz ? (n === 'W' ? 0 : this.w - m) : (n === 'N' ? 0 : this.h - m);
+      let r;
+      if (e === 'N') r = [band, vb.y0, m, -m - vb.y0];
+      else if (e === 'S') r = [band, this.h + m, m, vb.y1 - this.h - m];
+      else if (e === 'W') r = [vb.x0, band, -m - vb.x0, m];
+      else r = [this.w + m, band, vb.x1 - this.w - m, m];
+      if (r[2] <= 0 || r[3] <= 0) continue;
+      this.fillRegion(...r, TERRAIN_COLORS.rail);
+      this.edgeTexture(n, 'rail', ...r);   // the turn runs along n, so its sleepers do too
+    }
+  }
+
   // Little wave crests on a screen-space lattice pinned to the world: they pan
   // with the camera but cost the same at every zoom level.
   drawWaves(seas) {
@@ -3549,7 +3668,7 @@ class BoardRenderer {
   }
 
   drawEdges(view, board) {
-    const ctx = this.ctx;
+    const ctx = this.ctx, vb = this.visibleGrid();
     for (const e of EDGES) {
       const [gx, gy, gw, gh] = this.edgeRegion(e);
       const terrain = board.edges[e];
@@ -3558,8 +3677,14 @@ class BoardRenderer {
         this.fillRegion(gx, gy, gw, gh, TERRAIN_COLORS[terrain] || '#333');
         this.edgeTexture(e, terrain, gx, gy, gw, gh);
       }
-      // subway portals: where a line leaves the board it dives under the strip
-      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) this.drawPortal(e, t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1], TUNNEL_COLORS.through);
+      // Subway portals: where a line leaves the board it dives under the strip
+      // and the track carries on out of the view, the way a railway does. A
+      // garage ramp or a submarine channel stops at the edge it tunnels to.
+      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) {
+        const idx = t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1];
+        this.drawTunnelRun(e, idx, TUNNEL_COLORS.through, vb);
+        this.drawPortal(e, idx, TUNNEL_COLORS.through);
+      }
       for (const idx of board.openSpans[e]) {
         ctx.fillStyle = 'rgba(200,160,100,0.85)';
         if (e === 'N' || e === 'S') this.regionPath(idx + 0.06, gy + 0.06, 0.88, gh - 0.12);
@@ -3786,6 +3911,18 @@ class BoardRenderer {
     this.fillRegion(...r, 'rgba(10,5,32,0.9)');
     this.regionPath(...r); ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.stroke();
   }
+  // A subway line past the edge of the board: the same cut and sleepers as the
+  // tunnel inside it, running out of the view so the line reads as going
+  // somewhere rather than stopping at the fence.
+  drawTunnelRun(e, idx, color, vb) {
+    const cells = [];
+    if (e === 'N') for (let y = Math.floor(vb.y0); y < 0; y++) cells.push([idx, y]);
+    else if (e === 'S') for (let y = this.h; y <= Math.ceil(vb.y1); y++) cells.push([idx, y]);
+    else if (e === 'W') for (let x = Math.floor(vb.x0); x < 0; x++) cells.push([x, idx]);
+    else for (let x = this.w; x <= Math.ceil(vb.x1); x++) cells.push([x, idx]);
+    this.drawTunnel(cells, e === 'N' || e === 'S' ? 'v' : 'h', color, 0.95);
+  }
+
   // The underground layer lifted over the buildings: every tunnel at full
   // strength, the pending one in the ghost's colour, and the ground dimmed so
   // the lines are what the eye lands on.
@@ -4525,7 +4662,9 @@ function renderTop() {
   const early = state.phase === 'shop' ? G.earlyFinishBonus(state) : 0;
   $('btn-run').innerHTML = `Run Week ▶${early ? `<br><small>+$${fmt(early)} early finish</small>` : ''}`;
   $('btn-run').title = early ? `Every action point you have not spent pays $${fmt(G.earlyFinishPerAP(state))} when the week runs` : '';
-  $('btn-run-big').classList.toggle('hidden', !(canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over')));
+  const showBig = canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over');
+  $('run-stack').classList.toggle('hidden', !showBig);
+  $('btn-redo-big').classList.toggle('hidden', !(showBig && G.weekTouched(state)));
   $('playback').classList.toggle('hidden', ui.mode !== 'playback');
   // wallet
   $('st-money').textContent = '$' + fmt(state.money);
@@ -4699,6 +4838,11 @@ function renderTimeline() {
     rows.push(row);
   }
   tl.append(...rows);
+  // The way back out of the week, from the first move on. Standard only, so a
+  // misplaced tile there is a mistake rather than the end of the run.
+  if (G.weekTouched(state)) tl.append(h('div', { id: 'tl-redo' },
+    h('button', { onclick: confirmRedoWeek }, '↺ Redo Week ' + state.week),
+    h('div', { class: 'desc' }, 'Put the board, the cash and the shop back to how week ' + state.week + ' started.')));
 }
 
 function renderSide() {
@@ -4950,6 +5094,28 @@ function confirmRunWeek() {
     h('div', { class: 'btnrow', style: 'justify-content:center' },
       h('button', { onclick: closeModal }, 'Not yet'),
       h('button', { id: 'btn-run-confirm', class: 'primary', onclick: () => { closeModal(); startWeek(); } }, 'Run Week ▶')));
+}
+
+// Taking the week back throws away everything bought this week, so it asks too.
+function confirmRedoWeek() {
+  if (!state || !G.weekTouched(state)) return;
+  openModal(
+    h('h2', {}, `Redo week ${state.week}?`),
+    h('p', {}, 'Every tile you placed, every card you played and every dollar you spent this week goes back to how the week started. Earlier weeks are untouched.'),
+    h('div', { class: 'btnrow', style: 'justify-content:center' },
+      h('button', { onclick: closeModal }, 'Keep it'),
+      h('button', {
+        id: 'btn-redo-confirm', class: 'danger', onclick: () => {
+          closeModal();
+          const r = G.redoWeek(state);
+          if (!r.ok) { hint(r.reason); return; }
+          cancelMode();
+          ui.selectedTileId = null; ui.hoverTileId = null; ui.heat = false; ui.projection = null;
+          hidePopup(true);
+          renderAll();
+          hint(`Week ${state.week} is back to how it started`);
+        },
+      }, '↺ Redo Week')));
 }
 
 function startWeek() {
@@ -5282,6 +5448,7 @@ function boot() {
     if (state) renderer.resize(state.board);
   };
   $('btn-run-big').addEventListener('click', confirmRunWeek);
+  $('btn-redo-big').addEventListener('click', confirmRedoWeek);
   $('btn-side-toggle').addEventListener('click', () => { layout.sideCollapsed = true; applyLayout(); });
   $('side-tab').addEventListener('click', () => { layout.sideCollapsed = false; applyLayout(); });
   applyLayout();

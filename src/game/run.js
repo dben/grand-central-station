@@ -15,7 +15,7 @@ import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -39,6 +39,7 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
   };
   state.ap = apForRun(state);
   state.shop.cards = generateShop(state);
+  snapshotWeek(state);
   return state;
 }
 
@@ -539,6 +540,32 @@ function advanceWeek(s) {
     const pool = ORDINANCE_KEYS.filter(k => !s.ordinances.includes(k));
     s.pendingOrdinance = rng.shuffle(pool).slice(0, rules.ordinanceChoices);
   }
+  snapshotWeek(s);
+}
+
+// ------------------------------------------------------------ taking a week back
+// Standard lets a player unpick a week they have not run yet, so a misplaced
+// tile is a mistake rather than a dead run. The week is kept as the same JSON
+// the save uses: restoring it is one parse, and nothing in it can hold a live
+// reference back into the run.
+function stateJson(s) { const { weekStart, lastResult, ...rest } = s; return JSON.stringify(rest); }
+function snapshotWeek(s) { s.weekStart = difficultyOf(s).redo ? stateJson(s) : null; }
+// Has anything actually been done this week? That is what puts the button on
+// screen, so it appears on the first move and not before.
+export function weekTouched(s) { return !!s.weekStart && s.phase === 'shop' && stateJson(s) !== s.weekStart; }
+export function redoWeek(s) {
+  if (!s.weekStart) return fail('This difficulty does not let you take a week back');
+  if (s.phase !== 'shop') return fail('You can only do that while building');
+  const snap = JSON.parse(s.weekStart);
+  // The state object is shared with the UI, so put the week back in place
+  // rather than handing out a new one. The snapshot itself stays: a second
+  // redo has to land on the same board as the first.
+  const weekStart = s.weekStart;
+  for (const k of Object.keys(s)) delete s[k];
+  Object.assign(s, snap, { weekStart, lastResult: null });
+  log(s, 'Took the week back to the start');
+  snapshotWeek(s);   // that log line aside, this is the start of the week again
+  return { ok: true };
 }
 
 // ----------------------------------------------------------- estimates

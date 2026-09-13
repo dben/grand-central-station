@@ -9,9 +9,12 @@
 //   costMult        tile prices (upgrades, cards and bridges are unaffected)
 //   startMoneyMult  cash at week 1
 //   mods            simulator modifiers, merged like an ordinance's
+//   redo            the week can be taken back and replayed from the start. Only
+//                   Standard gets it: on Hard and Extreme a bad move is the game.
 export const DIFFICULTIES = {
   standard: {
-    name: 'Standard', desc: 'The game as intended. Normal quota, normal prices, normal income.',
+    name: 'Standard', desc: 'The game as intended. Normal quota, normal prices, normal income, and you can take a week back before you run it.',
+    redo: true,
   },
   hard: {
     name: 'Hard', desc: 'The quota is 15% higher and climbs faster. Tiles cost more, you start with less cash, and everything pays 10% less.',

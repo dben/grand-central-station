@@ -1,7 +1,7 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool } from '../src/game/run.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
 import { CONFIG } from '../src/config.js';
@@ -55,6 +55,15 @@ const jet = [0, 1, 2, 3].map(r => checkPlacement(b, 'jetway', 4, 0, r));
 ok(jet.filter(c => c.ok).length === 2 && jet.filter(c => !c.ok).every(c => c.reason.includes('tip')), 'jetway: exactly 2 of 4 orientations attach to the north edge by the tip');
 ok(jet.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 1), 'jetway: legal orientations touch the edge with one cell');
 ok(!checkPlacement(b, 'jetway', 0, 0, 0).ok, 'jetway: corner placement touching two edges is rejected');
+
+// broadside: the ferry is the jetway's mirror image - the long side of the L on
+// the water, the short foot inland
+b = createBoard(12, 12);
+const fer = SHAPES.L4.map((_, r) => checkPlacement(b, 'ferry', 4, 0, r));
+ok(fer.filter(c => c.ok).length === 2, 'ferry: exactly 2 of the L4 orientations lie along the north edge');
+ok(fer.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 3), 'ferry: a legal berth puts its long side of three on the edge');
+ok(fer.filter(c => !c.ok).every(c => c.reason.includes('side-on')), 'ferry: every other orientation is turned away side-on');
+ok(!checkPlacement(b, 'ferry', 0, 0, 1).ok, 'ferry: corner placement touching two edges is rejected');
 ok(shapeTransform('L3', 0).rot === 0 && shapeTransform('L3', 0).mirror === 0 && shapeTransform('L4', 4).mirror === 1 && SHAPES.L4.length === 8, 'shape transforms recorded');
 ok(shapeTransform('L3', 3).rot === 3 && shapeTransform('L3', 3, [1, 0]).mirror === 1 && shapeTransform('L3', 3, [1, 0]).rot === 0, 'L3 orientation 3: mirror variant chosen when the tip must sit top-right');
 ok(shapeTransform('I2', 1, [0, 1]).tip[1] === 1 && shapeTransform('I2', 1, [0, 0]).tip[1] === 0, 'I2 vertical: either end can be the tip');
@@ -232,6 +241,16 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const cost = s => tileCost(s, tileDef('coffee'));
   ok(cost(hard) > cost(std) && cost(ext) > cost(hard) && ext.money < hard.money && hard.money < std.money, 'tiles cost more and the opening cash is smaller');
   ok(computeMods(ext).revenueMult < computeMods(hard).revenueMult && computeMods(hard).revenueMult < 1, 'and amenity revenue is squeezed');
+  // Redo Week is Standard's one non-numeric lever: it puts the week back
+  ok(!!std.weekStart && !hard.weekStart && !ext.weekStart, 'only Standard keeps the week it started');
+  ok(!weekTouched(std), 'and nothing to take back before the first move');
+  const card = std.shop.cards.find(c => c.type === 'tile');
+  let bought = false;
+  for (let y = 0; y < 12 && !bought; y++) for (let x = 0; x < 12 && !bought; x++) for (let r = 0; r < 4 && !bought; r++) bought = buyTile(std, card, x, y, r).ok;
+  ok(bought && weekTouched(std), 'buying a tile is something to take back');
+  const spent = { money: std.money, ap: std.ap, tiles: std.board.tiles.length, cards: std.shop.cards.length };
+  ok(redoWeek(std).ok && std.money === 220 && std.ap === 2 && std.board.tiles.length === 0 && std.shop.cards.length === spent.cards + 1, 'redo puts the board, the cash, the points and the shop back');
+  ok(!weekTouched(std) && !redoWeek(hard).ok, 'and then has nothing left to take back, while Hard never could');
 }
 
 // undoing a placement costs money, not the week
