@@ -321,7 +321,39 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   // the crime wave reaches the simulator as a modifier, not as a mode
   const sh = createRun({ modeKey: 'sky_harbour', seed: 5 });
   sh.week = 5;
-  ok(computeMods(sh).pickpocketsFromWeek === 5 && computeMods(tm).pickpocketsFromWeek === 7, 'and travels to the sim in the mods');
+  ok(computeMods(sh).pickpocketsFromWeek === 3 && computeMods(tm).pickpocketsFromWeek === 7, 'and travels to the sim in the mods');
+  ok(computeMods(sh).pickpocketRamp === 6 && computeMods(tm).pickpocketRamp === null, 'along with how gently it ramps up, where the level says');
+}
+
+// `reach`: a small boat or light aircraft sits inland on a jetty or a taxiway,
+// the way a bus stop sits inland on a driveway.
+{
+  const wb = createBoard(12, 12, { W: 'water', S: 'water', N: 'rail', E: 'rail' });
+  let c = checkPlacement(wb, 'water_bus', 3, 6, 0);
+  ok(c.ok && c.driveway.length === 3 && c.driveway.every(d => d[2] === 'water'), 'a water bus 3 squares inland runs a jetty out to the water');
+  ok(!checkPlacement(wb, 'water_bus', 5, 6, 0).ok, 'but not 4 squares inland, which is past its reach');
+  ok(checkPlacement(wb, 'water_bus', 0, 6, 0).ok, 'and it still berths straight on the shore');
+  placeTile(wb, 'water_bus', 3, 6, 0, c);
+  ok(wb.driveways.length === 3 && !checkPlacement(wb, 'vending', 1, 6, 0).ok, 'the jetty is reserved ground like a driveway');
+  placeTile(wb, 'newsstand', 1, 3, 0);
+  ok(!checkPlacement(wb, 'water_bus', 3, 3, 0).ok, 'and a building standing in the way blocks the run to the shore');
+  // a green edge is claimed and locked, exactly as a berth on the shore would
+  const ab = createBoard(12, 12);
+  c = checkPlacement(ab, 'prop_stand', 4, 2, 0);
+  ok(c.ok && c.claims.length === 1 && c.claims[0].lock && c.claims[0].terrain === 'apron', 'a prop stand inland claims and locks the edge its taxiway reaches');
+  removeTile(wb, wb.tiles.find(t => t.key === 'water_bus').id);
+  ok(wb.driveways.length === 0, 'and pulling the tile takes its jetty with it');
+}
+
+// a tile with a `modes` list is that level's own stock
+{
+  const wf = createRun({ modeKey: 'waterfront', seed: 3 });
+  const tm2 = createRun({ modeKey: 'terminal', seed: 3 });
+  const keysOf = r => { r.week = 4; return shopPool(r).map(d => d.key); };
+  ok(keysOf(wf).includes('water_bus') && !keysOf(tm2).includes('water_bus'), 'Waterfront sells the water bus and Terminal never does');
+  ok(!keysOf(wf).includes('prop_stand') && keysOf(createRun({ modeKey: 'sky_harbour', seed: 3 })).includes('prop_stand'), 'and the prop stand belongs to Sky Harbour alone');
+  ok(createRun({ modeKey: 'waterfront', seed: 3 }).shop.cards.some(c => c.key === 'pontoon'), 'the level deals its own opening hand');
+  ok(keysOf(tm2).includes('pocket_park') && keysOf(wf).includes('pocket_park'), 'a tile with no level list is sold everywhere');
 }
 
 // a level can start with tiles already built
@@ -331,11 +363,12 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(sh.edges.N === 'apron' && sh.edges.S === 'road', 'Sky Harbour starts with an airfield on one side and a road on the other');
   ok(sh.tiles.length === 1 && gate, 'and one tile already built: the checkpoint');
   const line = checkpointLine(gate.cells);
-  ok(line.axis === 'h' && line.line === 6 && line.gap === 6, 'whose fence runs across the middle of the board');
+  ok(line.axis === 'h' && line.line === 8 && line.gap === 3, 'whose fence runs across the middle of the board');
   const f = checkpointFences(sh);
   const crossings = [];
-  for (let x = 0; x < sh.w; x++) if (!fenceBlocked(f, sh.w, sh.h, x, 5, 0, 1)) crossings.push(x);
-  ok(crossings.length === 1 && crossings[0] === 6, 'and the booth is the only way from the airfield to the road');
+  for (let x = 0; x < sh.w; x++) if (!fenceBlocked(f, sh.w, sh.h, x, 7, 0, 1)) crossings.push(x);
+  ok(crossings.length === 1 && crossings[0] === 3, 'and the booth is the only way from the airfield to the road');
+  ok(sh.w === 8 && sh.h === 16 && line.line === sh.h / 2, 'the fence halves a 8x16 board into an airside and a landside 8x8');
   ok(createRun({ modeKey: 'sky_harbour', seed: 7 }).board.tiles.length === 1, 'a new run is handed that board');
   ok(startBoard(MODES.terminal).tiles.length === 0, 'a level with no starting tiles begins empty');
 }

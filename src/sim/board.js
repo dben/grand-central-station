@@ -154,6 +154,31 @@ function lineClear(occ, b, line, allowDriveway) {
   return true;
 }
 
+// A lock-terrain tile sitting back from its shore: the same straight, clear run
+// a road tile uses, but aimed only at edges that are already its terrain (or
+// still open, which it then claims and locks). The run becomes a driveway,
+// tagged with the terrain so the renderer paints a jetty rather than tarmac.
+function reachInland(b, occ, res, def, cells, terrain) {
+  const options = [];
+  for (const e of EDGES) {
+    const line = lineToEdge(b, cells, e);
+    if (line.dist > def.reach) continue;
+    const cur = b.edges[e];
+    const open = spanOpen(b, e, line.edgeIndex);   // a bridge has opened this span to any terrain
+    if (!(cur === terrain || open || (cur === 'green' && !(terrain === 'water' && tunnelEnds(b).has(e))))) continue;
+    if (!lineClear(occ, b, line.cells, true)) continue;
+    options.push({ e, line, cur });
+  }
+  if (!options.length) { res.reason = `No way out to the ${terrain}: a ${def.name} needs a clear straight run of ${def.reach} squares or less to it`; return res; }
+  options.sort((a, c) => a.line.dist - c.line.dist);
+  const pick = options[0];
+  res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]).map(([lx, ly]) => [lx, ly, terrain]);
+  if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain, lock: true });
+  res.attachEdges = [pick.e];
+  res.ok = true;
+  return res;
+}
+
 /**
  * Check whether a tile can be placed. Returns a result object:
  * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}] }
@@ -185,6 +210,10 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
 
   if (LOCK_TERRAINS.has(terrain)) {
     const touched = edgesTouched(b, cells);
+    // A small boat or a prop plane does not need a berth on the shore itself:
+    // `reach` lets it sit that many squares inland, with a jetty or a taxiway
+    // run out to the water or the apron, exactly the way a road tile does.
+    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain);
     if (touched.length === 0) { res.reason = `A ${def.name} has to touch the edge of the board`; return res; }
     if (def.attach === 'tip') {
       if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; return res; }

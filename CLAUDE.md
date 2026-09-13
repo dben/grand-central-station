@@ -22,6 +22,8 @@ node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota cur
 node harness/marginal.mjs --week 6 --seeds 12      # value of one more of each tile, in stars/$100
 node harness/run.js harness/layouts/amenity_chain.json --seeds 50 --week 4
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24   # placement landscape of a tile: best/median/negative share, jump per cell or rotation
+node harness/tierboard.mjs --weeks 4,9,13 --seeds 10          # rank tiles, cards and ordinances on fixed benches -> tier-list.md
+node harness/tierlist.mjs --weeks 5,9,13 --seeds 6            # the same ranking, on the bot's own boards
 ```
 
 `autoplay.js`, `run.js` and `sensitivity.mjs` take `--set sim.hurry.enabled=false` (any `CONFIG`
@@ -50,7 +52,9 @@ harness/bot.mjs      the greedy bot as a module (playRun); autoplay and sensitiv
 - **Numbers live in data, not code.** Balance values go in `src/config.js` or `src/data/*.js`;
   the simulator and UI read them. Special tile behaviour is keyed by `special` (`wifi`,
   `walkway`, `waiting`, `gate`, `security`, `green`, `loop`, `anytier`) and walk-through floor
-  by `walkable: true`.
+  by `walkable: true`. A tile with `modes: ['waterfront']` is sold on those levels only
+  (`soldOnLevel`), and a lock-terrain tile with `reach: N` may sit N squares inland with a
+  jetty or taxiway run out, the way a road tile runs a driveway.
 - **transit-hub-design.md is a living document** - use it for current state goals, but update it 
   as the user adjusts. 
 - **The simulator must stay deterministic and DOM-free.** It runs in Node for the harness and in
@@ -93,3 +97,7 @@ A change that touches scoring, the economy or the catalogue isn't done until it'
 4. If survival or the score/quota band moves, adjust the `quota` block in `src/config.js`, not
    individual tiles.
 5. Record what you measured in the design doc.
+
+`tier-list.md` is the graded output of `tierboard.mjs`. Regenerate and re-grade it whenever the
+catalogue, the cards or the ordinances change; the letters are quantiles of the ranking, so they
+only mean anything against a current run.

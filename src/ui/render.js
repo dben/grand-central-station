@@ -294,7 +294,7 @@ export class BoardRenderer {
     const ghost = view.ghost ? this.ghostInfo(view.ghost, board) : null;
     if (ghost) {
       for (const [x, y] of ghost.lane) this.hatchCell(x, y, 'rgba(31,207,176,0.85)');
-      for (const [x, y] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, 'rgba(120,120,130,0.5)');
+      for (const [x, y, terr] of ghost.driveway) this.fillRegion(x + 0.12, y + 0.12, 0.76, 0.76, terr === 'water' ? 'rgba(30,160,234,0.5)' : 'rgba(120,120,130,0.5)');
     }
     // Aiming or inspecting an underground tile lifts the whole tunnel layer
     // above the buildings, so a crossing is visible even where a tile covers it.
@@ -577,9 +577,11 @@ export class BoardRenderer {
   drawGround(view, board) {
     const ctx = this.ctx;
     for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
-    for (const [x, y] of board.driveways) {
-      this.fillCell(x, y, TERRAIN_COLORS.road);
-      this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, '#6d7288');
+    // A driveway carries the terrain it runs out to, so a boat's jetty and a
+    // prop plane's taxiway read as water and tarmac rather than as tarmac road.
+    for (const [x, y, terr] of board.driveways) {
+      this.fillCell(x, y, TERRAIN_COLORS[terr || 'road']);
+      this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, terr === 'water' ? 'rgba(255,255,255,0.55)' : '#6d7288');
     }
     for (const [x, y] of board.lanes) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);

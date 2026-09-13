@@ -3,7 +3,7 @@
 // ============================================================================
 import { CONFIG, starsOf, starTarget } from '../config.js';
 import * as G from '../game/run.js';
-import { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES } from '../data/tiles.js';
+import { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES, terrainDesc } from '../data/tiles.js';
 import { MODES, MODE_KEYS } from '../data/modes.js';
 import { DIFFICULTIES, DIFFICULTY_KEYS } from '../data/difficulties.js';
 import { ORDINANCES } from '../data/ordinances.js';
@@ -238,7 +238,7 @@ function cardBody(card) {
   if (card.type === 'tile' || card.type === 'bridge') {
     const def = tileDef(card.key);
     box.append(describeTile(null, def));
-    if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, TERRAIN_INFO[def.terrain].desc));
+    if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, terrainDesc(def)));
   } else box.append(h('div', { class: 'desc' }, card.desc || ''));
   if (card.type === 'upgrade' || card.type === 'named_upgrade') box.append(h('div', { class: 'desc' }, 'Every level draws more people to a shop, serves more of them at once, and pays more. A transport brings bigger crowds and gives a bigger boost when they board.'));
   if (card.type === 'upgrade') {

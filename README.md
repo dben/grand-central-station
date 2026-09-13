@@ -61,15 +61,17 @@ By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.
 Standard also lets you take a week back. Until you run it, **Redo Week** puts the board, the cash,
 the points and the shop back to how the week started. Hard and Extreme don't: a move made is kept.
 
+`tier-list.md` grades every tile, card and ordinance by what it is actually worth to buy.
+
 ## Modes
 
 | Mode | Board | Twist | Unlocks |
 |---|---|---|---|
 | Terminal | 12×12 | The baseline | — |
 | Junction | 9×9 | 3 AP a week, a fast clock, and the quota climbs faster | Reach week 8 |
-| Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1 | Reach week 8 |
+| Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1, starting with a water bus and a pontoon sold nowhere else | Reach week 8 |
 | Metroplex | 16×16 | Room to spread out and the big tiles early; tiles cost 25% more | Reach week 12 |
-| Sky Harbour | 12×12 | An airfield, a road and a security checkpoint already across the middle. No rail or water; aircraft early | Reach week 12 |
+| Sky Harbour | 8×16 | A long board: airfield at one end, road at the other, a security checkpoint across the waist. No rail or water; light aircraft from week 1 and pickpockets from week 3 | Reach week 12 |
 | Terminus | 12×12 | 1 AP a week, an 8-card shop, and cheap overtime from week 8 | Reach week 16 |
 
 ## Controls
