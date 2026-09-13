@@ -5,7 +5,7 @@
 // ============================================================================
 import { CONFIG } from '../config.js';
 import { tileDef } from '../data/tiles.js';
-import { hashString, mix, gaussOf, weightedOf } from './rng.js';
+import { hashString, mix, gaussOf } from './rng.js';
 import { buildWalkMap, checkpointFences, fenceBlocked } from './board.js';
 
 const INF = 1e9;
@@ -133,6 +133,23 @@ export function simulateWeek(board, opts = {}) {
   const PHI = 0.6180339887498949;
   const strat = !!cfg.sim.stratify;
   const roll = (a, tag, x = 0, y = 0) => strat ? (a.ord * PHI + mix(seedHash, a.grp, tag, x, y)) % 1 : mix(seedHash, a.h, tag, x, y);
+  // Picking one of several options, without the list itself entering into it.
+  // Every option rolls its own die, keyed by what the option *is* (a tile, a
+  // cell), and the smallest -ln(u)/w wins: the exponential race draws from the
+  // same distribution as a cumulative sweep over the weights, but a new option
+  // appearing only takes the travellers who prefer it. A sweep rescales every
+  // traveller's roll by the new total, so one extra platform re-rolled half the
+  // crowd's destination, wherever on the board it stood (design doc 15).
+  const race = (a, tag, opts, keyOf, weightOf = null, k2 = 0) => {
+    let best = null, bestScore = Infinity;
+    for (const o of opts) {
+      const w = weightOf ? weightOf(o) : 1;
+      if (w <= 0) continue;
+      const s = -Math.log(roll(a, tag, keyOf(o), k2) || 1e-12) / w;
+      if (s < bestScore) { bestScore = s; best = o; }
+    }
+    return best;
+  };
   const TICKS = mods.ticks || cfg.sim.ticks;
   const SPAWN_TICKS = mods.spawnTicks || cfg.sim.spawnTicks;
   const W = board.w, H = board.h, N = W * H;
@@ -332,7 +349,8 @@ export function simulateWeek(board, opts = {}) {
     const cands = [];
     for (let b = 0; b < transports.length; b++) if (transports[b].doors.length) cands.push(b);
     if (!cands.length) return originIdx;
-    return weightedOf(roll(a, R.dest), cands, b => destWeight(t, transports[b].e.tier));
+    const pick = race(a, R.dest, cands, b => transports[b].tile.id, b => destWeight(t, transports[b].e.tier));
+    return pick === null ? originIdx : pick;
   }
 
   function snapCell(fx, fy, f) {
@@ -400,7 +418,7 @@ export function simulateWeek(board, opts = {}) {
     let destIdx = originIdx, gateOpen = false, lost = false, pool = tr.live;
     if (kind === 'pickpocket') {
       const opts = transports.filter((_, i) => i !== originIdx && reach[originIdx][i]).map(t => t.idx).concat(originIdx);
-      destIdx = transports.length > 1 ? opts[Math.floor(roll(slot, R.pdest) * opts.length)] : originIdx;
+      destIdx = transports.length > 1 ? race(slot, R.pdest, opts, i => transports[i].tile.id) : originIdx;
       gateOpen = true;
     } else {
       destIdx = chooseDest(slot, originIdx, tier);
@@ -414,7 +432,7 @@ export function simulateWeek(board, opts = {}) {
         if (!pool.length) { pool = tr.live; lost = true; }
       }
     }
-    const door = pool[Math.floor(roll(slot, R.door) * pool.length)];
+    const door = pool.length === 1 ? pool[0] : race(slot, R.door, pool, d => d[1] * W + d[0]);
     // An open checkpoint lets anyone through to whatever is on the far side;
     // a filtering one only admits travellers whose platform is over there.
     if (kind !== 'pickpocket') gateOpen = hasGate && (!ckCfg.filter || (!lost && reachFrom(door, destIdx) === 2));
@@ -465,7 +483,7 @@ export function simulateWeek(board, opts = {}) {
       else if (Math.abs(d - bestD) < 1e-6 && d < here) cands.push(ni);
     }
     if (!cands.length) return false;
-    const ni = cands.length === 1 ? cands[0] : cands[Math.floor(roll(a, R.walk, i) * cands.length)];
+    const ni = cands.length === 1 ? cands[0] : race(a, R.walk, cands, c => c, null, i);
     a.x = ni % W; a.y = (ni - a.x) / W;
     heat[ni] += 1;
     // clearing a checkpoint booth: a chain link and extra stop budget, once per traveller
@@ -642,7 +660,7 @@ export function simulateWeek(board, opts = {}) {
           spawnAgent('T' + tr.tile.id, tr.spawned++, tr.idx, tierOf, 'roll');
         }
       }
-      const pickTr = slot => activeTransports[Math.floor(roll(slot, R.tr) * activeTransports.length)].idx;
+      const pickTr = slot => race(slot, R.tr, activeTransports, tr => tr.tile.id).idx;
       const slotOf = (grp, ord) => ({ grp: hashString(grp), ord, h: hashString(grp + ':' + ord) });
       let xi = 0;
       for (const ex of extraQueue) { if (ex.tick === t) spawnAgent('X', xi, pickTr(slotOf('X', xi)), ex.tier, 'traveller'); xi++; }
@@ -744,7 +762,7 @@ export function simulateWeek(board, opts = {}) {
     if (!tg) {
       // choose a new destination
       const opts = transports.filter((_, i) => reach[a.origin][i] || i === a.origin);
-      a.dest = opts[Math.floor(roll(a, R.pdest, ++a.legs) * opts.length)].idx;
+      a.dest = race(a, R.pdest, opts, o => o.tile.id, null, ++a.legs).idx;
       a.targets = [{ kind: 'dest', idx: a.dest }]; a.ti = 0;
     }
     const f = targetField(a, a.targets[a.ti]);

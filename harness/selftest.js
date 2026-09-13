@@ -282,6 +282,18 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const near = a => a.frames.some(([x, y]) => Math.max(Math.abs(x - 0), Math.abs(y - 11)) <= 2);
   const untouched = far.agents.filter(a => !near(a));
   ok(untouched.length > far.agents.length / 2 && far.agents.length === far2.agents.length && untouched.every(a => { const c = far2.agents[a.id]; return a.key === c.key && a.value === c.value && a.outcome === c.outcome; }), 'a new tile changes nobody\'s week but those who pass it');
+  // and the same holds for a transport, which brings its own crowd and adds
+  // itself to everyone's list of places to go. Only the travellers who choose
+  // it may change: a pick keyed by tile (`race`) leaves the rest where they
+  // were, where a sweep down the weights re-rolled half the board (design doc 15).
+  const stop = placeTile(lay, 'bike_rental', 0, 10, 0);
+  const far3 = simulateWeek(lay, { seed: 1, week: 6 });
+  const by = new Map(far3.agents.map(a => [a.key, a]));
+  const passes = a => a.frames.some(([x, y]) => Math.max(Math.abs(x - 0), Math.abs(y - 10)) <= 3);
+  const others = far2.agents.filter(a => by.has(a.key) && !passes(a) && !passes(by.get(a.key)) && by.get(a.key).dest !== stop.id);
+  ok(far3.agents.length > far2.agents.length, 'a new platform brings its own travellers');
+  ok(others.length > 0 && others.every(a => { const c = by.get(a.key); return a.value === c.value && a.outcome === c.outcome; }),
+    `a new platform leaves the travellers who neither pass it nor board it alone (${others.length} of them)`);
 }
 
 // the fence stops at a building: it spans the open floor the booth stands in
