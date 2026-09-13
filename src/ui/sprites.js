@@ -31,20 +31,25 @@ export const SPRITES_FLOOR = {
 };
 
 const cache = new Map();
-function load(manifest, prefix, onLoad) {
+// Every image is loaded once, but several views may be waiting on it: the board
+// and each of the start screen's mode thumbnails all want a repaint when one
+// lands, so listeners are kept per module rather than per load() call.
+const listeners = new Set();
+function load(manifest, prefix) {
   for (const [key, url] of Object.entries(manifest)) {
     const id = prefix + key;
     if (cache.has(id) || !url) continue;
     const img = new Image();
     cache.set(id, { img, ok: false });
-    img.onload = () => { cache.get(id).ok = img.naturalWidth > 0; if (onLoad) onLoad(key); };
+    img.onload = () => { cache.get(id).ok = img.naturalWidth > 0; for (const fn of listeners) fn(key); };
     img.onerror = () => { cache.get(id).ok = false; };
     img.src = url;
   }
 }
 export function loadSprites(onLoad) {
-  load(SPRITES, '', onLoad);
-  load(SPRITES_FLOOR, 'floor:', onLoad);
+  if (onLoad) listeners.add(onLoad);
+  load(SPRITES, '');
+  load(SPRITES_FLOOR, 'floor:');
 }
 function get(id) {
   const e = cache.get(id);

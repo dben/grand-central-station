@@ -24,6 +24,18 @@ const runWeekUI = async (page) => {
   if (await page.locator('#btn-run-confirm').count()) await page.locator('#btn-run-confirm').click();
   await page.waitForTimeout(200);
 };
+// The start screen shows one level at a time, so turn the carousel to it by its
+// dot and then press its own Start button. Returns false for a locked level,
+// which has no button.
+const pickMode = async (name) => {
+  const dot = page.locator(`.car-dot[aria-label="${name}"]`);
+  if (!await dot.count()) return false;
+  await dot.click(); await page.waitForTimeout(320);   // the track slides
+  const go = page.locator('.mode-track > .mode button.primary', { hasText: `Start ${name}` });
+  if (!await go.count()) return false;
+  await go.click();
+  return true;
+};
 const cellPx = async (x, y) => page.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
 const edgePx = async (e) => page.evaluate((e) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.edgeCenterPx(e); return [b.left + px, b.top + py]; }, e);
 // auto-play weeks through the API (greedy-lite) up to a target week. For each
@@ -69,7 +81,19 @@ try {
   check('picking a difficulty selects it', await page.locator('.diff.on .name').first().innerText() === 'Hard', await page.locator('.diff.on .name').first().innerText());
   await page.locator('.diff', { hasText: 'Standard' }).first().click();
   await page.waitForTimeout(100);
-  await page.locator('.mode', { hasText: 'Terminal' }).first().click();
+  // every level is in the ring, locked ones greyed out rather than dropped
+  check('the carousel lists every level', await page.locator('.mode-track > .mode').count() === 6, String(await page.locator('.mode-track > .mode').count()));
+  const onStage = () => page.evaluate(() => {
+    const s = document.querySelector('.mode-stage').getBoundingClientRect();
+    return [...document.querySelectorAll('.mode-track > .mode')].filter(c => { const r = c.getBoundingClientRect(); return r.right > s.left + 4 && r.left < s.right - 4; }).length;
+  });
+  check('and shows one of them at a time', await onStage() === 1, `${await onStage()} on the stage`);
+  check('with a board still on each', await page.locator('.mode-shot').count() === 6);
+  await page.locator('.car-dot[aria-label="Junction"]').click(); await page.waitForTimeout(320);
+  check('a dot turns the carousel', (await page.locator('.car-dot.on').getAttribute('aria-label')) === 'Junction');
+  check('and a level not yet earned stays in it, greyed', await page.locator('.mode-track > .mode.locked', { hasText: 'Junction' }).count() === 1);
+  await page.screenshot({ path: SP + '/shot0_start.png' });
+  check('starting a level from the carousel', await pickMode('Terminal'));
   await page.waitForTimeout(300);
   check('the run records its difficulty', await page.evaluate(() => window.gcs.state.diffKey) === 'standard', await page.evaluate(() => window.gcs.state.diffKey));
   const cards1 = await page.locator('.card .name').allTextContents();
@@ -132,7 +156,7 @@ try {
   await page.waitForTimeout(300);
   const ordText = await page.locator('#modal-box h2').innerText().catch(() => '');
   check('ordinance modal at week 5', ordText.includes('ordinance'), ordText);
-  await page.locator('#modal .mode').first().click();
+  await page.locator('#modal .choices .mode').first().click();
   await page.waitForTimeout(200);
   check('ordinance chosen', (await page.locator('#rules-body').innerText()).length > 20, await page.locator('#rules-body').innerText());
   await page.screenshot({ path: SP + '/shot6_week5.png' });
@@ -265,7 +289,7 @@ try {
   // fresh run for the win path: cheat to week 16 with a strong board
   await page.evaluate(() => { const s = window.gcs.state; if (s.phase === 'lost') { window.gcs.showStart(); } });
   await page.waitForTimeout(200);
-  if (await page.locator('#modal .mode').count()) { await page.locator('#modal .mode', { hasText: 'Terminal' }).first().click(); await page.waitForTimeout(300); }
+  if (await page.locator('#modal .mode-track').count()) { await pickMode('Terminal'); await page.waitForTimeout(300); }
   await page.evaluate(() => { const s = window.gcs.state; window.gcs.G.chooseOrdinance; s.money = 99999; });
   ff = await fastForward(15);
   results.push(`info: cheat-money auto-play reached week ${ff.week || ff.died}`);
@@ -287,7 +311,7 @@ try {
     await page.locator('#modal button.primary').click(); await page.waitForTimeout(300);
     check('endless continues to week 17', (await page.locator('#st-week').innerText()).startsWith('17'), await page.locator('#st-week').innerText());
     await page.evaluate(() => { const s = window.gcs.state; if (s.pendingOrdinance) window.gcs.G.chooseOrdinance(s, s.pendingOrdinance[0]); s.week = 60; s.ap = 0; window.gcs.refresh(); });
-    if (await page.locator('#modal:not(.hidden)').count()) { await page.locator('#modal .mode').first().click().catch(() => {}); await page.waitForTimeout(200); }
+    if (await page.locator('#modal:not(.hidden)').count()) { await page.locator('#modal .choices .mode').first().click().catch(() => {}); await page.waitForTimeout(200); }
     await runWeekUI(page);
     if (!(await page.locator('#modal:not(.hidden)').count())) await page.locator('#playback button[data-speed="skip"]').click(); await page.waitForTimeout(400);
     await page.locator('#modal button.primary').click(); await page.waitForTimeout(300);
@@ -300,7 +324,7 @@ try {
   check('no resume offered after a lost run', (await page.locator('#modal button', { hasText: 'Resume' }).count()) === 0);
   const unlocked = await page.locator('.mode:not(.locked)').count();
   check('modes unlocked by best week', unlocked >= 2, `${unlocked} modes unlocked`);
-  await page.locator('.mode:not(.locked)', { hasText: 'Junction' }).first().click().catch(() => {});
+  await pickMode('Junction');
   await page.waitForTimeout(300);
   const dims = await page.evaluate(() => [window.gcs.state.board.w, window.gcs.state.modeKey]);
   check('junction 9x9 run started', dims[0] === 9, JSON.stringify(dims));
@@ -367,7 +391,7 @@ try {
   // that board before the player has touched anything.
   await page.evaluate(() => window.gcs.showStart());
   await page.waitForTimeout(300);
-  await page.locator('.mode:not(.locked)', { hasText: 'Sky Harbour' }).first().click().catch(() => {});
+  await pickMode('Sky Harbour');
   await page.waitForTimeout(400);
   const sky = await page.evaluate(() => {
     const s = window.gcs.state;

@@ -178,12 +178,37 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #modal-box { background: var(--panel); border: 3px solid var(--blue); border-radius: 6px; padding: 18px 20px; max-width: 900px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 6px 6px 0 var(--ink); }
 #modal-box h2 { margin: 0 0 10px; font-family: "Press Start 2P", ui-monospace, monospace; font-size: 16px; line-height: 1.5; text-shadow: 2px 2px 0 var(--ink); }
 #modal-box h3 { margin: 14px 0 6px; font-size: 14px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
-.modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .mode { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 10px; cursor: pointer; box-shadow: var(--hard); }
 .mode:hover { border-color: var(--accent); }
 .mode.locked { opacity: 0.5; cursor: default; }
 .mode .name { font-weight: 700; margin-bottom: 4px; color: var(--accent); }
 .mode .desc { font-size: 14px; color: var(--muted); }
+
+/* The level carousel: arrows either side of a window one card wide, dots under
+   it. Every level is in the track, locked ones greyed but still turned to. */
+.mode-carousel { display: flex; align-items: stretch; gap: 8px; }
+.car-nav { flex: 0 0 auto; width: 38px; padding: 0; font-size: 26px; line-height: 1; color: var(--accent); }
+.mode-stage { flex: 1 1 auto; min-width: 0; overflow: hidden; border: 2px solid var(--line); border-radius: 4px; box-shadow: var(--hard); background: var(--panel2); }
+.mode-track { display: flex; height: 100%; transition: transform 0.25s ease-out; touch-action: pan-y; }
+/* the window draws the frame, so the card inside it goes flat and full width */
+.mode-track > .mode { flex: 0 0 100%; width: 100%; padding: 0; border: none; border-radius: 0; box-shadow: none; background: none; cursor: default; display: flex; flex-direction: column; }
+.mode-track > .mode:hover { border: none; }
+.mode-shot { display: block; width: 100%; height: 210px; background: var(--land); border-bottom: 2px solid var(--line); }
+/* a locked level still shows the board it opens on, drained of colour rather
+   than dimmed to nothing: the point of the ring is to see what is coming */
+.mode-track > .mode.locked { opacity: 1; }
+.mode-track > .mode.locked .mode-shot { filter: grayscale(1) brightness(0.9); }
+.mode-track > .mode.locked .mode-body { opacity: 0.6; }
+.mode-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.mode-body .name { display: flex; align-items: baseline; gap: 8px; font-size: 18px; margin: 0; }
+.mode-body .name .size { color: var(--muted); font-size: 14px; font-weight: 400; }
+.mode-body .desc { margin: 0; }
+.mode-rec { font-size: 14px; color: var(--muted); }
+.mode-body .lock { font-size: 14px; color: var(--accent); }
+.car-dots { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.car-dot { width: 12px; height: 12px; padding: 0; border-radius: 50%; background: var(--line); box-shadow: none; }
+.car-dot.on { background: var(--accent); border-color: var(--accent); }
+.car-dot.locked { opacity: 0.45; }
 .diffs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 6px; }
 .diff { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; box-shadow: var(--hard); }
 .diff:hover { border-color: var(--accent); }
@@ -267,6 +292,10 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
   #card-bar-desc { max-height: 22vh; }
+  /* the carousel keeps its arrows, but the shot gives up height to the text */
+  .car-nav { width: 30px; font-size: 22px; }
+  .mode-shot { height: 140px; }
+  .mode-carousel { gap: 4px; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }
@@ -3159,20 +3188,25 @@ const SPRITES_FLOOR = {
 };
 
 const cache = new Map();
-function load(manifest, prefix, onLoad) {
+// Every image is loaded once, but several views may be waiting on it: the board
+// and each of the start screen's mode thumbnails all want a repaint when one
+// lands, so listeners are kept per module rather than per load() call.
+const listeners = new Set();
+function load(manifest, prefix) {
   for (const [key, url] of Object.entries(manifest)) {
     const id = prefix + key;
     if (cache.has(id) || !url) continue;
     const img = new Image();
     cache.set(id, { img, ok: false });
-    img.onload = () => { cache.get(id).ok = img.naturalWidth > 0; if (onLoad) onLoad(key); };
+    img.onload = () => { cache.get(id).ok = img.naturalWidth > 0; for (const fn of listeners) fn(key); };
     img.onerror = () => { cache.get(id).ok = false; };
     img.src = url;
   }
 }
 function loadSprites(onLoad) {
-  load(SPRITES, '', onLoad);
-  load(SPRITES_FLOOR, 'floor:', onLoad);
+  if (onLoad) listeners.add(onLoad);
+  load(SPRITES, '');
+  load(SPRITES_FLOOR, 'floor:');
 }
 function get(id) {
   const e = cache.get(id);
@@ -4302,7 +4336,30 @@ function mixHex(a, b, t) {
   return `rgb(${mix(16)},${mix(8)},${mix(0)})`;
 }
 
-return { colorForDef, BoardRenderer };
+// A still of a board on its own canvas, framed to whatever box CSS gives the
+// element. The start screen draws each level's opening board with it, so the
+// thumbnails are the real renderer rather than a set of screenshots to keep in
+// step. Returns the repaint, for the caller to call when the box resizes.
+function boardStill(canvas, board) {
+  const r = new BoardRenderer(canvas);
+  r.w = board.w; r.h = board.h;
+  const paint = () => {
+    const rect = canvas.getBoundingClientRect();
+    const viewW = Math.round(rect.width), viewH = Math.round(rect.height);
+    if (viewW < 40 || viewH < 30) return;   // not laid out yet
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(viewW * dpr); canvas.height = Math.round(viewH * dpr);
+    r.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    r.viewW = viewW; r.viewH = viewH;
+    r.fit();
+    r.panY = 0;   // fit leaves room under the board for the shop tray; a still has none
+    r.draw({ board });
+  };
+  loadSprites(paint);   // tile art arrives after the first paint; repaint when it does
+  return paint;
+}
+
+return { colorForDef, BoardRenderer, boardStill };
 })();
 // ---- src/ui/boardinput.js
 const __m_src_ui_boardinput_js = (() => {
@@ -4542,9 +4599,9 @@ const { DIFFICULTIES, DIFFICULTY_KEYS } = __m_src_data_difficulties_js;
 const { ORDINANCES } = __m_src_data_ordinances_js;
 const { CARDS } = __m_src_data_cards_js;
 const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
-const { cutOffTransports } = __m_src_sim_board_js;
+const { cutOffTransports, startBoard } = __m_src_sim_board_js;
 const { effTransport, effAmenity } = __m_src_sim_sim_js;
-const { BoardRenderer, colorForDef } = __m_src_ui_render_js;
+const { BoardRenderer, boardStill, colorForDef } = __m_src_ui_render_js;
 const { attachBoardInput } = __m_src_ui_boardinput_js;
 const { playTrack, isMuted, setMuted } = __m_src_ui_audio_js;
 const { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } = __m_src_ui_meta_js;
@@ -4583,12 +4640,22 @@ function fillStars(el, total, filled = 0, preview = 0, showEarned = true) {
   if (filled > total) el.append(h('span', { class: 'over' }, `+${fmt(filled - total)}`));
   return el;
 }
-// compact "5★" badge for the timeline, tables and summaries
-function starNum(n, cls = '') { return h('span', { class: 'starnum ' + cls }, fmt(n), h('i', {}, '★')); }
+// compact "5★" badge for the timeline, tables and summaries. Takes a number or
+// an already-formatted figure from starsFig.
+function starNum(n, cls = '') { return h('span', { class: 'starnum ' + cls }, typeof n === 'number' ? fmt(n) : n, h('i', {}, '★')); }
+// A record shown in stars. Whole stars once there are ten of them, one decimal
+// below that, so one traveller's chain does not read as "0★". Rounds down like
+// starsOf, so a figure never flatters the score behind it.
+function starsFig(points) {
+  const s = points / CONFIG.quota.starUnit;
+  return s >= 10 ? fmt(Math.floor(s)) : (Math.floor(s * 10) / 10).toFixed(1);
+}
 
 // ------------------------------------------------------------------ state
 let state = null;
 const meta = loadMeta();
+// Set while the start screen is up, so the arrow keys page its level carousel.
+let startPager = null;
 const ui = {
   mode: 'idle', card: null, rot: 0, hover: null, edgeHover: null, selectedTileId: null, hoverTileId: null,
   ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
@@ -5128,6 +5195,7 @@ function onBoardTap(cell, edge, e) {
 
 function onKey(e) {
   if (e.target.closest && e.target.closest('input, select, textarea')) return; // typing a seed is not a shortcut
+  if (startPager && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); startPager(e.key === 'ArrowRight' ? 1 : -1); return; }
   if (e.key === 'm' || e.key === 'M') toggleMusic();
   if (e.key === 'Escape') { hidePopup(true); if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
   if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
@@ -5271,7 +5339,7 @@ function upgradeLevels(card) {
 // ------------------------------------------------------------ modals
 // null children are optional parts left out (append would print them as "null")
 function openModal(...children) { const box = $('modal-box'); box.className = ''; box.innerHTML = ''; box.append(...children.filter(c => c != null)); $('modal').classList.remove('hidden'); }
-function closeModal() { $('modal').classList.add('hidden'); }
+function closeModal() { $('modal').classList.add('hidden'); startPager = null; }
 
 function drawHistoryChart(canvas, history) {
   const dpr = window.devicePixelRatio || 1;
@@ -5415,9 +5483,24 @@ function showWin() {
 function showGameOver() {
   const last = state.history[state.history.length - 1];
   openModal(h('h2', { class: 'bad' }, 'The run is over'), h('p', {}, `Week ${last.week}: you earned ${fmt(starsOf(last.score))}★ and needed ${fmt(starTarget(last.quota))}★.`),
-    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Best week score'), h('span', {}, fmt(state.records.bestScore)), h('span', { class: 'k' }, 'Best traveller'), h('span', {}, fmt(state.records.bestTraveller)), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed)),
+    h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Best week'), h('span', {}, starNum(starsFig(state.records.bestScore))), h('span', { class: 'k' }, 'Best traveller'), h('span', {}, starNum(starsFig(state.records.bestTraveller))), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed)),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.mode = 'over'; } }, 'Look at the board'), h('button', { class: 'primary', onclick: () => { closeModal(); showStart(); } }, 'New run')));
 }
+
+// The start screen's board thumbnails: one canvas per level, kept between
+// visits so each renderer (and its sprite listener) is built once. `paint`
+// reframes the still to whatever box CSS has given the canvas.
+const modeShots = new Map();
+function modeShot(key) {
+  let s = modeShots.get(key);
+  if (!s) { const canvas = h('canvas', { class: 'mode-shot' }); s = { canvas, paint: boardStill(canvas, startBoard(MODES[key])) }; modeShots.set(key, s); }
+  return s;
+}
+// A still frames itself to the box CSS gives it, so all six repaint whenever the
+// carousel changes width. One observer, moved to each new stage, so opening the
+// start screen again does not stack them up.
+const repaintModeShots = () => { for (const k of MODE_KEYS) modeShot(k).paint(); };
+const modeShotWatch = new ResizeObserver(repaintModeShots);
 
 function showStart() {
   playTrack(null);
@@ -5430,36 +5513,77 @@ function showStart() {
   // each mode are the ones for the difficulty currently selected.
   let diffKey = meta.lastDiff && DIFFICULTIES[meta.lastDiff] ? meta.lastDiff : 'standard';
   const diffs = h('div', { class: 'diffs' });
-  const modes = h('div', { class: 'modes' });
-  function paintModes() {
-    modes.innerHTML = '';
-    for (const k of MODE_KEYS) {
-      const m = MODES[k];
-      const unlocked = meta.bestWeek >= m.unlockWeek;
-      const rec = meta.byMode[k + ':' + diffKey];
-      modes.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked'), onclick: unlocked ? () => newRun(k, diffKey, seedInput.value.trim()) : null },
-        h('div', { class: 'name' }, m.name, unlocked ? '' : ` \u{1F512} reach week ${m.unlockWeek} to unlock`), h('div', { class: 'desc' }, m.desc), rec ? h('div', { class: 'desc', style: 'margin-top:4px' }, `Best on ${DIFFICULTIES[diffKey].name}: week ${rec.bestWeek}, ${fmt(rec.bestScore)} pts`) : null));
-    }
+
+  // Levels are a carousel: one at a time, with a still of the board it opens
+  // on, so the thing being chosen is the board rather than a paragraph. Locked
+  // levels stay in the ring, greyed out, so the run to come is visible from the
+  // start. The cards are built once and the track slides between them.
+  let at = Math.max(0, MODE_KEYS.indexOf(meta.lastMode));
+  const track = h('div', { class: 'mode-track' });
+  const dots = h('div', { class: 'car-dots' });
+  const stage = h('div', { class: 'mode-stage' }, track);
+  const repaintRec = [];
+  for (const k of MODE_KEYS) {
+    const m = MODES[k];
+    const unlocked = meta.bestWeek >= m.unlockWeek;
+    const rec = h('div', { class: 'mode-rec' });
+    repaintRec.push(() => {
+      const r = meta.byMode[k + ':' + diffKey];
+      rec.innerHTML = '';
+      if (r) rec.append(`Best on ${DIFFICULTIES[diffKey].name}: week ${r.bestWeek}, `, starNum(starsFig(r.bestScore)));
+      else rec.append(`No run on ${DIFFICULTIES[diffKey].name} yet.`);
+    });
+    track.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked') },
+      modeShot(k).canvas,
+      h('div', { class: 'mode-body' },
+        h('div', { class: 'name' }, m.name, h('span', { class: 'size' }, `${m.w}×${m.h}`)),
+        h('div', { class: 'desc' }, m.desc),
+        rec,
+        unlocked
+          ? h('button', { class: 'primary', onclick: () => newRun(k, diffKey, seedInput.value.trim()) }, `Start ${m.name} ▶`)
+          : h('div', { class: 'lock' }, `\u{1F512} Reach week ${m.unlockWeek} in any level to unlock`))));
   }
+  function goTo(i) {
+    at = ((i % MODE_KEYS.length) + MODE_KEYS.length) % MODE_KEYS.length;
+    track.style.transform = `translateX(${-at * 100}%)`;
+    dots.innerHTML = '';
+    MODE_KEYS.forEach((k, j) => dots.append(h('button', {
+      class: 'car-dot' + (j === at ? ' on' : '') + (meta.bestWeek >= MODES[k].unlockWeek ? '' : ' locked'),
+      title: MODES[k].name, 'aria-label': MODES[k].name, onclick: () => goTo(j),
+    })));
+  }
+  startPager = d => goTo(at + d);
+  // a drag across the board still pages it, the way the rest of the game reads touch
+  let dragFrom = null;
+  stage.addEventListener('pointerdown', e => { dragFrom = e.clientX; });
+  stage.addEventListener('pointerup', e => { if (dragFrom != null && Math.abs(e.clientX - dragFrom) > 40) goTo(at + (e.clientX < dragFrom ? 1 : -1)); dragFrom = null; });
+  const carousel = h('div', { class: 'mode-carousel' },
+    h('button', { class: 'car-nav', title: 'Previous level (←)', 'aria-label': 'Previous level', onclick: () => goTo(at - 1) }, '\u2039'),
+    stage,
+    h('button', { class: 'car-nav', title: 'Next level (→)', 'aria-label': 'Next level', onclick: () => goTo(at + 1) }, '\u203A'));
+
   function paintDiffs() {
     diffs.innerHTML = '';
     for (const k of DIFFICULTY_KEYS) {
       const d = DIFFICULTIES[k];
-      diffs.append(h('div', { class: 'diff' + (k === diffKey ? ' on' : ''), onclick: () => { diffKey = k; meta.lastDiff = k; saveMeta(meta); paintDiffs(); paintModes(); } },
+      diffs.append(h('div', { class: 'diff' + (k === diffKey ? ' on' : ''), onclick: () => { diffKey = k; meta.lastDiff = k; saveMeta(meta); paintDiffs(); repaintRec.forEach(f => f()); } },
         h('div', { class: 'name' }, d.name), h('div', { class: 'desc' }, d.desc)));
     }
   }
-  paintDiffs(); paintModes();
+  paintDiffs(); repaintRec.forEach(f => f()); goTo(at);
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
     h('p', {}, 'You run a transit hub. Each week you add a few tiles, then watch the crowd wander through. Hit the week\'s quota or the run ends.'),
     stale ? h('p', { class: 'warn' }, 'Your saved run comes from an older version of the game, so it cannot be picked up again. Start a new run below.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
     h('h3', {}, 'Pick a difficulty'), diffs,
-    h('h3', {}, 'Pick a mode'), modes,
-    h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${fmt(meta.bestScore)} pts · best traveller ${fmt(meta.bestTraveller)}`)));
+    h('h3', {}, 'Pick a level'), carousel, dots,
+    h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${starsFig(meta.bestScore)}★ · best traveller ${starsFig(meta.bestTraveller)}★`)));
+  repaintModeShots();   // now the modal is up, the stills have a box to frame themselves in
+  modeShotWatch.disconnect(); modeShotWatch.observe(stage);
 }
 function newRun(modeKey, diffKey, seedText) {
   const seed = seedText ? (isNaN(Number(seedText)) ? seedText : Number(seedText)) : null;
+  meta.lastMode = modeKey; saveMeta(meta);   // the carousel opens where it left off
   state = G.createRun({ modeKey, diffKey, seed });
   ui.started = true;
   closeModal(); ui.mode = 'idle'; ui.selectedTileId = null; ui.heat = false; ui.pb.result = null;

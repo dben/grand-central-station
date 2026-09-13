@@ -679,6 +679,8 @@ Stored in `localStorage`.
 
 Events, milestones, ordinance choices, the weekly summary and the start screen are modals.
 
+**The start screen** picks a difficulty, then a level. Difficulties are a row of three, always all available. Levels are a **carousel**: one at a time, with a still of the board that level opens on drawn over its name, description and your best run on the difficulty currently picked. Arrows either side, a dot per level under it, the arrow keys, and a drag across the still all turn it; the level last played opens first (`meta.lastMode`). Every level is in the ring, including the ones not yet earned — those keep their board still, drained of colour, and carry the week to reach instead of a Start button, so what is coming is visible from the first run. The stills are the real renderer (`boardStill` in `src/ui/render.js`) drawing `startBoard(mode)`, not screenshots, so a change to a level or to the isometric view shows up on the start screen without anything to keep in step.
+
 **Run Week and Redo Week.** Spending the last action point puts a big **Run Week** on the middle of the board, so the turn's end is where the eye already is. On Standard a smaller **Redo Week** sits under it, and the same offer appears under the timeline from the first move of the week (§10.1.1). Both ask before they fire: running the week is the turn's one irreversible click, and redoing it throws the week's work away.
 
 ### 12.2 Placement preview
@@ -695,7 +697,7 @@ The single most important UI element. While aiming a tile:
 
 ### 12.3 Stars and the top bar
 
-Quotas are shown as stars, one per 1,000 points.
+Quotas are shown as stars, one per 1,000 points. **Stars are the only score the player is shown**: the start screen's records, the timeline, the summary headline and the game-over figures are all in stars, and raw points survive only in the hover tooltips and the summary's per-tile table, where they are the unit the sim works in. A record uses `starsFig`, which gives whole stars from ten up and one decimal below, so one traveller's chain reads as "0.6★" rather than "0★".
 
 - **Up to ten stars** are drawn as glyphs that light up as the week plays, with the current projection dimly pre-filling the ones it would reach.
 - **Past ten,** the row becomes a `7 / 13 ★` counter. The two styles are never shown together.
@@ -826,7 +828,7 @@ node harness/ui-smoke.mjs                                             # Playwrig
 - **Sensitivity** (`harness/sensitivity.mjs`) sweeps every legal placement of a few probe tiles on a board (a layout, or the bot's board at a given week via `harness/bot.mjs`) and reports each tile's landscape — best, median and worst spot, share of losing spots — and its *roughness*: the mean jump in value between a spot and the same tile one cell over or rotated, next to the seed-noise floor of the estimate, so a real cliff can be told from a noisy one. `--dump` saves the bot's board as a layout for another build to probe.
 - **Layouts:** `harness/layouts/*.json` describe a board: `{ "mode": "terminal", "week": 4, "tiles": [{ "key": "train_station", "x": 4, "y": 0, "rot": 0, "level": 1 }] }`. The board opens as that mode's own (pre-locked edges and starting tiles, §10.1) and the listed tiles go on top; a tile the level has already built where the layout says is adopted rather than placed twice, so a board dumped from a run reloads as itself. `amenity_chain.json` and `transport_spam.json` are the two ends of the strategy space, and the quickest way to see whether a change moved the right thing.
 - **Selftest** covers shape orientations, placement and attachment rules, terrain locks, bridges, determinism, lost travellers, checkpoint fences (edge to edge, crossed only at the booth), walk-through tiles, WiFi boosts, pickpocket removal, and the underground layer (tunnels to both ends or to the nearest road or water edge, no crossings, no surfacing into water, building over a tunnel, and shop availability).
-- **UI smoke test** (`npm i playwright && npx playwright install chromium`) starts a run, places tiles, runs playback, opens the summary and heatmap, picks an ordinance, upgrades and deletes via the UI, plays a Rezoning Permit, uses the strike selector, reloads and resumes, checks game-over and the start screen, and verifies draw order.
+- **UI smoke test** (`npm i playwright && npx playwright install chromium`) starts a run, places tiles, runs playback, opens the summary and heatmap, picks an ordinance, upgrades and deletes via the UI, plays a Rezoning Permit, uses the strike selector, reloads and resumes, checks game-over and the start screen, and verifies draw order. It pages the level carousel by its dots (`pickMode`) and checks that every level is in the ring, that one card fills the window at a time, and that a level not yet earned stays in it.
 
 ### 14.2 What holds the balance up
 
