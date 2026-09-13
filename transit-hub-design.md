@@ -67,6 +67,7 @@ Some tiles also have attachment rules:
 
 - **Edgewise** (Train Station, Express Train, Water Taxi, Cruise Ship Dock): the whole tile must lie flat along one edge. A long vehicle berths alongside the edge, never nose-in.
 - **Tip** (Jetway, Jumbo Jetway): only the tip of the L (the top of its stem) may touch the apron edge, with the foot pointing inland. Both mirror images are legal.
+- **Broadside** (Ferry Terminal): the mirror of tip. The L's long arm — its three-cell side — has to lie along the water edge, with the short foot pointing inland, so a hull ties up side-on. Two of the L4's eight orientations reach any one edge, both mirror images.
 
 A Rezoning Permit card (§10.4) turns a claimed edge back into open ground, and **demolishes every transport attached to that edge**: lock-terrain tiles touching it, and road tiles whose driveway runs to it. Leaving a train station standing on open ground, or a bus stop with no road, is a state the rules can't hold. Each transport records the edges it depends on when placed (`tile.edges`).
 
@@ -381,7 +382,7 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 | Train Station | I4 | rail, edgewise | $$ | 6 | 6 | 6 | 2 | 1.10 | 18 | 180 | 2 |
 | Express Train | I5 | rail, edgewise | $$$ | 8 | 9 | 8 | 3 | 1.16 | 24 | 320 | 5 |
 | Monorail | I4 | corridor | $$$ | 5 | 5 | 5 | 2 | 1.14 | 21 | 280 | 5 |
-| Ferry Terminal | L4 | water | $$ | 8 | 8 | 8 | 3 | 1.10 | 21 | 200 | 2 |
+| Ferry Terminal | L4 | water, broadside | $$ | 8 | 8 | 8 | 3 | 1.10 | 21 | 200 | 2 |
 | Water Taxi | I2 | water, edgewise | $$$ | 3 | 2 | 3 | 1 | 1.14 | 11 | 150 | 3 |
 | Marina | S4 | water | $$$$ | 8 | 2 | 8 | 4 | 1.23 | 18 | 350 | 6 |
 | Cruise Ship Dock | I6 | water, edgewise | $$$ | 16 | 28 | 16 | 6 | 1.18 | 45 | 520 | 7 |
@@ -581,8 +582,11 @@ Difficulty is the second axis on the start screen. Where a mode changes the *sha
 | `costMult` — tile prices | 1 | 1.15 | 1.35 |
 | `startMoneyMult` — cash at week 1 | 1 ($220) | 0.85 ($187) | 0.8 ($176) |
 | `mods.revenueMult`, `mods.fareMult` | 1 | 0.9 | 0.8 |
+| `redo` — the week can be taken back | yes | — | — |
 
 The growth lever is what separates the two hard levels. A flat multiplier alone is felt in week 1 and then forgotten, since the board outgrows it; adding to the growth rate makes the gap widen every week instead. Standard's week-16 base quota is 92k, Hard's 120k (1.30×) and Extreme's 174k (1.88×), while their week-1 quotas are 11★, 13★ and 13★ — the star rounding ties the top two in week 1 on purpose. That shape was chosen after measurement: at `quotaMult` 1.35 Extreme killed five of sixteen bot runs in week 1 or 2, which is a coin flip on the opening hand rather than a difficulty (§15).
+
+**Redo Week** is the one lever that is not a number. On Standard the run keeps the week's opening state, and a button puts the board, the cash, the action points and the shop back to how the week started, so a misplaced tile there is a mistake rather than the end of a run. Hard and Extreme keep no snapshot at all: a move made is a move kept, which is most of what makes them harder to *play* rather than merely more expensive. It is offered from the first move of the week (under the timeline) and, once every action point is spent, under the big Run Week button on the board. Running the week ends the offer — the week is settled and the next one snapshots itself.
 
 `costMult` stacks with the mode's (Metroplex on Extreme is 1.25 × 1.35) and with the Staff Expansion ordinance, and like them it leaves upgrades, cards and bridges alone. The `mods` block is merged exactly like an ordinance's, so nothing in the simulator knows difficulty exists.
 
@@ -674,6 +678,8 @@ Stored in `localStorage`.
 **The board view is the whole game.** It shows an isometric board you can pan and zoom, with a run status bar along the top (week, quota stars, projection) and a timeline side panel on the right. The shop tray floats over the bottom of the board: the wallet, AP pips, **Reroll** and **Run Week** sit to the left of the cards. Nothing in the tray can be spent once the week is running, so it takes itself away for the run and comes back with the next shop.
 
 Events, milestones, ordinance choices, the weekly summary and the start screen are modals.
+
+**Run Week and Redo Week.** Spending the last action point puts a big **Run Week** on the middle of the board, so the turn's end is where the eye already is. On Standard a smaller **Redo Week** sits under it, and the same offer appears under the timeline from the first move of the week (§10.1.1). Both ask before they fire: running the week is the turn's one irreversible click, and redoing it throws the week's work away.
 
 ### 12.2 Placement preview
 
@@ -768,7 +774,8 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
 
 - **Grid space stays plain.** The board model is x right, y down. The renderer projects grid points to screen and un-projects screen points back, so `cellAt`/`edgeAt` picking is exact at any zoom, and nothing else in the codebase knows the view is isometric.
 - **Zoom:** `k` is the on-screen width of one cell's diamond. `fit()` picks the `k` that frames the board and its edge strips above the shop tray, and zoom scales from there.
-- **The world beyond the board:** a side claimed by water turns everything beyond it to sea, and road and rail edges carry on past the corners into the distance.
+- **The world beyond the board:** a side claimed by water turns everything beyond it to sea, and road and rail edges carry on past the corners into the distance. A railway that meets the sea at a corner turns 90° and follows the shore out of the view, because track cannot run into water. A subway line does the same where it leaves the board: the portal sits in the edge strip and the cut carries on to the horizon, while a garage ramp or a submarine channel stops at the edge it tunnels to.
+- **An airfield edge is three deep.** Beyond the apron strip an `apron` edge lays two more squares of runway — dark tarmac inside a painted kerb, with a stripe down each side, a dashed centre line and piano keys at both ends. It runs the length of the board's own side and stops at the corners, the way a real runway ends in a threshold, rather than crossing whatever the next side claimed.
 - **The underground layer** is painted in `drawGround`, under every building, as a dark cut with rail ties along each tunnel's axis. `drawUnderground` repaints the whole layer above the buildings, over a dimmed board, whenever the view asks for it (an underground ghost, or an underground tile hovered or selected).
 
 The **draw unit is the cell, not the tile.** Every occupied cell is sorted by `x + y` and painted back to front. Ordering whole tiles isn't enough, because footprints interleave: a one-cell tile can stand in front of one end of a long building and behind the other. A tile's label is drawn after its last cell, so its own roof never covers it.
@@ -784,7 +791,7 @@ The **draw unit is the cell, not the tile.** Every occupied cell is sorted by `x
 
 The result is that someone who steps into a shop is covered by it. Most walk-through tiles stand 0.10 high, so the travellers on them stay visible above the lip.
 
-**Ground tiles** (`ground: true` in `src/data/tiles.js`: Parking Lot, Green Space, Waiting Area, WiFi Hotspot) have no height at all. They are paving, so they cast no shadow, have no walls, and their whole face is painted in the floor layer with the crowd walking over the top of it. Their labels can't ride on a roof that isn't there, and the crowd walks over where they sit, so they are drawn last of all, after every cell and every traveller.
+**Ground tiles** (`ground: true` in `src/data/tiles.js`: Parking Lot, Green Space, Waiting Area, WiFi Hotspot, Moving Walkway) have no height at all. They are paving, so they cast no shadow, have no walls, and their whole face is painted in the floor layer with the crowd walking over the top of it. Their labels can't ride on a roof that isn't there, and the crowd walks over where they sit, so they are drawn last of all, after every cell and every traveller.
 
 Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd reads as flow rather than as counters. Chain-value popups are drawn last and are never hidden.
 
@@ -924,10 +931,15 @@ Changes from the original design, with the reason for each. Original values are 
 - **The Parking Lot is walk-through**, and the four flattest tiles are drawn flat. A car park you have to walk round is a wall in the shape of a car park, which reads wrong next to the Green Space beside it. It now shares the walk-through flag, and it, the Green Space, the Waiting Area and the WiFi Hotspot are `ground` tiles with no height, painted under the crowd instead of standing 0.10 proud of it (§13.2). Measured: `marginal.mjs --week 6 --seeds 12` puts the Parking Lot at 45.4★/$100 against 45.7 before, and every other tile is identical, so walkability is worth nothing by itself — it buys freedom of placement. Autoplay over `--seed0 1000` and `2000` survives 14 of 16 both ways (deaths in weeks 8 and 16, and 12, before; in 12 and 12 after), and the score/quota band did not move, so the quota was left alone. On the one board probed under both builds (the bot's week-12 board 1002, dumped, 24 seeds) the landscape got slightly smoother: one-cell shift 3.4% → 2.9% of the week, rotation 3.1% → 2.9%, noise floor 2.0% → 1.8%, stranded 26% → 22%. The new build's own bot boards read shift 1.9%/1.8%/3.3%, rotate 2.0%/1.8%/3.3%, noise 0.9%/1.1%/1.7% and stranded 13%/23%/22% on boards 1000 and 1001 at week 9 and 1002 at week 12, all inside the bands in §14.2.
 
 - **Corridor lanes** are walkable (a lift could otherwise fence the board in two — this retired the *Open Borders* ordinance in favour of *Wayfinding Signs*). They follow the tile's long axis and are freed on delete.
-- **Long vehicles berth edgewise; jetways attach by the tip.**
+- **Long vehicles berth edgewise; jetways attach by the tip; the ferry ties up broadside.** The Ferry Terminal was the last transport that could nose into the water with one cell of its L, which read as a jetty rather than a berth. It now takes the mirror of the jetway rule (`attach: 'broadside'`, §3.2): the L's three-cell side lies along the edge and the foot points inland, so two of the eight orientations reach any one edge. It costs the ferry six of its eight orientations and nothing else — autoplay over `--seed0 1000` and `2000` reads 5/8 and 7/8 survived, the same runs and the same death weeks (1, 16, 1 and 8) as the build before it.
 - **The underground layer** (§3.5) was added with four tiles. Priced from `marginal.mjs` on the standard boards: at week 6 Underground Parking is 14.2★/$100 (between the Bus Stop at 19.0 and the Coffee Shop at 13.5, and well under the Parking Lot's 32.9, which is the price of going anywhere with no driveway), the Subway Station 11.8 and the Express Subway 6.8 (the mid-game transport band); at week 10 they read 9.4, 9.3 and 4.7. The Submarine Dock, probed on a week-8 board with a ferry edge, is 2.65★/$100 at its best spot (median +8.6k, never negative), between the Helipad's 2.54 and the Marina's 1.99. Autoplay over `--seed0 1000` and `2000` survived 13 of 16 runs (10 of 16 before); the quota curve was left alone, since the bot's mean score/quota band (1.5–3.8×) did not move.
 - **Bridge** is implemented but pulled from the shop.
 - **Information Kiosks** no longer reduce pickpocket spawns.
+
+**Interface**
+
+- **Redo Week, on Standard only** (§10.1.1, §12.1). A week's opening state is kept as the same JSON the save uses (`weekStart`), and a button restores it: board, cash, action points, shop and effects. It is offered under the timeline from the first move of the week — worked out by comparing the state against that snapshot, so it appears on the first move and not before — and under the big Run Week button once every point is spent. Hard and Extreme keep no snapshot, so there is nothing to restore and nothing to show. Nothing in the simulator changed: the button only ever puts back a state the run had already produced. `SAVE_VERSION` went to 6 for the new field.
+- **The world around the board got its geography straight** (§13.2): a railway that meets the sea turns the corner and follows the shore, a subway carries on past the edge instead of stopping at a portal, an airfield edge is three squares deep with a marked runway, and the Moving Walkway joined the `ground` tiles so a belt no longer stands 0.08 proud of the floor it is part of. All four are drawing only — no tile data the simulator reads changed, and the same autoplay runs survive on the same weeks.
 
 **Security**
 

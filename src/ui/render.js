@@ -22,6 +22,11 @@ const WORLD_LAND = '#3f9b3f';
 const BOARD_CELLS = ['#8d929c', '#848993'];   // concourse floor, a grey checker against the grass
 // Edge terrains that carry on past the board's corners into the distance.
 const RUNS = new Set(['road', 'rail']);
+// The airfield beyond an apron strip: two squares of runway, so a locked
+// airfield edge reads three deep. Dark tarmac, a painted kerb, white markings.
+// It stops at the board's corners, the way a real runway ends in a threshold,
+// rather than carrying on to the horizon across whatever the next side is.
+const RUNWAY = { depth: 2, fill: '#3b404d', border: '#79839a', paint: 'rgba(255,255,255,0.85)' };
 
 // Camera limits. `k` is the screen width of one cell's diamond in CSS pixels.
 const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
@@ -48,11 +53,11 @@ export function colorForDef(d) {
 // amenities grow with tier so a built-up board reads as a skyline.
 function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
-  // Parks, waiting areas, hotspots and car parks (`ground: true`) are paving,
-  // not buildings: no height at all, so the crowd walks across the top of them
-  // rather than round a lip. drawTileFloor paints them under the travellers.
+  // Parks, waiting areas, hotspots, car parks and moving walkways
+  // (`ground: true`) are paving, not buildings: no height at all, so the crowd
+  // walks across the top of them rather than round a lip. drawTileFloor paints
+  // them under the travellers.
   if (d.ground) return 0;
-  if (d.special === 'walkway') return 0.08;
   // The rest of the walk-through tiles stand barely proud of the ground, so
   // travellers on them stay visible above the lip instead of vanishing inside.
   if (d.walkable) return 0.10;
@@ -357,7 +362,11 @@ export class BoardRenderer {
       }
       ctx.stroke();
     }
+    // the runway lies outside the apron strip, so it goes down before the runs
+    for (const e of EDGES) if (board.edges[e] === 'apron') this.drawRunway(e);
     for (const e of EDGES) if (RUNS.has(board.edges[e])) this.drawRun(e, board, vb);
+    // A railway that runs into the sea turns the corner and follows the shore.
+    for (const e of EDGES) if (board.edges[e] === 'rail') this.drawShoreTurns(e, board, vb);
     // Where two runs cross just off a corner, lay a clean junction: asphalt
     // if either is a road, with any railway over it as a level crossing.
     for (const [a, b] of [['N', 'E'], ['E', 'S'], ['S', 'W'], ['W', 'N']]) {
@@ -402,6 +411,53 @@ export class BoardRenderer {
     }
   }
 
+  // Two squares of runway beyond an apron strip, so a locked airfield edge is
+  // three deep: the grey apron the aircraft park on, then dark tarmac inside a
+  // painted kerb. The markings are the ones that say runway from the air - a
+  // stripe down each side, a dashed centre line, and piano keys at both ends.
+  drawRunway(e) {
+    const ctx = this.ctx, m = EDGE_MARGIN, d = RUNWAY.depth;
+    const along = e === 'N' || e === 'S' ? this.w : this.h;
+    const r = e === 'N' ? [0, -m - d, along, d] : e === 'S' ? [0, this.h + m, along, d]
+      : e === 'W' ? [-m - d, 0, d, along] : [this.w + m, 0, d, along];
+    this.fillRegion(...r, RUNWAY.fill);
+    this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
+    // u runs the length of the runway, v across it
+    const horiz = e === 'N' || e === 'S';
+    const at = (u, v) => horiz ? [r[0] + u, r[1] + v * d] : [r[0] + v * d, r[1] + u];
+    ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
+    ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
+    this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
+    for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
+    ctx.stroke();
+    if (this.k < 12) return;   // the keys turn to mush below that
+    ctx.lineWidth = Math.max(1, this.k * 0.055); ctx.beginPath();
+    for (const [u0, u1] of [[0.2, 1.0], [along - 1.0, along - 0.2]])
+      for (const v of [0.17, 0.29, 0.41, 0.59, 0.71, 0.83]) this.line(at(u0, v), at(u1, v));
+    ctx.stroke();
+  }
+
+  // A railway can't run into the sea, so where one meets a water edge the track
+  // swings 90 degrees and carries on along the shore until it leaves the view.
+  drawShoreTurns(e, board, vb) {
+    const m = EDGE_MARGIN, horiz = e === 'N' || e === 'S';
+    for (const n of horiz ? ['W', 'E'] : ['N', 'S']) {
+      if (board.edges[n] !== 'water') continue;
+      // a band of land m wide hugging the shore, running away from the board
+      const band = horiz ? (n === 'W' ? 0 : this.w - m) : (n === 'N' ? 0 : this.h - m);
+      let r;
+      if (e === 'N') r = [band, vb.y0, m, -m - vb.y0];
+      else if (e === 'S') r = [band, this.h + m, m, vb.y1 - this.h - m];
+      else if (e === 'W') r = [vb.x0, band, -m - vb.x0, m];
+      else r = [this.w + m, band, vb.x1 - this.w - m, m];
+      if (r[2] <= 0 || r[3] <= 0) continue;
+      this.fillRegion(...r, TERRAIN_COLORS.rail);
+      this.edgeTexture(n, 'rail', ...r);   // the turn runs along n, so its sleepers do too
+    }
+  }
+
   // Little wave crests on a screen-space lattice pinned to the world: they pan
   // with the camera but cost the same at every zoom level.
   drawWaves(seas) {
@@ -426,7 +482,7 @@ export class BoardRenderer {
   }
 
   drawEdges(view, board) {
-    const ctx = this.ctx;
+    const ctx = this.ctx, vb = this.visibleGrid();
     for (const e of EDGES) {
       const [gx, gy, gw, gh] = this.edgeRegion(e);
       const terrain = board.edges[e];
@@ -435,8 +491,14 @@ export class BoardRenderer {
         this.fillRegion(gx, gy, gw, gh, TERRAIN_COLORS[terrain] || '#333');
         this.edgeTexture(e, terrain, gx, gy, gw, gh);
       }
-      // subway portals: where a line leaves the board it dives under the strip
-      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) this.drawPortal(e, t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1], TUNNEL_COLORS.through);
+      // Subway portals: where a line leaves the board it dives under the strip
+      // and the track carries on out of the view, the way a railway does. A
+      // garage ramp or a submarine channel stops at the edge it tunnels to.
+      for (const t of board.tiles) if (t.tunnel && t.tunnel.line === 'through' && t.tunnel.ends.includes(e)) {
+        const idx = t.tunnel.axis === 'v' ? t.cells[0][0] : t.cells[0][1];
+        this.drawTunnelRun(e, idx, TUNNEL_COLORS.through, vb);
+        this.drawPortal(e, idx, TUNNEL_COLORS.through);
+      }
       for (const idx of board.openSpans[e]) {
         ctx.fillStyle = 'rgba(200,160,100,0.85)';
         if (e === 'N' || e === 'S') this.regionPath(idx + 0.06, gy + 0.06, 0.88, gh - 0.12);
@@ -663,6 +725,18 @@ export class BoardRenderer {
     this.fillRegion(...r, 'rgba(10,5,32,0.9)');
     this.regionPath(...r); ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, this.k * 0.035); ctx.stroke();
   }
+  // A subway line past the edge of the board: the same cut and sleepers as the
+  // tunnel inside it, running out of the view so the line reads as going
+  // somewhere rather than stopping at the fence.
+  drawTunnelRun(e, idx, color, vb) {
+    const cells = [];
+    if (e === 'N') for (let y = Math.floor(vb.y0); y < 0; y++) cells.push([idx, y]);
+    else if (e === 'S') for (let y = this.h; y <= Math.ceil(vb.y1); y++) cells.push([idx, y]);
+    else if (e === 'W') for (let x = Math.floor(vb.x0); x < 0; x++) cells.push([x, idx]);
+    else for (let x = this.w; x <= Math.ceil(vb.x1); x++) cells.push([x, idx]);
+    this.drawTunnel(cells, e === 'N' || e === 'S' ? 'v' : 'h', color, 0.95);
+  }
+
   // The underground layer lifted over the buildings: every tunnel at full
   // strength, the pending one in the ghost's colour, and the ground dimmed so
   // the lines are what the eye lands on.

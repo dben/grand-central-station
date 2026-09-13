@@ -58,6 +58,9 @@ Picked with the mode, and open from the first run. It scales the pressure, never
 
 By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.9×.
 
+Standard also lets you take a week back. Until you run it, **Redo Week** puts the board, the cash,
+the points and the shop back to how the week started. Hard and Extreme don't: a move made is kept.
+
 ## Modes
 
 | Mode | Board | Twist | Unlocks |

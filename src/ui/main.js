@@ -190,7 +190,9 @@ function renderTop() {
   const early = state.phase === 'shop' ? G.earlyFinishBonus(state) : 0;
   $('btn-run').innerHTML = `Run Week ▶${early ? `<br><small>+$${fmt(early)} early finish</small>` : ''}`;
   $('btn-run').title = early ? `Every action point you have not spent pays $${fmt(G.earlyFinishPerAP(state))} when the week runs` : '';
-  $('btn-run-big').classList.toggle('hidden', !(canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over')));
+  const showBig = canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over');
+  $('run-stack').classList.toggle('hidden', !showBig);
+  $('btn-redo-big').classList.toggle('hidden', !(showBig && G.weekTouched(state)));
   $('playback').classList.toggle('hidden', ui.mode !== 'playback');
   // wallet
   $('st-money').textContent = '$' + fmt(state.money);
@@ -364,6 +366,11 @@ function renderTimeline() {
     rows.push(row);
   }
   tl.append(...rows);
+  // The way back out of the week, from the first move on. Standard only, so a
+  // misplaced tile there is a mistake rather than the end of the run.
+  if (G.weekTouched(state)) tl.append(h('div', { id: 'tl-redo' },
+    h('button', { onclick: confirmRedoWeek }, '↺ Redo Week ' + state.week),
+    h('div', { class: 'desc' }, 'Put the board, the cash and the shop back to how week ' + state.week + ' started.')));
 }
 
 function renderSide() {
@@ -615,6 +622,28 @@ function confirmRunWeek() {
     h('div', { class: 'btnrow', style: 'justify-content:center' },
       h('button', { onclick: closeModal }, 'Not yet'),
       h('button', { id: 'btn-run-confirm', class: 'primary', onclick: () => { closeModal(); startWeek(); } }, 'Run Week ▶')));
+}
+
+// Taking the week back throws away everything bought this week, so it asks too.
+function confirmRedoWeek() {
+  if (!state || !G.weekTouched(state)) return;
+  openModal(
+    h('h2', {}, `Redo week ${state.week}?`),
+    h('p', {}, 'Every tile you placed, every card you played and every dollar you spent this week goes back to how the week started. Earlier weeks are untouched.'),
+    h('div', { class: 'btnrow', style: 'justify-content:center' },
+      h('button', { onclick: closeModal }, 'Keep it'),
+      h('button', {
+        id: 'btn-redo-confirm', class: 'danger', onclick: () => {
+          closeModal();
+          const r = G.redoWeek(state);
+          if (!r.ok) { hint(r.reason); return; }
+          cancelMode();
+          ui.selectedTileId = null; ui.hoverTileId = null; ui.heat = false; ui.projection = null;
+          hidePopup(true);
+          renderAll();
+          hint(`Week ${state.week} is back to how it started`);
+        },
+      }, '↺ Redo Week')));
 }
 
 function startWeek() {
@@ -947,6 +976,7 @@ function boot() {
     if (state) renderer.resize(state.board);
   };
   $('btn-run-big').addEventListener('click', confirmRunWeek);
+  $('btn-redo-big').addEventListener('click', confirmRedoWeek);
   $('btn-side-toggle').addEventListener('click', () => { layout.sideCollapsed = true; applyLayout(); });
   $('side-tab').addEventListener('click', () => { layout.sideCollapsed = false; applyLayout(); });
   applyLayout();

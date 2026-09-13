@@ -12,6 +12,8 @@
 // 'road' and 'water' tunnel straight to the nearest edge of that terrain.
 // attach: 'tip' = only the tip of the L (top of the stem) may touch the edge; the foot points inland.
 //         'edgewise' = the whole tile must lie flat along one edge (a berth, not a nose-in stall).
+//         'broadside' = the long arm has to lie along one edge, with the short foot inland - the
+//           mirror of 'tip', for a hull that ties up side-on.
 // ============================================================================
 
 export const TRANSPORTS = {
@@ -26,7 +28,7 @@ export const TRANSPORTS = {
   train_station:   { name: 'Train Station',    shape: 'I4', terrain: 'rail',     attach: 'edgewise', tier: 2, arr: 6,  batch: 6 , dep: 6,  dwell: 2, mult: 1.1 , flat: 18,  cost: 180,  minWeek: 2 },
   express_train:   { name: 'Express Train',    shape: 'I5', terrain: 'rail',     attach: 'edgewise', tier: 3, arr: 8,  batch: 9 , dep: 8,  dwell: 3, mult: 1.16, flat: 24,  cost: 320, minWeek: 5 },
   monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 5 , dep: 5,  dwell: 2, mult: 1.14, flat: 21,  cost: 280, minWeek: 5 },
-  ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
+  ferry:           { name: 'Ferry Terminal',   shape: 'L4', terrain: 'water',    attach: 'broadside', tier: 2, arr: 8,  batch: 8 , dep: 8,  dwell: 3, mult: 1.1 , flat: 21,  cost: 200, minWeek: 2 },
   water_taxi:      { name: 'Water Taxi',       shape: 'I2', terrain: 'water',     attach: 'edgewise', tier: 3, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.14, flat: 11,  cost: 150,  minWeek: 3 },
   marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
@@ -62,7 +64,7 @@ export const AMENITIES = {
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
   wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },
   waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true, ground: true },
-  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway' },
+  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway', ground: true },
   art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 4, rate: 0.4 , mult: 3.45, flat: 160, cap: 10, dur: 4, revenue: 18, cost: 115, minWeek: 6 },
   lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 3, rate: 0.54, mult: 3.27, flat: 120, cap: 14, dur: 3, revenue: 20, cost: 133, minWeek: 7 },
   designer:       { name: 'Designer Shop',     shape: 'L4', tier: 4, radius: 3, rate: 0.36, mult: 4.15, flat: 180, cap: 8,  dur: 4, revenue: 35, cost: 168, minWeek: 8 },

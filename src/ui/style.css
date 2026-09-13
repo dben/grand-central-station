@@ -271,8 +271,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
 /* Run Week lives in the shop tray under Reroll; its second line is the early-finish bonus */
 #btn-run { width: 100%; padding: 8px 10px; font-size: 16px; }
 #btn-run small { font-size: 12px; font-weight: 700; color: inherit; opacity: 0.85; }
-#btn-run-big { position: absolute; left: 50%; top: calc(50% - var(--tray-h, 0px) / 2); transform: translate(-50%, -50%); font-size: 24px; padding: 16px 32px; border-radius: 6px; box-shadow: 5px 5px 0 var(--ink); animation: breathe 1.6s ease-in-out infinite; z-index: 5; }
-@keyframes breathe { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.06); } }
+/* The stack is what sits in the middle of the board, so the redo button below
+   Run Week rides with it instead of needing its own placement. */
+#run-stack { position: absolute; left: 50%; top: calc(50% - var(--tray-h, 0px) / 2); transform: translate(-50%, -50%); z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#btn-run-big { font-size: 24px; padding: 16px 32px; border-radius: 6px; box-shadow: 5px 5px 0 var(--ink); animation: breathe 1.6s ease-in-out infinite; }
+#btn-redo-big { font-size: 15px; padding: 8px 16px; border-radius: 6px; box-shadow: 3px 3px 0 var(--ink); }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+/* Taking the week back: offered under the timeline from the first move on */
+#tl-redo { margin: 8px 0 2px; }
+#tl-redo button { width: 100%; font-size: 14px; }
+#tl-redo .desc { color: var(--muted); font-size: 12px; margin-top: 3px; }
 #timeline { position: relative; padding-left: 18px; }
 #timeline::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
 .tl-row { position: relative; padding: 6px 8px; margin: 3px 0; border-radius: 4px; font-size: 14px; }
