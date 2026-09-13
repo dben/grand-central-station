@@ -178,12 +178,37 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #modal-box { background: var(--panel); border: 3px solid var(--blue); border-radius: 6px; padding: 18px 20px; max-width: 900px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 6px 6px 0 var(--ink); }
 #modal-box h2 { margin: 0 0 10px; font-family: "Press Start 2P", ui-monospace, monospace; font-size: 16px; line-height: 1.5; text-shadow: 2px 2px 0 var(--ink); }
 #modal-box h3 { margin: 14px 0 6px; font-size: 14px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
-.modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .mode { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 10px; cursor: pointer; box-shadow: var(--hard); }
 .mode:hover { border-color: var(--accent); }
 .mode.locked { opacity: 0.5; cursor: default; }
 .mode .name { font-weight: 700; margin-bottom: 4px; color: var(--accent); }
 .mode .desc { font-size: 14px; color: var(--muted); }
+
+/* The level carousel: arrows either side of a window one card wide, dots under
+   it. Every level is in the track, locked ones greyed but still turned to. */
+.mode-carousel { display: flex; align-items: stretch; gap: 8px; }
+.car-nav { flex: 0 0 auto; width: 38px; padding: 0; font-size: 26px; line-height: 1; color: var(--accent); }
+.mode-stage { flex: 1 1 auto; min-width: 0; overflow: hidden; border: 2px solid var(--line); border-radius: 4px; box-shadow: var(--hard); background: var(--panel2); }
+.mode-track { display: flex; height: 100%; transition: transform 0.25s ease-out; touch-action: pan-y; }
+/* the window draws the frame, so the card inside it goes flat and full width */
+.mode-track > .mode { flex: 0 0 100%; width: 100%; padding: 0; border: none; border-radius: 0; box-shadow: none; background: none; cursor: default; display: flex; flex-direction: column; }
+.mode-track > .mode:hover { border: none; }
+.mode-shot { display: block; width: 100%; height: 210px; background: var(--land); border-bottom: 2px solid var(--line); }
+/* a locked level still shows the board it opens on, drained of colour rather
+   than dimmed to nothing: the point of the ring is to see what is coming */
+.mode-track > .mode.locked { opacity: 1; }
+.mode-track > .mode.locked .mode-shot { filter: grayscale(1) brightness(0.9); }
+.mode-track > .mode.locked .mode-body { opacity: 0.6; }
+.mode-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.mode-body .name { display: flex; align-items: baseline; gap: 8px; font-size: 18px; margin: 0; }
+.mode-body .name .size { color: var(--muted); font-size: 14px; font-weight: 400; }
+.mode-body .desc { margin: 0; }
+.mode-rec { font-size: 14px; color: var(--muted); }
+.mode-body .lock { font-size: 14px; color: var(--accent); }
+.car-dots { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.car-dot { width: 12px; height: 12px; padding: 0; border-radius: 50%; background: var(--line); box-shadow: none; }
+.car-dot.on { background: var(--accent); border-color: var(--accent); }
+.car-dot.locked { opacity: 0.45; }
 .diffs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 6px; }
 .diff { background: var(--panel2); border: 2px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; box-shadow: var(--hard); }
 .diff:hover { border-color: var(--accent); }
@@ -266,6 +291,10 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
   #card-bar-desc { max-height: 22vh; }
+  /* the carousel keeps its arrows, but the shot gives up height to the text */
+  .car-nav { width: 30px; font-size: 22px; }
+  .mode-shot { height: 140px; }
+  .mode-carousel { gap: 4px; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }

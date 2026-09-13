@@ -1115,3 +1115,26 @@ function mixHex(a, b, t) {
   const mix = sh => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
   return `rgb(${mix(16)},${mix(8)},${mix(0)})`;
 }
+
+// A still of a board on its own canvas, framed to whatever box CSS gives the
+// element. The start screen draws each level's opening board with it, so the
+// thumbnails are the real renderer rather than a set of screenshots to keep in
+// step. Returns the repaint, for the caller to call when the box resizes.
+export function boardStill(canvas, board) {
+  const r = new BoardRenderer(canvas);
+  r.w = board.w; r.h = board.h;
+  const paint = () => {
+    const rect = canvas.getBoundingClientRect();
+    const viewW = Math.round(rect.width), viewH = Math.round(rect.height);
+    if (viewW < 40 || viewH < 30) return;   // not laid out yet
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(viewW * dpr); canvas.height = Math.round(viewH * dpr);
+    r.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    r.viewW = viewW; r.viewH = viewH;
+    r.fit();
+    r.panY = 0;   // fit leaves room under the board for the shop tray; a still has none
+    r.draw({ board });
+  };
+  loadSprites(paint);   // tile art arrives after the first paint; repaint when it does
+  return paint;
+}
