@@ -320,6 +320,9 @@ export function simulateWeek(board, opts = {}) {
   let score = 0, fares = 0, revenue = 0, banked = 0, strandedPts = 0, stolen = 0;
   // score credited on each tick, so the UI can fill the week's stars during playback
   const scoreByTick = new Array(TICKS + 1).fill(0);
+  // what the crowd still on the board is worth on each tick, so the top bar can
+  // colour by the whole week in progress rather than by the turnstiles alone
+  const pendingByTick = new Array(TICKS + 1).fill(0);
   let best = null;
   const counts = { spawned: 0, boarded: 0, stranded: 0, lost: 0, pickpockets: 0, removed: 0, looped: 0 };
   const dw = cfg.destinationWeights;
@@ -635,6 +638,27 @@ export function simulateWeek(board, opts = {}) {
     }
   }
 
+  // What a traveller still walking is worth if nothing more happens to them:
+  // the exit value they would bank boarding now, or the strand fraction once
+  // the clock has run out on the walk they have left. Beside the banked score
+  // this is the week's real progress, which the turnstile count alone hides
+  // until the departures start.
+  function inflightValue(a, t) {
+    if (a.lost) return a.value * cfg.economy.lostMultiplier;
+    // The straight walk to their platform, not the wander they are on: the
+    // hurry rule sends them straight once the clock is tight, so anyone who
+    // cannot make even this is stranded whatever their route says. One lookup
+    // in a field that is already built, so it costs nothing per tick.
+    const walk = transportField(a.dest, a.gateOpen)[a.y * W + a.x] + (a.state === 'serving' ? a.serveTicks : 0);
+    if (a.state !== 'waiting' && t + walk > TICKS) return a.value * cfg.economy.strandedMultiplier;
+    const e = transports[a.dest].e;
+    let v = a.value * e.mult + e.flat;
+    if (a.tier === e.tier) v *= cfg.sim.tierMatchExitBonus;
+    if (a.booth) v *= a.booth.mult;
+    if (a.waitSlot) v *= 1 + a.stacks * a.waitSlot.e.stackValue;
+    return v;
+  }
+
   let currentTick = 0;
   const vipDone = { done: false };
 
@@ -749,6 +773,7 @@ export function simulateWeek(board, opts = {}) {
     for (const a of live) {
       if (a.state === 'done' && a.endTick < t) continue;
       a.frames.push([a.x, a.y]);
+      if (a.state !== 'done' && a.kind === 'traveller') pendingByTick[t] += inflightValue(a, t);
     }
     for (const am of amenities) { const s = tileStats[am.tile.id]; s.occ[t] = am.occ; if (am.occ >= am.e.cap) s.fullTicks++; }
     for (const wa of waitingAreas) { const s = tileStats[wa.tile.id]; s.occ[t] = wa.occ; if (wa.occ >= wa.e.cap) s.fullTicks++; }
@@ -810,12 +835,16 @@ export function simulateWeek(board, opts = {}) {
   // running total, so scoreByTick[t] is the score on the board at tick t
   for (let t = 1; t <= TICKS; t++) scoreByTick[t] += scoreByTick[t - 1];
   for (let t = 0; t <= TICKS; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
+  // the strand pass above settles everyone left, so nothing is in flight at the
+  // last tick: scoreByTick[TICKS] + pendingByTick[TICKS] is the final score
+  pendingByTick[TICKS] = 0;
+  for (let t = 0; t <= TICKS; t++) pendingByTick[t] = Math.round(pendingByTick[t]);
 
   return {
     seed, week, ticks: TICKS, spawnTicks: SPAWN_TICKS,
     score: Math.round(score),
     points: { banked: Math.round(banked), stranded: Math.round(strandedPts), stolen: Math.round(stolen) },
-    scoreByTick,
+    scoreByTick, pendingByTick,
     money: { fares: Math.round(fares), revenue: Math.round(revenue), total: Math.round(fares + revenue) },
     counts, best,
     agents: agents.map(a => ({ id: a.id, key: a.key, tier: a.tier, kind: a.kind, spawnTick: a.spawnTick, endTick: a.endTick, frames: a.frames, events: a.events, value: a.value, outcome: a.outcome, origin: transports[a.origin].tile.id, dest: transports[a.dest].tile.id, chain: a.chain })),
