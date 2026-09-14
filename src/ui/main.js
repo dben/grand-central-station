@@ -189,8 +189,12 @@ function heatColor(ratio) {
 }
 
 // The week's progress line, in place of a tick counter: it walks the bottom of
-// the bar as the ticks play, coloured behind the playhead by how the running
-// score stands against the quota. Meeting the quota flashes the bar white once.
+// the bar as the ticks play, coloured behind the playhead by what the week is
+// worth so far. That is the banked score plus what the crowd still walking
+// would bank boarding now (`pendingByTick`): boarding only moves a traveller
+// from one side of that sum to the other, so the colour climbs with the week
+// instead of sitting red until the departures start. The white flash still
+// fires on the banked score alone, when the quota is really met.
 function renderWeekLine() {
   const on = ui.mode === 'playback' && !!ui.pb.result;
   $('topbar').classList.toggle('running', on);
@@ -198,11 +202,12 @@ function renderWeekLine() {
   if (!on) return;
   const r = ui.pb.result, t = Math.min(r.ticks, Math.max(0, Math.floor(ui.pb.T)));
   const score = r.scoreByTick ? r.scoreByTick[t] : r.score;
-  const ratio = score / Math.max(1, G.quotaFor(state));
+  const inflight = r.pendingByTick ? r.pendingByTick[t] : 0;
+  const quota = Math.max(1, G.quotaFor(state));
   const fill = $('wk-line-fill');
   fill.style.width = (Math.min(1, ui.pb.T / Math.max(1, r.ticks)) * 100).toFixed(2) + '%';
-  fill.style.backgroundColor = heatColor(ratio);
-  if (ratio >= 1 && !ui.pb.flashed) { ui.pb.flashed = true; flashBar(); }
+  fill.style.backgroundColor = heatColor((score + inflight) / quota);
+  if (score / quota >= 1 && !ui.pb.flashed) { ui.pb.flashed = true; flashBar(); }
 }
 function flashBar() {
   const b = $('topbar');
