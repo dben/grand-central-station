@@ -10,7 +10,7 @@ import { ORDINANCES } from '../data/ordinances.js';
 import { CARDS } from '../data/cards.js';
 import { orientationCount, shapeCells } from '../sim/shapes.js';
 import { cutOffTransports, startBoard } from '../sim/board.js';
-import { effTransport, effAmenity } from '../sim/sim.js';
+import { effTransport, effAmenity, scaleMult } from '../sim/sim.js';
 import { BoardRenderer, boardStill, colorForDef } from './render.js';
 import { attachBoardInput } from './boardinput.js';
 import { playTrack, isMuted, setMuted } from './audio.js';
@@ -110,14 +110,18 @@ function describeTile(tile, def) {
     const walk = def.walkable && def.special !== 'waiting' ? [['Floor', 'Travellers walk straight over it, so it never blocks a path']] : [];
     if (def.special === 'wifi') {
       const w = CONFIG.sim.wifi;
-      rows.push(['Effect', `Helps every tile within ${def.radius + ((tile && tile.radiusBonus) || 0)} squares`], ['Shops', `draw ${Math.round(w.rate * 100)}% more people and boost +${w.mult.toFixed(2)} more`], ['Lounges', `+${w.stack.toFixed(2)} for every tick waited`], ['Transports', `+${w.exit.toFixed(2)} when travellers board`],
+      // A hotspot's boosts are summed into the tile's own multiplier and
+      // compressed with it, so show what the tile actually gains, not the
+      // number in the config (see scaleMult).
+      const ms = CONFIG.sim.multScale;
+      rows.push(['Effect', `Helps every tile within ${def.radius + ((tile && tile.radiusBonus) || 0)} squares`], ['Shops', `draw ${Math.round(w.rate * 100)}% more people and boost +${(w.mult * ms).toFixed(2)} more`], ['Lounges', `+${(w.stack * ms).toFixed(2)} for every tick waited`], ['Transports', `+${(w.exit * ms).toFixed(2)} when travellers board`],
         ['Together', `Up to ${w.cap} hotspots help one tile; every level counts for ${Math.round(w.perLevel * 100)}% more`], ...walk);
     }
     else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick, and they can still stop at shops along the way`]);
     else if (def.special === 'security') rows.push(['Effect', 'Picks up any pickpocket who comes near'], ['Range', def.radius + ((tile && tile.radiusBonus) || 0)], ...walk);
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
-      const mult = ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1);
+      const mult = scaleMult(ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1));
       rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Rotate to turn the fence.'],
         ['Who crosses', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
         ['Reward', `Worth ×${mult.toFixed(2)} more, and ${ck.budgetBonus} extra stops on the way. Once per traveller.`], ['Security', 'Catches pickpockets who walk through']);

@@ -37,6 +37,14 @@ export function mergeMods(...list) {
 }
 
 // ---------------------------------------------------------------------------
+// Every value multiplier in the game passes through here. A chain multiplies,
+// so the week's score is exponential in the number of stops a traveller makes
+// and a lucky board runs away from the quota; `sim.multScale` compresses each
+// multiplier toward 1 by the same fraction, which pulls the exponent down
+// without changing which tile is better than which. Flat values are untouched,
+// so a short chain keeps most of its worth and a long one gains less (§15).
+export const scaleMult = (m, cfg = CONFIG) => 1 + (m - 1) * cfg.sim.multScale;
+
 // Effective tile stats (after level, modifiers). Exported so the UI can show them.
 // `wifi` is the WiFi strength reaching the tile (see wifiStrength).
 export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
@@ -51,7 +59,7 @@ export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) 
   return {
     def, tier: def.tier, skeleton,
     batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
-    mult: def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit,
+    mult: scaleMult(def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit, cfg),
     flat: def.flat * mods.flatMult,
     arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
     dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
@@ -74,7 +82,7 @@ export function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   // works. closedRate 0 is a full closure.
   const under = mods.closedBelowLevel > 0 && isService && (tile.level || 1) < mods.closedBelowLevel;
   const restrict = under ? mods.closedRate : 1;
-  let mult = isService ? def.mult + up.mult * lvl + mods.amenityMultBonus + wifi * cfg.sim.wifi.mult : 1;
+  let mult = isService ? scaleMult(def.mult + up.mult * lvl + mods.amenityMultBonus + wifi * cfg.sim.wifi.mult, cfg) : 1;
   if (under) mult = 1 + (mult - 1) * restrict;
   return {
     def, tier: def.tier, special: def.special || null,
@@ -88,7 +96,7 @@ export function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
     closed: under && restrict === 0,
     restricted: under && restrict > 0,
     walkable: !!def.walkable,
-    stackValue: (def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack,
+    stackValue: ((def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack) * cfg.sim.multScale,
     minTier: def.key === 'flier_club' ? cfg.sim.frequentFlierMinTier : 1,
   };
 }
@@ -181,7 +189,7 @@ export function simulateWeek(board, opts = {}) {
   // upgraded booth multiplies more.
   const booths = new Map();
   for (const t of board.tiles) if (t.key === 'gate') {
-    const mult = ckCfg.mult + ckCfg.multPerLevel * ((t.level || 1) - 1);
+    const mult = scaleMult(ckCfg.mult + ckCfg.multPerLevel * ((t.level || 1) - 1), cfg);
     for (const [x, y] of t.cells) booths.set(y * W + x, { tile: t, mult, bonus: ckCfg.budgetBonus });
   }
 
@@ -603,7 +611,7 @@ export function simulateWeek(board, opts = {}) {
     const before = a.value;
     let v = a.value * e.mult + e.flat;
     let tierBonus = 1;
-    if (a.tier === e.tier) { tierBonus = cfg.sim.tierMatchExitBonus; v *= tierBonus; }
+    if (a.tier === e.tier) { tierBonus = scaleMult(cfg.sim.tierMatchExitBonus, cfg); v *= tierBonus; }
     if (a.booth) {
       const bv = v * a.booth.mult;
       a.chain.push({ name: a.booth.tile.name, tileId: a.booth.tile.id, before: v, after: bv, mult: a.booth.mult, flat: 0 });
@@ -653,7 +661,7 @@ export function simulateWeek(board, opts = {}) {
     if (a.state !== 'waiting' && t + walk > TICKS) return a.value * cfg.economy.strandedMultiplier;
     const e = transports[a.dest].e;
     let v = a.value * e.mult + e.flat;
-    if (a.tier === e.tier) v *= cfg.sim.tierMatchExitBonus;
+    if (a.tier === e.tier) v *= scaleMult(cfg.sim.tierMatchExitBonus, cfg);
     if (a.booth) v *= a.booth.mult;
     if (a.waitSlot) v *= 1 + a.stacks * a.waitSlot.e.stackValue;
     return v;

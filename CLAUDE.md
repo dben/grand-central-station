@@ -19,6 +19,7 @@ node harness/selftest.js                           # invariants: rules, sim, che
 node harness/build.js                              # rebuild dist/grand-central-station.html (commit it)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
+node harness/week1.mjs --runs 16                  # week 1 on every level x difficulty: cash, quota, tiles placed
 node harness/marginal.mjs --week 6 --seeds 12      # value of one more of each tile, in stars/$100
 node harness/run.js harness/layouts/amenity_chain.json --seeds 50 --week 4
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24   # placement landscape of a tile: best/median/negative share, jump per cell or rotation
@@ -82,7 +83,11 @@ harness/bot.mjs      the greedy bot as a module (playRun); autoplay and sensitiv
 A change that touches scoring, the economy or the catalogue isn't done until it's measured:
 
 1. `node harness/autoplay.js --runs 8 --weeks 16`, compared against the baseline in design doc
-   §14.2. Vary `--seed0` (e.g. 1000 and 2000) before trusting a shift; 8 runs is noisy.
+   §14.2. Vary `--seed0` (e.g. 1000 and 2000) before trusting a shift; 8 runs is noisy. Read the
+   `band` line as well as survival: the share of weeks inside 1-2x of quota, and the share above
+   3x. The two trade against each other, so a change that lifts survival by flattening every week
+   into a blow-out has not helped. `harness/week1.mjs` covers the opening turn on every level and
+   difficulty in a few seconds, which is where a money problem shows and a curve problem does not.
 2. For a single tile, sweep its placements with `harness/sensitivity.mjs --tiles <key>`: best
    spot, median, and share of negative placements are the numbers the tuning history uses. Use
    `harness/marginal.mjs` for the value per dollar.
