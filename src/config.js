@@ -28,15 +28,19 @@ export const CONFIG = {
 
   // ------------------------------------------------------------------- quota
   quota: {
-    base: 11000,                // week 1's target, and the whole curve's scale
+    base: 8000,                 // (was 11000) week 1's target, and the whole curve's scale
     // A station's output grows fast while it is small and slowly once it is
     // built out, so a single per-week multiplier makes the first half free and
     // the last few weeks a cliff. Growth starts at `earlyGrowth` and decays
     // geometrically (by `growthDecay` per week) toward `growth`, which tracks
     // that curve and keeps every week about as hard as the last.
-    growth: 1.125,              // the late, settled per-week multiplier
-    earlyGrowth: 1.25,          // week 1 -> 2
-    growthDecay: 0.70,          // how fast the rate falls from early to late
+    // A flatter score curve needs a flatter quota curve. Compressing the
+    // multipliers (`sim.multScale`) took most of the exponent out of a long
+    // chain, so the board's output now climbs harder in the opening weeks
+    // (where tiles are still being added) and far more gently once it is full.
+    growth: 1.10,               // (was 1.125) the late, settled per-week multiplier
+    earlyGrowth: 1.32,          // (was 1.25) week 1 -> 2
+    growthDecay: 0.65,          // (was 0.70) how fast the rate falls from early to late
     starUnit: 1000,             // one star per this many points; quotas round to a whole star
     // Catch-up ("the city expects more of you"): the quota never sits further
     // below your own recent form than this. quota = max(curve, share * recent),
@@ -46,12 +50,12 @@ export const CONFIG = {
     // coasting. `share` 0 turns it off.
     // `cap` bounds it: the floor can never ask for more than this multiple of
     // the week's own curve, so one spike week cannot set an impossible target.
-    catchUp: { share: 0.72, from: 'best', cap: 2.2 },
+    catchUp: { share: 0.85, from: 'best', cap: 2.2 },
     // How hard an event week leans on the quota: the multiplier in data/events.js
     // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
-    eventStrength: 0.5,
+    eventStrength: 0.30,
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -90,6 +94,15 @@ export const CONFIG = {
     waypointSigma: 1.5,         // gaussian spread (cells) around the straight line
     sameTileWanderSigma: 2.5,   // spread when destination == origin (a wander)
     tierMatchExitBonus: 1.5,    // transport exit bonus when traveller tier == transport tier
+    // Global compression of every value multiplier: amenity and transport
+    // `mult`, the checkpoint, the lounge stack and the tier-match exit bonus
+    // are each pulled toward 1 by this (1 = the catalogue as written). A chain
+    // multiplies, so the week is exponential in the stops a traveller makes and
+    // a board that chains well runs away from the quota; this lowers the
+    // exponent while leaving the ranking of tiles alone. Flat values are not
+    // touched, so a two-stop chain keeps most of its worth and a six-stop one
+    // gains far less. Re-base `quota.base` whenever it moves (§15).
+    multScale: 0.60,
     // Security Checkpoint: a booth whose fence runs edge to edge along the grid
     // line through its middle. The fence sits between cells, so it costs no floor.
     // Clearing the booth is a chain link of its own (once per traveller): the

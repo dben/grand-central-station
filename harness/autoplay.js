@@ -32,5 +32,14 @@ for (const [w, arr] of Object.entries(ratioByWeek)) {
   const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
   console.log(`  w${String(w).padStart(2)}: ${mean.toFixed(2)}  min ${Math.min(...arr).toFixed(2)}  max ${Math.max(...arr).toFixed(2)}  n=${arr.length}`);
 }
+// The band: what share of weeks land inside 1-2x of quota, and the median week.
+// Survival and the band trade against each other, so both are the reading (doc
+// §14.2) - a curve that everyone survives because every week runs 3x over is
+// not balanced, it is just slack.
+const all = Object.values(ratioByWeek).flat().sort((a, b) => a - b);
+const pct = q => all.length ? all[Math.min(all.length - 1, Math.floor(q * all.length))] : 0;
+const band = all.filter(r => r >= 1 && r < 2).length / Math.max(1, all.length);
+const blowout = all.filter(r => r >= 3).length / Math.max(1, all.length);
 const deaths = outcomes.filter(o => o.died).map(o => o.died);
 console.log(`\n${MODE} / ${DIFF}: ${outcomes.length - deaths.length}/${outcomes.length} survived; death weeks: ${deaths.join(', ') || 'none'}`);
+console.log(`band (1-2x): ${(band * 100).toFixed(0)}%   over 3x: ${(blowout * 100).toFixed(0)}%   median ${pct(0.5).toFixed(2)}x   p10 ${pct(0.1).toFixed(2)}  p90 ${pct(0.9).toFixed(2)}  max ${all.length ? all[all.length - 1].toFixed(2) : 0}`);

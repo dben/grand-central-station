@@ -15,7 +15,12 @@ import { simulateWeek, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-export const SAVE_VERSION = 8;
+// 9: the balance pass that compressed every multiplier and rebuilt the quota
+// curve under it (design doc §15). Nothing about the shape of a save changed,
+// but a run saved under the old numbers would reload into a game where its
+// board scores roughly 40% less against a quota roughly a quarter lower, which
+// is not the run the player left. Discarding is the honest outcome here.
+export const SAVE_VERSION = 9;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -78,10 +83,18 @@ export function gameRules(s) {
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
-// What an event actually multiplies the quota by, after quota.eventStrength
-// pulls the number in data/events.js toward 1. The UI quotes this, not the raw
-// value, so the card and the target always agree.
-export function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
+// What an event actually multiplies the quota by. The UI quotes this, not the
+// raw value in data/events.js, so the card and the target always agree.
+// `quota.eventStrength` softens the number toward 1 - but only where the event
+// asks for MORE. A Convention's x1.6 has to be read against the headroom a
+// normal week leaves, and at a tight band it is a wall; a Strike's x0.9 is the
+// opposite, an apology for a week that takes half the board's traffic away, and
+// softening that is taking the apology back. One strength for both directions
+// killed the runs it was meant to protect (§15).
+export function eventMult(ev) {
+  if (!ev) return 1;
+  return ev.quota >= 1 ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : ev.quota;
+}
 export const fmtMult = m => (Math.round(m * 100) / 100).toString();
 // Is this week's target set by the published curve, or by the player's own
 // form (the catch-up floor)? The timeline says which, so a quota that jumps

@@ -19,7 +19,7 @@ way forward is to make every traveller worth more than the last.
 3. **Settle up.** Your score is compared against the quota, shown as stars (one per 1,000 points).
    Fares and shop revenue pay out as money for next week. Miss the quota and the run ends.
 
-Get far enough ahead and the quota starts chasing you: it never sits below about 70% of your best
+Get far enough ahead and the quota starts chasing you: it never sits below about 85% of your best
 week so far, so a run that has run away from the schedule still has something to beat. The timeline
 marks a week whose target came from your own form rather than the schedule.
 
@@ -53,10 +53,10 @@ Picked with the mode, and open from the first run. It scales the pressure, never
 | | Quota | Tile prices | Starting cash | Fares and revenue |
 |---|---|---|---|---|
 | Standard | — | — | $220 | — |
-| Hard | +15%, climbing faster | +15% | $187 | −10% |
-| Extreme | +20%, climbing much faster | +35% | $176 | −20% |
+| Hard | +15%, climbing faster | +15% | $207 | −10% |
+| Extreme | +15%, climbing much faster | +35% | $198 | −20% |
 
-By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.9×.
+By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.6×.
 
 Standard also lets you take a week back. Until you run it, **Redo Week** puts the board, the cash,
 the points and the shop back to how the week started. Hard and Extreme don't: a move made is kept.
@@ -68,7 +68,7 @@ the points and the shop back to how the week started. Hard and Extreme don't: a 
 | Mode | Board | Twist | Unlocks |
 |---|---|---|---|
 | Terminal | 12×12 | The baseline | — |
-| Junction | 9×9 | 3 AP a week and a fast clock, against a quota 70% higher | Reach week 8 |
+| Junction | 9×9 | 3 AP a week, more cash to spend it with, and a fast clock, against a quota 30% higher | Reach week 8 |
 | Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1, starting with a water bus and a pontoon sold nowhere else | Reach week 8 |
 | Metroplex | 16×16 | Room to spread out and the big tiles early; tiles cost 25% more | Reach week 12 |
 | Sky Harbour | 8×16 | A long board: airfield at one end, road at the other, a security checkpoint across the waist. No rail or water; light aircraft from week 1 and pickpockets from week 3 | Reach week 12 |

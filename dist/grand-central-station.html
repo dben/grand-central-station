@@ -482,15 +482,19 @@ const CONFIG = {
 
   // ------------------------------------------------------------------- quota
   quota: {
-    base: 11000,                // week 1's target, and the whole curve's scale
+    base: 8000,                 // (was 11000) week 1's target, and the whole curve's scale
     // A station's output grows fast while it is small and slowly once it is
     // built out, so a single per-week multiplier makes the first half free and
     // the last few weeks a cliff. Growth starts at `earlyGrowth` and decays
     // geometrically (by `growthDecay` per week) toward `growth`, which tracks
     // that curve and keeps every week about as hard as the last.
-    growth: 1.125,              // the late, settled per-week multiplier
-    earlyGrowth: 1.25,          // week 1 -> 2
-    growthDecay: 0.70,          // how fast the rate falls from early to late
+    // A flatter score curve needs a flatter quota curve. Compressing the
+    // multipliers (`sim.multScale`) took most of the exponent out of a long
+    // chain, so the board's output now climbs harder in the opening weeks
+    // (where tiles are still being added) and far more gently once it is full.
+    growth: 1.10,               // (was 1.125) the late, settled per-week multiplier
+    earlyGrowth: 1.32,          // (was 1.25) week 1 -> 2
+    growthDecay: 0.65,          // (was 0.70) how fast the rate falls from early to late
     starUnit: 1000,             // one star per this many points; quotas round to a whole star
     // Catch-up ("the city expects more of you"): the quota never sits further
     // below your own recent form than this. quota = max(curve, share * recent),
@@ -500,12 +504,12 @@ const CONFIG = {
     // coasting. `share` 0 turns it off.
     // `cap` bounds it: the floor can never ask for more than this multiple of
     // the week's own curve, so one spike week cannot set an impossible target.
-    catchUp: { share: 0.72, from: 'best', cap: 2.2 },
+    catchUp: { share: 0.85, from: 'best', cap: 2.2 },
     // How hard an event week leans on the quota: the multiplier in data/events.js
     // is pulled toward 1 by this (1 = as written, 0.5 = half the swing). An
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
-    eventStrength: 0.5,
+    eventStrength: 0.30,
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -544,6 +548,15 @@ const CONFIG = {
     waypointSigma: 1.5,         // gaussian spread (cells) around the straight line
     sameTileWanderSigma: 2.5,   // spread when destination == origin (a wander)
     tierMatchExitBonus: 1.5,    // transport exit bonus when traveller tier == transport tier
+    // Global compression of every value multiplier: amenity and transport
+    // `mult`, the checkpoint, the lounge stack and the tier-match exit bonus
+    // are each pulled toward 1 by this (1 = the catalogue as written). A chain
+    // multiplies, so the week is exponential in the stops a traveller makes and
+    // a board that chains well runs away from the quota; this lowers the
+    // exponent while leaving the ranking of tiles alone. Flat values are not
+    // touched, so a two-stop chain keeps most of its worth and a six-stop one
+    // gains far less. Re-base `quota.base` whenever it moves (§15).
+    multScale: 0.60,
     // Security Checkpoint: a booth whose fence runs edge to edge along the grid
     // line through its middle. The fence sits between cells, so it costs no floor.
     // Clearing the booth is a chain link of its own (once per traveller): the
@@ -996,10 +1009,12 @@ const __m_src_data_modes_js = (() => {
 //              match what it can build in a week, and action points are most of
 //              that: three a week builds roughly twice the board one does.
 //   run        overrides for any field of CONFIG.run: the event cadence
-//              (`eventEvery`), the ordinance weeks, and the weeks the specials
+//              (`eventEvery`), the ordinance weeks, the weeks the specials
 //              switch on (`pickpocketsFromWeek`, `rareTilesFromWeek`,
-//              `apUpgradeFromWeek`). Whatever is left out keeps the value in
-//              src/config.js.
+//              `apUpgradeFromWeek`) and the opening cash (`startMoney`).
+//              Whatever is left out keeps the value in src/config.js. Opening
+//              cash goes with action points: a level that plays three tiles in
+//              week 1 has to be able to buy three.
 //   startTiles tiles the level is already built with in week 1: { key, x, y,
 //              rot, level }. They are placed through the normal rules, so an
 //              illegal one throws at run start rather than half-building.
@@ -1008,17 +1023,25 @@ const __m_src_data_modes_js = (() => {
 // A tile with a `modes` list is sold on those levels only (see soldOnLevel).
 const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, but the quota is far higher and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 1.7,
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, with the cash to use them, but the quota is higher and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 1.30, quotaGrowth: 1.06,
                 // A cramped board that gets its milestones early, and tunnels
                 // with them, since a tunnel costs no floor space. It ran an
                 // event every third week until the quota band tightened: five
                 // event weeks on a 9x9 board killed two runs in three (§15).
-                run: { ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
+                // Three action points build twice the board, so the target
+                // starts high - but a 9x9 is full by about week 6 and the score
+                // stops climbing, so the curve is the flattest in the game
+                // (1.06 against 1.10). $290 rather than $220 for the same
+                // reason the target is high: three action points in week 1 have
+                // to buy three tiles, and $220 bought two (§15).
+                run: { startMoney: 290, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
                 minWeek: { subway: 2, express_subway: 4, under_parking: 2, limo: 3 } },
   metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. A roomy 16x16 board and the big tiles early, but tiles cost 25% more and the weeks are slower to turn.', unlockWeek: 12, costMult: 1.25,
                 // Room for the six-cell tiles, so they come on sale early; in
                 // exchange the run's own milestones are pushed back.
-                run: { eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
+                // ...and $275 rather than $220, because the level's own tiles
+                // cost 25% more: the wallet buys the same opening either way.
+                run: { startMoney: 275, eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
                 minWeek: { express_train: 3, cruise_dock: 5, jumbo_jetway: 6, cafeteria: 3, flier_club: 7 } },
   waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, anything that floats costs 40% less, and boats are on sale from week one - starting with the water bus and the pontoon, which nowhere else sells.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
                 // Opened by water: the hand deals the pontoon in place of the
@@ -1042,7 +1065,7 @@ const MODES = {
                 run: { pickpocketsFromWeek: 3, pickpocketRamp: 6 },
                 week1: { fixed: ['prop_stand', 'parking_lot', 'burger'], transport: 1, amenity: 1 },
                 minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
-  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.52, quotaGrowth: 1.17,
+  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
                 run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
@@ -1073,7 +1096,12 @@ const __m_src_data_difficulties_js = (() => {
 //   quotaMult       flat multiplier on every week's quota
 //   quotaGrowthAdd  added to the per-week quota growth rate, so the gap widens
 //   costMult        tile prices (upgrades, cards and bridges are unaffected)
-//   startMoneyMult  cash at week 1
+//   startMoneyMult  cash at week 1. Read it against costMult, not on its own:
+//                   the two multiply into the opening hand's buying power, and
+//                   at 0.8 cash against 1.35 prices Extreme could afford barely
+//                   half of what Standard could. A level with three action
+//                   points then had money for two of them and died in week 1
+//                   (§15), so both levels now cut cash far less than prices.
 //   mods            simulator modifiers, merged like an ordinance's
 //   redo            the week can be taken back and replayed from the start. Only
 //                   Standard gets it: on Hard and Extreme a bad move is the game.
@@ -1084,12 +1112,12 @@ const DIFFICULTIES = {
   },
   hard: {
     name: 'Hard', desc: 'The quota is 15% higher and climbs faster. Tiles cost more, you start with less cash, and everything pays 10% less.',
-    quotaMult: 1.15, quotaGrowthAdd: 0.012, costMult: 1.15, startMoneyMult: 0.85,
+    quotaMult: 1.15, quotaGrowthAdd: 0.008, costMult: 1.15, startMoneyMult: 0.94,
     mods: { revenueMult: 0.9, fareMult: 0.9 },
   },
   extreme: {
-    name: 'Extreme', desc: 'The quota is 20% higher and climbs much faster. Tiles cost a third more, you start with less cash, and everything pays 20% less.',
-    quotaMult: 1.2, quotaGrowthAdd: 0.045, costMult: 1.35, startMoneyMult: 0.8,
+    name: 'Extreme', desc: 'The quota starts 15% higher and then pulls away week after week. Tiles cost a third more, you start with less cash, and everything pays 20% less.',
+    quotaMult: 1.15, quotaGrowthAdd: 0.030, costMult: 1.35, startMoneyMult: 0.9,
     mods: { revenueMult: 0.8, fareMult: 0.8 },
   },
 };
@@ -1826,6 +1854,14 @@ function mergeMods(...list) {
 }
 
 // ---------------------------------------------------------------------------
+// Every value multiplier in the game passes through here. A chain multiplies,
+// so the week's score is exponential in the number of stops a traveller makes
+// and a lucky board runs away from the quota; `sim.multScale` compresses each
+// multiplier toward 1 by the same fraction, which pulls the exponent down
+// without changing which tile is better than which. Flat values are untouched,
+// so a short chain keeps most of its worth and a long one gains less (§15).
+const scaleMult = (m, cfg = CONFIG) => 1 + (m - 1) * cfg.sim.multScale;
+
 // Effective tile stats (after level, modifiers). Exported so the UI can show them.
 // `wifi` is the WiFi strength reaching the tile (see wifiStrength).
 function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
@@ -1840,7 +1876,7 @@ function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   return {
     def, tier: def.tier, skeleton,
     batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
-    mult: def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit,
+    mult: scaleMult(def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit, cfg),
     flat: def.flat * mods.flatMult,
     arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
     dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
@@ -1863,7 +1899,7 @@ function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   // works. closedRate 0 is a full closure.
   const under = mods.closedBelowLevel > 0 && isService && (tile.level || 1) < mods.closedBelowLevel;
   const restrict = under ? mods.closedRate : 1;
-  let mult = isService ? def.mult + up.mult * lvl + mods.amenityMultBonus + wifi * cfg.sim.wifi.mult : 1;
+  let mult = isService ? scaleMult(def.mult + up.mult * lvl + mods.amenityMultBonus + wifi * cfg.sim.wifi.mult, cfg) : 1;
   if (under) mult = 1 + (mult - 1) * restrict;
   return {
     def, tier: def.tier, special: def.special || null,
@@ -1877,7 +1913,7 @@ function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
     closed: under && restrict === 0,
     restricted: under && restrict > 0,
     walkable: !!def.walkable,
-    stackValue: (def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack,
+    stackValue: ((def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack) * cfg.sim.multScale,
     minTier: def.key === 'flier_club' ? cfg.sim.frequentFlierMinTier : 1,
   };
 }
@@ -1970,7 +2006,7 @@ function simulateWeek(board, opts = {}) {
   // upgraded booth multiplies more.
   const booths = new Map();
   for (const t of board.tiles) if (t.key === 'gate') {
-    const mult = ckCfg.mult + ckCfg.multPerLevel * ((t.level || 1) - 1);
+    const mult = scaleMult(ckCfg.mult + ckCfg.multPerLevel * ((t.level || 1) - 1), cfg);
     for (const [x, y] of t.cells) booths.set(y * W + x, { tile: t, mult, bonus: ckCfg.budgetBonus });
   }
 
@@ -2392,7 +2428,7 @@ function simulateWeek(board, opts = {}) {
     const before = a.value;
     let v = a.value * e.mult + e.flat;
     let tierBonus = 1;
-    if (a.tier === e.tier) { tierBonus = cfg.sim.tierMatchExitBonus; v *= tierBonus; }
+    if (a.tier === e.tier) { tierBonus = scaleMult(cfg.sim.tierMatchExitBonus, cfg); v *= tierBonus; }
     if (a.booth) {
       const bv = v * a.booth.mult;
       a.chain.push({ name: a.booth.tile.name, tileId: a.booth.tile.id, before: v, after: bv, mult: a.booth.mult, flat: 0 });
@@ -2442,7 +2478,7 @@ function simulateWeek(board, opts = {}) {
     if (a.state !== 'waiting' && t + walk > TICKS) return a.value * cfg.economy.strandedMultiplier;
     const e = transports[a.dest].e;
     let v = a.value * e.mult + e.flat;
-    if (a.tier === e.tier) v *= cfg.sim.tierMatchExitBonus;
+    if (a.tier === e.tier) v *= scaleMult(cfg.sim.tierMatchExitBonus, cfg);
     if (a.booth) v *= a.booth.mult;
     if (a.waitSlot) v *= 1 + a.stacks * a.waitSlot.e.stackValue;
     return v;
@@ -2672,7 +2708,7 @@ function chebyshevMap(board, cells) {
   return m;
 }
 
-return { DEFAULT_MODS, mergeMods, effTransport, effAmenity, wifiStrength, simulateWeek };
+return { DEFAULT_MODS, mergeMods, scaleMult, effTransport, effAmenity, wifiStrength, simulateWeek };
 })();
 // ---- src/game/run.js
 const __m_src_game_run_js = (() => {
@@ -2692,7 +2728,12 @@ const { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDepen
 const { simulateWeek, mergeMods } = __m_src_sim_sim_js;
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
-const SAVE_VERSION = 8;
+// 9: the balance pass that compressed every multiplier and rebuilt the quota
+// curve under it (design doc §15). Nothing about the shape of a save changed,
+// but a run saved under the old numbers would reload into a game where its
+// board scores roughly 40% less against a quota roughly a quarter lower, which
+// is not the run the player left. Discarding is the honest outcome here.
+const SAVE_VERSION = 9;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2755,10 +2796,18 @@ function gameRules(s) {
   for (const k of s.ordinances) Object.assign(r, ORDINANCES[k].game || {});
   return r;
 }
-// What an event actually multiplies the quota by, after quota.eventStrength
-// pulls the number in data/events.js toward 1. The UI quotes this, not the raw
-// value, so the card and the target always agree.
-function eventMult(ev) { return ev ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : 1; }
+// What an event actually multiplies the quota by. The UI quotes this, not the
+// raw value in data/events.js, so the card and the target always agree.
+// `quota.eventStrength` softens the number toward 1 - but only where the event
+// asks for MORE. A Convention's x1.6 has to be read against the headroom a
+// normal week leaves, and at a tight band it is a wall; a Strike's x0.9 is the
+// opposite, an apology for a week that takes half the board's traffic away, and
+// softening that is taking the apology back. One strength for both directions
+// killed the runs it was meant to protect (§15).
+function eventMult(ev) {
+  if (!ev) return 1;
+  return ev.quota >= 1 ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : ev.quota;
+}
 const fmtMult = m => (Math.round(m * 100) / 100).toString();
 // Is this week's target set by the published curve, or by the player's own
 // form (the catch-up floor)? The timeline says which, so a quota that jumps
@@ -4760,7 +4809,7 @@ const { ORDINANCES } = __m_src_data_ordinances_js;
 const { CARDS } = __m_src_data_cards_js;
 const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
 const { cutOffTransports, startBoard } = __m_src_sim_board_js;
-const { effTransport, effAmenity } = __m_src_sim_sim_js;
+const { effTransport, effAmenity, scaleMult } = __m_src_sim_sim_js;
 const { BoardRenderer, boardStill, colorForDef } = __m_src_ui_render_js;
 const { attachBoardInput } = __m_src_ui_boardinput_js;
 const { playTrack, isMuted, setMuted } = __m_src_ui_audio_js;
@@ -4859,14 +4908,18 @@ function describeTile(tile, def) {
     const walk = def.walkable && def.special !== 'waiting' ? [['Floor', 'Travellers walk straight over it, so it never blocks a path']] : [];
     if (def.special === 'wifi') {
       const w = CONFIG.sim.wifi;
-      rows.push(['Effect', `Helps every tile within ${def.radius + ((tile && tile.radiusBonus) || 0)} squares`], ['Shops', `draw ${Math.round(w.rate * 100)}% more people and boost +${w.mult.toFixed(2)} more`], ['Lounges', `+${w.stack.toFixed(2)} for every tick waited`], ['Transports', `+${w.exit.toFixed(2)} when travellers board`],
+      // A hotspot's boosts are summed into the tile's own multiplier and
+      // compressed with it, so show what the tile actually gains, not the
+      // number in the config (see scaleMult).
+      const ms = CONFIG.sim.multScale;
+      rows.push(['Effect', `Helps every tile within ${def.radius + ((tile && tile.radiusBonus) || 0)} squares`], ['Shops', `draw ${Math.round(w.rate * 100)}% more people and boost +${(w.mult * ms).toFixed(2)} more`], ['Lounges', `+${(w.stack * ms).toFixed(2)} for every tick waited`], ['Transports', `+${(w.exit * ms).toFixed(2)} when travellers board`],
         ['Together', `Up to ${w.cap} hotspots help one tile; every level counts for ${Math.round(w.perLevel * 100)}% more`], ...walk);
     }
     else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick, and they can still stop at shops along the way`]);
     else if (def.special === 'security') rows.push(['Effect', 'Picks up any pickpocket who comes near'], ['Range', def.radius + ((tile && tile.radiusBonus) || 0)], ...walk);
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
-      const mult = ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1);
+      const mult = scaleMult(ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1));
       rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Rotate to turn the fence.'],
         ['Who crosses', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
         ['Reward', `Worth ×${mult.toFixed(2)} more, and ${ck.budgetBonus} extra stops on the way. Once per traveller.`], ['Security', 'Catches pickpockets who walk through']);
