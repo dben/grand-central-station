@@ -862,6 +862,60 @@ export function simulateWeek(board, opts = {}) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Two weeks back to back on the same board: the Double Week event. Each week is
+// its own simulation, so the concourse empties between them and nobody carries
+// over, and the two are stitched end to end - which is what makes the score
+// come out at the sum and the playback run straight through.
+// Running ONE week for twice as long is a different thing, and not the one we
+// want: the clock, not the stop budget, is what caps most travellers' chains,
+// so a 48-tick week scores three to four times a 24-tick one rather than twice,
+// and by a margin that depends on the board (§15).
+export function simulateWeeks(board, opts = {}, n = 2) {
+  let out = null;
+  for (let i = 0; i < n; i++) {
+    const r = simulateWeek(board, { ...opts, seed: mix(opts.seed || 0, i + 1) });
+    out = out ? joinWeeks(out, r) : r;
+  }
+  return out;
+}
+
+// Lay week `b` after week `a`: everything per-tick shifts by a's length, agent
+// ids are renumbered past a's, and every total is the sum.
+function joinWeeks(a, b) {
+  const off = a.ticks, ticks = a.ticks + b.ticks, idOff = a.agents.length;
+  const sums = (x, y) => { const o = {}; for (const k in x) o[k] = x[k] + (y[k] || 0); return o; };
+  const shiftTick = arr => { const o = new Array(ticks + 1); for (let t = 0; t <= off; t++) o[t] = arr[0][t]; for (let t = 1; t <= b.ticks; t++) o[off + t] = arr[1][t]; return o; };
+
+  const tileStats = {};
+  for (const id in a.tileStats) {
+    const p = a.tileStats[id], q = b.tileStats[id];
+    const occ = new Int16Array(ticks + 1);
+    occ.set(p.occ.subarray(0, off + 1), 0);
+    if (q) for (let t = 1; t <= b.ticks; t++) occ[off + t] = q.occ[t];
+    const t = { ...p, occ };
+    for (const k of ['serves', 'balks', 'revenue', 'points', 'spawned', 'boarded', 'stranded', 'lost', 'fullTicks']) t[k] = p[k] + ((q && q[k]) || 0);
+    t.saturation = t.cap > 0 ? t.fullTicks / ticks : 0;
+    tileStats[id] = t;
+  }
+  const heat = new Float32Array(a.heat.length);
+  for (let i = 0; i < heat.length; i++) heat[i] = a.heat[i] + b.heat[i];
+  const scoreByTick = shiftTick([a.scoreByTick, b.scoreByTick]);
+  for (let t = 1; t <= b.ticks; t++) scoreByTick[off + t] += a.score;
+
+  return {
+    ...a, ticks, spawnTicks: a.spawnTicks + b.spawnTicks,
+    score: a.score + b.score,
+    points: sums(a.points, b.points),
+    scoreByTick, pendingByTick: shiftTick([a.pendingByTick, b.pendingByTick]),
+    money: sums(a.money, b.money),
+    counts: sums(a.counts, b.counts),
+    best: (b.best && (!a.best || b.best.value > a.best.value)) ? b.best : a.best,
+    agents: a.agents.concat(b.agents.map(g => ({ ...g, id: g.id + idOff, spawnTick: g.spawnTick + off, endTick: g.endTick + off, events: g.events.map(e => ({ ...e, t: e.t + off })) }))),
+    tileStats, heat,
+  };
+}
+
 // walkable cells 8-adjacent to a tile, not across a checkpoint fence
 function doorCells(board, tile, pass, blocked) {
   const W = board.w, H = board.h;

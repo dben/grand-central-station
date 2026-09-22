@@ -1,8 +1,9 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
-import { simulateWeek, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek } from '../src/game/run.js';
+import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
+import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
 import { CONFIG } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
@@ -234,8 +235,11 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(quotaFor(std, 1) === CONFIG.quota.base && JSON.stringify(computeMods(std)) === JSON.stringify(computeMods({ ...std, diffKey: 'standard' })), 'Standard leaves the quota and the simulator alone');
   const q = (s, w) => quotaFor(s, w);
   const weeks = [1, 2, 4, 8, 12, 16];
-  // quotas round to whole stars, so week 1 can tie between two difficulties
-  ok(weeks.every(w => q(ext, w) >= q(hard, w) && q(hard, w) >= q(std, w)) && q(ext, 4) > q(hard, 4), 'a harder run needs more every week');
+  // Quotas round to whole stars, so an early week can tie between two
+  // difficulties - and so can a later one where a low-multiplier event lands.
+  // Week 12 is far enough out that the curves have pulled apart whatever the
+  // week's event is.
+  ok(weeks.every(w => q(ext, w) >= q(hard, w) && q(hard, w) >= q(std, w)) && q(ext, 12) > q(hard, 12), 'a harder run needs more every week');
   // the growth lever is the point: the gap has to widen, not just sit there
   ok(q(hard, 16) / q(std, 16) > q(hard, 1) / q(std, 1) && q(ext, 16) / q(std, 16) > q(ext, 1) / q(std, 1), 'and the gap widens by week 16');
   const cost = s => tileCost(s, tileDef('coffee'));
@@ -379,6 +383,71 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(!keysOf(wf).includes('prop_stand') && keysOf(createRun({ modeKey: 'sky_harbour', seed: 3 })).includes('prop_stand'), 'and the prop stand belongs to Sky Harbour alone');
   ok(createRun({ modeKey: 'waterfront', seed: 3 }).shop.cards.some(c => c.key === 'pontoon'), 'the level deals its own opening hand');
   ok(keysOf(tm2).includes('pocket_park') && keysOf(wf).includes('pocket_park'), 'a tile with no level list is sold everywhere');
+}
+
+// event weeks: the gate on an event that leans on a rule, the walkout the
+// union picks, the money weeks and the week that runs twice
+{
+  const ev = (s, w) => { const e = eventForWeek(s, w); return e && e.key; };
+  // Crime Spree waits for the crime wave, since the tiles that answer it go on
+  // sale in the same week. A gated event hands the week to the next in the plan.
+  const gs = createRun({ seed: 1 });
+  gs.eventPlan = ['crime_spree', 'crime_spree', 'delays', 'vip'];
+  ok(ev(gs, 4) === 'delays' && ev(gs, 8) === 'crime_spree', 'a gated event is skipped until the rule it leans on has switched on');
+  ok(runRules(gs).pickpocketsFromWeek === 7 && computeMods({ ...gs, week: 8 }).pickpocketRate > CONFIG.sim.pickpocketRate, 'and then it puts far more pickpockets on the board than the wave does');
+  ok(ev(createRun({ modeKey: 'junction', seed: 1 }), 4) !== null, 'every other event can still take any event week');
+  // a typo in a gate would silently retire the event it is on
+  ok(EVENT_KEYS.every(k => !EVENTS[k].after || CONFIG.run[EVENTS[k].after] != null), 'every event gate names a run rule that exists');
+
+  // the strike target is rolled, not chosen, and frozen for the week
+  const st = createRun({ seed: 4 });
+  st.eventPlan = ['strike'];
+  placeTile(st.board, 'train_station', 4, 0, 0);
+  placeTile(st.board, 'bus_stop', 3, 10, 0);
+  st.week = 4; st.strikeChoice = null;
+  const roll = pickStrikeTerrain(st, 4);
+  ok(['rail', 'road'].includes(roll) && pickStrikeTerrain(st, 4) === roll, 'the walkout picks one of the terrains on the board, the same one every time it is asked');
+  ok(pickStrikeTerrain(st, 8) !== null && [4, 8, 12, 16].map(w => pickStrikeTerrain(st, w)).some(t => t !== roll), 'and a different week can pick a different one');
+  const mstrike = computeMods({ ...st, strikeChoice: roll });
+  ok(mstrike.strikeTerrain === roll && !mstrike.strikeSkeleton, 'a board with two terrains loses the one that walked out');
+  removeTile(st.board, st.board.tiles.find(t => t.key === 'bus_stop').id);
+  ok(computeMods({ ...st, strikeChoice: 'rail' }).strikeSkeleton === 'rail', 'and a board with only one keeps a skeleton service instead');
+
+  // money weeks: a fine, a sweep and an allowance
+  const cash = (plan, money, week = 4) => {
+    const r = createRun({ seed: 6 }); r.eventPlan = plan; r.week = week - 1; r.money = money;
+    r.phase = 'summary'; r.lastResult = { score: 1e9, money: { total: 0 }, counts: {}, best: null };
+    settle(r); return r;
+  };
+  const fined = cash(['back_taxes'], 1000);
+  ok(fined.money === 550 && fined.weekCash.amount === -450, 'Back Taxes takes its share as the week opens');
+  ok(cash(['back_taxes'], 40).money === 0, 'and a fine can empty the till but never take it below nothing');
+  const rich = cash(['emergency_budget'], 9000), broke = cash(['emergency_budget'], 5);
+  ok(rich.money === cashBaseline(rich) && broke.money === rich.money, 'an Emergency Budget cuts a hoard and tops up a broke run to the same allowance');
+  ok(rich.money > CONFIG.run.startMoney && cashBaseline({ ...rich, week: 12 }) > cashBaseline({ ...rich, week: 4 }), 'and that allowance grows with the week');
+  const swept = cash(['budget_audit'], 800);
+  ok(swept.money === 800 && !swept.weekCash, 'an audit leaves the till alone while you are building');
+  runWeek(swept);
+  ok(swept.money === 0 && swept.cashSwept >= 800, 'and sweeps up everything left, the early-finish payment with it, when the week runs');
+
+  // a Double Week is two weeks laid end to end, not one long one
+  const dw = createRun({ seed: 6 }); dw.eventPlan = ['double_week']; dw.week = 4;
+  ok(weekRepeat(dw, 4) === 2 && weekRepeat(dw, 8) === 2 && weekRepeat(createRun({ seed: 6 }), 4) === 1, 'the Double Week runs the week twice');
+  ok(eventMult(eventForWeek(dw, 4)) === 2, 'and its quota multiplier is exact: softening the arithmetic of two weeks would hand out a free one');
+  ok(apForRun(dw) === apForRun(createRun({ seed: 6 })) + 1, 'with one extra action point to prepare for them');
+  const one = simulateWeek(b, { seed: 3, week: 8 }), two = simulateWeeks(b, { seed: 3, week: 8 }, 2);
+  ok(two.ticks === one.ticks * 2 && two.agents.length > one.agents.length, 'the two weeks are stitched end to end');
+  ok(two.agents.every((a, i) => a.id === i) && two.agents.slice(-1)[0].spawnTick > one.ticks, 'agent ids run straight through and the second week starts after the first');
+  ok(two.scoreByTick[two.ticks] === two.score && two.scoreByTick[one.ticks] <= two.score, 'the score climbs across both weeks');
+  ok(Object.values(two.tileStats).every(t => t.occ.length === two.ticks + 1), 'and every tile is tracked over the whole run');
+  // This is what makes the x1.9 target fair on any board. Running ONE week for
+  // 48 ticks instead would not: the clock is what caps most chains, so on an
+  // amenity-dense board it scores nearly four times a normal week and on a bare
+  // one barely twice (§15). Keep the Double Week two weeks, not a long one.
+  ok(Math.abs(two.score - one.score * 2) < one.score * 0.25, 'and two weeks come out at about twice one week, whatever is on the board');
+  const dwr = createRun({ seed: 6 }); dwr.eventPlan = ['double_week']; dwr.week = 4; dwr.ap = apForRun(dwr);
+  placeTile(dwr.board, 'train_station', 4, 0, 0); placeTile(dwr.board, 'burger', 5, 4, 0);
+  ok(runWeek(dwr).result.ticks === CONFIG.sim.ticks * 2, 'and the week the player actually runs is both of them');
 }
 
 // a level can start with tiles already built
