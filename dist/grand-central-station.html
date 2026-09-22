@@ -562,7 +562,7 @@ const CONFIG = {
     // Clearing the booth is a chain link of its own (once per traveller): the
     // fence's detours cost walking time, so crossing has to pay for itself.
     checkpoint: {
-      mult: 1.3,                // value multiplier for clearing the booth
+      mult: 1.5,                // value multiplier for clearing the booth
       multPerLevel: 0.1,        // extra multiplier per checkpoint level above 1
       // true: the multiplier is applied when the traveller boards, on top of
       // the whole chain, so the booth is worth the same wherever on the route
@@ -570,8 +570,11 @@ const CONFIG = {
       atExit: true,
       budgetBonus: 2,           // stop budget for clearing the booth; rarely binding on its own
       // How far the fence reaches from the booth: 'edge' (to both board edges),
-      // 'walls' (until a solid tile stands beside the line) or a cell count each way.
-      fence: 'walls',
+      // 'split' (until the line would cut through a building: one tile on both
+      // sides of it, so a fence carries on past a wall it only runs alongside),
+      // 'walls' (until any solid tile stands beside the line) or a cell count
+      // each way.
+      fence: 'split',
       // false: anyone may walk through to reach whatever is on the far side.
       // true: only travellers whose platform is on the far side may cross, so
       // each side keeps its own shops (the old Security Gate rule).
@@ -1086,7 +1089,7 @@ const MODES = {
   // waist splits 8x16 into two 8x8 halves, airside and landside, each about the
   // size of a Junction board. That is the level's whole shape - build a station
   // twice, once either side of the fence, and walk every traveller through it.
-  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 },
+  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaMult: 1.05,
                 preLock: { N: 'apron', S: 'road' },
                 // The booth straddles the line y=8 with its fence running the
                 // width of the board: everyone landing airside has to clear it
@@ -1779,14 +1782,22 @@ function checkpointLine(cells) {
 
 // Every fence line on the board: per line, the set of indices where a fence
 // panel stands. How far the panels reach from the booth is `sim.checkpoint.fence`:
-// 'edge' runs them to both board edges; 'walls' runs them until a solid tile
-// stands on either side of the line (the fence spans the open floor the booth
-// sits in); a number runs them that many cells each way. Booths that share a
-// line share one fence, and each booth's own cell is always a gap.
+// 'edge' runs them to both board edges; 'split' runs them until the line would
+// cut through a building - one solid tile on both sides of a panel - so a fence
+// that only runs along a building's flank carries on past it; 'walls' stops at
+// the first solid tile beside the line either way; a number runs them that many
+// cells each way. Booths that share a line share one fence, and each booth's own
+// cell is always a gap.
 function checkpointFences(b, extraCells = null) {
   const reach = CONFIG.sim.checkpoint.fence;
-  const walk = reach === 'walls' ? buildWalkMap(b) : null;
+  const stops = reach === 'walls' || reach === 'split';
+  const walk = stops ? buildWalkMap(b) : null;
   const solid = (x, y) => x < 0 || y < 0 || x >= b.w || y >= b.h || walk[y * b.w + x] === 1;
+  // Which solid tile stands on a cell (0 for none), so 'split' can tell a fence
+  // running alongside a building from one running into the middle of it.
+  const owner = new Array(reach === 'split' ? b.w * b.h : 0).fill(0);
+  if (reach === 'split') for (const t of b.tiles) for (const [x, y] of t.cells) if (solid(x, y)) owner[y * b.w + x] = t.id;
+  const oneTile = (x0, y0, x1, y1) => owner[y0 * b.w + x0] !== 0 && owner[y0 * b.w + x0] === owner[y1 * b.w + x1];
   const out = { h: new Map(), v: new Map() };
   const booths = [];
   const add = cells => booths.push(checkpointLine(cells));
@@ -1796,12 +1807,18 @@ function checkpointFences(b, extraCells = null) {
     if (!out[axis].has(line)) out[axis].set(line, new Set());
     const walls = out[axis].get(line);
     const len = axis === 'h' ? b.w : b.h;
-    // a panel at index i on a horizontal line y sits between (i, y-1) and (i, y)
-    const moot = i => axis === 'h' ? (solid(i, line - 1) || solid(i, line)) : (solid(line - 1, i) || solid(line, i));
+    // the two cells a panel at index i sits between: on a horizontal line y, (i, y-1) and (i, y)
+    const sides = i => axis === 'h' ? [i, line - 1, i, line] : [line - 1, i, line, i];
+    // where the run ends: 'split' at a tile the line would cut in two, 'walls' at any tile beside it
+    const moot = i => { const c = sides(i); return reach === 'split' ? oneTile(...c) : solid(c[0], c[1]) || solid(c[2], c[3]); };
+    const buried = i => { const c = sides(i); return solid(c[0], c[1]) && solid(c[2], c[3]); };
     for (const dir of [-1, 1]) {
       for (let i = gap + dir, n = 0; i >= 0 && i < len; i += dir, n++) {
         if (typeof reach === 'number' && n >= reach) break;
-        if (reach === 'walls' && moot(i)) break;
+        if (stops && moot(i)) break;
+        // Walls both sides: nothing can step across there anyway, so the line
+        // runs on without a panel rather than one buried between two buildings.
+        if (reach === 'split' && buried(i)) continue;
         walls.add(i);
       }
     }
@@ -5094,7 +5111,7 @@ function describeTile(tile, def) {
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
       const mult = scaleMult(ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1));
-      rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Rotate to turn the fence.'],
+      rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Only a building standing across the line stops it. Rotate to turn the fence.'],
         ['Who crosses', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
         ['Reward', `Worth ×${mult.toFixed(2)} more, and ${ck.budgetBonus} extra stops on the way. Once per traveller.`], ['Security', 'Catches pickpockets who walk through']);
     }

@@ -122,7 +122,7 @@ function describeTile(tile, def) {
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
       const mult = scaleMult(ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1));
-      rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Rotate to turn the fence.'],
+      rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Only a building standing across the line stops it. Rotate to turn the fence.'],
         ['Who crosses', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
         ['Reward', `Worth ×${mult.toFixed(2)} more, and ${ck.budgetBonus} extra stops on the way. Once per traveller.`], ['Security', 'Catches pickpockets who walk through']);
     }

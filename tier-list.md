@@ -125,6 +125,7 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 | Security Station | utility | amenity | 87 | 1.7 | 2.0 | 1.9 | 0 |
 | Beam-Em-Up Pad ★ | transport | transport | 1092 | 20.7 | 22.7 | 1.9 | 285 |
 | Waiting Area | amenity | premium | 61 | 1.1 | 3.8 | 1.8 | 0 |
+| Security Checkpoint | utility | amenity | 112 | 1.5 | 3.5 | 1.3 | 0 |
 | Helipad | transport | transport | 494 | 5.7 | 6.6 | 1.2 | 68 |
 | Loop Terminal ★ | transport | transport | 780 | 9.0 | 11.4 | 1.2 | 83 |
 | Renovation | named upgrade | amenity | 240 | 2.5 | 2.5 | 1.1 | — |
@@ -134,7 +135,6 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
-| Security Checkpoint | utility | premium | 112 | 1.0 | 2.5 | 0.9 | 0 |
 | Hot Air Balloon | transport | transport | 338 | 2.9 | 4.4 | 0.9 | 25 |
 | Marina | transport | transport | 455 | 4.0 | 4.9 | 0.9 | 47 |
 | Chrono Lounge ★ | amenity | premium | 243 | 1.9 | 5.9 | 0.8 | 56 |
@@ -192,7 +192,10 @@ quota the ordinance adds, on the bench it suited best.
 - **Utility tiles grade low and that is correct.** WiFi Hotspot, Moving Walkway, Waiting Area and
   the Security Checkpoint are bought for what they do to the tiles around them; a bench with four
   tiles on it has almost nothing for them to do. Read them on `sensitivity.mjs` against a real
-  board instead, where the Checkpoint's best spot is worth 11–42★ on the bot's week-9 boards.
+  board instead, where the Checkpoint's best spot is worth 19–47★ on the bot's week-9 boards. The
+  Checkpoint moved up a grade when its fence stopped shortening against a building's flank and its
+  crossing went to ×1.5 (design doc §15); on a five-tile bench that reads as a median 1.5★ instead
+  of 1.0★, which is still the wrong bench for it.
 - **Two D grades are placement, not power.** Frequent Flier Club reads 0.4★ at its median spot and
   5.1★ at its best, and Chrono Lounge 1.9 against 5.9. Both are lounges: they are worth nothing
   where nobody waits and a great deal on a platform's doorstep. A median is the wrong summary for
