@@ -11,7 +11,7 @@ import { MODES, minWeekOf, soldOnLevel } from '../data/modes.js';
 import { DIFFICULTIES } from '../data/difficulties.js';
 import { Rng, hashString } from '../sim/rng.js';
 import { startBoard, cloneBoard, checkPlacement, placeTile, removeTile, edgeDependents, lineAvailable, LOCK_TERRAINS } from '../sim/board.js';
-import { simulateWeek, mergeMods } from '../sim/sim.js';
+import { simulateWeek, simulateWeeks, mergeMods } from '../sim/sim.js';
 
 // Bump whenever the shape of the saved run changes (state fields, board or tile
 // records). Saves are not migrated: an older one is reported and discarded.
@@ -20,7 +20,9 @@ import { simulateWeek, mergeMods } from '../sim/sim.js';
 // but a run saved under the old numbers would reload into a game where its
 // board scores roughly 40% less against a quota roughly a quarter lower, which
 // is not the run the player left. Discarding is the honest outcome here.
-export const SAVE_VERSION = 9;
+// 10: money weeks and the Double Week (`weekCash`, `cashSwept`), and five new
+// events in the plan, so an old plan names weeks that no longer line up.
+export const SAVE_VERSION = 10;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -39,6 +41,7 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
     eventPlan: plan, surveyed: false,
     ordinances: [], pendingOrdinance: null,
     effects: [], strikeChoice: null, grandOpening: null,
+    weekCash: null, cashSwept: 0,
     lastResult: null, history: [], won: false, log: [],
     records: { bestWeek: 0, bestTraveller: 0, bestScore: 0 },
   };
@@ -61,14 +64,26 @@ export const difficultyOf = s => DIFFICULTIES[s.diffKey] || DIFFICULTIES.standar
 // ordinance like Staff Expansion, and any timed effect (Temp Staff) still running.
 export function apForRun(s) {
   const m = modeOf(s);
-  const extra = s.apPermanentBonus + (gameRules(s).apBonus || 0) + s.effects.reduce((a, e) => a + (e.ap || 0), 0);
+  const extra = s.apPermanentBonus + (gameRules(s).apBonus || 0) + s.effects.reduce((a, e) => a + (e.ap || 0), 0)
+    + ((currentEvent(s) || {}).ap || 0);
   if (m.fixedAP) return m.fixedAP + extra;
   return apForWeek(s.week, m) + extra;
 }
 export function isEventWeek(s, week = s.week) { return week % runRules(s).eventEvery === 0; }
+// An event with an `after` field leans on a rule that has not switched on yet
+// (a Crime Spree before the crime wave has nothing on sale that answers it), so
+// it is skipped and the next event in the plan takes the week. The pick stays a
+// function of the week alone, which is what the timeline and the preview cache
+// both rely on.
 export function eventForWeek(s, week) {
   if (!isEventWeek(s, week)) return null;
-  const k = s.eventPlan[(week / runRules(s).eventEvery - 1) % s.eventPlan.length];
+  const rules = runRules(s), plan = s.eventPlan, n = plan.length;
+  const start = (week / rules.eventEvery - 1) % n;
+  for (let i = 0; i < n; i++) {
+    const k = plan[(start + i) % n];
+    if (!EVENTS[k].after || week >= rules[EVENTS[k].after]) return { key: k, ...EVENTS[k] };
+  }
+  const k = plan[start];
   return { key: k, ...EVENTS[k] };
 }
 export function currentEvent(s) { return eventForWeek(s, s.week); }
@@ -91,8 +106,12 @@ export function gameRules(s) {
 // opposite, an apology for a week that takes half the board's traffic away, and
 // softening that is taking the apology back. One strength for both directions
 // killed the runs it was meant to protect (§15).
+// `exact` opts an event out of the softening entirely: a Double Week's x2 is
+// the arithmetic of two weeks, not a demand for a harder one, and pulling it
+// toward 1 would hand out a free week.
 export function eventMult(ev) {
   if (!ev) return 1;
+  if (ev.exact) return ev.quota;
   return ev.quota >= 1 ? 1 + (ev.quota - 1) * CONFIG.quota.eventStrength : ev.quota;
 }
 export const fmtMult = m => (Math.round(m * 100) / 100).toString();
@@ -121,7 +140,13 @@ export function quotaFor(s, week = s.week) {
   // The floor takes no event multiplier: the curve already carries it, and
   // stacking the two makes a convention week on a strong run unsurvivable
   // (measured: every run died, most of them on the first big event, §15).
-  const floor = Math.min(c.share * recent * grow, (c.cap || Infinity) * curve);
+  // An `exact` multiplier is the one exception, because it is not a demand but
+  // arithmetic: a Double Week really is two weeks, so a run's own form counts
+  // double that week too. Leaving it out doubled the curve while the floor
+  // stayed put, so on a strong run - the only kind the floor binds on - the
+  // floor stopped binding and the week paid 1.7x what its neighbours did (§15).
+  const exact = ev && ev.exact ? ev.quota : 1;
+  const floor = Math.min(c.share * recent * grow * exact, (c.cap || Infinity) * curve);
   return Math.max(curve, Math.round(floor / u) * u);
 }
 export function tileCount(s) { return s.board.tiles.length; }
@@ -186,6 +211,40 @@ export function earlyFinishPerAP(s, week = s.week) {
   return e.earlyFinishBase + e.earlyFinishPerWeek * (week - 1);
 }
 export function earlyFinishBonus(s, ap = s.ap) { return earlyFinishPerAP(s) * Math.max(0, ap); }
+
+// ------------------------------------------------------------- money weeks
+// An event may reach into the till instead of onto the board. Two of them land
+// as the week opens, before the shop has been touched: a fine takes a share of
+// what is there, and an emergency budget sets the till to a starting allowance
+// that grows with the week - which cuts a hoard down and tops a broke run back
+// up. The third waits until the week is run and sweeps up whatever is left. The
+// numbers live with the event in data/events.js.
+export function cashBaseline(s, week = s.week) {
+  const ev = eventForWeek(s, week), g = (ev && ev.cash && ev.cash.resetGrowth) || 1;
+  return Math.round(runRules(s).startMoney * (difficultyOf(s).startMoneyMult || 1) * Math.pow(g, week - 1));
+}
+// What a fine takes out of the till as it stands. Never more than is in it.
+function cashFine(s, week = s.week) {
+  const ev = eventForWeek(s, week), c = ev && ev.cash;
+  if (!c || c.payShare == null) return 0;
+  return Math.min(s.money, Math.max(c.payMin || 0, Math.round(s.money * c.payShare)));
+}
+function applyWeekCash(s) {
+  s.weekCash = null;
+  const ev = currentEvent(s), c = ev && ev.cash;
+  if (!c) return;
+  if (c.payShare != null) {
+    const paid = cashFine(s);
+    if (paid <= 0) return;
+    s.money -= paid; s.weekCash = { kind: 'fine', amount: -paid };
+    log(s, `${ev.name}: paid $${paid} to the city`);
+  } else if (c.resetGrowth != null) {
+    const base = cashBaseline(s), delta = base - s.money;
+    if (delta === 0) return;
+    s.money = base; s.weekCash = { kind: 'reset', amount: delta };
+    log(s, `${ev.name}: the till is set to $${base} (${delta > 0 ? '+' : '-'}$${Math.abs(delta)})`);
+  }
+}
 
 // ----------------------------------------------------------------------- shop
 function tileWeight(def, week) {
@@ -444,7 +503,16 @@ export function playCard(s, card, target = null) {
 // Transports a Rezoning Permit on `edge` would demolish.
 export function rezoningVictims(s, edge) { return edgeDependents(s.board, edge); }
 
-export function setStrike(s, terrain) { s.strikeChoice = terrain; return { ok: true }; }
+// Which transport walks out. The union picks, not the player: a keyed roll over
+// the terrains standing on the board. `advanceWeek` freezes the answer into the
+// run state as the week opens, so building a second terrain mid-week cannot
+// move the walkout onto it, and the roll is keyed by seed and week so taking
+// the week back lands on the same one.
+export function pickStrikeTerrain(s, week = s.week) {
+  const terrains = transportTerrainsOnBoard(s).slice().sort();
+  if (!terrains.length) return null;
+  return new Rng(hashString(`${s.seed}:strike:${week}`)).pick(terrains);
+}
 
 export function chooseOrdinance(s, key) {
   if (!s.pendingOrdinance || !s.pendingOrdinance.includes(key)) return fail('That was not one of the three on offer');
@@ -463,11 +531,14 @@ export function computeMods(s, week = s.week) {
     const m = { ...ev.mods };
     if (m.strike) {
       delete m.strike;
-      if (s.strikeChoice) {
+      // The pick is normally frozen at the top of the week; a state built by
+      // the harness has not been through advanceWeek, so roll it here instead.
+      const terrain = s.strikeChoice || pickStrikeTerrain(s, week);
+      if (terrain) {
         // A walkout that would take the board's only transport terrain offline
         // is an unavoidable loss, so it drops to a skeleton service instead.
-        if (transportTerrainsOnBoard(s).length <= 1) m.strikeSkeleton = s.strikeChoice;
-        else m.strikeTerrain = s.strikeChoice;
+        if (transportTerrainsOnBoard(s).length <= 1) m.strikeSkeleton = terrain;
+        else m.strikeTerrain = terrain;
       }
     }
     list.push(m);
@@ -486,18 +557,26 @@ export function transportTerrainsOnBoard(s) {
 // Estimate runs on the board as it stands are cached for the phase: every
 // preview needs the same "before" sims, and only the "after" sim is new.
 const estCache = { key: null, runs: new Map() };
+// How many weeks run back to back this week: one, or two on a Double Week.
+export function weekRepeat(s, week = s.week) { return (eventForWeek(s, week) || {}).repeat || 1; }
+// Every sim the run layer asks for goes through here, so the preview, the
+// placement badges and the week itself all agree on how long the week is.
+function simRun(s, board, seed, mods) {
+  const n = weekRepeat(s);
+  return n > 1 ? simulateWeeks(board, { seed, week: s.week, mods }, n) : simulateWeek(board, { seed, week: s.week, mods });
+}
 function estimateRun(s, board, i, mods) {
   const seed = hashString(`${s.seed}:est:${i}`);
-  if (board !== s.board) return simulateWeek(board, { seed, week: s.week, mods });
+  if (board !== s.board) return simRun(s, board, seed, mods);
   const key = `${s.seed}:${s.week}:${JSON.stringify(mods)}:${JSON.stringify(board)}`;
   if (estCache.key !== key) { estCache.key = key; estCache.runs.clear(); }
   let r = estCache.runs.get(i);
-  if (!r) { r = simulateWeek(board, { seed, week: s.week, mods }); estCache.runs.set(i, r); }
+  if (!r) { r = simRun(s, board, seed, mods); estCache.runs.set(i, r); }
   return r;
 }
 export function simulateCurrent(s, seed = null, seeds = 1) {
   const mods = computeMods(s);
-  if (seeds === 1) return simulateWeek(s.board, { seed: seed ?? hashString(`${s.seed}:w${s.week}`), week: s.week, mods });
+  if (seeds === 1) return simRun(s, s.board, seed ?? hashString(`${s.seed}:w${s.week}`), mods);
   const out = [];
   for (let i = 0; i < seeds; i++) out.push(estimateRun(s, s.board, i, mods));
   return out;
@@ -513,15 +592,20 @@ function spread(dp, dm) {
 export function runWeek(s) {
   if (s.phase !== 'shop') return fail('You can only do that while building');
   const ev = currentEvent(s);
-  if (ev && ev.mods.strike && !s.strikeChoice) {
-    const terrains = transportTerrainsOnBoard(s);
-    s.strikeChoice = terrains[0] || 'road';
-  }
+  if (ev && ev.mods.strike && !s.strikeChoice) s.strikeChoice = pickStrikeTerrain(s);
   const result = simulateCurrent(s);
   // unspent action points are paid out as the early-finish bonus
   const bonus = earlyFinishBonus(s);
   s.money += bonus; s.ap = 0; s.earlyBonus = bonus;
   if (bonus) log(s, `Ran the week early: +$${bonus}`);
+  // ...and then the audit, if this is that week: the bonus is in the till by
+  // now, so an audited week pays nothing for finishing early. The week's own
+  // takings land at settlement and are untouched.
+  s.cashSwept = 0;
+  if (ev && ev.cash && ev.cash.wipeOnRun && s.money > 0) {
+    s.cashSwept = s.money; s.money = 0;
+    log(s, `${ev.name}: $${s.cashSwept} swept out of the till`);
+  }
   s.lastResult = result;
   s.phase = 'summary';
   return { ok: true, result, bonus };
@@ -553,8 +637,11 @@ function advanceWeek(s) {
   s.effects = s.effects.filter(e => e.weeksLeft > 0);
   s.ap = apForRun(s);
   s.shop.rerolls = 0;
-  s.strikeChoice = null; s.surveyed = false;
+  s.strikeChoice = null; s.surveyed = false; s.cashSwept = 0;
   s.shop.cards = generateShop(s);
+  const ev = currentEvent(s);
+  if (ev && ev.mods.strike) s.strikeChoice = pickStrikeTerrain(s);
+  applyWeekCash(s);   // before the snapshot: taking the week back does not undo the bill
   const rules = runRules(s);
   if (rules.ordinanceWeeks.includes(s.week)) {
     const rng = new Rng(hashString(`${s.seed}:ord:${s.week}`));

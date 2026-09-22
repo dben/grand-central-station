@@ -404,15 +404,9 @@ function renderTimeline() {
       const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
       if (known) {
         body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${G.fmtMult(G.eventMult(ev))}`), h('div', {}, ev.desc));
-        if (current && ev.mods.strike) {
-          const terrains = G.transportTerrainsOnBoard(state);
-          const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); } });
-          for (const t of terrains) sel.append(h('option', { value: t, selected: state.strikeChoice === t ? '' : null }, TERRAIN_INFO[t].label));
-          if (!terrains.length) sel.append(h('option', {}, 'no transports'));
-          if (!state.strikeChoice && terrains.length) G.setStrike(state, terrains[0]);
-          body.append(h('div', { class: 'row', style: 'margin-top:4px' }, 'Striking: ', sel));
-          if (terrains.length <= 1) body.append(h('div', { class: 'warn' }, `It is your only transport, so it keeps running at ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% instead of stopping.`));
-        }
+        if (current && ev.mods.strike) body.append(...strikeLines('div'));
+        if (current && ev.cash) body.append(h('div', { class: 'warn' }, cashLine(ev)));
+        if (ev.ap) body.append(h('div', { class: 'accent' }, `+${ev.ap} action point${ev.ap === 1 ? '' : 's'} that week.`));
       } else body.append(h('span', { class: 'tag' }, 'Event week'), h('div', {}, 'You will find out what it is once this event is done.'));
       row.append(body);
     }
@@ -842,11 +836,12 @@ function showSummary() {
   const lost = r.counts.lost ? ` · ${r.counts.lost} never reached their platform` : '';
   const stolen = r.points.stolen ? ` · ${fmtK(r.points.stolen)} stolen by ${r.counts.pickpockets} pickpockets` : '';
   const early = state.earlyBonus ? ` · +$${fmt(state.earlyBonus)} for starting early, already paid` : '';
+  const swept = state.cashSwept ? ` · $${fmt(state.cashSwept)} swept out of the till` : '';
   openModal(
     h('h2', {}, `Week ${state.week}`, G.currentEvent(state) ? h('span', { class: 'event-tag accent', style: 'margin-left:8px' }, G.currentEvent(state).name) : null),
     h('div', { class: 'row summary-stars' }, starStrip(G.quotaStars(state), Math.max(0, starsOf(r.score))),
       h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓ quota met' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
-    h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${fmt(r.score)} points of ${fmt(quota)} · ${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}`),
+    h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${fmt(r.score)} points of ${fmt(quota)} · ${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}${swept}`),
     chart,
     h('details', {}, h('summary', {}, 'Tile by tile'), h('div', { style: 'max-height:240px;overflow:auto' }, table)),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed ? 'Continue →' : 'See results')));
@@ -903,6 +898,24 @@ function showMilestoneModal(onDone) {
     h('div', { class: 'btnrow', style: 'justify-content:center' }, h('button', { class: 'primary', onclick: () => { closeModal(); if (onDone) onDone(); } }, 'Got it')));
   $('modal-box').classList.add('event', 'milestone');
 }
+// Who walked out this week. The union picks (see pickStrikeTerrain), so this
+// reports the answer rather than asking for one.
+function strikeLines(tag) {
+  const t = state.strikeChoice || G.pickStrikeTerrain(state);
+  if (!t) return [h(tag, { class: 'warn' }, 'Nobody has walked out: there is no transport on the board to strike.')];
+  const only = G.transportTerrainsOnBoard(state).length <= 1;
+  return [h(tag, {}, `Out this week: everything on ${TERRAIN_INFO[t].label.toLowerCase()}.`),
+    only ? h(tag, { class: 'warn' }, `It is your only transport, so it keeps running at ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% rather than stopping outright.`) : null].filter(Boolean);
+}
+// What a money week has done, or is about to do, to the till.
+function cashLine(ev) {
+  const c = ev.cash, wc = state.weekCash;
+  if (c.wipeOnRun) return `Whatever is left of your $${fmt(state.money)} when you run the week is gone.`;
+  if (c.payShare != null) return wc ? `Paid $${fmt(-wc.amount)}. You have $${fmt(state.money)} left.` : 'There was nothing in the till for them to take.';
+  const base = G.cashBaseline(state);
+  if (!wc) return `The till already sits at the $${fmt(base)} allowance.`;
+  return wc.amount >= 0 ? `Topped up $${fmt(wc.amount)} to the $${fmt(base)} allowance.` : `Cut by $${fmt(-wc.amount)} to the $${fmt(base)} allowance.`;
+}
 function showEventModal(onDone) {
   const ev = G.currentEvent(state);
   if (!ev) { if (onDone) onDone(); return; }
@@ -914,14 +927,10 @@ function showEventModal(onDone) {
     h('div', { class: 'event-mult' }, `Quota ×${G.fmtMult(G.eventMult(ev))} → ${fmt(G.quotaStars(state))}★`),
     h('p', {}, ev.desc),
   ];
-  if (ev.mods.strike) {
-    const terrains = G.transportTerrainsOnBoard(state);
-    const sel = h('select', { onchange: e => { G.setStrike(state, e.target.value); persist(); scheduleProjection(); renderSide(); } });
-    for (const t of terrains) sel.append(h('option', { value: t }, TERRAIN_INFO[t].label));
-    if (terrains.length && !state.strikeChoice) G.setStrike(state, terrains[0]);
-    parts.push(h('div', { class: 'row', style: 'justify-content:center' }, 'Which transport walks out? ', sel));
-    if (terrains.length <= 1) parts.push(h('div', { class: 'warn' }, `It is your only transport, so it keeps running at ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% rather than stopping outright.`));
-  }
+  if (ev.mods.strike) parts.push(...strikeLines('p'));
+  if (ev.cash) parts.push(h('p', { class: 'warn' }, cashLine(ev)));
+  if (ev.repeat > 1) parts.push(h('p', { class: 'accent' }, `The board runs ${ev.repeat} weeks straight through, and both of them count toward the one target.`));
+  if (ev.ap) parts.push(h('p', { class: 'accent' }, `+${ev.ap} action point${ev.ap === 1 ? '' : 's'} to spend before it starts.`));
   parts.push(h('div', { class: 'btnrow', style: 'justify-content:center' }, h('button', { class: 'primary', onclick: () => { closeModal(); box.classList.remove('event'); if (onDone) onDone(); } }, 'Bring it on')));
   openModal(...parts);
   box.classList.add('event');

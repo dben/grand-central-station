@@ -214,6 +214,8 @@ Quotas are shown as **stars**, one per 1,000 points, and always round to a whole
 
 **Catch-up.** A run far ahead of the curve is measured against its own form instead: the quota is at least `catchUp.share` (0.85) of the player's best week so far, capped at `catchUp.cap` (2.2) times that week's own curve, and never taking an event multiplier on top (the curve already carries one). It only ever raises a target, so a run behind the curve is never punished for being behind. The timeline marks a week whose target came from form rather than schedule. It is the one lever aimed squarely at the runaway board, and it is the cheapest: it costs a struggling run nothing.
 
+The one event multiplier the floor *does* take is an `exact` one (§9), because that is arithmetic rather than a demand: a Double Week is two weeks, so a player's own form counts double that week too. Left out, the curve doubled while the floor stood still, which on a strong run — the only kind the floor binds on — meant nothing bound at all, and the week paid 1.7× what its neighbours did (§15).
+
 Where the curve sits, measured (greedy bot, Terminal, 16 runs to week 16): week 1 lands at 1.48–1.55× quota, and 48–54% of all weeks inside 1–2× with a median of 1.8–2.0× and 3–6% of weeks above 3×. Event weeks are meant to spike out of the band; when refitting the curve, fit the quiet weeks and let `eventStrength` hold the event weeks passable.
 
 ### 5.3 Money details
@@ -227,6 +229,7 @@ Where the curve sits, measured (greedy bot, Terminal, 16 runs to week 16): week 
 | Upgrade price | 60, 140, 300, 650 for levels 2–5 |
 | Delete refund | none (half with the Zoning Variance ordinance); deleting costs no AP |
 | Early-finish bonus | $10 + $5 × (week − 1) per unspent AP |
+| Money events | Back Taxes, Use It or Lose It, Emergency Budget (§9) — the only rules that move cash without a tile changing hands |
 
 A crowded board is an expensive board, which pushes late-game players toward upgrading over adding. After the first two weeks, one or two purchases a week is typical: money, not AP, is usually what limits a turn.
 
@@ -529,12 +532,25 @@ Every 4th week. The player sees the **next** event as soon as the current one re
 | VIP Delegation | ×1.3 | Six $$$$$ travellers arrive on tick 1 with +4 stop budget |
 | Holiday Rush | ×1.8 | Spawn and departure cadence halved |
 | Weather Front | ×0.9 | Water and air transports offline |
-| Strike | ×0.9 | Choose one transport terrain: it produces nothing. If it is the board's only terrain, it runs a skeleton service at 25% batch instead. |
+| Strike | ×0.9 | One transport terrain produces nothing. **The union picks it, not the player** — a roll keyed by seed and week over the terrains on the board, frozen as the week opens. If it is the board's only terrain, it runs a skeleton service at 25% batch instead. |
 | Inspection | ×0.9 | Amenities below level 2 run at 70% pull and chain bonus |
 | Festival | ×1.5 | Food and green amenities +0.20 base rate |
 | Charter Season | ×1.7 | Travellers pick destinations as if one tier higher |
+| Crime Spree | ×0.9 | Pickpockets at 10% of spawns, double the crime wave's settled rate. Week 7 on only (see the gate below). |
+| Back Taxes | ×0.9 | 45% of the cash in hand (at least $80) is taken as the week opens, before the shop can be touched |
+| Use It or Lose It | ×0.9 | Whatever cash is left when you run the week is swept up, the early-finish payment with it. The week's own takings are safe. |
+| Emergency Budget | ×1.0 | The till is set to a starting allowance for the week: $220 × 1.22^(week−1). A hoard is cut to it; a broke run is topped up to it. |
+| Double Week | ×2 | The same board runs two full weeks back to back and the two scores add. +1 AP to prepare. |
 
-An event's real difficulty is its quota multiplier divided by how much it cuts the board's score; all of them should land between about 0.9× and 1.6× as hard as a normal week. Events double as tutorial pressure: Weather Front punishes a player who put everything on water, and Inspection punishes one who never upgraded.
+An event's real difficulty is its quota multiplier divided by how much it cuts the board's score; all of them should land between about 0.9× and 1.6× as hard as a normal week. Events double as tutorial pressure: Weather Front punishes a player who put everything on water, Inspection punishes one who never upgraded, and a Crime Spree punishes one who skipped the security tiles.
+
+**Three fields outside `mods`.** Most events are a bag of simulator modifiers, but four of the ones above reach past it, and each field is read by the run layer rather than the simulator:
+
+- **`cash`** — the money weeks. They take nothing off the board, so a plain week's score is what they earn; the bill is what the *following* weeks have to be built around, which is why their quota sits at or below a normal week's. A fine and an allowance land as the week opens, before the snapshot, so taking the week back does not undo them; the sweep waits until the week runs.
+- **`ap`** — extra action points for that week alone, folded into `apForRun`.
+- **`after`** — names a `CONFIG.run` field; the event is skipped until that week and the next event in the plan takes its place, so the pick stays a function of the week alone. Crime Spree waits on `pickpocketsFromWeek` because the Security Station and Guard go on sale in the same week: before that there is no answer to it on any shop roll.
+- **`repeat`** — how many weeks run back to back (`simulateWeeks`). Two separate simulations of the same board, stitched end to end: the concourse empties between them and nobody carries over. **Not** one week of twice the length — the clock, not the stop budget, is what caps most chains, so a 48-tick week scores three to four times a normal one on a busy board and barely twice on a bare one (§15).
+- **`exact`** — opts the event out of `quota.eventStrength`. A Double Week's ×2 is the arithmetic of two weeks, not a demand for a harder one; softened toward 1 it would read ×1.30 against a score that doubles, which is a free week. An `exact` multiplier is also the one the catch-up floor takes (§5.2).
 
 **`quota.eventStrength` (0.30) only softens the events that ask for more.** A Convention's ×1.6 has to be read against the headroom a normal week leaves, so it is pulled toward 1 and lands at ×1.18; the discounts below 1 are applied exactly as written, because a Strike's ×0.9 is not a demand, it is an apology for a week that takes half the board's traffic away. Softening both directions with one number quietly withdrew that apology, and the disruptive events became the two weeks that ended most runs (§15).
 
@@ -666,7 +682,7 @@ Modes don't create variance between two runs of the same mode; **ordinances do**
 
 ### 10.3 Bad actors
 
-**Pickpockets** arrive from week 7 (the *Crime Wave* milestone). They phase in over three weeks, reaching 5% of spawns at full strength: roughly a 7% score cut in week 7, 16% in week 8 and 21% from week 9 on an unprotected board.
+**Pickpockets** arrive from week 7 (the *Crime Wave* milestone). They phase in over three weeks, reaching 5% of spawns at full strength: roughly a 7% score cut in week 7, 16% in week 8 and 21% from week 9 on an unprotected board. The **Crime Spree** event (§9) puts 10% of spawns on the same rate for one week, and is gated to week 7 and after for the same reason the wave starts there.
 
 - **What they do:** pickpockets are drawn dark with a red ring. They walk between platforms and steal 15% of the chain value of any traveller they pass adjacent to. They never board and never score.
 - **Counters:** the Security Station and Security Guard remove any pickpocket entering their radius, and the Security Checkpoint catches those who walk through its booth.
@@ -907,6 +923,25 @@ Junction is the loose one at 16% over 3×, and most of that is survivorship: hal
 
 **Event-week hazards:** re-check event weeks after any catalogue change, and re-check them after any change to the *band*, which is the thing they are priced against. Every death in the current Standard reading lands on one, and the tighter the quiet weeks run the less an event has to take away to end a run (§15). Inspection is the cautionary tale — once amenities carried half the score, closing every un-upgraded one made that week 5× harder than a normal week, so it now restricts them to 70% instead. Strike had the same hazard: on a one-terrain board it would score exactly zero, hence the skeleton service.
 
+**How an event is priced.** Take the bot's boards at weeks 8, 12 and 16, score each one with the event and again with no event at all, and divide the quota multiplier by the ratio. That number is how much harder the week is, and every event should land between about 0.9× and 1.6×. Current reading (4 boards at week 8, 2 at weeks 12 and 16, 16 seeds each), as score ratio → hardness:
+
+| Event | w8 | w12 | w16 |
+|---|---|---|---|
+| Convention | 1.15 → 1.02 | 1.13 → 1.05 | 1.10 → 1.07 |
+| Delays | 0.60 → 1.41 | 0.59 → 1.44 | 0.58 → 1.47 |
+| VIP Delegation | 1.14 → 0.96 | 1.09 → 1.00 | 1.08 → 1.01 |
+| Holiday Rush | 1.15 → 1.08 | 1.14 → 1.09 | 1.15 → 1.08 |
+| Weather Front | 0.98 → 0.92 | 0.98 → 0.92 | 0.97 → 0.93 |
+| Strike | 0.80 → 1.12 | 0.71 → 1.27 | 0.87 → 1.03 |
+| Inspection | 0.72 → 1.25 | 0.67 → 1.34 | 0.73 → 1.23 |
+| Festival | 1.06 → 1.08 | 1.07 → 1.08 | 1.05 → 1.09 |
+| Charter Season | 1.00 → 1.21 | 0.99 → 1.23 | 0.99 → 1.22 |
+| Crime Spree | 0.63 → 1.42 | 0.89 → 1.01 | 0.89 → 1.02 |
+| Back Taxes / Use It or Lose It / Emergency Budget | 1.00 → 1.00 | 1.00 → 1.00 | 1.00 → 1.00 |
+| Double Week | 2.01 → 1.00 | 2.01 → 1.00 | 2.01 → 1.00 |
+
+Two of those rows are worth reading twice. **Crime Spree** is the one event whose difficulty falls as the run goes on, because by week 12 the bot's boards have security on them and week 8's do not — which is the point of the event, and why it is gated to week 7 and after. **Double Week** comes out at 2.01 on every board and every week, which is what makes a flat ×2 target fair; that number is the whole argument for running two weeks rather than one long one (§15). The money weeks score a plain week by construction, so their ×1 quota is the honest one and the bill lands on the weeks after.
+
 ---
 
 ## 15. Tuning history
@@ -1061,6 +1096,17 @@ Changes from the original design, with the reason for each. Original values are 
 - **A delete hands its action point back, if the tile was bought this week** (§10.1). Deleting already cost nothing, but the point spent *placing* the tile stayed spent, so pulling a bad spot and rebuilding it took both of a Terminal week's two moves — which made the delete button nearly worthless in practice, and contradicted what this section already claimed the rule was. `buyTile` now records the week on the tile and `deleteTile` returns the point when it is the current one (`economy.deleteRefundsAP`). An older tile gives nothing back, since that would be a free move rather than an undo, and no money is ever refunded, so churning a spot is paid for every time. It does not move the balance: `autoplay.js --runs 8 --weeks 16` reads 4 of 8 surviving on `--seed0 1000` (deaths in weeks 1, 1, 8, 16, week-1 mean 1.35×) and 7 of 8 on `--seed0 2000` (week 8, mean 1.49×) — the §14.2 numbers to the digit, because the greedy bot deletes roughly once in 60 weeks and hardly ever a tile from the same week. `SAVE_VERSION` went to 8 for the new tile field.
 
 - **The week line colours by what is on the board, not only by what has boarded** (§12.3). Points are banked at the turnstile, and travellers only start boarding once they have crossed the concourse, so the running score sits near zero for the first two thirds of the week: on bot board 1001 at week 9 (final 2.06× the quota) the old ratio read 0.02× at tick 6, 0.07× at tick 12 and 0.21× at tick 17 of 24, which is dark red for seventeen ticks and then a jump to gold. The line now reads `scoreByTick[t] + pendingByTick[t]`, the new array being the value standing on the board that tick (§12.3): the same board reads 0.21× at tick 6, 0.67× at 12, 1.09× at 16, and still lands on 2.06×. Because boarding shifts a traveller from the pending side of the sum to the banked side at the same value, the line climbs and does not over-promise: over 144 runs (6 bot boards × weeks 3, 6, 9, 13 × 6 seeds) it peaks at most 0.10× the quota above where the week finishes (mean 0.01×), and the worst single-tick backslide — travellers running out of clock, or robbed — is 0.07× the quota. A board that fails still reads dark red all week (board 1000 at week 12 tops out at 0.17×). The white flash is unchanged: it fires on the banked score alone, when the quota is really met, and the stars still fill on banked points. The clock-out test uses the walk straight to the platform out of the memoised distance field (one array lookup, not the traveller's remaining route), which costs about 5% of a week's sim on a busy board; the sim is otherwise untouched, and a hash of every other result field over 24 board/seed pairs is identical before and after.
+
+- **Five new events, and the Strike stops asking** (§9). The catalogue went from nine events to fourteen: three money weeks (Back Taxes, Use It or Lose It, Emergency Budget), a Crime Spree and a Double Week. Four notes on the build, each of which cost a measurement to get right:
+
+  - **The Double Week is two weeks, not one long one.** The first build set `ticks: 48, spawnTicks: 32`, which is the obvious reading of "twice the week" and the wrong one. Measured on the bot's boards, it scored ×2.62 at week 8, ×3.82 at week 12 and ×3.74 at week 16 — superlinear, and by a margin that depends on the board, because the clock and not the stop budget is what caps most travellers' chains (§14.2), so doubling the clock lets everyone shop far more rather than simply arriving twice. A flat quota multiplier cannot price that. Running the week twice over and adding the two (`simulateWeeks`, two separate sims stitched end to end) reads ×2.01 on every board at every week, so the target is a flat ×2. The stitching keeps ids, per-tick arrays and tile occupancy straight through, which is what lets the playback run both weeks without the UI knowing.
+  - **An `exact` quota multiplier bypasses `eventStrength` — and the catch-up floor.** Softened, a Double Week's ×2 reads ×1.30 against a score that doubles, which is a free week. Left out of the floor (§5.2) it was still a free-ish one: the curve doubled while the floor stood still, so on a strong run — the only kind the floor binds on — nothing bound, and two of eight runs turned in 3.31× and 4.15× weeks against neighbours of 2.3–2.9×. With the floor scaled by the exact multiplier the same two weeks read 2.73× and 2.85×, sitting with their neighbours and a little above, which is the extra action point earning its keep.
+  - **The Crime Spree is gated to week 7.** Pickpockets at 28% of spawns made week 8 3.4× as hard as a normal week — the rate was swept and landed at 10%, twice the crime wave's settled 5%: 1.42× as hard at week 8 and 1.01× at weeks 12 and 16, the fall being the security tiles the later boards have bought. The event is held back until `pickpocketsFromWeek` because the Security Station and Guard go on sale in that same week; before it there is no counter on any shop roll, and a gated event hands the week to the next one in the plan (`after`).
+  - **The money weeks take a ×1 quota, not a discount.** They were first written at ×0.9 on the reasoning that every other disruptive event gets an apology. But the apology is for traffic taken off the board, and these take none: they score exactly a quiet week. At ×0.9 they were a free pass — the Standard survival reading went 10/16 → 12/16 with the over-3× share 3–6% → 7–8%, for weeks that are not harder at all. At ×1 the bill is simply in the other currency, and lands on the weeks that come after.
+
+  **Measured, Terminal, `--runs 8 --weeks 16` on `--seed0 1000` and `2000`:** survival 5/8 and 7/8 (was 5/8 and 5/8), band 48% and 57% (was 48% and 54%), over 3× 5% and 8% (was 3% and 6%), median 1.98× and 1.85× (was 2.00× and 1.82×). Hard 4/8 (was 3/8), Extreme 0/8 (was 0/8, deaths in weeks 1–9 either way). `week1.mjs` is unchanged to the digit on all six levels and three difficulties, since week 1 is never an event week. `sensitivity.mjs` on the bot's boards 1000/1001 at week 9 and 1002 at week 12, 24 seeds: shift 1.2–2.1%, rotate 1.3–2.3%, noise 0.7–1.0%, stranded 12–27% — the noise floor is the number that matters and it held, which is what says no roll stopped being keyed by traveller and question. The quota block was left alone: the drift is inside the spread of two eight-run samples, and it is the event mix that moved, not the curve. `SAVE_VERSION` went to 10 for `weekCash` and `cashSwept`, and because an old event plan names weeks that no longer line up.
+
+- **The Strike is rolled, not chosen.** The player used to pick which transport terrain walked out, which meant picking the one that cost least: a walkout you choose is a formality. The union picks now — a roll keyed by seed and week over the terrains standing on the board, frozen into the run state as the week opens so that building a second terrain mid-week cannot move the walkout onto it, and so that taking the week back lands on the same one. It makes the event bite: 1.12× as hard at week 8, 1.27× at week 12 and 1.03× at week 16, against a 0.9–1.6× band, where before a careful player could hold it near 0.9×. The skeleton-service rule for a one-terrain board is untouched, and is what keeps the roll from ever being a zero-score week.
 
 - **Redo Week leaves the screen the moment the week runs.** Starting a week redrew the top bar, the shop and the board but not the side panel, so the offer under the timeline stayed up through the playback, the summary and a lost run: a take-back that clicked to nothing, since `weekTouched` is false outside the shop phase. `startWeek` rebuilds the side panel now, which is what §10.1.1 always said happened.
 
