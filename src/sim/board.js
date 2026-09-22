@@ -442,14 +442,22 @@ export function checkpointLine(cells) {
 
 // Every fence line on the board: per line, the set of indices where a fence
 // panel stands. How far the panels reach from the booth is `sim.checkpoint.fence`:
-// 'edge' runs them to both board edges; 'walls' runs them until a solid tile
-// stands on either side of the line (the fence spans the open floor the booth
-// sits in); a number runs them that many cells each way. Booths that share a
-// line share one fence, and each booth's own cell is always a gap.
+// 'edge' runs them to both board edges; 'split' runs them until the line would
+// cut through a building - one solid tile on both sides of a panel - so a fence
+// that only runs along a building's flank carries on past it; 'walls' stops at
+// the first solid tile beside the line either way; a number runs them that many
+// cells each way. Booths that share a line share one fence, and each booth's own
+// cell is always a gap.
 export function checkpointFences(b, extraCells = null) {
   const reach = CONFIG.sim.checkpoint.fence;
-  const walk = reach === 'walls' ? buildWalkMap(b) : null;
+  const stops = reach === 'walls' || reach === 'split';
+  const walk = stops ? buildWalkMap(b) : null;
   const solid = (x, y) => x < 0 || y < 0 || x >= b.w || y >= b.h || walk[y * b.w + x] === 1;
+  // Which solid tile stands on a cell (0 for none), so 'split' can tell a fence
+  // running alongside a building from one running into the middle of it.
+  const owner = new Array(reach === 'split' ? b.w * b.h : 0).fill(0);
+  if (reach === 'split') for (const t of b.tiles) for (const [x, y] of t.cells) if (solid(x, y)) owner[y * b.w + x] = t.id;
+  const oneTile = (x0, y0, x1, y1) => owner[y0 * b.w + x0] !== 0 && owner[y0 * b.w + x0] === owner[y1 * b.w + x1];
   const out = { h: new Map(), v: new Map() };
   const booths = [];
   const add = cells => booths.push(checkpointLine(cells));
@@ -459,12 +467,18 @@ export function checkpointFences(b, extraCells = null) {
     if (!out[axis].has(line)) out[axis].set(line, new Set());
     const walls = out[axis].get(line);
     const len = axis === 'h' ? b.w : b.h;
-    // a panel at index i on a horizontal line y sits between (i, y-1) and (i, y)
-    const moot = i => axis === 'h' ? (solid(i, line - 1) || solid(i, line)) : (solid(line - 1, i) || solid(line, i));
+    // the two cells a panel at index i sits between: on a horizontal line y, (i, y-1) and (i, y)
+    const sides = i => axis === 'h' ? [i, line - 1, i, line] : [line - 1, i, line, i];
+    // where the run ends: 'split' at a tile the line would cut in two, 'walls' at any tile beside it
+    const moot = i => { const c = sides(i); return reach === 'split' ? oneTile(...c) : solid(c[0], c[1]) || solid(c[2], c[3]); };
+    const buried = i => { const c = sides(i); return solid(c[0], c[1]) && solid(c[2], c[3]); };
     for (const dir of [-1, 1]) {
       for (let i = gap + dir, n = 0; i >= 0 && i < len; i += dir, n++) {
         if (typeof reach === 'number' && n >= reach) break;
-        if (reach === 'walls' && moot(i)) break;
+        if (stops && moot(i)) break;
+        // Walls both sides: nothing can step across there anyway, so the line
+        // runs on without a panel rather than one buried between two buildings.
+        if (reach === 'split' && buried(i)) continue;
         walls.add(i);
       }
     }

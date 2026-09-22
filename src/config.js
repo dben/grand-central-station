@@ -108,7 +108,7 @@ export const CONFIG = {
     // Clearing the booth is a chain link of its own (once per traveller): the
     // fence's detours cost walking time, so crossing has to pay for itself.
     checkpoint: {
-      mult: 1.3,                // value multiplier for clearing the booth
+      mult: 1.5,                // value multiplier for clearing the booth
       multPerLevel: 0.1,        // extra multiplier per checkpoint level above 1
       // true: the multiplier is applied when the traveller boards, on top of
       // the whole chain, so the booth is worth the same wherever on the route
@@ -116,8 +116,11 @@ export const CONFIG = {
       atExit: true,
       budgetBonus: 2,           // stop budget for clearing the booth; rarely binding on its own
       // How far the fence reaches from the booth: 'edge' (to both board edges),
-      // 'walls' (until a solid tile stands beside the line) or a cell count each way.
-      fence: 'walls',
+      // 'split' (until the line would cut through a building: one tile on both
+      // sides of it, so a fence carries on past a wall it only runs alongside),
+      // 'walls' (until any solid tile stands beside the line) or a cell count
+      // each way.
+      fence: 'split',
       // false: anyone may walk through to reach whatever is on the far side.
       // true: only travellers whose platform is on the far side may cross, so
       // each side keeps its own shops (the old Security Gate rule).

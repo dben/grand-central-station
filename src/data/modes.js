@@ -54,7 +54,7 @@ export const MODES = {
   // waist splits 8x16 into two 8x8 halves, airside and landside, each about the
   // size of a Junction board. That is the level's whole shape - build a station
   // twice, once either side of the fence, and walk every traveller through it.
-  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 },
+  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaMult: 1.05,
                 preLock: { N: 'apron', S: 'road' },
                 // The booth straddles the line y=8 with its fence running the
                 // width of the board: everyone landing airside has to clear it

@@ -309,14 +309,23 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
     `a new platform leaves the travellers who neither pass it nor board it alone (${others.length} of them)`);
 }
 
-// the fence stops at a building: it spans the open floor the booth stands in
+// the fence runs past a building it only skirts and stops where one cuts across it
 {
   const fb = createBoard(12, 12);
   placeTile(fb, 'gate', 6, 5, 0);          // fence on x = 7, gap at row 5
-  placeTile(fb, 'restroom', 7, 1, 0);      // solid at (7..8, 1..2): the panel at row 2 is moot
+  placeTile(fb, 'restroom', 7, 1, 0);      // solid at (7..8, 1..2): the line runs along its flank
   const f = checkpointFences(fb);
   ok(fenceBlocked(f, 12, 12, 6, 4, 1, 0) && fenceBlocked(f, 12, 12, 6, 3, 1, 0) && fenceBlocked(f, 12, 12, 6, 11, 1, 0), 'the fence runs along open floor from the booth');
-  ok(!fenceBlocked(f, 12, 12, 6, 1, 1, 0) && !fenceBlocked(f, 12, 12, 6, 0, 1, 0), 'and stops where a building already blocks the way');
+  ok(fenceBlocked(f, 12, 12, 6, 0, 1, 0), 'and carries on past a building standing beside the line');
+  placeTile(fb, 'restroom', 5, 1, 0);      // solid at (5..6, 1..2): two tiles meeting along the line, not one
+  ok(fenceBlocked(checkpointFences(fb), 12, 12, 6, 0, 1, 0), 'and between two buildings that meet along it');
+  // one tile on both sides of the line is a building the fence would run into
+  const sb = createBoard(12, 12);
+  placeTile(sb, 'gate', 6, 5, 0);
+  placeTile(sb, 'restroom', 6, 1, 0);      // solid at (6..7, 1..2): the line cuts through its middle
+  const sf = checkpointFences(sb);
+  ok(fenceBlocked(sf, 12, 12, 6, 4, 1, 0) && fenceBlocked(sf, 12, 12, 6, 3, 1, 0), 'a fence runs up to a tile the line would cut through');
+  ok(!fenceBlocked(sf, 12, 12, 6, 1, 1, 0) && !fenceBlocked(sf, 12, 12, 6, 0, 1, 0), 'and stops there');
   // the booth's bonus is applied when they board, after the whole chain
   placeTile(fb, 'bus_stop', 1, 5, 0); placeTile(fb, 'helipad', 9, 5, 0); placeTile(fb, 'coffee', 3, 3, 0);
   const rr = [3, 4, 5, 6].map(seed => simulateWeek(fb, { seed, week: 8, mods: { pickpocketRate: 0 } }));
