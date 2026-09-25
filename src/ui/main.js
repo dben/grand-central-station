@@ -29,6 +29,10 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
 const EDGE_NAMES = { N: 'north', E: 'east', S: 'south', W: 'west' };
 const fmtK = n => Math.abs(n) >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : fmt(n);
 const tierTag = t => t > 0 ? h('span', { class: 'tier tier' + t }, CONFIG.tiers[t - 1].symbol) : null;
+// Action points in running text are drawn as the wallet's own pips, so the
+// player learns one picture for them rather than a phrase and an abbreviation.
+const apPips = n => h('span', { class: 'ap-inline', title: `${n} action point${n === 1 ? '' : 's'}`, 'aria-label': `${n} action point${n === 1 ? '' : 's'}` }, ...Array.from({ length: n }, () => h('span', { class: 'pip' })));
+const cash = v => '$' + (Math.abs(v - Math.round(v)) < 0.05 ? fmt(v) : v.toFixed(1));
 
 // ------------------------------------------------------------------ stars
 // Quotas and weekly scores are shown as stars, one per 1,000 points. Up to ten
@@ -88,56 +92,64 @@ function tileAtCell(x, y) { return state.board.tiles.find(t => t.cells.some(c =>
 function mods() { return G.computeMods(state); }
 function persist() { if (ui.started && state && state.phase !== 'lost') saveRun(G.serialize(state)); }
 
-const ticks = n => `${n} tick${n === 1 ? '' : 's'}`;
+// The popup's rows are short labels over short values: the tier is its $ sign,
+// the range is the dashed ring on the board, and time is counted in ticks, the
+// steps the week line walks through. Anything a glance at the board already
+// says is left out.
+const ticks = n => n === 1 ? 'every tick' : `every ${n} ticks`;
+const boost = (mult, flat) => `×${mult.toFixed(2)}${flat ? ' +' + Math.round(flat) : ''}`;
+const WALK = ['Floor', 'Walk-through'];
 function describeTile(tile, def) {
   const m = mods();
   const rows = [];
   if (def.kind === 'transport') {
     const e = effTransport(tile || { key: def.key, level: 1 }, m);
-    rows.push(['Brings in', `${e.batch} ${CONFIG.tiers[def.tier - 1].symbol} travellers every ${ticks(e.arr)}`], ['Rides leave', `every ${ticks(e.dep)}${e.dwell ? `, after a ${ticks(e.dwell)} wait` : ''}`]);
-    rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} when they board here`], ['Terrain', TERRAIN_INFO[def.terrain].label]);
-    if (def.walkable) rows.push(['Floor', 'Travellers walk straight over it, so it never blocks a path']);
+    // a crowd per week reads at once; "2 every tick" has to be multiplied out
+    const perWeek = e.batch * Math.ceil((m.spawnTicks || CONFIG.sim.spawnTicks) / e.arr);
+    rows.push(['Arrive', `${perWeek} ${CONFIG.tiers[def.tier - 1].symbol} a week`], ['Leave', `${ticks(e.dep)}${e.dwell ? `, after ${e.dwell} waiting` : ''}`]);
+    rows.push(['Boarding', boost(e.mult, e.flat)]);
+    if (def.walkable) rows.push(WALK);
     if (def.terrain === 'underground') {
       const tn = tile && tile.tunnel;
-      rows.push(['Tunnel', tn ? (tn.line === 'through' ? `Comes up at the ${EDGE_NAMES[tn.ends[0]]} and ${EDGE_NAMES[tn.ends[1]]} edges` : `${tn.cells.length} square${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);
-      rows.push(['Layer', 'Build anything over it, but no other tunnel can cross']);
+      rows.push(['Tunnel', tn ? (tn.line === 'through' ? `${EDGE_NAMES[tn.ends[0]]} to ${EDGE_NAMES[tn.ends[1]]} edge` : `${tn.cells.length} square${tn.cells.length === 1 ? '' : 's'} to the ${EDGE_NAMES[tn.ends[0]]} edge`) : LINE_INFO[def.line]]);
     }
     if (e.offline) rows.push(['Status', 'Not running this week']);
-    else if (e.skeleton) rows.push(['Status', `On strike: only ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% of the usual crowd`]);
-    if (def.special === 'loop') rows.push(['Special', `${Math.round(def.loopChance * 100)}% of the people who leave come back round, still carrying their boost`]);
+    else if (e.skeleton) rows.push(['Status', `On strike: ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% of the usual crowd`]);
+    if (def.special === 'loop') rows.push(['Loop', `${Math.round(def.loopChance * 100)}% of riders come back round, boost and all`]);
   } else if (def.kind === 'amenity') {
     const e = effAmenity(tile || { key: def.key, level: 1 }, m);
-    const walk = def.walkable && def.special !== 'waiting' ? [['Floor', 'Travellers walk straight over it, so it never blocks a path']] : [];
+    const walk = def.walkable && def.special !== 'waiting' ? [WALK] : [];
+    const range = def.radius + ((tile && tile.radiusBonus) || 0);
     if (def.special === 'wifi') {
       const w = CONFIG.sim.wifi;
       // A hotspot's boosts are summed into the tile's own multiplier and
       // compressed with it, so show what the tile actually gains, not the
       // number in the config (see scaleMult).
       const ms = CONFIG.sim.multScale;
-      rows.push(['Effect', `Helps every tile within ${def.radius + ((tile && tile.radiusBonus) || 0)} squares`], ['Shops', `draw ${Math.round(w.rate * 100)}% more people and boost +${(w.mult * ms).toFixed(2)} more`], ['Lounges', `+${(w.stack * ms).toFixed(2)} for every tick waited`], ['Transports', `+${(w.exit * ms).toFixed(2)} when travellers board`],
-        ['Together', `Up to ${w.cap} hotspots help one tile; every level counts for ${Math.round(w.perLevel * 100)}% more`], ...walk);
+      rows.push(['Range', `${range} squares`], ['Shops', `+${Math.round(w.rate * 100)}% visitors, +${(w.mult * ms).toFixed(2)}`], ['Lounges', `+${(w.stack * ms).toFixed(2)} a tick`], ['Transports', `+${(w.exit * ms).toFixed(2)} boarding`],
+        ['Stacks', `up to ${w.cap}; +${Math.round(w.perLevel * 100)}% a level`], ...walk);
     }
-    else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick, and they can still stop at shops along the way`]);
-    else if (def.special === 'security') rows.push(['Effect', 'Picks up any pickpocket who comes near'], ['Range', def.radius + ((tile && tile.radiusBonus) || 0)], ...walk);
+    else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick; they can still stop at shops`]);
+    else if (def.special === 'security') rows.push(['Effect', 'Catches pickpockets nearby'], ['Range', `${range} squares`], ...walk);
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
       const mult = scaleMult(ck.mult + ck.multPerLevel * (((tile && tile.level) || 1) - 1));
-      rows.push(['Effect', 'A fence runs right across the board through the booth, and the booth is the only way past. Only a building standing across the line stops it. Rotate to turn the fence.'],
-        ['Who crosses', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
-        ['Reward', `Worth ×${mult.toFixed(2)} more, and ${ck.budgetBonus} extra stops on the way. Once per traveller.`], ['Security', 'Catches pickpockets who walk through']);
+      rows.push(['Effect', 'Runs a fence across the board, stopped only by buildings. The booth is the only way through. Rotate to turn it.'],
+        ['Crossing', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
+        ['Reward', `×${mult.toFixed(2)} and ${ck.budgetBonus} more stops, once each`], ['Security', 'Catches pickpockets who walk through']);
     }
-    else if (def.special === 'waiting') rows.push(['Effect', `Travellers are worth more the longer they sit here: +${e.stackValue.toFixed(2)} a tick`], ['Limit', 'Richer travellers will sit for longer'], ['Range', e.radius], ['Holds', e.cap], ...(e.revenue >= 0.05 ? [['Earns', `$${e.revenue.toFixed(1)} per guest`]] : []), ...(e.minTier > 1 ? [['Only for', CONFIG.tiers[e.minTier - 1].symbol + ' travellers and up']] : []));
+    else if (def.special === 'waiting') rows.push(['Waiting', `+${e.stackValue.toFixed(2)} a tick; richer travellers stay longer`], ['Range', `${e.radius} squares`], ['Seats', e.cap], ...(e.revenue >= 0.05 ? [['Earns', `${cash(e.revenue)} a guest`]] : []), ...(e.minTier > 1 ? [['For', CONFIG.tiers[e.minTier - 1].symbol + ' and up']] : []));
     else {
-      rows.push(['Best for', def.special === 'anytier' ? 'travellers of any tier' : `${CONFIG.tiers[def.tier - 1].symbol} travellers`], ['Draws in', `up to ${(e.rate * 100).toFixed(0)}% of travellers within ${e.radius} squares`]);
-      rows.push(['Boost', `×${e.mult.toFixed(2)}${e.flat ? ' +' + Math.round(e.flat) : ''} for everyone who stops`], ['Serves', `${e.cap} at a time, ${ticks(e.dur)} each`]);
-      if (e.revenue >= 0.05) rows.push(['Earns', `$${e.revenue.toFixed(1)} per visit`]);
-      if (def.special === 'green') rows.push(['Special', 'A free stop: travellers get back the stop they spend here'], ...walk);
+      rows.push(['For', def.special === 'anytier' ? 'Everyone' : CONFIG.tiers[def.tier - 1].symbol], ['Draws', `${(e.rate * 100).toFixed(0)}% within ${e.radius} squares`]);
+      rows.push(['Visit', boost(e.mult, e.flat)], ['Serves', `${e.cap} at once, ${e.dur} tick${e.dur === 1 ? '' : 's'} each`]);
+      if (e.revenue >= 0.05) rows.push(['Earns', `${cash(e.revenue)} a visit`]);
+      if (def.special === 'green') rows.push(['Free stop', "Doesn't use up one of a traveller's stops"], ...walk);
 
       if (e.closed) rows.push(['Status', 'Closed for inspection']);
-      else if (e.restricted) rows.push(['Status', 'Inspection: a slow week until level 2']);
+      else if (e.restricted) rows.push(['Status', 'Inspection: slow until level 2']);
     }
   } else if (def.kind === 'bridge') {
-    rows.push(['Effect', 'Opens a short stretch of the edge beside it, so any kind of transport can attach there. Travellers can walk over it.']);
+    rows.push(['Effect', 'Opens a stretch of a claimed edge to any transport'], WALK);
   }
   const kv = h('div', { class: 'kv' });
   for (const [k, v] of rows) kv.append(h('span', { class: 'k' }, k), h('span', {}, v));
@@ -242,8 +254,8 @@ function renderTop() {
   const canRun = state.phase === 'shop' && ui.mode !== 'playback';
   $('btn-run').disabled = !canRun;
   const early = state.phase === 'shop' ? G.earlyFinishBonus(state) : 0;
-  $('btn-run').innerHTML = `Run Week ▶${early ? `<br><small>+$${fmt(early)} early finish</small>` : ''}`;
-  $('btn-run').title = early ? `Every action point you have not spent pays $${fmt(G.earlyFinishPerAP(state))} when the week runs` : '';
+  $('btn-run').innerHTML = `Run Week ▶${early ? `<br><small>+$${fmt(early)}</small>` : ''}`;
+  $('btn-run').title = early ? `Each unspent action point pays $${fmt(G.earlyFinishPerAP(state))}` : '';
   const showBig = canRun && state.ap === 0 && (ui.mode === 'idle' || ui.mode === 'over');
   $('run-stack').classList.toggle('hidden', !showBig);
   $('btn-redo-big').classList.toggle('hidden', !(showBig && G.weekTouched(state)));
@@ -276,8 +288,8 @@ function shapeCanvas(def, w = 84, h = 84) {
 }
 const CARD_ICONS = { upgrade: '⬆', named_upgrade: '✦', card: '♦', ap: '+1', bridge: '═' };
 function cardKindLabel(card) {
-  if (card.type === 'tile') { const d = tileDef(card.key); if (d.kind === 'transport') return 'transport'; if (d.special === 'waiting') return 'lounge'; if (d.rate === 0) return 'utility'; return 'amenity'; }
-  return { upgrade: 'upgrade', named_upgrade: 'upgrade', card: 'bonus card', ap: 'upgrade', bridge: 'structure' }[card.type] || '';
+  if (card.type === 'tile') { const d = tileDef(card.key); if (d.kind === 'transport') return 'transport'; if (d.special === 'waiting') return 'lounge'; if (d.rate === 0) return 'utility'; return 'shop'; }
+  return { upgrade: 'upgrade', named_upgrade: 'upgrade', card: 'bonus', ap: 'upgrade', bridge: 'bridge' }[card.type] || '';
 }
 function cardDetails(card) {
   const box = h('div');
@@ -294,13 +306,8 @@ function cardBody(card) {
     box.append(describeTile(null, def));
     if (def.kind === 'transport') box.append(h('div', { class: 'desc' }, terrainDesc(def)));
   } else box.append(h('div', { class: 'desc' }, card.desc || ''));
-  if (card.type === 'upgrade' || card.type === 'named_upgrade') box.append(h('div', { class: 'desc' }, 'Every level draws more people to a shop, serves more of them at once, and pays more. A transport brings bigger crowds and gives a bigger boost when they board.'));
-  if (card.type === 'upgrade') {
-    const targets = G.upgradeTargets(state, card);
-    box.append(h('div', { class: 'desc' }, targets.length === 1
-      ? `You own one ${card.tileName} (level ${targets[0].level}).`
-      : `You own ${targets.length} ${card.tileName}s — pick the one to raise.`));
-  }
+  // the star badge over the tile says what a level is worth, so one line does
+  if (card.type === 'upgrade' || card.type === 'named_upgrade') box.append(h('div', { class: 'desc' }, 'A level up draws, serves and pays more, or brings a bigger crowd to a transport.'));
   return box;
 }
 
@@ -315,13 +322,13 @@ function renderShop() {
     const isTile = card.type === 'tile' || card.type === 'bridge';
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
-    const kclass = { transport: 'k-transport', amenity: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', 'bonus card': 'k-bonus', structure: 'k-structure' }[kind] || '';
+    const kclass = { transport: 'k-transport', shop: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', bonus: 'k-bonus', bridge: 'k-structure' }[kind] || '';
     const el = h('div', { class: 'card ' + kclass + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
       h('span', { class: 'slot' }, cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),
       isTile ? shapeCanvas(def, 84, 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
-      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.tier > 0 ? '' : def.shape)] : (card.type === 'upgrade' ? card.name : '')),
+      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
       h('div', { class: 'cost' }, `$${fmt(cost)}`));
     // hover detail only for devices that hover; on touch the card popup would
     // sit on top of the board and the placement controls
@@ -366,7 +373,7 @@ function tileDetails(t, sticky) {
   box.append(describeTile(t, def));
   const st = lastStatsFor(t.id);
   if (st) {
-    const line = t.kind === 'transport' ? `Last week: ${st.spawned} arrived, ${st.boarded} caught a ride, ${st.stranded} ran out of time${st.lost ? `, ${st.lost} never got there` : ''}` : `Last week: ${st.serves} served${st.balks ? `, ${st.balks} turned away` : ''}${st.cap ? `, ${(st.saturation * 100).toFixed(0)}% full` : ''}`;
+    const line = t.kind === 'transport' ? `Last week: ${st.spawned} arrived · ${st.boarded} boarded${st.stranded ? ` · ${st.stranded} ran out of time` : ''}${st.lost ? ` · ${st.lost} never got there` : ''}` : `Last week: ${st.serves} served${st.balks ? ` · ${st.balks} turned away` : ''}${st.cap ? ` · ${(st.saturation * 100).toFixed(0)}% full` : ''}`;
     box.append(h('div', { class: 'desc' }, line));
   }
   if (sticky && state.phase === 'shop') {
@@ -375,8 +382,8 @@ function tileDetails(t, sticky) {
     const up = upCard ? G.upgradeCost(t, upCard.levels, upCard.costMult) : null;
     box.append(h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
       h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); else if (r.apBack) hint('That action point is back'); ui.selectedTileId = null; hidePopup(true); renderAll(); } },
-        G.deleteGivesAPBack(state, t) ? 'Delete (action point back)' : rules.deleteFreeAP ? 'Delete (free)' : 'Delete (1 AP)'),
-      up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name} is $${fmt(up)} in the shop right now`) : null));
+        G.deleteGivesAPBack(state, t) ? ['Delete · ', apPips(1), ' back'] : rules.deleteFreeAP ? 'Delete (free)' : ['Delete · ', apPips(1)]),
+      up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name}: $${fmt(up)} in the shop`) : null));
   }
   return box;
 }
@@ -402,15 +409,17 @@ function renderTimeline() {
         showQuota ? ['needs ', starNum(G.quotaStars(state, w)), G.quotaFromForm(state, w) ? h('span', { class: 'k', style: 'margin-left:4px' }, '▲') : null] : ''));
     if (ev) {
       const body = h('div', { class: 'sub', id: current ? 'event-body' : null });
+      // the ⚡ is the same mark the top bar puts on an event week; the quota
+      // multiplier is already in the stars, so it lives in the tooltip
       if (known) {
-        body.append(h('span', { class: 'tag' }, `Event: ${ev.name} ×${G.fmtMult(G.eventMult(ev))}`), h('div', {}, ev.desc));
+        body.append(h('span', { class: 'tag', title: `Quota ×${G.fmtMult(G.eventMult(ev))}` }, `⚡ ${ev.name}`), h('div', {}, ev.desc));
         if (current && ev.mods.strike) body.append(...strikeLines('div'));
         if (current && ev.cash) body.append(h('div', { class: 'warn' }, cashLine(ev)));
-        if (ev.ap) body.append(h('div', { class: 'accent' }, `+${ev.ap} action point${ev.ap === 1 ? '' : 's'} that week.`));
-      } else body.append(h('span', { class: 'tag' }, 'Event week'), h('div', {}, 'You will find out what it is once this event is done.'));
+        if (ev.ap) body.append(h('div', { class: 'accent' }, `+${ev.ap} `, apPips(ev.ap)));
+      } else body.append(h('span', { class: 'tag' }, '⚡ ?'), h('div', {}, `Revealed after week ${nextEv}.`));
       row.append(body);
     }
-    if (ord) row.append(h('div', { class: 'sub' }, h('span', { class: 'tag' }, 'Ordinance!'), h('div', {}, 'Pick one of three new rules. It lasts the rest of the run.')));
+    if (ord) row.append(h('div', { class: 'sub' }, h('span', { class: 'tag' }, 'Ordinance'), h('div', {}, 'Pick a new rule for the rest of the run.')));
     if (ms) row.append(h('div', { class: 'sub' }, h('span', { class: 'tag' }, ms.name), h('div', {}, ms.desc)));
     rows.push(row);
   }
@@ -419,7 +428,7 @@ function renderTimeline() {
   // misplaced tile there is a mistake rather than the end of the run.
   if (G.weekTouched(state)) tl.append(h('div', { id: 'tl-redo' },
     h('button', { onclick: confirmRedoWeek }, '↺ Redo Week ' + state.week),
-    h('div', { class: 'desc' }, 'Put the board, the cash and the shop back to how week ' + state.week + ' started.')));
+    h('div', { class: 'desc' }, 'Undo everything done this week.')));
 }
 
 function renderSide() {
@@ -451,7 +460,7 @@ function renderCardBar() {
   if (ui.barKey !== key) {
     ui.barKey = key;
     const title = $('card-bar-title'); title.innerHTML = '';
-    title.append(h('b', {}, card.name), h('span', { class: 'price' }, `$${fmt(cost)}${ap ? ` · ${ap} AP` : ''}`));
+    title.append(h('b', {}, card.name), h('span', { class: 'price' }, `$${fmt(cost)}`, ap ? [' · ', apPips(ap)] : null));
     const desc = $('card-bar-desc'); desc.innerHTML = ''; desc.append(cardBody(card));
     desc.scrollTop = 0;
   }
@@ -472,7 +481,7 @@ function renderInfo() {
   const panel = $('info-panel'), title = $('info-title'), body = $('info-body'); body.innerHTML = '';
   panel.classList.remove('hidden');
   renderCardBar();
-  if (ui.mode === 'playback') { title.textContent = 'Running the week'; body.textContent = 'Shops that are full go grey. Skip ahead any time.'; return; }
+  if (ui.mode === 'playback') { title.textContent = 'Running the week'; body.textContent = 'Full shops go grey.'; return; }
   // With a card in hand the board says it all — stars over the ghost, the card
   // bar underneath — so the side panel stays out of the way.
   panel.classList.add('hidden');
@@ -666,9 +675,8 @@ function confirmRunWeek() {
   if (left <= 0) { startWeek(); return; }
   openModal(
     h('h2', {}, 'Run the week?'),
-    h('p', {}, `You still have ${left} action point${left === 1 ? '' : 's'} left to spend. The travellers arrive the moment you say go.`),
-    h('p', { class: 'accent' }, `Starting early pays +$${fmt(G.earlyFinishBonus(state))} — $${fmt(G.earlyFinishPerAP(state))} for each action point you did not use.`),
-    h('div', { class: 'row', style: 'justify-content:center;margin:10px 0' }, 'You need ', starNum(G.quotaStars(state)), ' this week'),
+    h('p', { class: 'accent' }, 'Unspent: ', apPips(left), ` → +$${fmt(G.earlyFinishBonus(state))}`),
+    h('div', { class: 'row', style: 'justify-content:center;margin:10px 0' }, 'Needs ', starNum(G.quotaStars(state))),
     h('div', { class: 'btnrow', style: 'justify-content:center' },
       h('button', { onclick: closeModal }, 'Not yet'),
       h('button', { id: 'btn-run-confirm', class: 'primary', onclick: () => { closeModal(); startWeek(); } }, 'Run Week ▶')));
@@ -679,7 +687,7 @@ function confirmRedoWeek() {
   if (!state || !G.weekTouched(state)) return;
   openModal(
     h('h2', {}, `Redo week ${state.week}?`),
-    h('p', {}, 'Every tile you placed, every card you played and every dollar you spent this week goes back to how the week started. Earlier weeks are untouched.'),
+    h('p', {}, 'Every tile, card and dollar from this week goes back. Earlier weeks stay as they are.'),
     h('div', { class: 'btnrow', style: 'justify-content:center' },
       h('button', { onclick: closeModal }, 'Keep it'),
       h('button', {
@@ -801,7 +809,7 @@ function drawHistoryChart(canvas, history) {
   const n = history.length, slot = (W - padL - padR) / n;
   g.font = '11px system-ui, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
   // grid lines at 1, 2, 5 x 10^k
-  for (let k = 3; k < 8; k++) for (const m of [1, 2, 5]) { const v = m * Math.pow(10, k); if (v < lo || v > hi) continue; const y = ly(v); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke(); g.fillStyle = '#b8a8e8'; g.fillText(v >= 1000 ? (v / 1000) + 'k' : v, padL - 6, y); }
+  for (let k = 3; k < 8; k++) for (const m of [1, 2, 5]) { const v = m * Math.pow(10, k); if (v < lo || v > hi) continue; const y = ly(v); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke(); g.fillStyle = '#b8a8e8'; g.fillText(fmt(v / CONFIG.quota.starUnit) + '★', padL - 6, y); }
   // bars
   history.forEach((x, i) => {
     const cx = padL + slot * (i + 0.5), bw = Math.min(28, slot * 0.6);
@@ -824,24 +832,24 @@ function showSummary() {
   const passed = r.score >= quota;
   const history = state.history.concat([{ week: state.week, score: r.score, quota, passed, money: r.money.total }]);
   const rows = Object.values(r.tileStats).sort((a, b) => b.points - a.points);
-  const table = h('table', { class: 'stats' }, h('tr', {}, ...['Tile', 'Served', 'Turned away', 'Full', 'Earned', 'Points', 'Arrived', 'Boarded', 'Out of time'].map(x => h('th', {}, x))));
+  const table = h('table', { class: 'stats' }, h('tr', {}, ...['Tile', '★', '$', 'Served', 'Turned away', 'Full', 'Arrived', 'Boarded', 'Out of time'].map(x => h('th', {}, x))));
   for (const s of rows) {
     const t = tileById(s.id);
-    table.append(h('tr', {}, h('td', {}, `${s.name}${t && t.level > 1 ? ' L' + t.level : ''}`), h('td', {}, s.kind === 'amenity' ? s.serves : '–'), h('td', {}, s.kind === 'amenity' ? s.balks : '–'), h('td', {}, s.cap ? (s.saturation * 100).toFixed(0) + '%' : '–'), h('td', {}, '$' + fmt(s.revenue)), h('td', {}, fmt(s.points)), h('td', {}, s.kind === 'transport' ? s.spawned : '–'), h('td', {}, s.kind === 'transport' ? s.boarded : '–'), h('td', {}, s.kind === 'transport' ? s.stranded : '–')));
+    table.append(h('tr', {}, h('td', {}, `${s.name}${t && t.level > 1 ? ' L' + t.level : ''}`), h('td', { title: fmt(s.points) + ' points' }, starsFig(s.points)), h('td', {}, '$' + fmt(s.revenue)), h('td', {}, s.kind === 'amenity' ? s.serves : '–'), h('td', {}, s.kind === 'amenity' ? s.balks : '–'), h('td', {}, s.cap ? (s.saturation * 100).toFixed(0) + '%' : '–'), h('td', {}, s.kind === 'transport' ? s.spawned : '–'), h('td', {}, s.kind === 'transport' ? s.boarded : '–'), h('td', {}, s.kind === 'transport' ? s.stranded : '–')));
   }
   const chart = h('canvas', { id: 'chart' });
   const stranded = r.counts.stranded ? ` · ${r.counts.stranded} ran out of time` : '';
   // Lost travellers never found a route to the platform they wanted, so they
   // banked nothing at all - worth calling out separately from stranding.
   const lost = r.counts.lost ? ` · ${r.counts.lost} never reached their platform` : '';
-  const stolen = r.points.stolen ? ` · ${fmtK(r.points.stolen)} stolen by ${r.counts.pickpockets} pickpockets` : '';
-  const early = state.earlyBonus ? ` · +$${fmt(state.earlyBonus)} for starting early, already paid` : '';
-  const swept = state.cashSwept ? ` · $${fmt(state.cashSwept)} swept out of the till` : '';
+  const stolen = r.points.stolen ? ` · ${starsFig(r.points.stolen)}★ stolen by ${r.counts.pickpockets} pickpockets` : '';
+  const early = state.earlyBonus ? ` · +$${fmt(state.earlyBonus)} early start (paid)` : '';
+  const swept = state.cashSwept ? ` · $${fmt(state.cashSwept)} swept` : '';
   openModal(
     h('h2', {}, `Week ${state.week}`, G.currentEvent(state) ? h('span', { class: 'event-tag accent', style: 'margin-left:8px' }, G.currentEvent(state).name) : null),
     h('div', { class: 'row summary-stars' }, starStrip(G.quotaStars(state), Math.max(0, starsOf(r.score))),
-      h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓ quota met' : '✗ quota missed — the run ends here'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
-    h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px' }, `${fmt(r.score)} points of ${fmt(quota)} · ${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}${swept}`),
+      h('span', { class: passed ? 'good' : 'bad' }, passed ? '✓' : '✗ run over'), h('span', { class: 'spacer' }), h('span', { class: 'accent' }, `+$${fmt(r.money.total)}`)),
+    h('div', { style: 'font-size:12px;color:var(--muted);margin:2px 0 8px', title: `${fmt(r.score)} points of ${fmt(quota)}` }, `${r.counts.boarded} boarded${stranded}${lost}${stolen}${early}${swept}`),
     chart,
     h('details', {}, h('summary', {}, 'Tile by tile'), h('div', { style: 'max-height:240px;overflow:auto' }, table)),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.heat = true; ui.mode = 'heat'; $('board-hint').innerHTML = ''; showHeatBar(); } }, 'Where did people walk?'), h('button', { class: 'primary', onclick: continueFromSummary }, passed ? 'Continue →' : 'See results')));
@@ -904,8 +912,10 @@ function strikeLines(tag) {
   const t = state.strikeChoice || G.pickStrikeTerrain(state);
   if (!t) return [h(tag, { class: 'warn' }, 'Nobody has walked out: there is no transport on the board to strike.')];
   const only = G.transportTerrainsOnBoard(state).length <= 1;
-  return [h(tag, {}, `Out this week: everything on ${TERRAIN_INFO[t].label.toLowerCase()}.`),
-    only ? h(tag, { class: 'warn' }, `It is your only transport, so it keeps running at ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% rather than stopping outright.`) : null].filter(Boolean);
+  // name the tiles themselves: a terrain label is one more word to learn
+  const out = [...new Set(state.board.tiles.filter(x => x.kind === 'transport' && tileDef(x.key).terrain === t).map(x => x.name))];
+  return [h(tag, {}, `Out this week: ${out.join(', ')}.`),
+    only ? h(tag, { class: 'warn' }, `That is all your transport, so it runs at ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% instead of stopping.`) : null].filter(Boolean);
 }
 // What a money week has done, or is about to do, to the till.
 function cashLine(ev) {
@@ -922,30 +932,29 @@ function showEventModal(onDone) {
   const box = $('modal-box');
   const parts = [
     h('div', {}, h('span', { class: 'boss-star' }, '★')),
-    h('div', { class: 'lbl' }, `Week ${state.week} · event week`),
+    h('div', { class: 'lbl' }, `Week ${state.week} ⚡`),
     h('h2', {}, ev.name),
     h('div', { class: 'event-mult' }, `Quota ×${G.fmtMult(G.eventMult(ev))} → ${fmt(G.quotaStars(state))}★`),
     h('p', {}, ev.desc),
   ];
   if (ev.mods.strike) parts.push(...strikeLines('p'));
   if (ev.cash) parts.push(h('p', { class: 'warn' }, cashLine(ev)));
-  if (ev.repeat > 1) parts.push(h('p', { class: 'accent' }, `The board runs ${ev.repeat} weeks straight through, and both of them count toward the one target.`));
-  if (ev.ap) parts.push(h('p', { class: 'accent' }, `+${ev.ap} action point${ev.ap === 1 ? '' : 's'} to spend before it starts.`));
+  if (ev.ap) parts.push(h('p', { class: 'accent' }, `+${ev.ap} `, apPips(ev.ap)));
   parts.push(h('div', { class: 'btnrow', style: 'justify-content:center' }, h('button', { class: 'primary', onclick: () => { closeModal(); box.classList.remove('event'); if (onDone) onDone(); } }, 'Bring it on')));
   openModal(...parts);
   box.classList.add('event');
 }
 function showOrdinance(onDone) {
-  openModal(h('h2', {}, `Week ${state.week}: pick an ordinance`), h('p', {}, 'Whichever you pick stays for the rest of the run.'),
+  openModal(h('h2', {}, 'Pick an ordinance'), h('p', {}, 'A new rule for the rest of the run.'),
     h('div', { class: 'choices' }, ...state.pendingOrdinance.map(k => h('div', { class: 'mode', onclick: () => { G.chooseOrdinance(state, k); closeModal(); renderAll(); if (onDone) onDone(); } }, h('div', { class: 'name' }, ORDINANCES[k].name), h('div', { class: 'desc' }, ORDINANCES[k].desc)))));
 }
 function showWin() {
-  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${G.runRules(state).winWeek}. The quota keeps climbing from here — how far can you get?`),
+  openModal(h('h2', { class: 'good' }, 'Grand Central Station is a success!'), h('p', {}, `You cleared week ${G.runRules(state).winWeek}. The quota keeps climbing: how far can you go?`),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); showStart(); } }, 'New run'), h('button', { class: 'primary', onclick: () => { G.continueAfterWin(state); closeModal(); afterWeekStart(); } }, 'Keep going →')));
 }
 function showGameOver() {
   const last = state.history[state.history.length - 1];
-  openModal(h('h2', { class: 'bad' }, 'The run is over'), h('p', {}, `Week ${last.week}: you earned ${fmt(starsOf(last.score))}★ and needed ${fmt(starTarget(last.quota))}★.`),
+  openModal(h('h2', { class: 'bad' }, 'The run is over'), h('div', { class: 'row', style: 'margin:6px 0' }, `Week ${last.week}: `, starNum(starsOf(last.score), 'bad'), ' / ', starNum(starTarget(last.quota))),
     h('div', { class: 'kv' }, h('span', { class: 'k' }, 'Best week'), h('span', {}, starNum(starsFig(state.records.bestScore))), h('span', { class: 'k' }, 'Best traveller'), h('span', {}, starNum(starsFig(state.records.bestTraveller))), h('span', { class: 'k' }, 'Seed'), h('span', {}, state.seed)),
     h('div', { class: 'btnrow' }, h('button', { onclick: () => { closeModal(); ui.mode = 'over'; } }, 'Look at the board'), h('button', { class: 'primary', onclick: () => { closeModal(); showStart(); } }, 'New run')));
 }
@@ -993,18 +1002,17 @@ function showStart() {
     repaintRec.push(() => {
       const r = meta.byMode[k + ':' + diffKey];
       rec.innerHTML = '';
-      if (r) rec.append(`Best on ${DIFFICULTIES[diffKey].name}: week ${r.bestWeek}, `, starNum(starsFig(r.bestScore)));
-      else rec.append(`No run on ${DIFFICULTIES[diffKey].name} yet.`);
+      if (r) rec.append(`Best: week ${r.bestWeek} · `, starNum(starsFig(r.bestScore)));
     });
     track.append(h('div', { class: 'mode' + (unlocked ? '' : ' locked') },
       modeShot(k).canvas,
       h('div', { class: 'mode-body' },
-        h('div', { class: 'name' }, m.name, h('span', { class: 'size' }, `${m.w}×${m.h}`)),
+        h('div', { class: 'name' }, m.name, h('span', { class: 'size' }, `${m.w}×${m.h}`), h('span', { class: 'size' }, apPips(m.startAP || CONFIG.run.startAP))),
         h('div', { class: 'desc' }, m.desc),
         rec,
         unlocked
           ? h('button', { class: 'primary', onclick: () => newRun(k, diffKey, seedInput.value.trim()) }, `Start ${m.name} ▶`)
-          : h('div', { class: 'lock' }, `\u{1F512} Reach week ${m.unlockWeek} in any level to unlock`))));
+          : h('div', { class: 'lock' }, `\u{1F512} Reach week ${m.unlockWeek}`))));
   }
   function goTo(i) {
     at = ((i % MODE_KEYS.length) + MODE_KEYS.length) % MODE_KEYS.length;
@@ -1035,12 +1043,12 @@ function showStart() {
   }
   paintDiffs(); repaintRec.forEach(f => f()); goTo(at);
   openModal(h('h2', {}, h('span', { class: 'logo' }, 'GCS'), ' Grand Central Station'),
-    h('p', {}, 'You run a transit hub. Each week you add a few tiles, then watch the crowd wander through. Hit the week\'s quota or the run ends.'),
-    stale ? h('p', { class: 'warn' }, 'Your saved run comes from an older version of the game, so it cannot be picked up again. Start a new run below.') : null,
+    h('p', {}, 'Build a transit hub. Each week, place a few tiles and watch the crowd walk through. Earn the week\'s ★ or the run ends.'),
+    stale ? h('p', { class: 'warn' }, 'Your saved run is from an older version and can\'t be resumed.') : null,
     saved ? h('div', { class: 'btnrow', style: 'justify-content:flex-start' }, h('button', { class: 'primary', onclick: () => { state = G.deserialize(saved); ui.started = true; closeModal(); ui.mode = 'idle'; afterWeekStart(); } }, 'Resume saved run')) : null,
-    h('h3', {}, 'Pick a difficulty'), diffs,
-    h('h3', {}, 'Pick a level'), carousel, dots,
-    h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, h('span', { style: 'font-size:12px;color:var(--muted)' }, `Records: week ${meta.bestWeek} · best week ${starsFig(meta.bestScore)}★ · best traveller ${starsFig(meta.bestTraveller)}★`)));
+    h('h3', {}, 'Difficulty'), diffs,
+    h('h3', {}, 'Level'), carousel, dots,
+    h('div', { class: 'row', style: 'margin-top:12px' }, seedInput, meta.bestWeek ? h('span', { style: 'font-size:12px;color:var(--muted)' }, `Furthest: week ${meta.bestWeek} · best week ${starsFig(meta.bestScore)}★ · best traveller ${starsFig(meta.bestTraveller)}★`) : null));
   repaintModeShots();   // now the modal is up, the stills have a box to frame themselves in
   modeShotWatch.disconnect(); modeShotWatch.observe(stage);
 }
