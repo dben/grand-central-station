@@ -196,13 +196,13 @@ export function terrainDesc(def) {
 }
 
 export const TERRAIN_INFO = {
-  road:     { label: 'Road',     claim: 'road',     desc: 'Turns that side of the board into a road. Road tiles can sit a few squares back, with a driveway out to it.' },
-  rail:     { label: 'Rail',     claim: 'lock',     desc: 'Locks that whole side of the board as railway. Nothing else can use it.' },
-  water:    { label: 'Water',    claim: 'lock',     desc: 'Locks that whole side of the board as water. Nothing else can use it.' },
-  apron:    { label: 'Apron',    claim: 'lock',     desc: 'Locks that whole side of the board as airfield. Nothing else can use it.' },
-  corridor: { label: 'Corridor', claim: 'corridor', desc: 'Keeps a straight lane clear to the nearest side of the board. You cannot build in the lane.' },
-  free:     { label: 'Free',     claim: 'none',     desc: 'Needs no terrain at all. Goes anywhere there is room.' },
-  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel under the board. Build anything you like on top and travellers walk right over it, but two tunnels can never cross.' },
+  road:     { label: 'Road',     claim: 'road',     desc: 'Turns that side of the board into road. Can sit a few squares back, with a driveway out.' },
+  rail:     { label: 'Rail',     claim: 'lock',     desc: 'Locks that whole side of the board to rail, for good.' },
+  water:    { label: 'Water',    claim: 'lock',     desc: 'Locks that whole side of the board to water, for good.' },
+  apron:    { label: 'Airfield', claim: 'lock',     desc: 'Locks that whole side of the board to airfield, for good.' },
+  corridor: { label: 'Lane',     claim: 'corridor', desc: 'Needs a straight lane to the nearest side of the board, kept clear of buildings.' },
+  free:     { label: 'Anywhere', claim: 'none',     desc: 'Goes anywhere there is room.' },
+  underground: { label: 'Underground', claim: 'none', desc: 'Runs a tunnel under the board. Build over it freely, but two tunnels can never cross.' },
 };
 // What an underground tile's tunnel does, for the catalogue and the tile popup.
 export const LINE_INFO = {

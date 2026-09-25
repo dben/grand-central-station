@@ -761,7 +761,7 @@ The single most important UI element. While aiming a tile:
 
 ### 12.3 Stars and the top bar
 
-Quotas are shown as stars, one per 1,000 points. **Stars are the only score the player is shown**: the start screen's records, the timeline, the summary headline and the game-over figures are all in stars, and raw points survive only in the hover tooltips and the summary's per-tile table, where they are the unit the sim works in. A record uses `starsFig`, which gives whole stars from ten up and one decimal below, so one traveller's chain reads as "0.6★" rather than "0★".
+Quotas are shown as stars, one per 1,000 points. **Stars are the only score the player is shown**: the start screen's records, the timeline, the summary headline and the game-over figures are all in stars, and raw points survive only in hover tooltips. The summary's per-tile table and its chart axis are in stars too. A record uses `starsFig`, which gives whole stars from ten up and one decimal below, so one traveller's chain reads as "0.6★" rather than "0★".
 
 - **Up to ten stars** are drawn as glyphs that light up as the week plays, with the current projection dimly pre-filling the ones it would reach.
 - **Past ten,** the row becomes a `7 / 13 ★` counter. The two styles are never shown together.
@@ -771,9 +771,9 @@ Quotas are shown as stars, one per 1,000 points. **Stars are the only score the 
 
 ### 12.4 Weekly summary
 
-- **The headline:** stars against the quota, money earned (with any early-finish bonus), and travellers boarded, stranded, lost and robbed.
+- **The headline:** stars against the quota with a ✓ or ✗, money earned (with any early-start bonus), and travellers boarded, stranded, lost and robbed.
 - **A score-vs-quota chart** for the whole run.
-- **A per-tile table:** served, turned away, saturation, revenue, points, arrivals, boarded and stranded. This is where players learn the game.
+- **A per-tile table:** stars and cash first, then served, turned away, saturation, arrivals, boarded and stranded. This is where players learn the game.
 - **The path heatmap** (*Where did people walk?*), the main teaching tool for why a shop was or wasn't visited.
 
 ### 12.5 Readability rules
@@ -793,6 +793,27 @@ amenity is a *shop* in running text. Numbers are kept where a player would act o
 a price, a percentage) and dropped where they only decorate ("far more people", "much more likely
 to"). A refusal says what to do next — "rotate it", "needs a bridge" — not which rule it broke.
 
+**Pictures before words.** Where the screen already has a mark for an idea, the text uses the mark
+and drops the phrase:
+
+- **Action points** are the wallet's own pips, shrunk into the line (`apPips` in `main.js`): the
+  card bar's price, the Delete button, the Run Week confirmation ("Unspent: ▪ → +$20"), an event's
+  extra AP, and each level's weekly AP on the start screen. "AP" and "action point" survive only in
+  card and ordinance text and in tooltips.
+- **Event weeks** carry ⚡ everywhere: the top bar, the timeline tag (`⚡ Festival`), the event
+  popup's header, and `⚡ ?` for an event not yet revealed ("Revealed after week 8"). The quota
+  multiplier is already in the week's stars, so it moves into the tag's tooltip.
+- **Tiers** are their `$` signs. A shop's popup says `For: $$`; a tier-free shop says `any $`.
+- **Tile popups** are short label/value rows: *Arrive* (a crowd per week, `batch × ⌈spawnTicks /
+  arr⌉`, since "2 every tick" has to be multiplied out), *Leave*, *Boarding* and *Visit* (the
+  boost as `×1.84 +100`), *Draws*, *Serves*, *Earns*. What the board or the card already shows is
+  left out: no terrain row (the card says it), no shape code, walk-through floor is one word.
+- **Terrain labels** on cards: Road, Rail, Water, Airfield, Lane, Anywhere, Underground (the code
+  keeps `apron`, `corridor`, `free`). A strike names the tiles that walk out, not their terrain.
+- **Level cards** show the board size and weekly AP as `12×12 ▪▪`, so their text only says what
+  sets the level apart. A record line appears only once there is a record.
+- Shop cards are labelled *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*.
+
 ### 12.6 Controls
 
 - **Camera:** drag to pan, scroll or pinch to zoom; **+ / − / Fit** buttons or the **+**, **−** and **0** keys.
@@ -809,7 +830,7 @@ to"). A refusal says what to do next — "rotate it", "needs a bridge" — not w
   the Delete button and a close button, and stays inside the screen on a phone.
 - **Targeted cards:** upgrades and bonus cards that need a target highlight the valid tiles (or
   edges, for Rezoning Permit), and the bar says what to pick.
-- **Run Week** asks for confirmation only while AP is unspent, and says what running early pays. Once all AP is spent, a large Run Week button also appears on the board.
+- **Run Week** asks for confirmation only while AP is unspent, and shows the unspent pips and what they pay. Once all AP is spent, a large Run Week button also appears on the board.
 - **Music:** **♪** or **M** mutes it, and the choice is remembered. The start screen and a lost run are silent.
 - **Panels:** the side panel's chevron collapses it; the shop tray has no hand control at all,
   because it already knows when to go (the week's run, the summary, a lost run). The side panel is

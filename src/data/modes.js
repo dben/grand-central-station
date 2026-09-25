@@ -23,8 +23,8 @@
 //              so a level can deal the transport its own terrain needs.
 // A tile with a `modes` list is sold on those levels only (see soldOnLevel).
 export const MODES = {
-  terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game, on a 12x12 board.', unlockWeek: 0 },
-  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough. A 9x9 board and 3 action points a week, with the cash to use them, but the quota is higher and the weeks come at you quicker.', unlockWeek: 8, startAP: 3, quotaMult: 1.30, quotaGrowth: 1.06,
+  terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game.', unlockWeek: 0 },
+  junction:   { name: 'Junction',    w: 9,  h: 9,  desc: 'Small and tough: an extra action point each week, but a higher quota and pickpockets arrive early.', unlockWeek: 8, startAP: 3, quotaMult: 1.30, quotaGrowth: 1.06,
                 // A cramped board that gets its milestones early, and tunnels
                 // with them, since a tunnel costs no floor space. It ran an
                 // event every third week until the quota band tightened: five
@@ -37,14 +37,14 @@ export const MODES = {
                 // to buy three tiles, and $220 bought two (§15).
                 run: { startMoney: 290, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
                 minWeek: { subway: 2, express_subway: 4, under_parking: 2, limo: 3 } },
-  metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game. A roomy 16x16 board and the big tiles early, but tiles cost 25% more and the weeks are slower to turn.', unlockWeek: 12, costMult: 1.25,
+  metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game: room for big tiles, sold early, but tiles cost 25% more. Events and pickpockets come later.', unlockWeek: 12, costMult: 1.25,
                 // Room for the six-cell tiles, so they come on sale early; in
                 // exchange the run's own milestones are pushed back.
                 // ...and $275 rather than $220, because the level's own tiles
                 // cost 25% more: the wallet buys the same opening either way.
                 run: { startMoney: 275, eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
                 minWeek: { express_train: 3, cruise_dock: 5, jumbo_jetway: 6, cafeteria: 3, flier_club: 7 } },
-  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides of the board start as water, anything that floats costs 40% less, and boats are on sale from week one - starting with the water bus and the pontoon, which nowhere else sells.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
+  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides start as water. Boats cost 40% less and are sold from week 1, including two found nowhere else.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
                 // Opened by water: the hand deals the pontoon in place of the
                 // car park, which is the same tile on a different terrain, and
                 // leaves the other three slots rolling as usual.
@@ -54,7 +54,7 @@ export const MODES = {
   // waist splits 8x16 into two 8x8 halves, airside and landside, each about the
   // size of a Junction board. That is the level's whole shape - build a station
   // twice, once either side of the fence, and walk every traveller through it.
-  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'A long board with the airfield at one end and the road at the other, split down the middle by a security checkpoint. No trains and no boats, but light aircraft are on sale from week one and anything that needs no terrain costs 30% less.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaMult: 1.05,
+  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'Airfield at one end, road at the other, a checkpoint between. No trains or boats; light aircraft from week 1.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaMult: 1.05,
                 preLock: { N: 'apron', S: 'road' },
                 // The booth straddles the line y=8 with its fence running the
                 // width of the board: everyone landing airside has to clear it
@@ -66,7 +66,7 @@ export const MODES = {
                 run: { pickpocketsFromWeek: 3, pickpocketRamp: 6 },
                 week1: { fixed: ['prop_stand', 'parking_lot', 'burger'], transport: 1, amenity: 1 },
                 minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
-  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'Only one action point a week, but the shop shows eight cards and the overtime deal comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
+  terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One action point a week, but eight cards in the shop and Extra Shift comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
                 run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },

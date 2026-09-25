@@ -341,3 +341,6 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
 .tl-row.milestone::before { background: var(--blue); }
 .tl-row.milestone .tag { color: var(--blue); font-weight: 700; }
 .tl-row.last { opacity: 0.45; }
+/* action points inside a line of text: the wallet's pips, shrunk to the line */
+.ap-inline { display: inline-flex; gap: 3px; vertical-align: -1px; margin: 0 1px; }
+.ap-inline .pip { width: 9px; height: 9px; border-width: 1.5px; box-shadow: 0 0 4px rgba(255,210,63,0.6); }
