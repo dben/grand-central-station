@@ -818,8 +818,9 @@ and drops the phrase:
   sets the level apart. A record line appears only once there is a record.
 - Shop cards are labelled *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*.
   A transport card carries a pixel-art header of its kind of transport in place of the label, and
-  the terrain word drops off the tier line underneath; the popup and card bar still spell the
-  terrain out (§13.3).
+  shows no terrain word; the popup and card bar still spell the terrain out (§13.3).
+- A card's bottom line holds its tier in the left corner and its price in the right, so the price
+  stays inside the short phone cards.
 
 ### 12.6 Controls
 

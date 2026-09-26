@@ -3,7 +3,7 @@
 // ============================================================================
 import { CONFIG, starsOf, starTarget } from '../config.js';
 import * as G from '../game/run.js';
-import { tileDef, TERRAIN_INFO, LINE_INFO, NAMED_UPGRADES, terrainDesc } from '../data/tiles.js';
+import { tileDef, LINE_INFO, NAMED_UPGRADES, terrainDesc } from '../data/tiles.js';
 import { MODES, MODE_KEYS } from '../data/modes.js';
 import { DIFFICULTIES, DIFFICULTY_KEYS } from '../data/difficulties.js';
 import { ORDINANCES } from '../data/ordinances.js';
@@ -334,9 +334,10 @@ function renderShop() {
       art ? h('div', { class: 'art', style: `background-image: url("${art}")` }) : h('span', { class: 'slot' }, cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),
-      isTile ? shapeCanvas(def, 84, art ? 54 : 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
-      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' && !art ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
-      h('div', { class: 'cost' }, `$${fmt(cost)}`));
+      isTile ? shapeCanvas(def, 84, art ? 64 : 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
+      card.type === 'upgrade' ? h('div', { class: 'sub' }, card.name) : null,
+      // tier and price share the bottom line, one to each corner, so short cards keep the price inside
+      h('div', { class: 'foot' }, h('span', { class: 'sub' }, def ? (def.tier > 0 ? tierTag(def.tier) : def.special === 'anytier' ? 'any $' : '') : ''), h('span', { class: 'cost' }, `$${fmt(cost)}`)));
     // hover detail only for devices that hover; on touch the card popup would
     // sit on top of the board and the placement controls
     el.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') showPopup(cardDetails(card), e.clientX, e.clientY, false); });
