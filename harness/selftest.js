@@ -311,6 +311,15 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(far3.agents.length > far2.agents.length, 'a new platform brings its own travellers');
   ok(others.length > 0 && others.every(a => { const c = by.get(a.key); return a.value === c.value && a.outcome === c.outcome; }),
     `a new platform leaves the travellers who neither pass it nor board it alone (${others.length} of them)`);
+  // A race splits the crowd by the weights on every seed. On stratified dice
+  // it split three equal platforms anywhere from 5% to 68% (design doc 15).
+  const tri = createBoard(12, 12);
+  for (const x of [1, 5, 9]) placeTile(tri, 'bus_stop', x, 11, 0);
+  const shares = [1, 2, 3, 4, 5, 6, 7, 8].flatMap(seed => {
+    const trav = simulateWeek(tri, { seed, week: 3 }).agents.filter(a => a.kind === 'traveller');
+    return tri.tiles.map(t => trav.filter(a => a.dest === t.id).length / trav.length);
+  });
+  ok(shares.every(s => s > 0.15 && s < 0.55), `three equal platforms each take about a third of the crowd on every seed (${Math.round(Math.min(...shares) * 100)}–${Math.round(Math.max(...shares) * 100)}%)`);
 }
 
 // the fence runs past a building it only skirts and stops where one cuts across it
@@ -453,7 +462,10 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   // 48 ticks instead would not: the clock is what caps most chains, so on an
   // amenity-dense board it scores nearly four times a normal week and on a bare
   // one barely twice (§15). Keep the Double Week two weeks, not a long one.
-  ok(Math.abs(two.score - one.score * 2) < one.score * 0.25, 'and two weeks come out at about twice one week, whatever is on the board');
+  // Over a few seeds: one draw against another swings by half the tolerance on its own.
+  const avg = f => [3, 4, 5, 6].reduce((t, seed) => t + f(seed), 0) / 4;
+  const oneAvg = avg(seed => simulateWeek(b, { seed, week: 8 }).score), twoAvg = avg(seed => simulateWeeks(b, { seed, week: 8 }, 2).score);
+  ok(Math.abs(twoAvg - oneAvg * 2) < oneAvg * 0.25, 'and two weeks come out at about twice one week, whatever is on the board');
   const dwr = createRun({ seed: 6 }); dwr.eventPlan = ['double_week']; dwr.week = 4; dwr.ap = apForRun(dwr);
   placeTile(dwr.board, 'train_station', 4, 0, 0); placeTile(dwr.board, 'burger', 5, 4, 0);
   ok(runWeek(dwr).result.ticks === CONFIG.sim.ticks * 2, 'and the week the player actually runs is both of them');

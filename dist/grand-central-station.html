@@ -615,8 +615,10 @@ const CONFIG = {
     hurry: { enabled: true, slack: 0 },
     // Stratified rolls: the travellers a transport sends are spread evenly
     // over the dice (a golden-ratio sequence per spawn slot) instead of each
-    // rolling alone, so a week's tiers, destinations and stops land close to
-    // their expected mix. Each traveller still looks random; the total is steadier.
+    // rolling alone, so a week's tiers and stops land close to their expected
+    // mix. Each traveller still looks random; the total is steadier. Only a
+    // die read against a threshold is stratified: picks between options and
+    // waypoints roll the traveller's own (§15).
     stratify: true,
   },
 
@@ -2008,9 +2010,16 @@ function simulateWeek(board, opts = {}) {
   // A roll is a hash of the traveller and the question. Stratified, the
   // traveller's slot walks the unit interval in golden-ratio steps and the
   // question only offsets it, so slot after slot covers the dice evenly.
+  // Every question a slot asks shares that step, so any two of its dice sit a
+  // fixed distance apart. That is harmless where one die meets a threshold (a
+  // tier, a shop's pull), and wrong wherever dice meet each other: in a race
+  // the offsets, not the weights, decided the winner (three equal platforms
+  // split a crowd anywhere from 4% to 79% by seed), and a waypoint's two
+  // Gaussians fell on one curve. Those roll the traveller's own die (`own`).
   const PHI = 0.6180339887498949;
   const strat = !!cfg.sim.stratify;
-  const roll = (a, tag, x = 0, y = 0) => strat ? (a.ord * PHI + mix(seedHash, a.grp, tag, x, y)) % 1 : mix(seedHash, a.h, tag, x, y);
+  const own = (a, tag, x = 0, y = 0) => mix(seedHash, a.h, tag, x, y);
+  const roll = (a, tag, x = 0, y = 0) => strat ? (a.ord * PHI + mix(seedHash, a.grp, tag, x, y)) % 1 : own(a, tag, x, y);
   // Picking one of several options, without the list itself entering into it.
   // Every option rolls its own die, keyed by what the option *is* (a tile, a
   // cell), and the smallest -ln(u)/w wins: the exponential race draws from the
@@ -2023,7 +2032,7 @@ function simulateWeek(board, opts = {}) {
     for (const o of opts) {
       const w = weightOf ? weightOf(o) : 1;
       if (w <= 0) continue;
-      const s = -Math.log(roll(a, tag, keyOf(o), k2) || 1e-12) / w;
+      const s = -Math.log(own(a, tag, keyOf(o), k2) || 1e-12) / w;
       if (s < bestScore) { bestScore = s; best = o; }
     }
     return best;
@@ -2259,13 +2268,13 @@ function simulateWeek(board, opts = {}) {
     for (let i = 0; i < n; i++) {
       let px, py;
       const k = leg * n + i;
-      const g1 = gaussOf(roll(a, R.wp, k, 0), roll(a, R.wp, k, 1)), g2 = gaussOf(roll(a, R.wp, k, 2), roll(a, R.wp, k, 3));
+      const g1 = gaussOf(own(a, R.wp, k, 0), own(a, R.wp, k, 1)), g2 = gaussOf(own(a, R.wp, k, 2), own(a, R.wp, k, 3));
       if (same) {
         const s = cfg.sim.sameTileWanderSigma;
         px = sx + g1 * s; py = sy + g2 * s;
       } else {
         const lo = (i + 0.15) / n, hi = (i + 0.85) / n;
-        const t = lo + roll(a, R.wp, k, 4) * (hi - lo);
+        const t = lo + own(a, R.wp, k, 4) * (hi - lo);
         const s = cfg.sim.waypointSigma;
         px = sx + (dx - sx) * t + g1 * s;
         py = sy + (dy - sy) * t + g2 * s;

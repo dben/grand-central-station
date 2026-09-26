@@ -158,8 +158,10 @@ export const CONFIG = {
     hurry: { enabled: true, slack: 0 },
     // Stratified rolls: the travellers a transport sends are spread evenly
     // over the dice (a golden-ratio sequence per spawn slot) instead of each
-    // rolling alone, so a week's tiers, destinations and stops land close to
-    // their expected mix. Each traveller still looks random; the total is steadier.
+    // rolling alone, so a week's tiers and stops land close to their expected
+    // mix. Each traveller still looks random; the total is steadier. Only a
+    // die read against a threshold is stratified: picks between options and
+    // waypoints roll the traveller's own (§15).
     stratify: true,
   },
 
