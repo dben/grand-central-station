@@ -123,6 +123,7 @@ function describeTile(tile, def) {
     }
     if (e.offline) rows.push(['Status', 'Not running this week']);
     else if (e.skeleton) rows.push(['Status', `On strike: ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% of the usual crowd`]);
+    else if (e.delayed) rows.push(['Status', e.late ? `Weather: running ${e.late} tick${e.late === 1 ? '' : 's'} late` : 'Weather: a thinner crowd']);
     if (def.special === 'loop') rows.push(['Loop', `${Math.round(def.loopChance * 100)}% of riders come back round, boost and all`]);
   } else if (def.kind === 'amenity') {
     const e = effAmenity(tile || { key: def.key, level: 1 }, m);

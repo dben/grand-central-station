@@ -26,6 +26,22 @@ export const EVENTS = {
   charter:       { name: 'Charter Season',  quota: 1.7,  desc: 'Travellers head for platforms a tier above their own.',
                    mods: { destTierShift: 1 } },
 
+  // ---- weather. A front slips the timetable of whatever it hits (`weather`
+  // in the sim): every departure leaves `late` ticks late, the week's last one
+  // included, so those travellers linger in the concourse that much longer -
+  // more time to shop, and to be stranded if they wander too far. The linger
+  // alone is worth 20-30% more score, so each front thins the crowd as well;
+  // `batch` rounds, so x0.6 turns the cheap two-a-time transports into one.
+  // The underground is out of the weather. Priced in §14.2.
+  fog:           { name: 'Fog',             quota: 1,    desc: 'Aircraft and boats leave 4 ticks late, and far fewer people turn up for them. Those who do linger in the concourse.',
+                   mods: { weather: [{ on: ['air', 'water'], late: 4, batch: 0.6 }] } },
+  snowstorm:     { name: 'Snowstorm',       quota: 0.9,  desc: 'Everything above ground leaves 3 ticks late and brings far fewer people. The underground runs to time.',
+                   mods: { weather: [{ on: ['surface'], late: 3, batch: 0.6 }] } },
+  heavy_rain:    { name: 'Heavy Rain',      quota: 0.9,  desc: 'The roads flood: road transports leave 3 ticks late and bring far fewer people.',
+                   mods: { weather: [{ on: ['road'], late: 3, batch: 0.6 }] } },
+  thunderstorm:  { name: 'Thunderstorm',    quota: 1.3,  desc: 'Everything above ground leaves 6 ticks late and far fewer people set out. Those who do have a long time to spend.',
+                   mods: { weather: [{ on: ['surface'], late: 6, batch: 0.6 }] } },
+
   // ---- money weeks. These take nothing off the board, so the week scores
   // exactly what a quiet week would and their quota is a flat x1: the bill is
   // in the other currency, and lands on the weeks that come after. Discounting
