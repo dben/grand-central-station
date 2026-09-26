@@ -18,7 +18,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drawAll, CELL, hex, png } from './tileart.mjs';
 import { tileDef } from '../src/data/tiles.js';
-import { tileHeight, H_UNIT, CANOPY_Z, colorForDef } from '../src/ui/render.js';
+import { tileHeight, H_UNIT, CANOPY_Z, colorForDef, EDGE_MARGIN, TURN_R } from '../src/ui/render.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HZ = 2 * CELL * H_UNIT;          // screen pixels per unit of tile height
@@ -394,6 +394,32 @@ for (const [name, fn] of Object.entries(GROUND)) for (const turn of strips.has(n
   writeFileSync(resolve(groundDir, name + turn + '.png'), png({ IW: 128, IH: 64, px }));
   groundKeys.push(name + turn);
 }
+// Where a railway meets the sea it bends a quarter turn to run along the shore
+// (drawShoreTurns in render.js). The bend is the rail texture itself, bent round
+// the ring: across the ring is across the strip, and along it the arc length.
+// One picture per corner and way round, `bend_<rail side><sea side>`, anchored
+// at a whole grid point `lo` squares from the corner so its pixels stay in the grid.
+const bends = {};
+for (const e of ['N', 'S', 'W', 'E']) for (const n of e === 'N' || e === 'S' ? ['W', 'E'] : ['N', 'S']) {
+  const m = EDGE_MARGIN, R = TURN_R, horiz = e === 'N' || e === 'S';
+  const eRel = e === 'N' || e === 'W' ? -R : R, nRel = n === 'N' || n === 'W' ? R : -R;
+  const [cx, cy] = horiz ? [nRel, eRel] : [eRel, nRel];
+  const aStrip = horiz ? (e === 'N' ? Math.PI / 2 : -Math.PI / 2) : (e === 'W' ? 0 : Math.PI);
+  const aShore = horiz ? (n === 'W' ? Math.PI : 0) : (n === 'N' ? -Math.PI / 2 : Math.PI / 2);
+  const turn = Math.atan2(Math.sin(aShore - aStrip), Math.cos(aShore - aStrip));
+  const lo = [Math.floor(cx - R), Math.floor(cy - R)], Wg = Math.ceil(cx + R) - lo[0], Hg = Math.ceil(cy + R) - lo[1];
+  const IW = (Wg + Hg) * 32, IH = (Wg + Hg) * 16, px = new Array(IW * IH).fill(null);
+  for (let Y = 0; Y < IH; Y++) for (let X = 0; X < IW; X++) {
+    const a = (X + 0.5 - Hg * 32) / 32, b = (Y + 0.5) / 16;
+    const dx = lo[0] + (a + b) / 2 - cx, dy = lo[1] + (b - a) / 2 - cy, d = Math.hypot(dx, dy) - (R - m / 2);
+    const t = Math.atan2(Math.sin(Math.atan2(dy, dx) - aStrip), Math.cos(Math.atan2(dy, dx) - aStrip)) * Math.sign(turn);
+    if (Math.abs(d) > m / 2 || t < 0 || t > Math.abs(turn)) continue;
+    px[Y * IW + X] = GROUND.rail(wrap(Math.floor(t * (R - m / 2) * 32)), Math.floor(32 + d * 32));
+  }
+  const key = 'bend_' + (e + n).toLowerCase();
+  writeFileSync(resolve(groundDir, key + '.png'), png({ IW, IH, px }));
+  groundKeys.push(key); bends[key] = [lo[0], lo[1], Hg];
+}
 
 // As with tilesprites.js: every key is listed whichever were written, and the
 // paths stay literal strings for the bundler to inline.
@@ -413,6 +439,9 @@ ${keys.map(k => `  ${k}: 'assets/iso/${k}_map.png',`).join('\n')}
 export const GROUND_TEX = {
 ${groundKeys.map(k => `  ${k}: 'assets/ground/${k}.png',`).join('\n')}
 };
+// a rail bend's anchor: [x, y] squares from the corner it turns at, and its
+// height in squares (the picture's left edge is that many half-cells left of the anchor)
+export const GROUND_BENDS = ${JSON.stringify(bends)};
 export const ISO_FRAMES = {
 ${keys.map(k => `  ${k}: ${JSON.stringify(manifest[k])},`).join('\n')}
 };

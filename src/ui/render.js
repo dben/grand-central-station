@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, groundImg, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, groundImg, groundBend, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -33,11 +33,11 @@ const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
 // Screen pixels per unit of tile height, as a fraction of k.
 export const H_UNIT = 0.62;
 // Edge strips, in grid units, laid outside the board.
-const EDGE_MARGIN = 0.85;
+export const EDGE_MARGIN = 0.85;
 // Outer radius of the bend a railway turns through where it meets the shore.
 // Two strip widths, so the turn sweeps a 2x2 square instead of pivoting on a
 // point: a quarter turn inside one strip width reads as a notch, not as track.
-const TURN_R = 2 * EDGE_MARGIN;
+export const TURN_R = 2 * EDGE_MARGIN;
 // Room left under the board when framing it, in units of tile height.
 const FIT_ROOM = 0.30;
 // Height of a checkpoint fence panel, in grid units.
@@ -250,11 +250,12 @@ export class BoardRenderer {
   }
   // An edge strip's texture: its terrain turned to run along the edge and
   // centred across the strip, so the runs past the corners carry on in step.
-  stripFill(e, terrain) {
+  // `mid` centres it on another line across (the run along a shore).
+  stripFill(e, terrain, mid = null) {
     const [gx, gy, gw, gh] = this.edgeRegion(e);
     if (terrain === 'green') return this.groundFill('lawn');
     if (!['road', 'rail', 'apron'].includes(terrain)) return null;
-    return e === 'N' || e === 'S' ? this.groundFill(terrain + '_x', 0, gy + gh / 2 - 1) : this.groundFill(terrain + '_y', gx + gw / 2 - 1, 0);
+    return e === 'N' || e === 'S' ? this.groundFill(terrain + '_x', 0, (mid ?? gy + gh / 2) - 1) : this.groundFill(terrain + '_y', (mid ?? gx + gw / 2) - 1, 0);
   }
   fillRegion(gx, gy, gw, gh, color, z = 0) { this.regionPath(gx, gy, gw, gh, z); this.ctx.fillStyle = color; this.ctx.fill(); }
   fillCell(x, y, color, z = 0) { this.fillRegion(x, y, 1, 1, color, z); }
@@ -574,11 +575,19 @@ export class BoardRenderer {
       const r = e === 'N' ? [band, vb.y0, m, cy - vb.y0] : e === 'S' ? [band, cy, m, vb.y1 - cy]
         : e === 'W' ? [vb.x0, band, cx - vb.x0, m] : [cx, band, vb.x1 - cx, m];
       if (r[2] > 0 && r[3] > 0) {
-        const fill = this.stripFill(n, 'rail');   // the run follows n, so its sleepers do too
+        const fill = this.stripFill(n, 'rail', band + m / 2);   // the run follows n, so its sleepers do too
         this.fillRegion(...r, fill || TERRAIN_COLORS.rail);
         if (!fill) this.edgeTexture(n, 'rail', ...r);
       }
-      this.fillRing(cx, cy, R - m, R, aStrip, a1, this.groundFill('ballast') || TERRAIN_COLORS.rail);
+      // in the pixel look, the bend is a picture: the rail texture bent round the ring
+      const bend = this.artMode === 'iso' && groundBend('bend_' + (e + n).toLowerCase());
+      if (bend) {
+        const [lx, ly, hg] = bend.at, s = this.k / ISO_CELL_PX;
+        const [ax, ay] = this.project((e === 'E' || n === 'E' ? this.w : 0) + lx, (e === 'S' || n === 'S' ? this.h : 0) + ly);
+        ctx.drawImage(bend.img, ax - hg * 32 * s, ay, bend.img.width * s, bend.img.height * s);
+        continue;
+      }
+      this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail);
       // the same two rails and sleepers edgeTexture lays, bent round the bend
       ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045);
       ctx.beginPath();
