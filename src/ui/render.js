@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, SPRITE_CELL_PX } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, SPRITE_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -47,9 +47,6 @@ const AXIS_ANGLE = Math.atan2(1, 2);
 // A flush tile's over layer (the tree tops in a park) hangs this high above the
 // crowd, in units of tile height, with no walls under it.
 const CANOPY_Z = 0.32;
-// How far an underground tile's pit sinks below the concourse, in units of
-// tile height: its floor art lies at the bottom, under the ground's lip.
-const PIT_Z = 0.42;
 // The quarter turn that points a sprite's working side (the bottom of the image)
 // at each edge of the board: see shapeTransform.
 const FACE_TURN = { S: 0, W: 1, N: 2, E: 3 };
@@ -66,8 +63,8 @@ export function colorForDef(d) {
 // amenities grow with tier so a built-up board reads as a skyline.
 function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
-  // An underground station is a pit, not a box: nothing stands above the
-  // ground, and drawPit sinks its floor below it.
+  // An underground station stands no higher than the concourse: its stairs go
+  // down into it instead (see drawSinks).
   if (d.terrain === 'underground') return 0;
   // Parks, waiting areas, hotspots, car parks and moving walkways
   // (`ground: true`) are paving, not buildings: no height at all, so the crowd
@@ -329,12 +326,12 @@ export class BoardRenderer {
     for (const t of board.tiles) {
       const info = this.tileInfo(t, view, occAt);
       // a pit is below everything that stands on the ground, so it goes down first
-      if (info.sunk) layers.push({ k: -Infinity, fn: () => this.drawPit(info) });
       for (const [x, y] of t.cells) {
-        if (!info.sunk) layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
+        layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
+        if (info.sinkCells && info.sinkCells.has(x + ',' + y)) layers.push({ k: x + y - 0.74, fn: () => this.drawSinks(x, y, info) });
         if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
         if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
-        else if (info.img && !info.sunk) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
+        else if (info.img && !info.sinks) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
       }
       // the band past the edge: the floor art flat on the strip, blocks on it
       for (const [x, y] of info.out) {
@@ -890,8 +887,7 @@ export class BoardRenderer {
       else if (e === 'W' && x === 0) out.push([-1, y]); else if (e === 'E' && x === this.w - 1) out.push([this.w, y]);
     }
     const info = {
-      floorZ: 0,
-      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, sunk: d.terrain === 'underground' && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
+      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
       color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
@@ -900,9 +896,23 @@ export class BoardRenderer {
     // Blocks, sorted into the cells they stand on: each cell draws its share
     // clipped to its own column, so a wall in front still covers a bus behind it.
     const blocks = tf && spriteBlocks(t.key), blockArt = blocks && spriteBlockArt(t.key);
-    if (info.sunk) info.floorZ = -PIT_Z;   // blocks stand on the pit's floor
+    // Sunken floor, cut into steps: each step a strip of the floor art in grid
+    // space at its own depth, deepest first, which is the order they paint in.
+    const sinks = tf && floorImg && spriteSinks(t.key);
+    if (sinks) {
+      info.sinks = []; info.sinkCells = new Set();
+      for (const [u, v, w, h, d0, d1, dir, n] of sinks) for (let i = 0; i < n; i++) {
+        const r = dir === 'E' ? [u + w * i / n, v, w / n, h] : dir === 'W' ? [u + w * (n - 1 - i) / n, v, w / n, h]
+          : dir === 'S' ? [u, v + h * i / n, w, h / n] : [u, v + h * (n - 1 - i) / n, w, h / n];
+        const a = this.spritePoint(info, r[0], r[1]), b = this.spritePoint(info, r[0] + r[2], r[1] + r[3]);
+        const s = { x0: Math.min(a[0], b[0]), y0: Math.min(a[1], b[1]), x1: Math.max(a[0], b[0]), y1: Math.max(a[1], b[1]), d: n > 1 ? d0 + (d1 - d0) * i / (n - 1) : d1 };
+        info.sinks.push(s);
+        for (let x = Math.floor(s.x0); x < s.x1; x++) for (let y = Math.floor(s.y0); y < s.y1; y++) info.sinkCells.add(x + ',' + y);
+      }
+      info.sinks.sort((p, q) => q.d - p.d);
+    }
     if (blockArt) {
-      info.blockArt = blockArt; info.blockTop = Math.max(...blocks.map(b => b[5])) + 0.05;
+      info.blockArt = blockArt; info.blockTop = Math.max(0, ...blocks.map(b => b[5])) + 0.05;
       info.blocks = new Map();
       for (const [x, y] of t.cells.concat(out)) {
         const here = blocks.filter(([u, v, w, h]) => {
@@ -973,39 +983,37 @@ export class BoardRenderer {
     else { this.cellPath(x, y); ctx.fillStyle = info.color; ctx.fill(); }
   }
 
-  // An underground tile, sunk: its floor art at the bottom of a pit, seen
-  // through the footprint cut in the ground. The walls along its back edges
-  // (north and west, the ones that face the camera) go down to the floor; the
-  // front edges are the ground's lip, and clipping to the footprint at ground
-  // level is what hides the floor behind them.
-  drawPit(info) {
-    const ctx = this.ctx, t = info.tile, d = PIT_Z;
+  // A tile's sunken floor, as seen through this cell: stairs down into a
+  // station, a pool below the quay. Everything is clipped to the opening at
+  // ground level, so the ground's edge hides whatever is under it. Steps paint
+  // deepest first, each its tread (the floor art, lowered) and then the walls on
+  // its north and west edges, the ones that face the camera, from the ground
+  // down to it; the next step up paints over the part of that wall it hides,
+  // and what shows is the riser.
+  drawSinks(x, y, info) {
+    const ctx = this.ctx, tf = info.tf, origin = this.project(0, 0);
     ctx.save();
-    this.cellsPath(t.cells); ctx.clip();
-    this.cellsPath(t.cells, -d); ctx.fillStyle = shade(info.color, 0.3); ctx.fill();
-    const origin = this.project(0, 0), tf = info.tf;
-    ctx.save();
-    ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1] + d * this.hz);
-    ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
-    ctx.rotate(tf.rot * Math.PI / 2);
-    if (tf.mirror) ctx.scale(-1, 1);
-    ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
-    ctx.drawImage(info.floorImg, ...info.rect);
-    ctx.restore();
-    const wall = (g0, g1, f) => {
+    this.cellPath(x, y); ctx.clip();
+    ctx.beginPath(); for (const s of info.sinks) this.rectPath(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0); ctx.clip();
+    const wall = (g0, g1, d, f) => {
       const a = this.project(...g0), b = this.project(...g1), dz = d * this.hz;
       ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b[0], b[1] + dz); ctx.lineTo(a[0], a[1] + dz); ctx.closePath();
       ctx.fillStyle = shade(info.color, f); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     };
-    for (const [x, y] of t.cells) {
-      if (!info.set.has(x + ',' + (y - 1))) wall([x, y], [x + 1, y], 0.5);
-      if (!info.set.has((x - 1) + ',' + y)) wall([x, y], [x, y + 1], 0.66);
+    for (const s of info.sinks) {
+      ctx.save();
+      this.regionPath(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0, -s.d); ctx.clip();
+      ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1] + s.d * this.hz);
+      ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
+      ctx.rotate(tf.rot * Math.PI / 2);
+      if (tf.mirror) ctx.scale(-1, 1);
+      ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
+      ctx.drawImage(info.floorImg, ...info.rect);
+      ctx.restore();
+      wall([s.x0, s.y0], [s.x1, s.y0], s.d, 0.5);
+      wall([s.x0, s.y0], [s.x0, s.y1], s.d, 0.66);
     }
     ctx.restore();
-    // the lip, in the tile's colour
-    this.outlineCells(t.cells, info.color, Math.max(2, this.k * 0.05), 0);
-    if (info.dim) { this.cellsPath(t.cells); ctx.fillStyle = 'rgba(70,74,84,0.6)'; ctx.fill(); }
   }
 
   // A flush tile's over layer: the tree tops the crowd walks under,
@@ -1053,7 +1061,7 @@ export class BoardRenderer {
     ctx.beginPath();
     col.forEach(([gx, gy, z], i) => { const [px, py] = this.project(gx, gy); ctx[i ? 'lineTo' : 'moveTo'](px, py - z * this.hz); });
     ctx.closePath(); ctx.clip();
-    const origin = this.project(0, 0);
+    const origin = this.project(0, 0), base = ctx.getTransform();
     ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1]);
     ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
     ctx.rotate(tf.rot * Math.PI / 2);
@@ -1066,13 +1074,17 @@ export class BoardRenderer {
     for (const [u0, v0, w0, h0, z0, z1, round] of list) {
       const u = Math.max(u0, cu0), v = Math.max(v0, cv0), w = Math.min(u0 + w0, cu1) - u, h = Math.min(v0 + h0, cv1) - v;
       if (w <= 0 || h <= 0) continue;
-      const lo = (z0 + info.floorZ) * this.hz, hi = (z1 + info.floorZ) * this.hz, step = Math.max(1, (hi - lo) / 48);
+      const lo = z0 * this.hz, hi = z1 * this.hz, step = Math.max(1, (hi - lo) / 48);
       // each copy scaled about the whole block's centre: 1 all the way up, or a bulge
       const cx = ix + (u0 + w0 / 2) / S, cy = iy + (v0 + h0 / 2) / S;
       const at = f => [cx + f * (ix + u / S - cx), cy + f * (iy + v / S - cy), f * w / S, f * h / S];
       const size = dz => round ? 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (dz - lo) / (hi - lo))) : 1;
+      // below ground (a submarine in its pool): only what shows through the opening
+      const under = z0 < 0 && info.sinks;
+      if (under) { ctx.save(); ctx.setTransform(base); ctx.beginPath(); for (const q of info.sinks) this.rectPath(q.x0, q.y0, q.x1 - q.x0, q.y1 - q.y0); ctx.clip(); }
       for (let dz = lo; dz < hi; dz += step) { ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - dz * dpr); ctx.drawImage(art.side, u, v, w, h, ...at(size(dz))); }
       ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - hi * dpr); ctx.drawImage(art.top, u, v, w, h, ...at(size(hi)));
+      if (under) ctx.restore();
     }
     ctx.restore();
   }

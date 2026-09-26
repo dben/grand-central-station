@@ -963,12 +963,16 @@ contact sheet of the lot).
     open-topped glass box. The checkpoint adds its scanner arch and bag scanner as blocks; its
     lane runs the length of the booth, through the arch on the fence line, the way the fence
     between its two cells makes travellers cross it.
-  - An underground tile (subway, express subway, underground parking, submarine dock) is a pit:
-    it has no height (`tileHeight` 0) and `drawPit` draws its floor art `PIT_Z` (0.42) below the
-    concourse, clipped to the footprint at ground level so the front edges read as the ground's
-    lip, with walls down the back edges, the two that face the camera. Its blocks stand on the
-    pit's floor: the train at the platform, the parked cars, the submarine, and a slim sign post
-    that pokes out above ground. Pits draw before anything that stands on the ground.
+  - An underground tile (subway, express subway, underground parking, submarine dock) stands no
+    higher than the concourse (`tileHeight` 0) and has stairs cut into it. `SPRITE_SINKS` marks
+    rectangles of its floor art that step down into the ground, with a start and end depth, the
+    way down and a number of steps; `drawSinks` lowers each step's strip of the floor art to its
+    depth, clipped to the opening at ground level so the ground's edge hides what is under it,
+    and draws each step's walls on the two edges that face the camera. Steps paint deepest first,
+    so the step above covers the part of each wall it hides and what shows is the riser. The
+    subways have flights of six steps ending in a dark tunnel mouth, the car park a ten-step ramp,
+    and the submarine dock a one-step pool; a block below ground (the submarine) is clipped to the
+    opening it sits in. A whole-footprint pit came first and read as a hole, not a station.
   - No tile casts the old offset drop shadow: it showed as a dark sliver under every glass box.
 - **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
   a base and top height: vehicles, tree tops, the balloon, a rental office. The renderer draws a
