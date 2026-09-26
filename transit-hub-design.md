@@ -942,10 +942,18 @@ contact sheet of the lot).
     open-topped glass box. The checkpoint adds its scanner arch and bag scanner as blocks; its
     lane runs the length of the booth, through the arch on the fence line, the way the fence
     between its two cells makes travellers cross it.
+  - An underground tile (subway, express subway, underground parking, submarine dock) is a pit:
+    it has no height (`tileHeight` 0) and `drawPit` draws its floor art `PIT_Z` (0.42) below the
+    concourse, clipped to the footprint at ground level so the front edges read as the ground's
+    lip, with walls down the back edges, the two that face the camera. Its blocks stand on the
+    pit's floor: the train at the platform, the parked cars, the submarine, and a slim sign post
+    that pokes out above ground. Pits draw before anything that stands on the ground.
   - No tile casts the old offset drop shadow: it showed as a dark sliver under every glass box.
 - **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
   a base and top height: vehicles, tree tops, the balloon, a rental office. The renderer draws a
-  block as a stack of darkened copies of its own pixels, one per screen pixel (a dozen at most),
+  block as a stack of darkened copies of its own pixels, one per screen pixel (48 at most; a
+  dozen left a staircase down the sides of tall blocks when zoomed in, and zigzags at the ends of
+  train carriages), and skips blocks whose cell is off screen,
   with the art on top, so the sides follow the outline of the car or the hull. The dark copy
   paints the ink outline over in the colour just inside it, so a red car has dark red sides
   rather than black ones. A block with a base above zero floats: aircraft, tree tops, gondolas
