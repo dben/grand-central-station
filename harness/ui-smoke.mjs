@@ -349,7 +349,7 @@ try {
     add('Bar', 'waiting_area', [[4, 4], [4, 5], [4, 6], [4, 7]]); // sorts last as a whole tile
     add('Fr', 'vending', [[5, 5]]);                               // stands in front of the bar's far end
     // flat colours for this one: the check reads a tile's colour off its roof
-    const info = r.tileInfo; r.tileInfo = (...a) => ({ ...info.apply(r, a), img: null, floorImg: null }); r.plainTileInfo = info;
+    const info = r.tileInfo; r.tileInfo = (...a) => ({ ...info.apply(r, a), img: null, floorImg: null, iso: null }); r.plainTileInfo = info;
     window.gcs.ui.selectedTileId = null; window.gcs.ui.hoverTileId = null;
     r.fit(); window.gcs.refresh();
   });

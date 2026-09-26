@@ -992,6 +992,32 @@ contact sheet of the lot).
   vehicle on the road side. Shapes with one transform per orientation (L, S) can't be turned that
   way, so their art does not depend on it: the ferry's slip is symmetric, and a jetway's nose sits
   in its tip cell, which `attach: 'tip'` already places at the apron.
+- **Isometric sheets (experiment, on by default):** `harness/isoart.mjs` bakes the same drawings
+  into screen-space sprite sheets, the way a classic isometric game ships its tiles, and the
+  renderer copies pixels instead of laying art flat and stacking blocks. It ray-casts each tile
+  once in the 2:1 pixel projection (a cell is a 64x32 diamond, a unit of tile height 64 x `H_UNIT`
+  pixels): walls, roofs, glass panes, blocks, the canopy and the stairs all stand up as solid
+  shapes, so a block's sides are real faces rather than stacked copies. Each frame is cut into one
+  piece per cell, owned by the cell under whatever shows there, and the renderer paints pieces in
+  the same cell-by-cell order as before (floor pieces under the crowd, the rest over it), so a long
+  building still interleaves with its neighbours. Three pixel-art tricks keep the drawing count
+  down:
+  - *Mirroring:* flipping a view left to right is the same as swapping the grid's x and y, so a
+    sheet holds only the four quarter turns and the mirrored four are those frames flipped
+    (`isoFrame` finds which turn to flip).
+  - *Shading after the fact:* a flip moves a south wall to the lit right-hand side, so pixels are
+    stored unlit with a face index (top, left, right, or a middle shade where a curve such as a
+    bow runs between them) and lit when the sheet is loaded, once per side.
+  - *Palette swaps:* each sheet is drawn twice, in two greys, and stored per pixel as base +
+    weight x tile colour, so one sheet takes any tile colour at load. A full or closed tile is the
+    same sheet in a grey palette rather than a wash over it.
+  A sheet is a PNG twice the height of its pieces: colour and alpha on top, the control data (tint
+  weight, face) below. The 67 sheets come to about 0.6 MB. Measured on the full catalogue board in
+  headless Chromium, drawing takes about 5 ms a frame against 14 ms for the flat art with blocks.
+  The cost is the look at in-between zooms: nearest-neighbour at a scale that is not a whole
+  number doubles some pixel columns and not others, so fine top-down detail (a 1 px stripe in an
+  icon) turns into a zigzag, where the flat renderer's turned art blends. `renderer.artMode =
+  'flat'` switches back, and `tileshow.mjs --flat` shoots the same scene that way for comparison.
 - **Fallback:** a tile without art still draws as a flat coloured block.
 - **Card headers:** `CARD_ART` holds a 56×21 scene per kind of card, in `assets/cards/`. A transport
   gets its terrain's: road, rail, water, airfield, lane (mountains and a monorail beam, for the trams,

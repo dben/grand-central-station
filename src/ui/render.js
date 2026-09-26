@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, SPRITE_CELL_PX } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -31,7 +31,7 @@ const RUNWAY = { depth: 2, fill: '#3b404d', border: '#79839a', paint: 'rgba(255,
 // Camera limits. `k` is the screen width of one cell's diamond in CSS pixels.
 const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
 // Screen pixels per unit of tile height, as a fraction of k.
-const H_UNIT = 0.62;
+export const H_UNIT = 0.62;
 // Edge strips, in grid units, laid outside the board.
 const EDGE_MARGIN = 0.85;
 // Outer radius of the bend a railway turns through where it meets the shore.
@@ -46,7 +46,7 @@ const FENCE_H = 0.30;
 const AXIS_ANGLE = Math.atan2(1, 2);
 // A flush tile's over layer (the tree tops in a park) hangs this high above the
 // crowd, in units of tile height, with no walls under it.
-const CANOPY_Z = 0.32;
+export const CANOPY_Z = 0.32;
 // The quarter turn that points a sprite's working side (the bottom of the image)
 // at each edge of the board: see shapeTransform.
 const FACE_TURN = { S: 0, W: 1, N: 2, E: 3 };
@@ -61,7 +61,7 @@ export function colorForDef(d) {
 
 // How tall a tile stands, in grid units. Flat infrastructure hugs the ground;
 // amenities grow with tier so a built-up board reads as a skyline.
-function tileHeight(d) {
+export function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
   // An underground station stands no higher than the concourse: its stairs go
   // down into it instead (see drawSinks).
@@ -98,6 +98,9 @@ export class BoardRenderer {
     this.boardKey = '';
     this.time = 0;
     this.inset = { top: 0, bottom: 0 };
+    // 'iso': the pre-drawn isometric sheets (isoart.mjs), where a tile has them;
+    // 'flat': the top-down art laid on the grid, as before them
+    this.artMode = 'iso';
     loadSprites();
   }
 
@@ -325,8 +328,19 @@ export class BoardRenderer {
     const layers = [], groundLabels = [];
     for (const t of board.tiles) {
       const info = this.tileInfo(t, view, occAt);
+      if (info.iso) {
+        // a pre-drawn sheet: each cell's floor piece under the crowd, the rest over it
+        for (const [x, y] of t.cells) {
+          layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
+          layers.push({ k: x + y, fn: () => { this.drawIsoCell(x, y, info, 'over'); if (!info.flush && --info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
+        }
+        for (const [x, y] of info.out) {
+          layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
+          layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, info, 'over') });
+        }
+      }
       // a pit is below everything that stands on the ground, so it goes down first
-      for (const [x, y] of t.cells) {
+      else for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
         if (info.sinkCells && info.sinkCells.has(x + ',' + y)) layers.push({ k: x + y - 0.74, fn: () => this.drawSinks(x, y, info) });
         if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
@@ -334,13 +348,14 @@ export class BoardRenderer {
         else if (info.img && !info.sinks) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
       }
       // the band past the edge: the floor art flat on the strip, blocks on it
-      for (const [x, y] of info.out) {
+      if (!info.iso) for (const [x, y] of info.out) {
         if (info.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, info, info.floorImg, 0) });
         if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
       }
       // a corridor tile's track, carried along its lane and one square past the edge
       for (const li of this.laneInfos(t, info)) {
         const [x, y] = [li.bx0, li.by0];
+        if (li.iso) { layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, li, 'floor') }); layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, li, 'over') }); continue; }
         if (li.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, li, li.floorImg, 0) });
         if (li.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, li) });
       }
@@ -876,8 +891,10 @@ export class BoardRenderer {
     const bx0 = Math.min(...t.cells.map(c => c[0])), by0 = Math.min(...t.cells.map(c => c[1]));
     const bw0 = Math.max(...t.cells.map(c => c[0])) - bx0 + 1, bh0 = Math.max(...t.cells.map(c => c[1])) - by0 + 1;
     const img = sprite(t.key), floorImg = spriteFloor(t.key);
+    const color = dim ? '#555a66' : colorForDef(d);
+    const isoArtFor = tf => { const f = this.artMode === 'iso' && isoFrame(t.key, tf), art = f && isoArt(t.key, colorForDef(d), dim, f.flip); return art ? { art, flip: f.flip, cells: f.frame } : null; };
     let tf = null, base = null;
-    if (img || floorImg) {
+    if (img || floorImg || this.artMode === 'iso') {
       let tipAt = null;
       if (d.attach === 'tip') {
         const edgeCell = t.cells.find(([x, y]) => y === 0 || y === this.h - 1 || x === 0 || x === this.w - 1);
@@ -885,7 +902,7 @@ export class BoardRenderer {
       }
       tf = shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])); base = shapeBaseSize(d.shape);
     }
-    const z = tileHeight(d);
+    const z = tileHeight(d), iso = tf && isoArtFor(tf);
     // The image covers the bounding box plus any pad, in the sprite's own frame.
     const pad = (tf && spritePad(t.key)) || [0, 0, 0, 0];
     const rect = base ? [-base.w / 2 - pad[3], -base.h / 2 - pad[0], base.w + pad[1] + pad[3], base.h + pad[0] + pad[2]] : null;
@@ -897,8 +914,8 @@ export class BoardRenderer {
       else if (e === 'W' && x === 0) out.push([-1, y]); else if (e === 'E' && x === this.w - 1) out.push([this.w, y]);
     }
     const info = {
-      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
-      color: dim ? '#555a66' : colorForDef(d),
+      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0, iso,
+      color,
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
       left: t.cells.length, // cells still to draw; the label follows the last one
@@ -909,6 +926,7 @@ export class BoardRenderer {
     // Sunken floor, cut into steps: each step a strip of the floor art in grid
     // space at its own depth, deepest first, which is the order they paint in.
     const sinks = tf && floorImg && spriteSinks(t.key);
+    if (iso) return info;
     if (sinks) {
       info.sinks = []; info.sinkCells = new Set();
       for (const [u, v, w, h, d0, d1, dir, n] of sinks) for (let i = 0; i < n; i++) {
@@ -941,13 +959,15 @@ export class BoardRenderer {
   // same sprite and block drawing serves.
   laneInfos(t, info) {
     const key = t.key + '_lane', floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
-    if (!floorImg && !blockArt) return [];
     const vertical = info.bh0 > info.bw0, lane = t.lane || [];
+    const f = this.artMode === 'iso' && isoFrame(key, { rot: vertical ? 1 : 0, mirror: 0 }), iso = f && isoArt(key, colorForDef(info.def), false, false);
+    if (!floorImg && !blockArt && !iso) return [];
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
     return lane.concat([out]).map(([x, y]) => {
       const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf: { rot: vertical ? 1 : 0, mirror: 0 }, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
+      if (iso) return Object.assign(li, { iso: { art: iso, flip: false, cells: f.frame } });
       if (blockArt) Object.assign(li, { blockArt, blockTop: Math.max(0, ...blocks.map(b => b[5])) + 0.05, blocks: new Map([[x + ',' + y, blocks]]) });
       return li;
     });
@@ -1048,6 +1068,24 @@ export class BoardRenderer {
   // hung at CANOPY_Z with nothing holding them up but what the floor art draws.
   drawCanopy(x, y, info) {
     this.drawCellSprite(x, y, info, info.img, CANOPY_Z);
+  }
+
+  // One cell's pieces of a pre-drawn isometric sheet (see isoFrame in
+  // sprites.js). The frame is anchored at the ground point of the bounding box's
+  // top corner and scaled to the zoom; a flipped frame swaps the grid's x and y,
+  // which on screen is a mirror about that corner, and its cells swap with them.
+  drawIsoCell(x, y, info, layer) {
+    const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
+    const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), list = here && here[layer];
+    if (!list || !list.length) return;
+    const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
+    ctx.save();
+    ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
+    // crisp pixels once a sheet pixel covers a screen pixel; blend below that
+    ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
+    for (const [, , sx, sy, w, h, dx, dy] of list) ctx.drawImage(iso.art, sx, sy, w, h, dx, dy, w, h);
+    ctx.restore();
+    if (layer === 'floor' && info.flush && info.set && info.set.has(x + ',' + y)) this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
   }
 
   // The grid -> screen map is linear, so feeding it to the context as a

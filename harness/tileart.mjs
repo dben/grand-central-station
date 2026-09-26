@@ -764,17 +764,22 @@ function png(c) {
 
 // Draw every tile's layers; the manifest needs all their blocks, whichever are written.
 // A corridor tile's `lane` art is a one-square image of its track, drawn as
-// `<key>_lane` along the lane it reserves (laneInfos in render.js).
-const drawn = Object.fromEntries(Object.entries(TILES).flatMap(([key, art]) => {
-  const def = tileDef(key), tint = colorForDef(def);
-  const draw = (a, shape) => {
-    const out = {};
-    for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
-    if (out.floor && out.over) castShadows(out.over, out.floor);
-    return out;
-  };
-  return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : [])];
-}));
+// `<key>_lane` along the lane it reserves (laneInfos in render.js). `tintFor`
+// picks the colour each tile is drawn in: isoart.mjs draws the set twice in
+// greys, to learn which pixels follow the tile's colour.
+export function drawAll(tintFor = def => colorForDef(def)) {
+  return Object.fromEntries(Object.entries(TILES).flatMap(([key, art]) => {
+    const def = tileDef(key), tint = tintFor(def);
+    const draw = (a, shape) => {
+      const out = {};
+      for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
+      if (out.floor && out.over) castShadows(out.over, out.floor);
+      return out;
+    };
+    return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : [])];
+  }));
+}
+export { CELL, INK, TILES, hex, toHex, shade, mix, png };
 // Anything floating (a plane, a tree top, a gondola) casts its own outline on
 // the floor, a little down and to the right, so it reads as off the ground.
 function castShadows(over, floor) {
@@ -785,39 +790,42 @@ function castShadows(over, floor) {
   }
 }
 
-// --sheet <file>: also write every tile at 3x, floor under over, on one contact
-// sheet, so the drawings can be looked over without the game.
-function contact(file) {
-  const Z = 3, gap = 8, cols = 1200;
-  const items = Object.values(drawn).map(({ floor, over }) => {
-    const c = floor || over, px = c.px.slice();
-    if (floor && over) over.px.forEach((v, i) => { if (v) px[i] = v; });
-    return { W: c.IW, H: c.IH, px };
-  });
-  let x = gap, y = gap, rowH = 0; const at = [];
-  for (const c of items) { if (x + c.W * Z > cols) { x = gap; y += rowH + gap; rowH = 0; } at.push([x, y]); x += c.W * Z + gap; rowH = Math.max(rowH, c.H * Z); }
-  const out = { IW: cols, IH: y + rowH + gap, px: new Array(cols * (y + rowH + gap)).fill('#3f9b3f') };
-  items.forEach((c, k) => { for (let j = 0; j < c.H * Z; j++) for (let i = 0; i < c.W * Z; i++) { const v = c.px[Math.floor(j / Z) * c.W + Math.floor(i / Z)]; if (v) out.px[(at[k][1] + j) * cols + at[k][0] + i] = v; } });
-  writeFileSync(file, png(out));
-}
-const sheetAt = process.argv.indexOf('--sheet');
-if (sheetAt > 0) { contact(process.argv[sheetAt + 1]); process.argv.splice(sheetAt, 2); }
+// Run as a script: draw, write the PNGs and the manifest. Imported, it only draws.
+function main() {
+  const drawn = drawAll();
+  // --sheet <file>: also write every tile at 3x, floor under over, on one contact
+  // sheet, so the drawings can be looked over without the game.
+  function contact(file) {
+    const Z = 3, gap = 8, cols = 1200;
+    const items = Object.values(drawn).map(({ floor, over }) => {
+      const c = floor || over, px = c.px.slice();
+      if (floor && over) over.px.forEach((v, i) => { if (v) px[i] = v; });
+      return { W: c.IW, H: c.IH, px };
+    });
+    let x = gap, y = gap, rowH = 0; const at = [];
+    for (const c of items) { if (x + c.W * Z > cols) { x = gap; y += rowH + gap; rowH = 0; } at.push([x, y]); x += c.W * Z + gap; rowH = Math.max(rowH, c.H * Z); }
+    const out = { IW: cols, IH: y + rowH + gap, px: new Array(cols * (y + rowH + gap)).fill('#3f9b3f') };
+    items.forEach((c, k) => { for (let j = 0; j < c.H * Z; j++) for (let i = 0; i < c.W * Z; i++) { const v = c.px[Math.floor(j / Z) * c.W + Math.floor(i / Z)]; if (v) out.px[(at[k][1] + j) * cols + at[k][0] + i] = v; } });
+    writeFileSync(file, png(out));
+  }
+  const sheetAt = process.argv.indexOf('--sheet');
+  if (sheetAt > 0) { contact(process.argv[sheetAt + 1]); process.argv.splice(sheetAt, 2); }
 
-const dir = resolve(root, 'assets/tiles');
-mkdirSync(dir, { recursive: true });
-const want = process.argv.slice(2);
-let n = 0;
-for (const [key, layers] of Object.entries(drawn)) {
-  if (want.length && !want.includes(key)) continue;
-  for (const [layer, c] of Object.entries(layers)) { writeFileSync(resolve(dir, key + (layer === 'floor' ? '_floor' : '') + '.png'), png(c)); n++; }
-}
-// The manifest lists every tile this file draws, whichever were asked for, so a
-// partial run never drops the rest from the game. The paths stay literal
-// strings: the bundler finds and inlines them by pattern.
-const keys = Object.keys(drawn);
-const list = layer => keys.filter(k => drawn[k][layer]).map(k => `  ${k}: 'assets/tiles/${k}${layer === 'floor' ? '_floor' : ''}.png',`).join('\n');
-const table = rows => rows.map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
-writeFileSync(resolve(root, 'src/ui/tilesprites.js'), `// Written by harness/tileart.mjs from its TILES table; rerun it rather than editing.
+  const dir = resolve(root, 'assets/tiles');
+  mkdirSync(dir, { recursive: true });
+  const want = process.argv.slice(2);
+  let n = 0;
+  for (const [key, layers] of Object.entries(drawn)) {
+    if (want.length && !want.includes(key)) continue;
+    for (const [layer, c] of Object.entries(layers)) { writeFileSync(resolve(dir, key + (layer === 'floor' ? '_floor' : '') + '.png'), png(c)); n++; }
+  }
+  // The manifest lists every tile this file draws, whichever were asked for, so a
+  // partial run never drops the rest from the game. The paths stay literal
+  // strings: the bundler finds and inlines them by pattern.
+  const keys = Object.keys(drawn);
+  const list = layer => keys.filter(k => drawn[k][layer]).map(k => `  ${k}: 'assets/tiles/${k}${layer === 'floor' ? '_floor' : ''}.png',`).join('\n');
+  const table = rows => rows.map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
+  writeFileSync(resolve(root, 'src/ui/tilesprites.js'), `// Written by harness/tileart.mjs from its TILES table; rerun it rather than editing.
 // See src/ui/sprites.js for what the layers, the pad and the blocks are.
 export const SPRITES = {
 ${list('over')}
@@ -835,4 +843,6 @@ export const SPRITE_BLOCKS = {
 ${table(keys.filter(k => drawn[k].over && drawn[k].over.blocks.length).map(k => [k, drawn[k].over.blocks.map(b => b.map(v => Math.round(v * 100) / 100))]))}
 };
 `);
-console.log(`wrote ${n} tile layers to assets/tiles/ and the manifest to src/ui/tilesprites.js`);
+  console.log(`wrote ${n} tile layers to assets/tiles/ and the manifest to src/ui/tilesprites.js`);
+}
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
