@@ -47,11 +47,11 @@ for (const f of order) {
   out += `// ---- ${relative(root, f)}\nconst ${idOf(f)} = (() => {\n${body}\nreturn { ${names.join(', ')} };\n})();\n`;
 }
 
-// inline sprites as data URIs; drop entries whose file is missing
+// inline sprites and card headers as data URIs; drop entries whose file is missing
 const missing = [];
-out = out.replace(/'assets\/tiles\/([a-z_]+)\.png'/g, (all, key) => {
-  const p = resolve(root, `assets/tiles/${key}.png`);
-  if (!existsSync(p)) { missing.push(key + '.png'); return 'null'; }
+out = out.replace(/'assets\/(tiles|cards)\/([a-z_]+)\.png'/g, (all, dir, key) => {
+  const p = resolve(root, `assets/${dir}/${key}.png`);
+  if (!existsSync(p)) { missing.push(`${dir}/${key}.png`); return 'null'; }
   return `'data:image/png;base64,${readFileSync(p).toString('base64')}'`;
 });
 out = out.replace("if (cache.has(key)) continue;", "if (cache.has(key) || !url) continue;");

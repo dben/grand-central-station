@@ -30,6 +30,21 @@ export const SPRITES_FLOOR = {
   waiting_area:  'assets/tiles/waiting_area_floor.png',  // O4  64x64  seating a traveller stands among
 };
 
+// Transport card headers, one per kind of ground the tile claims, so a card
+// reads as road, water or air at a glance. Drawn by harness/cardart.mjs.
+// 'free' splits in two: the air tiles fly, the rest are the far-fetched ones.
+export const CARD_ART = {
+  road:        'assets/cards/road.png',
+  rail:        'assets/cards/rail.png',
+  water:       'assets/cards/water.png',
+  apron:       'assets/cards/apron.png',
+  sky:         'assets/cards/sky.png',
+  corridor:    'assets/cards/corridor.png',
+  underground: 'assets/cards/underground.png',
+  free:        'assets/cards/free.png',
+};
+export const cardArt = def => CARD_ART[def.terrain === 'free' && (def.tags || []).includes('air') ? 'sky' : def.terrain] || null;
+
 const cache = new Map();
 // Every image is loaded once, but several views may be waiting on it: the board
 // and each of the start screen's mode thumbnails all want a repaint when one

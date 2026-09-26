@@ -12,6 +12,7 @@ import { orientationCount, shapeCells } from '../sim/shapes.js';
 import { cutOffTransports, startBoard } from '../sim/board.js';
 import { effTransport, effAmenity, scaleMult } from '../sim/sim.js';
 import { BoardRenderer, boardStill, colorForDef } from './render.js';
+import { cardArt } from './sprites.js';
 import { attachBoardInput } from './boardinput.js';
 import { playTrack, isMuted, setMuted } from './audio.js';
 import { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } from './meta.js';
@@ -327,12 +328,15 @@ function renderShop() {
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
     const kclass = { transport: 'k-transport', shop: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', bonus: 'k-bonus', bridge: 'k-structure' }[kind] || '';
-    const el = h('div', { class: 'card ' + kclass + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
-      h('span', { class: 'slot' }, cardKindLabel(card)),
+    const art = def && def.kind === 'transport' ? cardArt(def) : null;
+    const el = h('div', { class: 'card ' + kclass + (art ? ' has-art' : '') + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
+      // a transport's header art says what it is, so its label names the ground it needs instead
+      art ? h('div', { class: 'art', style: `background-image: url("${art}")` }) : null,
+      h('span', { class: 'slot' }, art ? TERRAIN_INFO[def.terrain].label : cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),
-      isTile ? shapeCanvas(def, 84, 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
-      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
+      isTile ? shapeCanvas(def, 84, art ? 54 : 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
+      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' && !art ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
       h('div', { class: 'cost' }, `$${fmt(cost)}`));
     // hover detail only for devices that hover; on touch the card popup would
     // sit on top of the board and the placement controls

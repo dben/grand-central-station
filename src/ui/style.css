@@ -180,6 +180,12 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .card .sub { font-size: 14px; color: rgba(255,255,255,0.85); }
 .card .cost { margin-top: auto; font-weight: 700; color: var(--accent); font-size: 16px; text-shadow: 1px 1px 0 var(--ink); }
 .card .tier { font-weight: 700; text-shadow: 1px 1px 0 var(--ink); }
+/* A transport card's header: pixel art of the kind of transport, in a band across
+   the top with the ground it needs in a pill over the sky. Always drawn at 2x and
+   cropped from the top on smaller cards, so the pixels stay square. */
+.card.has-art { --art-h: 42px; padding-top: calc(var(--art-h) + 4px); }
+.card .art { position: absolute; left: 0; right: 0; top: 0; height: var(--art-h); border-radius: 3px 3px 0 0; border-bottom: 2px solid var(--ink); background-size: 112px 42px; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
+.card.has-art .slot { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); background: rgba(10,5,32,0.72); padding: 0 4px; border-radius: 2px; }
 .tier1 { color: var(--t1); } .tier2 { color: var(--t2); } .tier3 { color: var(--t3); } .tier4 { color: var(--t4); } .tier5 { color: var(--t5); }
 
 /* ------------------------------------------------------------ side, modal */
@@ -307,6 +313,9 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .card { width: 96px; height: 150px; }
   .card .icon { font-size: 24px; line-height: 60px; height: 60px; }
   .card canvas { max-height: 60px; }
+  .card.has-art { --art-h: 34px; }
+  .card.has-art canvas { max-height: 44px; }
+  .card.has-art .slot { font-size: 11px; letter-spacing: 0; }
   .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
@@ -346,6 +355,11 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .card { width: 88px; height: 118px; padding: 3px 5px; }
   .card .name { font-size: 12px; height: 26px; }
   .card canvas { max-height: 40px; }
+  /* too small to crop: the whole scene, scaled to the card */
+  .card.has-art { --art-h: 30px; padding-top: calc(var(--art-h) + 3px); }
+  .card .art { background-size: cover; }
+  .card.has-art canvas { max-height: 26px; }
+  .card.has-art .slot { top: 1px; font-size: 10px; letter-spacing: 0; }
   .card .icon { font-size: 20px; line-height: 40px; height: 40px; }
   .card .sub { font-size: 12px; }
   .card .cost { font-size: 14px; }
