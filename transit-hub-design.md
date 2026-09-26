@@ -924,8 +924,10 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
   gets its terrain's: road, rail, water, airfield, lane (mountains and a monorail beam, for the trams,
   monorails and lifts), underground, and `free` split in two — `sky` for the tiles tagged `air`, and a
   saucer over a beam pad for the rest. An amenity is `future` if rare, then `park` (green), `lounge`
-  (waiting), `utility` (no draw rate), `food` (tagged food) or `retail`. Upgrade, Extra Shift and
-  named upgrade cards share `upgrade`, one-off cards `bonus`, and the bridge `bridge`.
+  (waiting), `security` (the station, guard and checkpoint), `utility` (WiFi and the walkway: the
+  rest with no draw rate), `food` (tagged food) or `retail`. Upgrade, Extra Shift and named upgrade
+  cards share `upgrade`, and one-off cards `bonus`. The bridge card is out of the shop, so it has
+  no header and keeps its label.
   `harness/cardart.mjs` draws them in code and writes the PNGs; edit a scene there and rerun it. They
   show at 2x, cropped from the top on phone cards and scaled to fit on the smallest.
 - **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`.

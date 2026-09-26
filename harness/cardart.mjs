@@ -170,6 +170,13 @@ const PLANT = ['.g.g.', 'ggggg', '.ggg.', 'kkkkk', '.kpk.', '.kkk.'];
 
 // ---- scenes -------------------------------------------------------------------
 // The vehicles keep to the lower rows, which small cards keep when they crop.
+// the tiled grey wall behind the concourse utilities
+function concourse(c) {
+  c.R(0, 0, W, 21, '#8f9ab0');
+  for (let y = 3; y < 14; y += 4) c.R(0, y, W, 1, '#7a849c');
+  for (let y = 0; y < 14; y += 4) for (let x = (y % 8 ? 4 : 0); x < W; x += 8) c.P(x, y + 1, '#7a849c');
+}
+
 const SCENES = {
   road(c) {
     c.bands(0, [[SKY[1], 2], [SKY[2], 2], [SKY[3], 4]]);
@@ -330,22 +337,32 @@ const SCENES = {
     c.R(0, 17, W, 1, '#1a3aa8');
   },
   utility(c) {
-    c.R(0, 0, W, 21, '#8f9ab0');
-    for (let y = 3; y < 14; y += 4) c.R(0, y, W, 1, '#7a849c');
-    for (let y = 0; y < 14; y += 4) for (let x = (y % 8 ? 4 : 0); x < W; x += 8) c.P(x, y + 1, '#7a849c');
-    // a WiFi sign, a scanner arch with someone walking through, and a moving walkway
-    c.R(3, 1, 13, 9, INK); c.R(4, 2, 11, 7, '#2e374d');
-    c.S(5, 3, WIFI, { c: '#35d4ff' });
-    const ax = 36;
+    concourse(c);
+    // a WiFi sign over a moving walkway, riders on their phones
+    c.R(20, 1, 15, 10, INK); c.R(21, 2, 13, 8, '#2e374d');
+    c.S(23, 4, WIFI, { c: '#35d4ff' });
+    c.R(0, 13, W, 1, '#c9c4d8'); c.R(0, 14, W, 5, INK); c.R(0, 15, W, 3, '#3b3452');
+    for (let x = 2; x < W; x += 6) for (const d of [0, 1]) { c.P(x + d, 15, '#ffd23f'); c.P(x + d + 1, 16, '#ffd23f'); c.P(x + d, 17, '#ffd23f'); }
+    for (const [x, col] of [[8, '#e8384f'], [44, '#5fc23a']]) { c.S(x, 8, PERSON, { f: '#f0c090', b: col, k: INK }); c.P(x + 3, 8, '#7fe8ff'); c.P(x + 3, 9, INK); }
+    c.R(0, 19, W, 2, '#5a6a86');
+  },
+  security(c) {
+    concourse(c);
+    // queue ropes, the bag scanner, a guard, and the arch someone is walking through
+    c.R(0, 14, W, 7, '#5a6a86'); c.R(0, 14, W, 1, '#6e7a96');
+    for (const x of [1, 8]) { c.R(x, 9, 1, 6, '#d0d0dc'); c.P(x, 8, '#ffd23f'); }
+    for (let x = 2; x < 8; x++) c.P(x, x === 2 || x === 7 ? 9 : 10, '#e8384f');
+    c.R(12, 12, 26, 2, INK); c.R(12, 12, 26, 1, '#3b3452');
+    c.R(17, 5, 15, 9, INK); c.R(18, 6, 13, 7, '#c9c4d8'); c.R(21, 9, 7, 4, '#1d1240'); c.R(19, 7, 3, 1, '#35d4ff'); c.P(29, 7, '#5fc23a');
+    c.S(12, 5, BAG, { k: INK, r: '#ffb13b' });
+    c.S(34, 7, ['kkk', 'kbk', '.f.', 'bbb', 'bbb', 'bbb', 'k.k', 'k.k'], { k: INK, b: '#2c3a70', f: '#f0c090' });
+    const ax = 42;
     c.R(ax, 2, 12, 13, INK); c.R(ax + 1, 3, 10, 12, '#c9c4d8'); c.R(ax + 3, 5, 6, 10, '#8f9ab0');
     for (let y = 5; y < 15; y += 2) c.P(ax + 1, y, '#8f86b0');
     c.R(ax + 5, 3, 2, 1, '#5fc23a');
     c.S(ax + 5, 8, PERSON, { f: '#f0c090', b: '#e8384f', k: INK });
-    c.R(0, 14, W, 7, '#5a6a86');
-    c.R(0, 15, 32, 5, INK); c.R(1, 16, 30, 3, '#3b3452');
-    for (let x = 3; x < 29; x += 6) for (const d of [0, 1]) { c.P(x + d, 16, '#ffd23f'); c.P(x + d + 1, 17, '#ffd23f'); c.P(x + d, 18, '#ffd23f'); }
-    c.R(0, 14, 32, 1, '#c9c4d8');
   },
+
   future(c) {
     c.bands(0, [['#1a1033', 6], ['#25174d', 6], ['#34216b', 8]]);
     for (const [x, y] of [[4, 2], [18, 1], [51, 3], [45, 11], [9, 12]]) c.P(x, y, '#fff8e7');
@@ -386,25 +403,7 @@ const SCENES = {
     for (const [x, y, col] of [[4, 3, '#ffd23f'], [9, 15, '#35d4ff'], [48, 4, '#ff4fd8'], [51, 16, '#ffd23f'], [44, 18, '#35d4ff'], [7, 9, '#ff4fd8'], [12, 1, '#fff8e7'], [50, 10, '#fff8e7']]) { c.R(x, y, 2, 2, col); }
     for (const [x, y] of [[3, 17], [52, 1]]) { c.P(x, y, '#fff8e7'); c.P(x - 1, y, '#fff8e7'); c.P(x + 1, y, '#fff8e7'); c.P(x, y - 1, '#fff8e7'); c.P(x, y + 1, '#fff8e7'); }
   },
-  bridge(c) {
-    c.bands(0, [[SKY[1], 2], [SKY[2], 2], [SKY[3], 5]]);
-    c.S(40, 0, CLOUD_S, CLOUD);
-    c.bands(13, [['#1f8fd6', 2], ['#1673c0', 5]]);
-    for (let y = 15; y < H; y += 3) for (let x = (y * 5) % 7; x < W; x += 9) c.R(x, y, 3, 1, '#6cc8ff');
-    c.R(0, 10, 6, 11, '#5f9a1f'); c.R(50, 10, 6, 11, '#5f9a1f'); c.R(0, 10, 6, 1, '#7fc23a'); c.R(50, 10, 6, 1, '#7fc23a');
-    // a stone deck on an arch, with a car crossing
-    const stone = '#b0804a', mortar = '#7a5430';
-    for (let y = 8; y < H; y++) for (let x = 5; x < 51; x++) {
-      const pier = x < 11 || x > 44, open = ((x - 28) / 17) ** 2 + ((y - 20) / 9) ** 2 < 1;
-      if (y > 11 && !pier && open) continue;
-      if (y >= 12 && !pier) { if (!(((x - 28) / 18) ** 2 + ((y - 20) / 10) ** 2 < 1)) c.P(x, y, stone); else c.P(x, y, mortar); continue; }
-      c.P(x, y, (y % 3 === 0 || (x + (Math.floor(y / 3) % 2) * 3) % 6 === 0) ? mortar : stone);
-    }
-    c.R(0, 8, W, 1, '#f0cf8a'); c.R(0, 7, W, 1, INK);
-    for (let x = 1; x < W; x += 4) c.R(x, 5, 1, 2, INK);
-    c.R(0, 5, W, 1, INK);
-    c.S(22, 2, CAR, { k: INK, r: '#35d4ff', b: '#fff8e7', h: '#fff1a8', g: '#8a8a9a', w: '#d0d0dc' });
-  },
+
 };
 
 // ---- PNG --------------------------------------------------------------------
