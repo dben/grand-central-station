@@ -210,12 +210,12 @@ function shadow(c, x, y, w, h) { c.dark(x + 1, y + 2, w, h, 0.62); }
 
 // ---- vehicles (top-down, nose to the right) ---------------------------------------
 // Each registers its own block, so it stands up off the floor; `z` is its height.
-function car(c, x, y, col, v = false, z = 0.2) {
+function car(c, x, y, col, v = false, z = 0.2, z0 = 0) {
   const L = 15, D = 8;
   const test = (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === D - 1));
   const paint = (i, j) => i === L - 1 && (j === 1 || j === D - 2) ? '#fff1a8' : i === 10 || i === 11 ? GLASS : i === 3 ? GLASS_D : i > 3 && i < 10 ? shade(col, 0.82) : col;
   v ? c.blot(x, y, D, L, (i, j) => test(j, i), (i, j) => paint(j, i)) : c.blot(x, y, L, D, test, paint);
-  v ? c.block(x - 1, y - 1, D + 2, L + 2, z) : c.block(x - 1, y - 1, L + 2, D + 2, z);
+  v ? c.block(x - 1, y - 1, D + 2, L + 2, z0 + z, z0) : c.block(x - 1, y - 1, L + 2, D + 2, z0 + z, z0);
   c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col, L, D));
 }
 // A car in slices, nose at a = 14: tyres under a sill set in from the sides,
@@ -644,14 +644,17 @@ const TILES = {
     },
   },
   ski_lift: {
-    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 4, 9, 8, 6, 0.1); gondola(c, t, 20, 22, 8, 6, 0.1); } },
+    // one car a square along the lane, out on one cable and back on the other in turn
+    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 12, 9, 8, 6, 0.1); } },
+    laneAlt: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 12, 22, 8, 6, 0.1); } },
     floor(c, t) { snow(c); frame(c, t); },
-    over(c, t) { lift(c, t, 16, 8, 6, 0.1); },
+    over(c, t) { lift(c, t, 50, 8, 6, 0.1); },
   },
   alpine_lift: {
-    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 2, 10, 12, 9, 0.14); gondola(c, t, 18, 21, 12, 9, 0.14); } },
+    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 10, 10, 12, 9, 0.14); } },
+    laneAlt: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 10, 21, 12, 9, 0.14); } },
     floor(c, t) { snow(c); for (const [x, y] of [[40, 4], [96, 22], [130, 6]]) c.blot(x - 3, y - 3, 7, 7, (i, j) => Math.abs(i - 3) + Math.abs(j - 3) <= 3, '#2f7a3f'); frame(c, t); },
-    over(c, t) { lift(c, t, 26, 12, 9, 0.14); },
+    over(c, t) { lift(c, t, 64, 12, 9, 0.14); },
   },
 
   // ---- water
@@ -821,12 +824,14 @@ const TILES = {
     over(c, t) { totem(c, t, 45, 12, RED); },
   },
   under_parking: {
-    // the ramp runs down the long arm into the garage; the foot is a set-down bay
+    // the ramp runs down the long arm; the foot is the garage it leads to, a
+    // level below the concourse at the ramp's own depth, with the cars in it
     floor(c, t) {
       platform(c, t); tarmac(c, t, 34, 36, 26, 24); for (const x of [34, 47, 60]) c.R(x, 38, 1, 20, PAINT);
+      c.sink(34, 36, 26, 24, GARAGE, GARAGE, 'S', 1);
       ramp(c, t, 5, 3, 22, 48, 'S', 10); frame(c, t);
     },
-    over(c, t) { car(c, 37, 41, WHITE, true); car(c, 50, 41, RED, true); totem(c, t, 18, 54, '#2f6bff'); },
+    over(c, t) { car(c, 37, 41, WHITE, true, 0.17, -GARAGE); car(c, 50, 41, RED, true, 0.17, -GARAGE); totem(c, t, 18, 54, '#2f6bff'); },
   },
   sub_dock: {
     // the pool is one step down, the submarine riding in it
@@ -935,6 +940,9 @@ const TILES = {
     c.R(0, 15, 128, 2, t); kerb(c, t, 1);
   } },
 };
+// The underground car park's depth, the bottom of its ramp: shallow, since a pit
+// hides a band along its near sides as deep as it is, and the cars must show.
+const GARAGE = 0.2;
 const TREES_O4 = [[12, 12, 8], [51, 13, 7], [13, 50, 7], [50, 51, 8]];
 const PARKED = [[5, 5], [35, 5], [50, 5], [20, 41], [50, 41]];
 
@@ -991,7 +999,7 @@ function flight(c, t, x, y, w, h, dir, n) {
 function ramp(c, t, x, y, w, h, dir, n) {
   for (let p = 0; p < h; p++) for (let q = 0; q < w; q++) c.P(x + q, y + p, p > h - 4 ? '#1a1033' : mix(mix(ASPHALT, t, 0.15), INK, p / h * 0.5));
   for (const p of [h * 0.25, h * 0.55]) c.blot(x + w / 2 - 4, y + p, 8, 5, (i, j) => Math.abs(i - 3.5) <= j * 0.8, YELLOW, null);
-  c.sink(x, y, w, h, 0.04, 0.45, dir, n);
+  c.sink(x, y, w, h, 0.04 * GARAGE / 0.2, GARAGE, dir, n);
 }
 // A station sign on a post, standing up out of the pit past ground level.
 function totem(c, t, x, y, col = t) { c.box(x, y, 6, 6, col); c.R(x + 1, y + 1, 4, 4, WHITE); c.R(x + 2, y + 2, 2, 2, col); c.block(x - 1, y - 1, 8, 8, 0.3); }
@@ -1025,7 +1033,8 @@ function png(c) {
 
 // Draw every tile's layers; the manifest needs all their blocks, whichever are written.
 // A corridor tile's `lane` art is a one-square image of its track, drawn as
-// `<key>_lane` along the lane it reserves (laneInfos in render.js). `tintFor`
+// `<key>_lane` along the lane it reserves (laneInfos in render.js), and one with
+// `laneAlt` art has it on every other square instead (`<key>_lane_alt`). `tintFor`
 // picks the colour each tile is drawn in: isoart.mjs draws the set twice in
 // greys, to learn which pixels follow the tile's colour.
 export function drawAll(tintFor = def => colorForDef(def)) {
@@ -1037,7 +1046,7 @@ export function drawAll(tintFor = def => colorForDef(def)) {
       if (out.floor && out.over) castShadows(out.over, out.floor);
       return out;
     };
-    return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : [])];
+    return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : []), ...(art.laneAlt ? [[key + '_lane_alt', draw(art.laneAlt, 'I1')]] : [])];
   }));
 }
 export { CELL, INK, TILES, hex, toHex, shade, mix, png };
