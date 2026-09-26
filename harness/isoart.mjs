@@ -46,7 +46,7 @@ function scene(key, layers, grey) {
   const z = lane ? 0 : tileHeight(def);
   const px = s => s ? s.px.map(rgba) : null;
   const floor = px(layers.floor), over = px(layers.over);
-  const blocks = (layers.over ? layers.over.blocks : []).map(([x, y, w, h, z0, z1, round]) => ({ x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2 }));
+  const blocks = (layers.over ? layers.over.blocks : []).map(b => { const [x, y, w, h, z0, z1, round] = b; return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack }; });
   // the flat part of the over layer: the blocks' rectangles are cut out of it
   const flat = over && over.map((p, i) => { const x = i % IW, y = (i / IW) | 0; return blocks.some(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) ? null : p; });
   // a block's sides: its art with the ink outline painted over in the colour
@@ -94,16 +94,28 @@ function frameOf(s, m) {
 const at = (s, arr, u, v) => { const i = u + s.ox, j = v + s.oy; return arr && i >= 0 && j >= 0 && i < s.IW && j < s.IH ? arr[j * s.IW + i] : null; };
 const inPad = (s, u, v) => u >= -s.ox && v >= -s.oy && u < s.IW - s.ox && v < s.IH - s.oy;
 const sinkAt = (s, u, v) => { const x = u + s.ox, y = v + s.oy; return s.sinks.find(k => x >= k.x && x < k.x + k.w && y >= k.y && y < k.y + k.h); };
-// The block surface at art pixel (u, v) and height h, as the art pixel it shows.
-function blockAt(s, b, u, v, h) {
+// What block b shows at art pixel (u, v) and height h: its top-down art on top
+// and its ink-free copy down the sides, or for a sprite stack, the slice at
+// that height. Null where the block isn't.
+const stackPx = new Map();
+function blockAt(s, b, u, v, h, top = false) {
   // a slab thinner than a pixel (a haul cable) still gets its one row
   if (h < Math.floor(b.lo) || h > b.hi) return null;
   let x = u + s.ox + 0.5, y = v + s.oy + 0.5;
   if (b.round) { const f = 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (h - b.lo) / (b.hi - b.lo))); x = b.cx + (x - b.cx) / f; y = b.cy + (y - b.cy) / f; }
   x = Math.floor(x); y = Math.floor(y);
   if (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h) return null;
-  const i = y * s.IW + x;
-  return s.over[i] ? i : null;
+  const i = y * s.IW + x, k = b.stack;
+  if (k) {
+    const along = k.vertical ? y - k.y : x - k.x, across = k.vertical ? x - k.x : y - k.y;
+    if (along < 0 || across < 0 || along >= k.L || across >= k.D) return null;
+    // t runs over the block's pixel rows, so the top row is t = 1: the roof
+    const lo = Math.floor(b.lo), p = k.fn(along, across, Math.max(0, Math.min(1, (h - lo) / Math.max(1, Math.floor(b.hi) - lo))));
+    if (p === 'top') return s.over[i];
+    if (p && !stackPx.has(p)) stackPx.set(p, rgba(p));
+    return p ? stackPx.get(p) : null;
+  }
+  return s.over[i] ? (top ? s.over[i] : s.side[i]) : null;
 }
 const scale = (p, f) => [p[0] * f, p[1] * f, p[2] * f, p[3]];
 const LEFT = 1, RIGHT = 2, MID = 3;
@@ -142,10 +154,13 @@ function cast(s, f, X, Y, layer) {
     };
     if (layer === 'over') {
       for (const b of s.blocks) {
-        const i = blockAt(s, b, u, v, h);
-        if (i == null) continue;
-        const top = h + 1 > b.hi;
-        if (add(top ? s.over[i] : s.side[i], top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+        let p = blockAt(s, b, u, v, h);
+        if (!p) continue;
+        // a top face: the top of the block, or in a stack, any slice with
+        // nothing over it (a car's bonnet in front of its cabin)
+        const top = h + 1 > b.hi || (b.stack && !blockAt(s, b, u, v, h + 1));
+        if (top && !b.stack) p = blockAt(s, b, u, v, h, true);
+        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return { c: C.map(v => v / A), a: A, face, cell };
       }
       if (!s.flush && foot && h >= 0 && h <= s.hz) {
         const top = h + 1 > s.hz;

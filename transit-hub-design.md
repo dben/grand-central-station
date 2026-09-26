@@ -1011,6 +1011,18 @@ contact sheet of the lot).
   - *Palette swaps:* each sheet is drawn twice, in two greys, and stored per pixel as base +
     weight x tile colour, so one sheet takes any tile colour at load. A full or closed tile is the
     same sheet in a grey palette rather than a wash over it.
+  - *Sprite stacks for vehicles:* a car or a train carriage is drawn as a pile of slices from
+    its wheels to its roof (`c.stack` in `tileart.mjs`, a function of the point on the
+    vehicle's plan and its height), and the baker stands it up slice by slice. The sides then
+    carry their own detail: a car's tyres under a sill, lamps, door seams, a waistline and a
+    narrower cabin whose windscreen leans back; a carriage's bogies, the line's stripe, a band
+    of windows and doors. The leading carriage is the engine, its nose leaning back into a cab
+    window over a yellow warning panel and lamps, and a tram that runs both ways has a cab at
+    each end. The top slice shows the top-down art, so a taxi's roof sign still comes from the
+    drawing. Stacks are turned, mirrored and lit like everything else, so one drawing covers
+    every heading and every paint colour. Cars stand 0.2 of a tile high and carriages 0.32
+    (from 0.14 and 0.26) to give the sides room for it; the flat renderer ignores the slices and
+    shows the taller blocks.
   A sheet is a PNG twice the height of its pieces: colour and alpha on top, the control data (tint
   weight, face) below. The 67 sheets come to about 0.6 MB. Measured on the full catalogue board in
   headless Chromium, drawing takes about 5 ms a frame against 14 ms for the flat art with blocks.

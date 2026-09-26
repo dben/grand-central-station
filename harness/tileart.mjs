@@ -103,9 +103,16 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   // a raised part: it stands from z0 to z1, in units of tile height; a round one
   // bulges and narrows as it rises (a tree top, a balloon) instead of a drum
   const block = (x, y, w, h, z1, z0 = 0, round = false) => blocks.push([x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]);
+  // A sprite stack for the last block: the vehicle drawn as slices from its
+  // wheels to its roof, for isoart.mjs to stand up with detail on the sides.
+  // `fn(along, across, t)` gives the colour at a point of the vehicle's own
+  // plan (`L` long, `D` wide, nose at along = L - 1) and height t (0 at the
+  // bottom, 1 at the top): a colour, 'top' for the top-down art, or nothing.
+  // The flat renderer ignores it and stacks the top-down art as before.
+  const stack = (x, y, L, D, vertical, fn) => { blocks[blocks.length - 1].stack = { x: x + ox, y: y + oy, L, D, vertical, fn }; };
   // a part of the floor that steps down into the ground (see SPRITE_SINKS)
   const sinks = [], sink = (x, y, w, h, d0, d1, dir, n) => sinks.push([x + ox, y + oy, w, h, d0, d1, dir, n]);
-  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, dark, darkAt, sink, sinks };
+  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, stack, dark, darkAt, sink, sinks };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -193,12 +200,37 @@ function shadow(c, x, y, w, h) { c.dark(x + 1, y + 2, w, h, 0.62); }
 
 // ---- vehicles (top-down, nose to the right) ---------------------------------------
 // Each registers its own block, so it stands up off the floor; `z` is its height.
-function car(c, x, y, col, v = false, z = 0.14) {
+function car(c, x, y, col, v = false, z = 0.2) {
   const L = 15, D = 8;
   const test = (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === D - 1));
   const paint = (i, j) => i === L - 1 && (j === 1 || j === D - 2) ? '#fff1a8' : i === 10 || i === 11 ? GLASS : i === 3 ? GLASS_D : i > 3 && i < 10 ? shade(col, 0.82) : col;
   v ? c.blot(x, y, D, L, (i, j) => test(j, i), (i, j) => paint(j, i)) : c.blot(x, y, L, D, test, paint);
   v ? c.block(x - 1, y - 1, D + 2, L + 2, z) : c.block(x - 1, y - 1, L + 2, D + 2, z);
+  c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col));
+}
+// A car in slices, nose at a = 14: tyres under a sill set in from the sides,
+// the body with its lamps, door seams and a lit waistline, then a narrower
+// cabin whose windscreen leans back, and the top-down roof on top of it.
+function carSlice(a, w, t, col) {
+  const L = 15, D = 8, side = w === 0 || w === D - 1;
+  if ((a === 0 || a === L - 1) && side) return null;
+  if (t < 0.28) {
+    if (side) return (a >= 2 && a <= 4) || (a >= 10 && a <= 12) ? (a === 3 || a === 11) && t > 0.08 ? '#8a8a9a' : '#1a1a24' : null;
+    return a === 0 || a === L - 1 ? null : '#2e374d';
+  }
+  if (t < 0.58) {
+    if (a === L - 1) return w === 1 || w === D - 2 ? '#fff1a8' : t < 0.44 ? '#2e374d' : col;
+    if (a === 0) return w === 1 || w === D - 2 ? RED : col;
+    if (side && (a === 6 || a === 10) && t < 0.5) return shade(col, 0.72);
+    return t >= 0.5 ? shade(col, 1.15) : col;
+  }
+  const a0 = t > 0.8 ? 4 : 3, a1 = 11 - Math.floor((t - 0.58) / 0.42 * 3);
+  if (a < a0 || a > a1 || w < 1 || w > D - 2) return null;
+  if (t >= 0.9) return 'top';
+  if (a === a1) return GLASS;
+  if (a === a0) return GLASS_D;
+  if (a === 7) return shade(col, 0.7);
+  return t > 0.8 ? GLASS : '#2e5a8a';
 }
 function bus(c, x, y, len, col, stripe = WHITE) {
   c.blot(x, y, len, 12, (i, j) => !((i === 0 || i === len - 1) && (j === 0 || j === 11)), (i, j) =>
@@ -207,7 +239,7 @@ function bus(c, x, y, len, col, stripe = WHITE) {
   c.block(x - 1, y - 1, len + 2, 14, 0.28);
 }
 // A train car seen from above: roof, a lit stripe, roof boxes, glass at a nose.
-function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z = 0.26, z0 = 0 } = {}) {
+function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z = 0.32, z0 = 0 } = {}) {
   const r = Math.floor(w / 2);
   c.blot(x, y, len, w, (i, j) => {
     const dy = Math.abs(j - (w - 1) / 2);
@@ -217,6 +249,37 @@ function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z
   }, (i, j) => (nose && i > len - r - 3 && Math.abs(j - (w - 1) / 2) < r - 1) ? GLASS : Math.abs(j - (w - 1) / 2) < 1 ? stripe : body);
   for (let i = x + 6; i < x + len - 8; i += 12) c.R(i, y + 2, 5, 2, shade(body, 0.8));
   c.block(x - 1, y - 1, len + 2, w + 2, z, z0);
+  c.stack(x, y, len, w, false, (a, k, t) => carriageSlice(a, k, t, len, w, body, stripe, nose, tail));
+}
+// A carriage in slices: bogies and wheels under a sill, the body with the
+// line's stripe, a band of windows and doors, a rounded roof. The leading car
+// is the engine: its nose leans back above the waist into a wide cab window,
+// with a yellow warning panel and lamps below it. A tram that runs both ways
+// has a cab at its tail as well: the same nose, seen from the other end.
+function carriageSlice(a, k, t, len, w, body, stripe, nose, tail) {
+  if (tail && (!nose || a < len / 2)) { a = len - 1 - a; nose = true; }
+  const r = Math.floor(w / 2), dy = Math.abs(k - (w - 1) / 2);
+  const back = nose ? Math.floor(Math.max(0, t - 0.5) * 2 * (r - 1)) : 0, n = a + back;
+  if (n > len - 1) return null;
+  if (nose && n > len - r && dy > Math.sqrt(Math.max(0, r * r - (n - (len - r)) ** 2)) + 0.5) return null;
+  const cab = nose && n > len - r - 4, edge = dy > r - 1;
+  if (t < 0.22) {
+    if (!edge) return a < 2 || a > len - 3 ? null : '#2e374d';
+    const m = a % 16;
+    return a > 3 && a < len - 4 && (m === 4 || m === 5 || m === 6 || m === 10 || m === 11 || m === 12) ? (m === 5 || m === 11) && t > 0.06 ? '#8a8a9a' : '#1a1a24' : null;
+  }
+  if (t < 0.48) {
+    if (nose && n >= len - 2 && (dy > r - 2.5) && t > 0.26 && t < 0.34) return '#fff1a8';
+    if (cab && n > len - r - 1) return YELLOW;
+    return t >= 0.3 && t < 0.4 ? stripe : body;
+  }
+  if (t < 0.8) {
+    if (cab) return t > 0.72 ? GLASS : '#2e5a8a';
+    const door = !nose && !tail && (Math.abs(a - Math.floor(len * 0.25)) < 2 || Math.abs(a - Math.floor(len * 0.75)) < 2);
+    if (door) return t > 0.56 && t < 0.72 ? GLASS_D : shade(body, 0.86);
+    return a % 6 === 0 || a < 3 || a > len - 4 ? body : t > 0.72 ? GLASS : '#2e5a8a';
+  }
+  return t >= 0.92 ? 'top' : shade(body, 0.94);
 }
 function train(c, x, y, len, cars, w, body, stripe, { both = false, z, z0 } = {}) {
   const each = Math.floor((len - (cars - 1)) / cars);
@@ -321,7 +384,7 @@ const TILES = {
     floor(c, t) { platform(c, t); roadStrip(c, t, 16); for (const x of [4, 24, 44]) shadow(c, x, 20, 15, 8); frame(c, t); },
     over(c, t) {
       c.box(4, 3, 10, 8, t); c.R(6, 5, 6, 4, YELLOW); c.R(8, 6, 2, 2, INK);
-      for (const x of [4, 24, 44]) { car(c, x, 20, YELLOW); c.box(x + 5, 22, 4, 3, INK); }
+      for (const x of [4, 24, 44]) { car(c, x, 20, YELLOW); c.box(x + 5, 22, 4, 3, '#fff1a8'); }
     },
   },
   rideshare: {
