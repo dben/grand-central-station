@@ -2,123 +2,55 @@
 
 A turn-based tile-placement roguelite about running a transit hub, played in the browser.
 
-Every week you place a couple of tiles, then watch a crowd of travellers cross the board. Every shop,
-kiosk and lounge they pass on the way makes them worth more. Hit the week's quota or the run ends.
-The quota keeps climbing, the board never grows, and the edges lock down as you build — so the only
-way forward is to make every traveller worth more than the last.
+Each week you get two action points to spend on the shop: build a tile, upgrade one, reroll the
+cards or play a bonus card. Then you run the week and watch travellers pour out of your bus stops,
+car parks, stations and docks, walk to the platform they want, and stop at the shops along the way.
+Each shop they visit multiplies what they are worth and adds a little on top, so the order of the
+stops matters, and someone who walks straight from a bus to a train scores almost nothing. Rich
+travellers are worth far more but come in ones and twos, and they want shops priced for them.
 
-## How a week works
+Points have to beat the week's quota or the run ends. Shops and fares also pay cash, which buys
+the next tiles, and once your action points are spent it can buy more. The quota rises every
+week, the board never grows, and each transport claims an edge of the board for rail, water, road
+or airfield for good, so space and edges run out. Every fourth week brings an event that bends the
+rules, and at set weeks you pick a permanent ordinance. Clear week 16 to win, then keep going for
+as long as you can; the quota climbs faster from then on.
 
-1. **Build.** You have **2 action points** a week. Buying a tile, upgrading one, deleting one,
-   rerolling the shop or playing a bonus card each costs 1 AP (plus money). Week 1 always deals a
-   Parking Lot and a Burger Joint alongside three rolled cards, so every run opens with a hand that
-   works.
-2. **Run the week.** Travellers arrive at your transports, pick a platform to leave from, and walk
-   there, stopping at shops along the way. Action points you don't spend aren't wasted: starting the
-   week early pays a cash bonus for each one left.
-3. **Settle up.** Your score is compared against the quota, shown as stars (one per 1,000 points).
-   Fares and shop revenue pay out as money for next week. Miss the quota and the run ends.
-
-Get far enough ahead and the quota starts chasing you: it never sits below about 85% of your best
-week so far, so a run that has run away from the schedule still has something to beat. The timeline
-marks a week whose target came from your own form rather than the schedule.
-
-Every fourth week is an **event** that bends the rules. At weeks 5, 12 and 20 you pick a permanent
-**ordinance**. Pickpockets turn up from week 7 and rare tiles from week 10. Clear week 16 to win,
-then keep going as long as you can. Each mode runs its own clock, so those weeks move: Junction
-picks its ordinances and starts its crime wave early, Metroplex and Terminus run an event every fifth
-week instead of every fourth, and each mode puts different tiles on sale early.
-
-## Ideas that matter
-
-- **Transports bring people; amenities make them valuable.** A traveller who walks straight from a
-  bus to a train is worth almost nothing.
-- **Multiply first, then add.** Each shop multiplies what a traveller is worth, then adds a flat
-  bonus on top, in the order they meet them. So put the flat bonuses early on a route and the big
-  multipliers late.
-- **Edges are permanent.** Rail, water and airfields lock a whole side of the board to one kind of
-  ground; roads are more forgiving. The placement preview warns you before you commit.
-- **Go underground.** Subways, an underground car park and a submarine dock run their lines on a
-  layer beneath the board. Build anything over a tunnel, but tunnels can never cross each other, and
-  a subway can't surface into the sea.
-- **Tiers.** Rich travellers ($$$–$$$$$) are worth far more but turn up in ones and twos, and they
-  prefer shops and platforms priced for them.
-- **Watch the clock.** Anyone still walking when the week ends is worth only half, and a traveller
-  who can't reach their platform at all is worth nothing.
-
-## Difficulty
-
-Picked with the mode, and open from the first run. It scales the pressure, never the rules.
-
-| | Quota | Tile prices | Starting cash | Fares and revenue |
-|---|---|---|---|---|
-| Standard | — | — | $220 | — |
-| Hard | +15%, climbing faster | +15% | $207 | −10% |
-| Extreme | +15%, climbing much faster | +35% | $198 | −20% |
-
-By week 16 that gap has widened: Hard asks 1.3× Standard's quota and Extreme 1.6×.
-
-Standard also lets you take a week back. Until you run it, **Redo Week** puts the board, the cash,
-the points and the shop back to how the week started. Hard and Extreme don't: a move made is kept.
-
-`tier-list.md` grades every tile, card and ordinance by what it is actually worth to buy.
-
-## Modes
-
-| Mode | Board | Twist | Unlocks |
-|---|---|---|---|
-| Terminal | 12×12 | The baseline | — |
-| Junction | 9×9 | 3 AP a week, more cash to spend it with, and a fast clock, against a quota 30% higher | Reach week 8 |
-| Waterfront | 12×12 | Two edges start as water; boats are cheap and on sale from week 1, starting with a water bus and a pontoon sold nowhere else | Reach week 8 |
-| Metroplex | 16×16 | Room to spread out and the big tiles early; tiles cost 25% more | Reach week 12 |
-| Sky Harbour | 8×16 | A long board: airfield at one end, road at the other, a security checkpoint across the waist. No rail or water; light aircraft from week 1 and pickpockets from week 3 | Reach week 12 |
-| Terminus | 12×12 | 1 AP a week, an 8-card shop, and cheap overtime from week 8 | Reach week 16 |
+There are six levels, from the standard 12×12 Terminal to a cramped 9×9 junction, a waterfront and
+a long airport split by a security fence, and three difficulties. Standard lets you take a week
+back before you run it; Hard and Extreme raise the quota and prices, cut income, and keep every
+move you make.
 
 ## Controls
 
-- **Drag** to pan, **scroll** or **pinch** to zoom; **Fit** (or **0**) reframes the board.
-- **Click a card**, then click the board to place it. **R** rotates, **Esc** cancels. On touch, a tap
-  aims, and a popup by the target builds, upgrades or plays the card, or cancels.
-- **Hover** anything for details; **click** a tile to pin its popup (that's where Delete lives).
-- While placing, the **star badge** over the tile shows what it would be worth this week. Red stars
-  mean it would lose you points.
-- After a week, **Where did people walk?** shows a heatmap of the crowd.
+- **Drag** to pan, **scroll** or **pinch** to zoom, **Fit** (or **0**) to reframe.
+- **Click a card**, then the board, to place it. **R** rotates, **E** switches which side a
+  transport attaches by, **Esc** cancels.
+- On touch, a tap aims and the bar under the board builds, rotates, switches side or cancels.
+- **Hover** a tile for details; **click** it to pin them (Delete lives there).
+- While placing, the star badge shows what the tile would add this week. Red means a loss.
 - **M** mutes the music.
 
 ## Running it locally
 
-The live version is on GitHub Pages. To run it yourself, either:
+Either open **`dist/grand-central-station.html`**, a single file that works from disk, or serve the
+folder (the source uses ES modules, which browsers won't load from `file://`):
 
-- **Open `dist/grand-central-station.html`** — a single self-contained file that works from disk; or
-- **Serve the folder** (the source uses ES modules, which browsers won't load from `file://`):
+```bash
+python3 -m http.server 8080
+```
 
-  ```bash
-  python3 -m http.server 8080
-  ```
-
-  then open <http://localhost:8080/>. On Windows, `start-windows.bat` does the same.
-
-There's no build step and no dependencies. After changing the source, refresh the single-file build
-with `node harness/build.js`.
+and open <http://localhost:8080/>. On Windows, `start-windows.bat` does the same. There is no build
+step and nothing to install. After changing the source, rebuild the single file with
+`node harness/build.js`.
 
 ## Development
 
 ```bash
-node harness/selftest.js                         # rule and simulator invariants
+node harness/selftest.js                         # rule and simulator checks
 node harness/autoplay.js --runs 8 --weeks 16     # a greedy bot plays full runs against the quota
-node harness/marginal.mjs --week 6               # what one more of each tile is worth
 node harness/ui-smoke.mjs                        # Playwright drive of the real page
 ```
 
-```
-src/config.js        every tunable number
-src/data/            tiles, events, cards, ordinances, modes, difficulties
-src/sim/             board rules and the headless, deterministic week simulator
-src/game/run.js      run state, shop, actions, settlement
-src/ui/              isometric renderer, input, DOM chrome, audio
-harness/             balance tools, tests and the single-file bundler
-```
-
-**[transit-hub-design.md](transit-hub-design.md)** is the full design document. It has every rule
-and number as built, the tuning history behind them, the balance and testing notes, and how the
-renderer works.
+[transit-hub-design.md](transit-hub-design.md) has every rule and number, the tuning history and
+the balance notes. `tier-list.md` grades every tile, card and ordinance.
