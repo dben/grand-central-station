@@ -4056,6 +4056,23 @@ const ISO_MAPS = {
 // key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
 // floor, over: [sheet x, sheet y, w, h, frame x, frame y] } }. Frame coordinates are
 // screen pixels from the ground point of the turned bounding box's top corner.
+// The ground textures: 128 x 64, tiling the plane from the grid's origin (see the ground section).
+const GROUND_TEX = {
+  grass: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAD3ElEQVR42uVcuXHkMBDsrGTSOUsxKCKlIE9RXHZ3VVu1DovkfD0AwTZgSMXFN4P5e/Dx/fFvP7afLTSyv3uPz98/r7Gfzztvdv39ut55v/5+vkb1fvb/t85xRCvPvFf3jMgGukf0QNb/32NPMO9FRxnpjKFYDJBl8Kv1XwxgvYSul89miNnznkkI68VaDHS2P4vAnvOCwWHWBqsXbX2/v/AzET1Kwln3wmIsxv5wdEFVzooe3COqrubxSjAWIVg2E1sFWDbCEQMho0uiKqP64qPrdunSqKSbJYEiAxFdYl2MdRFeY6zKYKO8iNm2EkMCo3PhLAGiv9szcHZ/WbeQxQBZ1VJhMIzkaNaLzF6oV/daf2eNvCiBrfgIQ7IgI3JZL7fbGOt6SRYjRRn4jNBZukTOiciBzgIrUX/Ve7BR8YmuuALrPOxIZlkFdPurVWO0ekEsCZUleJctYkqAu1u91X1kQ7VdovgOkgkjYtKsUKqXMGwj1euunkm+arKrU/Wg019mM1b1JbIZo1tUV+MpHsmHivV6lsywLiYaOWNF2rp0/p4gUcboipekjcAuf50t8qJJolnJl/0DY2TxWIwMVkChw/g5M+JYRllX1q7LBugovEFH1ioaoImGckcRNJojyUYaZ8YbEDUaMrYCM3R5B/er23pnu51XDIjIBF3+sPVyu4ykqGgepTLYXtjbljn6PWYEcti5gNk2irc2ke3+RlXt0fe4s6hkv8BszV12vlkRxEidBkYSIPu994VVVUfV/WXdx0jJho5ACLvQobuiJluAUrWRvKFsVm2maQN4jaZVrHlWRZA3Dc6uV2Cv5/YCsgGXu2cVq9XH2f1Hk1bVNHJEJaJTZ3tFZTUX0UWgqGi2CGp931H3b90fZvr/VcJ6ETjVF796AOuKsTCjXHmUe1TN0kXX6VKZWe/GE2BDZqHREKvR0KpozWK1CDTqZjPBrrhToGeUTme/1NEBH2aaHer4ePX+CJRcwMr4ePX+COgQ6Svh49X7I6DTeFsBH6/eH6GEDXwCPl69PwI6OX3VgIpSfwRs4vh49f4IUMfHq/dHcEHDnoyPV++PAOZLXREfr94fAZs4Pl69PwLU8fHq/RGgjo9X74+ASujxCfh49f4IqFz0E/Dx6v0RWsrCV8LHq/dHgDo+Xr0/AtTx8er9EaCOj1fvj4DOUOQK+Hj1/ghQx8er90egFISsjI9X748AdXy8en8EbOL4ePX+CFDHx6v3R4A6Pl69PwI6Re8K+Hj1/ghQx8er90eAOj5evT8CmBtZER+v3h8BlQ0+AR+v3h8BK3H03V7yE/oj/Acyz5mPg6MW3QAAAABJRU5ErkJggg==',
+  lawn: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAD1klEQVR42uVcuZHcQBBDWPLkyNoYFJVCUBTKTqrbqnN44vYHDHcIg8YduXxm+kE/aDx+//j788/jeXz/9e15fPzvf8fxfHR99j6s6z+vO7v+8zuj3x+vyz7/7P7ddZoemedixQOPG8MSpOp7RYJR3fjovpGgZAXmeP3Z+c77lgSgqxlTDbrKwhwXNtqws42ZfsfxPlnBOfv7iwBMNbCqCdmFrC541XVNN4xlubqCcqaQlfcC44NYv+tuyFQQ1Bt8hW/PHlD62CkoY7sitqvpWibWBnbXvSwAak2INiQCTapoouurq+BOLZhlAYhe7AiOsqY7Wlj2Bq8y4SwLx8JiFcFD5sWz8fMVPmxiYaauZOrisiCuqxiRa/g40NHUbny8ysS9K3hTW5IOBsNkIbNhW9Z3shfgKhfRfQ7rusp5VDJJLJRajV+zJnyVr1ZZsqyrza5n5vsxkaRVqHwaFqpqGGxsdAV4RSXzxkg9Tj5UZQm6qeCsRel+Z1RDiWoBkaV9CoBC8nc5phvFWh+2pa3cD7tvosJCTDeG5XJYiaJXFh4MUzzNA1RBzVRTo8ydCrWrMVNnXXBFZmpaT69qSBWDsIpULPTOivvHxSBVuKhO/LBM+bu8b1WRXp1Hp0PnDJ1W+wGqUYKqXKwOd6cWL+oQGoWBirq7Gsx0BW+1ReqGv9kMabc2UW4J68alXXQ+zcypsYuq44eFiSoKhxVx/+rOm6lrUWcUs7UPluaHIJC1QZnyIyMqYGUWWV3ObBBZDRsnLnZkAXbIdU/i+Ww+osurUPdaZhQQV2boVml0tzGDBWLZbfFMy4DKjbrou+sCqj12V6WQp0UhdRT26rvB6LNXN12yElSr30+1sdOWvdMwMCp7Vh8UaVZXkK7SmC5I7BJjVOEsvRqoonQdXUC0cOzOHjbIrYabK/IZYCxQFWS9a7Onupm1C96mYeEydjDDJymKT2wmTrWMnM2PsDOGmetKGOCO/Hj3+Qhw58e7z0eAOz/efT4C3Pnx7vMR4M6Pd5+PgFW+5l358e7zEcBEqTvy493nI0C5QDvw493nI8CdH+8+HwE7mFolP959PgLc+fHu8xHwMOfHu89HwESz78CPd5+PMEoF34Ef7z4fAe78ePf5CFAs5E78ePf5CHDnx7vPR4A7P959PgLc+fHu8xHwMOfHu89HgFIid+DHu89HwIpEzDvz493nI8CdH+8+H6GVB7gTP959PkIqFXxnfrz7fAS48+Pd5yPAnR/vPh9BGgXswI93n48AhY/ZiR/vPh8B7vx49/kIcOfHu89HwCQ+vwM/3n0+wj+vq4scfESx5gAAAABJRU5ErkJggg==',
+  sea: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAABVklEQVR42u3dwQ3CMBAEQPeBRIUUQwmUQwXUgCiAb/ghJCSCSCzO2XnsByHinNd7a/ts2v50myAXbe4Lu+PlI5Y2YO73ez+/Onq/fzMKKMCmGZ6uIBQgXOIRAGqbQJACgAkcV2FGbz8FCJ8FrUaA6316gw6uH7/FBDicpye++dwIrhW/RoKzZzk8gL2Avg2wjlBcAbbeQf9+v+oDSAoI9xgIwAMIsqVgiDWxjUtXD2CESAGAABQAAQABIOxcAwKE10M08+j16iFe32uUeggKwAMIAgKAlUDIrDdwMqj4NM92MAVxMgh4ACMYAaCHR0EAKUAQEAB4AKAARrDDoeN20L/246WA8PP1VgJBVbClXB6gLIEQVAoABAAEAPUAsEEFcNWsFAAIAAhA4n96PgJQAEGwG6gDzALc9595P0HrvZ9uoaf2/QRKwsL/upYJNAsQBAQgobF4AAOozI2YA6E3AAAAAElFTkSuQmCC',
+  concourse: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAE0ElEQVR42uVdTYvbQAzVb+6hlx5y6EIbaArtwtJCT/2jLTHMkojI+nrjxHmHOWQdx/M0kkaS52nlw8fDv5fj69U4fv+9jMPLaRn6ujei9306HJeR/X3UOGO/hb86htw8eYzPs/Fb6zD+fsYup59/2oKwgFsPHsDHfVoQ43vR380KYuA9Y+/g9xTduu7hRz93Db8MIawJouoJshY/rmefF/2+Xng9ZimChV/fN9sj3MIvGUFYmqWH5+r09/SWgxLEpau7tfCvv/4uA6UIlsfK4kErwprii2UNiK2hC0TfH91jLeBfvr0tYw1zBL+eh+fqLYX3tjjrfpTHcxVACyK6J3sLZwHSnsDyCF6QGgF+qRBaMfRnzxA8V97dQrOGlPF4khGQtzWgXJfnSrsL7+G1/t7Fn1UELQfv9yv4pSIoLYjowqOiev28LHBtCZYnQOP3XHnVw3YUXzJ7Y9Y1bpXHR+erP1tBYNUQUNmSFVSjPd67AniC0IL7/PXHMrKKkA3iosD1fKquPjo8/B7OalCn8Q8cWfxXCpCxAO9BaIvwCjieYma3AE9BsvhRW17U4sf8xvw9wz5fkzVLsDQsGyx1FcECbgHtWERF8WfXEbTFd+d7Ge8IEji6jlDd44ZCjPlX93o0fr3AnofQC69xeLgihisZ4Nm9c0wwm0d3o/ooHus+tAfJesRscNtRZFlz9ehgyrMIRFTbWVi9h6IUIOoRPVePDl7fFSC68NkJWN/XgkAtfHWPrFp8tn6Awo9UBJmp8d7vRmv1w6JR89QxQnZLqdYTrDpK9j6UHM7YZU0QqD3YKyChPEBUQDo4RO/5szxA1eNYWdKSBlZigKoGei+V0IqQTQ9RimAtlMbfDX6j+f5ajCMRC+kuQDYd9ATRTYdmp3/Rl0hVQ6hWbm8pjHQsBlUHmPV2rzv/2fhRr7WjW124DnCvShjKI6C2smp6vDX+7HpdeYDOuwD028FoZWy2644qlrasLv5qgchT1LXsShCCGBNDvQ7tvg1Ep7UDv84asgufPe3sbQ1RD7UmD0Hk8VmgngCQZ962TOdmnd+ffh4gm9ZUT8TMOiPnuUa0J+jir54YQp0IctPAqsZXCR6eQngEinF9dkEpi78a+0QXHnImcM1Cqnm8t1DoU7HdgkpU8bemvFWZQ5nKoqxVlFC8gOoRKA+4d/SqqwhdphCaF9E9OheOAbz319FDi7OYMVluXPREkXeiqRq7ZD1iVXEqBSXZMqq1gHkEkNl5NAq/9/xZ3Mg2N3BWASeqCGgmTVYQ1kGVbr4eZQ5lPUSVlXyTHczOj2fvjyAncn48e38EQUa9e+THs/dHEHZ+PHt/hFJ/gGfix7P3RxB2fjx7fwRh58ez90cQdn48e38EYefHs/dHEMRhyT3z49n7Iwg7P569P8JDnQq+Bz+evT/Cpv0BHpEfz94fQdj58ez9EYSdH8/eH0FO5Px49v4Iws6PZ++PIOz8ePb+CMLOj2fvjyAz0p898ePZ+yPctU/gI/Dj2fsjCDs/nr0/grDz49n7I6T6AzwjP569P4LMrOztgR/P3h9BEFHtnvnx7P0RpFK5eyZ+PHt/hNR/DXtGfjx7f4Qp/zdwT/x49v4Iws6PZ++PAO0PsEd+PHt/BGHnx7P3R/gPB8e+Rew9HDMAAAAASUVORK5CYII=',
+  asphalt: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAADTElEQVR42uVcuU7FMBCc76OgS0OFaOj4AT4epCelCeR57b09RQqkh+NjM3t4Z3C8ff3MPi+v74/n/Pvj8/vxrIyleaLee12v9e8z1wnNi7IOPusgvN+TsZ/QLOj6u/PvbhsfNd/o+Un+D5ETulr4ncXfGdaqS7I+YO38pPMZ7ZfFuhBhmefE7xAi28fejR8NyaN9sfpgzAzAymVUhdRVFxeFCBbrh2biUdGz1lDOjdNu4BXJrAwgM1uAx8CrG63dGOtYwDP4qpJ+/osA1gvQjhvtKrx8v3bcVdfy7MNApTw1y1Cq1TNm1zGa/7PxoPF12gO28s1eBx+FPJkGiKNwxe1uXKuYRIs0UcGeZ10DGfmsdbCXbZjWwVpkzIMO+XfX93YoOaPSZKJ8Y1XfXuYyKHrDoyHROiawWodHpW+pDlAtLZQGRVUgVrovs8GdR6UUGRDtddniVfkbIYZVtqJNU6UGdHsXYP2lVrkkiso6ohAkLQ1chbbsAszoOrqaway6tKW7AAmEZQQnMwjjhRgjw7F2YRkdVViB3u4tVFqEmj34keF4l96fGoDHfbh2Q6Mvg7ygVupqvJBEku5Cc8BWC/BqBOlWEGpbCLKGzE619Ii0T9pMu3wdnN2iVK2AYx3sRTeZzrwHRyKTJbobWFq4GX2Js5BeGZGQGaXPpj3etfTZLuDZeUsLXtLfWbSJo4IvvYNc7QZ5dwlnpc9WdwZ/0sCuFbDZL7o6p9Gq1W2ZGhZVGdyFhJqdvmr2BzOQmlUptDKA6IJT9ociQTxkVsp2advurI9Qqis4+6AZ9RFwkPPj2fURYBldd+THs+sjgJ0fz66PAHZ+PLs+gks/QCd+PLs+AioFX9XSTwZ9BLDz49n1EcDOj2fXRwA7P55dHwHs/Hh2fYSQQlCXnj5GfQREbnz3g91RHwGVfHu3e/8d9BFCO4Iq8uPZ9RGQabkV+PHs+gjQRJ078OPZ9RFQEVKr6Pcx6CPAY4M78ePZ9RFE/QA78+PZ9RHgYcGd+PHs+ghLPYE78ePZ9RHAzo9n10dApcpVBj+eXR9BpBCyMz+eXR8B7Px4dn0EsPPj2fURwM6PZ9dHKC0XH52uMeojoNLBVWHnMukjgJ0fz66P8AuwhEHufzVTswAAAABJRU5ErkJggg==',
+  ballast: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAECElEQVR42uVczbnTQAyc6uiAy2vhXSiCGqjjFUFf8MGBD4LXGkmjdZw5+JLEjnel1c9II7x9+vbj/fMHdf367d9X9Pnq+vrl++9r9fzo/6PnrD5n/yf7vNXzs/dln5/dt6P7cLTQaGOrG18VwNQVrWMlyKyirn4ffc7uU2c/MSGIquaz90W/exRgdaOqgssKkv0+OoDReg8twONLHl1djYtcR9cERp9HG1ZdD2sZWMFUBRu9x+r7Py6AXRBr+qd97OqEK07EmWC6Pj0bI2Ut4uq+s4MNxUlRnYSrgqqu68oK7lGBV/u7I4gEY/KrGxEpAnuSWYXJPk91UtnYgz0Y7IFiFe3MEqAS1arSk2x6qYoh1O+/6+rGZkcKA0YT1YJlXY4y2q2YVnb91ZO9S0HO5AVlEKXSZNX9rAJWcY0s7qHavyrQdeR60fG11SBQDSRVTF9GwavI25SpX/2uYmGgzLvZ4O8q36p2XSoLUVX4x/eouBxM+B6VaatGv9W0rQvhTkPg3eDvSHGhFAybfqiCp12CiNa/MsVV19E50elaQGfB2Y3u5unZNHE6nVNZqCrSyOIQp0CQsrzZLZ6wQWY3S8kib9VysDpNnnAhUObtkQBXEKgqz+2aTlW1sJvOTdUMZFlAVDxafR8VK1QQ6XRjRxbKnioidSHnNBDEFjXU0fkVCNlkVfKqBpkjRYZiY6v5MBtTdBG33VXAKlDWjXlkHUHZvLIbvHWrcOo0kHVd2ZjnWSDyf6DgSv1/5etV0ftUdqE2ubsRzSg4r0DkYKJ0lUlV9cip0tSppksV3pGVQxawalcD1T1208HVNHC0q29BqaCYxKinypqqJsyrMfsovewio0wMAwazV3SeTCrCrp7ArAVUWRo1fvFfDMBG+dNYu6r4kS3jqjqIpqP7KoR+2hGkKJ9O9wx2Lc9ugaurq1WEkvk/KBeiZgStFG03tj+VvVzVPBpagKkih1qhsid3V1Nm1QKom2/pjiB1NKoul6pcQjdb6VbvVDGUMjbCM5owdStUJi1S1CKqFqvKyu7IDxMadyd+vPt8BLjz493nI8CdH+8+HwHu/Hj3+Qhw58e7z0eAMk++Iz/efT4ClIDGHfnx7vMR4M6Pd5+PAHd+vPt8BLjz493nI8CdH+8+HwHu/Hj3+Qhw58e7z0eQzAe4Mz/efT4CdgIqz8iPd5+PAHd+vPt8hFZDyCvw493nI+C9UfV7BX68+3wEuPPj3ecjwJ0f7z4fAZno+hX58e7zETAJmd6BH+8+HwHu/Hj3+Qhw58e7z0cYoYbdiR/vPh8BEy90J368+3wEuPPj3ecjwJ0f7z4fARmf8or8ePf5CLgiGn8mfrz7fAQosOk78+Pd5yPAnR/vPh/hJ+GPaZzxEztPAAAAAElFTkSuQmCC',
+  road_x: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAADz0lEQVR42uVcO67cMAyc8wVIOjepgjTpcoGcMEDq9DnJC7KAgRdhZVHkkJJ3CheLtSWaHvEnDXF8/v42e3349OVxnb+/fvvxuDxjXV0/f/1+XL3/o/O+/fn432V9X6t+RvJbryz9/rsQmShTsBkgRD+cFQjeeazyV+mzC4BZxbX3nb9nV4wXCKx5znGiQFgNZM9zYLgAr8XoIb4HLCsQ2nFn5R0BYSTf6H6vRYi+Fw0AswKcgvcsxGofO7IIVa5tpBfvgkkDAMtlVJvWbBdXZREY3wsRwdmuone/dZyeIk/FRRXYWjIWAKIxQgQgyBjYq+ioRWhdQ9RnZgZfFiBXyPvUArCj6+i43ue8K8oK4NmsYXZhzGY9Vpf1Xg7sUpBgANBrWqsKSt73iMp/pU9EfF30A7N8szdGiCiOCQTr+2dkPaVZAGvcaEzi9bFWS8W2CD35twHAbLrHCvaqSrTedNZaSGJnPcsBkP3hsmr1WZYs21JGgFAKgF12wbLy8FXpc0R+7LDy2QUor6KjJeboe7AAPyM/IoquSgtH82btQlbXEbwAilg0rDDRbRqYtbJZlbSeIkfAixaUZtPUkfzP5E1NA1dvEmWVmLMsXtYJpSsgp1QCR/exCzDR7Wh2+hiV31tH8KSPuEp/WJW6rM2VLN/fuqjePGyL0M5TcR4B703bqjy9OuuIWqjZytzoYEd26f3qf3g2TdjZAuuoU9Vz1mDR6mrYwfBo3G4QeD5gNW2sF4gGkbtX5lixU9mpYPZRpSyE7+aiops2PT31XAYja0Dmpon1w+8SU/RcHKtEm7XCWyDMzIMjYfcp68Oz8nlv1jObFbWAqq4jWOTEUVgijR4Vy66lz54CnpW7BYJ13NlK40yJGZkFkSjXMKqgEVCq6xusOoI1Bmpjg2d6A7PEmG2iWSt6RbTtsahRBpabGub1kVk+brcPtvoUMzNIxYxJrTyqlAGA6oKTV25W1mWxeFDnx6v3R4A6P169PwLU+fHq/RGgzo9X748AdX68en8EqPPj1fsjIKPAcCd+vHp/BOwUfK3gx6v3R4A6P169PwLU+fHq/RGgzo9X748AdX68en8EqPPj1fsjQJ0fr94fAZmKvAM/Xr0/AtT58er9EZChyDvx49X7IyCiyFfgx6v3R8DhKDG+Ej9evT8CvOnDq/Dj1fsjQJ0fr94fAQwE35kfr94fAYc4P169PwLU+fHq/RGQWbm6Az9evT8C1Pnx6v0RoM6PV++PAHV+vHp/BKjz49X7I2zRLn4lP169PwJWFCJ24ser90eAOj9evT/CX8vdLPChOvqFAAAAAElFTkSuQmCC',
+  road_y: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAD40lEQVR42uVdu44bMQyc7wuQdNekCtKkyw/kCwOkTp8vuUMMLOBbnCyKnJG0nmKrs70SXyJHHB5evv58ZT/ff/y6PdXf+f3n7+359OXb7Yl+r/f513+f3z2qfR7rV8t3VD73DxQGUDWMnuCyGx5VfPY9KsVXHe2jz0MhgN0Ed1Z8xWMe7VO1/uM95/dF9/Hoc2AK4GxhWY/vbSwqiGyo7+2rp/jo+rLyYjlc2ACyG+p9Tx0q2R6vylHOHh41BMa+wPqhmR4/M0Qqj6pZ66UlgdXsviU4lgFU13d8v/U7UcW31suuZhhyhPKsOT5f9ZhZyWjr7M+GetY+GNn+wwjQOrtHQ1T1jI8ufDS5y0aGrOFWDbYlf3YV0YwAvRePAiCsjawGcFiK3QUXoANBUY8ZXSirnOuto3rGZ3MNlYFEciMoFM+CgnuKrwqulaOwzlyVxy+rAthZcRTIYZVPKsiZnRyy9iczADXkqTojo1WJKhSv3n/ZAKqKV5YzShxi9a3ocgNgeXxPIFVAKAvZshXFAraWG8Cox0Q3tnsdP1rOzU4Cs3Jp4gDnjUUVP1pmsRTfy/5ZoT6q6KoCZyGE3QigQr5YAI7qdm52ElhNCulloAoAYSm+995qVp+9jlUBUllPTyGBM+/j2Z7VgpzPilR5NNtD2dfyvSP0v+wwMxttedhok+Moclf9+4r6XIkz3B+ViHT4sAUQ/d3o7aL6np39PVbIH+2H+Eh+W3YFZy9pdkUeVZdJ0d855BfuCh7N6qPNjaOWrbpkmg3ssB2F1V4fjgDHC9Xl3LkDh02c2AWajRqMCgC7fz92UHyrjh89MnqRJwssrerhU3h8yACikG0UAu2dhWfFs4AS9rUqq1pgt35VIiYeCSjaV8+6j599bdqLDFVkrxXJWOtnAGBglBejC5jFnatm1TOaMhX9DLK28Co7dXaX7WqDUuVI2RwnXAW0PGL2tayaIqW67ZvVyJLFHd4lge78ePf5CBJ6+JX48e7zEaj08Cvy493nIyBzNj4TP959PgJ2OKNW8uPd5yOk5gM8Ez/efT4C3Pnx7vMR4M6Pd5+PgJ2QuxX8ePf5CHDnx7vPR4A7P959PgLc+fHu8xHgzo93n4+Anersq1z7PtN8BLyY8+Pd5yPAnR/vPh8BjHLuyvx49/kIQ/0Az8iPd5+PsCQJ3Ikf7z4fAe78ePf5CGCEzCvz493nI+DFnB/vPh8BMzx0Z368+3wEuPPj3ecjYAawszM/3n0+AnY+s2fw493nI8CdH+8+H4H6T6OuyI93n48Ad368+3wEuPPj3ecjYGW5swM/3n0+Atz58e7zEd4ASaks8FKWueQAAAAASUVORK5CYII=',
+  rail_x: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAEjklEQVR42uVcOZIUQQzMH+HjrIeBj8MX1tknYBC4eLxjH8Fj8HjCbjDEbBBFaZS6OqInjXKmu7p7qlRSKnXg84cfL4+fnqnx595/h/e7Nb4+/bwM6/ne+73nfP/2d/z+9XIZ1nM+vv+yHet86z3ed0bnRZ8fXbfdPOw2xvpw9nr0D0wNSxCsjb+O6/+w5kcF1brf+51dp8p6YmIjspLPzvPuu16/Lsy6kdbGWwu7zmc3lN1I9rp3AD3B22qA9SN3oypxnumoqkDvd0u1X39nv8MzDVHBYE2GN9/7Duv6mwmwPoC1uexCdGmM9YRb9z28e7oMz8azG+OZBuv90XXxTrp3/60NXw8iIuDM+gNdJ2EKVK2CwJ7orEZYBW4VhFWArfU9AkSCUflZW+4JAnuSWYGJPs/ayOhJZTEGezDYA8VioVuaABlU2+WeRN3LLgzRLQgexug+uVlsthMYMJLYvbGsyelEuxHV6glClEeYVukVsI2KP1tF8dPzWQGMEkoejxAVpG53OWJ6UbG1WRDYTSRlVF9EwKM8wvoc1muoCnhGw6DT72bB31FMYBXLrKo+auPXDYkKQtQ9zXgRmLA9Xaoti36j77MWMMojsOvUzSOwGnBn8tC5Maz7kdUsXRx4dN4qCB5FzIJna77FI0yASGQ2POsWZv10lmvvoq6rJ7pKKLGxCguLRdz6EAaook/2dw9kVr2UKPPGbmgW7LEYoyrIu/no9Nu9DbQo0C4/twKGKkGurCBEeYRqzKDNC/CCR9Z1L1jRRZF2BZ28/+mp3G4eoRp+3mqACgVcPdGTkj0Zjo7a3KyNr7qPDLZDx8JGgxJRRiuqwqc1QzQcG+URWGay48Chw6+sgrdsvHyKEGJNl3d/Nh8hqlGs+SuPsNNcyMT/LVvfhd6nvItut5B9DpuPEH1flEfYCQIYlN6lUrty5Lrc1KmkyyjfYW0kuw/RfIT/EkKm04+nCKNsdu4UcVQFm1mwl8UYdELIVFpylljqSsKcMhFVt7abR7iFYcBw9h2ZJ5OCcFQ6e1QDVjVNlkdg09nfMACL8qe59q6kyGgCSDWDaDoBhrXxFgi/pVHw2BA+nc4ZrGqeoze8O7oajRVEBAGReHQ2aJNVvZagHc3tT3kvUfeRjRVEvAYwNsYThKnSsKhNzjKSR2ccRfMlWB4hk/yKDq66W5V3ofVq8IhlAqv/p8qzsF6DGQ4+Kq992q1iCRk22NRtctiweTY4luERoF4fr94fAer18er9EaBeH6/eHwHq9fHq/RGgXh+v3h8B6vXx6v0RoF4fr94fAer18er9EaBeH6/eHwHq9fHq/RGgXh+v3h8B6vXx6v0RoF4fr94fARk/8p7q49X7I7SUhp25Pl69PwLU6+PV+yNAvT5evT8C1Ovj1fsjQL0+Xr0/AtTr49X7IyDCdN1jfbx6fwRMUqZnqI9X748A9fp49f4IUK+PV++PgE7C5Iz18er9ETDxQWeqj1fvjwD1+nj1/ghQr49X74+AiE25x/p49f4ImGDGzlQfr94fAR3c9Jnr49X7I0C9Pl69P8IrcPp0C/0C/k4AAAAASUVORK5CYII=',
+  rail_y: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAEk0lEQVR42uVcO3IUUQzsG5GTkBGQk3AFJz4CAUVKxjl8CB+GjCOY8lYN5RpWI7XUb8y6g1cFuzM74yc9qfVp4cvHn093nx8u6/nfL9f2+X7tv8+u765v94+Xxf7+dt/vX0+X9eP7w2V9ev/16op+f39/9JzqPkTf738nuz/af3afnq9FRzDVB2UvVv2c3di94LYNjhRgW1XBq1d1PyNF2T7vfI+jja4KYv+A7kmoanp0/V5w0fWRAkT3Zye0eoKr16nuK1mAaxudmbbs+0xRuooWvQd7YrffiQS/twjse3VP/sSUH73X0cLRhdEJZzWe9XHb/z+8u7+s6PrI1FcVLcMI2fOrFmJ6orMDyB7cl5/jDBCXaeT+um3j9wLpnviqxagKXgVap5aPxVwhBshOPqvJrMuITHPmo1nL0lWc6klnBZ8pTNfCVLHVP1FA9w/s+q5ssT5aLfipD5/6+G64zYBwrAQnU5fRjeNZwbOgdgp6p6a8Kq+K5QVjitRhCis4VRyfgVM2ITaNAtRRBGMJMAE56g2KBLe/n43juydXbZoz9N4FgRNsgg6KZ8OtruCzPyzDCFNTetaqZkxZMF15NjpxfvXBbBw/VZwsjo8UWI1d2PCtg95ViooVIC6K4zMfn4GZLOXbjeNVPrgb9maWgD2QjKKBCRuqvqfqo6cJnFUmm02tqhSJrS5WMcmRQkDpAyOwlvnoLkbogq1utbILIqsuYurbO+VzTEx9ZmqqcXxX8KqiCQt+1UWcDJtULUMnrMUk08c2Uqji+Ewg00YSVZGGDesiwWfYYOKKoECprKmeYgRVjnx1xlMdbWRFtE5KGIoXYlun2Fx/txytPumsC+lmUKtFOIWi4kiTtnAq2gD2xHbr8VVQVfWh6gRQt99hCiYVeRscCX4ax7Ougo3jVaa628LWRevTaKKakq/0B1ztCOr66Kz9qNu6NQVnqpx+1/ROayZTl3UUZRy6gGk9vhvHq8HZqsRON4E2DRdVCh02hLB99d1c/4rihsLEd1u1XquMPrkf1wSQ5dpVffXdbtazN1wtIHUTadfF/MUAWZft/kXUuX51HM52+FQbRNTvsapWwUQJYATP5vpXVK/OVAj1SVT3/CnK22BQ/bQef1a4psIS3cRPFr2oGELZ71T6MdBplqzG8ap691kdO2wbPOvrz6KGRXmcaweXKgd3W7fUFKsqR3FqYVTgS63Y2fUMRoMyjq+yVNX06mkuPiv/rlLk1auC0eDOj3efjwB3frz7fAS48+Pd5yPAnR/vPh8B7vx49/kIcOfHu89HAHMC3yI/3n0+AlaAqFvix7vPR4A7P959PgLc+fHu8xHgzo93n4+A/yGH/Zr8ePf5CHDnx7vPR8CdOT/efT4CFKnVW+bHu89HgDs/3n0+Atz58e7zEbCySHML/Hj3+Qhw58e7z0fAiozdLfHj3ecjSMbF3zI/3n0+Au7M+fHu8xHgzo93n48Ad368+3wEuPPj3ecjYCU6vgV+vPt8BLjz493nI8CdH+8+HwHu/Hj3+QjoZODeEj/efT4C3Pnx7vMR4M6Pd5+P8AfsIHQLZnUxTwAAAABJRU5ErkJggg==',
+  apron_x: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAEMUlEQVR42uVcvc7UMBCc56ahoKHgWkSFhKjpeS5e4EN3UtCHFWf/ZhPfTZHidIk3tif761l8/Pz97fb11+51/+9+ffry83HN7ptd3378flzb73GccXyvvNn/ozzrevvz4b8rO0+v/G1+s9/WNb7f7H3H9Tx6HzAGir74bLysvOjGj+OPQMjOMyufDQBrPd//dgHA0gjeL2d8ke252QZWNdBsvE3eKHcDwExzRYHG1gAdwEMGgdEXr0707OfZG+NRxXsfRlVDWKb2AYAjVWz9Hl98/EKsiUcn2rWR1sJ1A49lajPAw96NVZvardq8X1TWVEWBfDZwrHmMpm67f+85RASPA3oXqmo7s8Bj+Q5ZVV6NIs4AHjyqveJlZlRvt6plha+rabyor3C/0CF4W8CzF6Zb3ggEdvjYnUfY1QAZZ8hrKqpfaNQ563KmsnkEloYbbbg1/zQAur3U7uct4I0+TFX+uDEzTeD1gc7SAO/njytU7bPmEWYbZPkIUcDNgFwNV80oIOrVd29MNVe+OvCOwjPG+3o0DyI2JjrRbIrY+uK6vOoOG8vYyM6EGaoIikQF2SIRy6tmhXPRauSs2snKnFq1FBMA2aLLzKmKTmS2EWwvmqk6mdVQCxjZ+Xk0OlZOYKyWR6g6c9Z5hO78xd580SWUGUVEVXM0nLoaeN1AONJALg1QVYkzG9hdDax65V1RyOy+rkTS0YeIo3COnau3FtYLtKiXzD7IMjtQks0jsIAedQbv96JD9Y0bnXUWq1GDd/yujWGVdWf3e03dkRxckeDpTjFfVZ0b148VTXQmsLBy5izqK7A2PqsRqqbtbOf1XznYsmlne82WTxJN6GSPmXujjOrGR88pMDUemKp2tRM40ephVENY61GtPkZ5De0AYB/9slKnLMRXw8+rjoaN6zNbjwoQkPFKvc5it0awvjB2rcGr8VjOdJRQkwaAt4hxlg9QLdrMbPXqvAYWQSaS10HmYIOXJxCtzp19XqA6ftS59G6MlyvJOP9weB7AEuC1USxV38W1qxaFWGVzVuYxIg9Mr7lqc6tl4LOBG5UTBR7LhzqaHyobz0rQsNjALBu/AmmTAUCPPKjz49X7I0CdH6/eHwHq/Hj1/ghQ58er90eAOj9evT8C1Pnx6v0RcFuwCLIq8F6xPwIq4csr8OPV+yOg4mS9Aj9evT8C5TzAM/Pj1fsjlHyAV+DHq/dHQCaB8Er8ePX+CFghnLuSH6/eHwHq/Hj1/ghQ58er90egdAp9Zn68en8EqPPj1fsj4CrBq/Dj1fsjQJ0fr94fAer8ePX+CFDnx6v3R2jhBj4TP169PwIqNu8V+PHq/RGgzo9X748AdX68en8E3BYoYlzJj1fvj0A5D/DM/Hj1/gi4KgGxCj9evT8C1Pnx6v0RoM6PV++PAHV+vHp/BKjz49X7I/wF9vhLSKJJt60AAAAASUVORK5CYII=',
+  apron_y: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAAELElEQVR42uVcu24bMRCc706TIk2KqA1SBQhSp8935QdsSIACi74V9zF8nKdgYd/pSO5yn9xZfP768+Xy/c/huD67ji/fft9G+7z9v/Ve7/vW3+348evvbXi/b6335d+nh+H9vTV/b9/35y092/2238nu1/r+Ef3xjBHejWUPgJfxrGExPjp/lDE9evYOQpaeHsHFCkZkNYCXMZYktYy///8+WPvvSaC1Tu/8luB5D9K7A9BTTdWTGd0o+yBGv1edf/bvvRr7aGAFI7wLHUXIUfNH3++to/1ea3osenpN838foH3xPryqMbqR2RLstdle1Trbh6maSuvgvPMBdmFEdn42I3qmaxTjLTpZ9GwFNkIfvJX4XRkRlYhsODXLNFXny5rSIw2HmaqpqgF64Vw1fJodtXjn82qEzEEF48S2J4zFiPY7rDie7bx6nc2sxEdVe8T5BTOBw9IA1nt3xlsHLXsQLBtaZcSq8DHCTzBtoOU1R1V/j7HWOlkJndVRy0zThGz4wIjDdw8fq4mw0c5y1Ec4eg8zEhyzJMLro8yKWiyNlE35sjKF5l2Ad6LsrVgvju0xKjvv6PAxe7Cj+2QmgJ5qgOg1cPSSJsoIdmKFreqjl0LR/VrvZ32rh0xgJcHAjuOreYMoIWcnrHZMqGGGBO4Sx2efW9e3o5zPmdfyGDmxlcjJVrBkvfBdo452XSwN7NWcNw0QcTayTpGXMNE4vi3oGFVYwYpyes6dd35WVHRdCyo1Ze2GooRhS2SVEVXTUc0TWNfwLJPsjgJWZ7YsjcAKj1ZfAq0qjDlMBM3MbFXvArKMYMXzUdPCuqsYmdkEUyLY9+7Zwojq/NFCkJ6TObvGsefDvaUrRsbxVeel59xFD15UM+wWx4+oUAIzjm8Jannpu5WCWeEYSyNGU75VjTj8AMwGOHjvANg2tpcKr96WsjKbleJdROJGFiDiLHX1Xt9i9t2GVyN6NA+qXuQzCfHWrWcJV80jsOP4Kv28PolFz0whDZgSmM3MVa85sxI6CsvINg09HysKSu1iA1lxs9drzTpJWYmtEnIUWreqoVK4gBEVOLuggVnhUvWgjopqsut5qAdQx8er90fARRwfr94fAer4ePX+CNghDl+Jj1fvj4ARjDgTPl69PwLU8fHq/RGgjo9X749AxQaeER+v3h8BK73WHfDx6v0RMCKOPxM+Xr0/AtTx8er9EbCjs7QqoaLYHyHUKfQj4uPV+yPgIo6PV++PAHV8vHp/BKjj49X7I0AdH6/eHwEXcXy8en8ErAz/dsDHq/dHgDo+Xr0/Apg2/Iz4ePX+CFhho3fCx6v3R8BICToDPl69PwIyNv4j4ePV+yNAHR+v3h8B6vh49f4IUMfHq/dHgDo+Xr0/AtTx8er9EaCOj1fvjwB1fLx6fwRKVfCZ8fHq/RFeAUp1S0jl1VTXAAAAAElFTkSuQmCC',
+  runway_x: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAADoElEQVR42uVcQW7cMAycR+VQwJce2kuB3POVnvOLPrDoKV9IkQUMJMJ6RVFDkfYcBCS7XtkyRxRJaQa/X/+87237/vyl/f339qW131vbz18vt9Z+/vTtx615+7W29j7t87T/e5+LPZ6j92a9rme/D5tj/2MECPsNrQOeHUj0C4wGXBbwLUBAiwiGR9gH2Jt5oy+S9eJm+8kClvf59+vv2Q9HruFza2/IWhq8rnvWgKO/7xnc+33vd1Hj/Gw79NaIex5hf/BZIES/gGhPYvV8VZeOGwAezejdQEdAeORaMluUgVmuf7Yfa9BqeQ8YjRorLA3ZQVX2czPHi9GokQGE/XrvTPAGQVUNzwbCSP94dONRILBjhNWGtPbfu65XZxjtt9eft87y8R1m80hm+pjdVgWllZYKzBQU2ht4gTBbL6iWp0dlCRGVUHiQdlQZZHmEVaXZ7BJ1hQoookqMEZXFq0b1mR4CjAGxgbC6IML2BNYofHYvhRGzgImmKCCsSvtWz0AW0GmFoCwgtEgezRpG13qvgaOCS3a/I+ODBYFWhI0achYI3iCvSmyxOj2+NxHgSR9GEdtL/6JKzLPbz9GGyNpLOUwDsxHPDhbZnoB9HdsjtB7bEtNgpADDmiGr0kfW+YFVAMg4b4FVJcd7hhldGqwvqjV81MGSK8QI2ArUpFX2GlYtDSNpIQUArDw9CgirC0tR94sAOirNEOs2cvTBlCqHT73pdTkAeCts0R5hdYVxdYxgSYORieyoOgLLdUYtDexS9YxHALMUGe06V5eYz3b+wDM+ZB5U8AIiOmtYdSAl6jzCCBDAmNlZMyBracg+xGrd3LKMD8yjWN597tm0KSt9vMKxdGyEWrP1d9GewusRojdl2Gcemf2DubbNzmRWAaV6jFCJPQx1fry6PgIygp5K/Hh1fQScMe9l8uPV9RHAMPiZ+fHq+giIeOAz8ePV9RGQ4for8ePV9RFwlgetsLt2RX0EVDB8Jj9eXR/BdSbwSvx4dX0EqPPj1fURkGHISvx4dX0EqPPj1fURUCUaPcPBlCvqI0CdH6+ujwB1fry6PgIy1+oK/Hh1fQSo8+PV9RGQMXMq8ePV9RGgzo9X10cIYQefiR+vro8AdX68uj5CSim4Ej9eXR8Bmzg/Xl0fAer8eHV9BKjz49X1EbDScBX58er6CNgKlnJXZw3K+ghQ58er6yNAnR+vro8AdX68uj4C1Pnx6voIUOfHq+sj/AdW7EjretlIVwAAAABJRU5ErkJggg==',
+  runway_y: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAYAAADS1n9/AAADlElEQVR42uVcO45UMRCsQxEgTUIACdLmexVibsEBERFXAO1KXrFmPO62++dXgYPdmed5z/Xc3S67Ct++//hz+/T0rv389ftd6z//8vX5tfX/X/2etH34+Pm17V7X31f/9+rvWD3P7rjN8HvBvDVoLoweiGhAvF9g64nTxqV9XwN8m/i4B7x2wLMAsgLK6v77frT9jiLRrJ8V4FvDowt3B2Z2/Qi4GaC7n3s9Z3QqGQHffvcR8O16WIZ6r1AunQlZM9d6AmiB7/uRAN8aVh5gVlRl5VrrnF0lxY2A7++rB74fj3sRA5Wq81Na9H1bhPpRqsdOSLQCvtqLEFUEtxk6ut4T+LcXYCVnz9bRo1AsHShpf9p+vV80q/4tc/yjGu/lXnGl0O5VdGWHemvg/0sBWUxYVJWfXVzOxncV+NbPDoGHyoxYNuXqRT3vAi9l/iTPg5Nm+CmrBk/mzpqyRwaTp11dWNci0ZtU0lBtDbxk3EyIoOqbPLsRaHVZmAW8eQ1gDZRXDbDar5bZlI7HCLjWfybwd3mAqOIsa9vZetmoJXB2gZeu1qQR740HyAJ+tItWhajR3peWudMuB2f3ubKchySH7ebQ3RlvzfRZEUYn5HhVCqga6qOpXmlkqga89sWeUsGn5/jdgxyjz7XAz0J91AGWKRG0u+yLCvVX5+oj92BQYcZH8wXa3/MG3mr7OfwFkC5Xqh3WzDqIUXE3EivLIO8cn8XYZRd3GbuisJwR1Q59avuzLu5OOKKGE6t661DqTdlmp7JH44fMdXyUxMx6P14aEasue/+9P6wA77V5ki2oqB7qPcYbVz6WnVXcSZeZu+cmLI6mYfVCz+1h6/61goqsGT87Ji7dswkngrKJnugc7/Wcu5+v1Eqpp4Ir6OPZ/REQ+QAV9fHs/ghg18ez+yOYvAAn6+PZ/RHAro9n90fACSHOUx/P7o+AWyInXSXUM/sj4JZI3VbQx7P7I6DCTMjUx7P7IyA7r598yvYK/ggh8vDK+nh2fwSw6+PZ/RGQEYpOVtJczR8BkQRIRX08uz+CCxF0kj6e3R8B7Pp4dn8EsOvj2f0RTM8DnKiPZ/dHALs+nt0fAez6eHZ/BLDr49n9EWD5YCfq49n9EUTbwVfWx7P7I8Cyqj9RH8/ujwB2fTy7PwJ2cvwV9PHs/ghg18ez+yOAXR/P7o8Adn08uz8C2PXx7P4IYNfHs/sjgF0fz+6P8Be+K0jrqWtULwAAAABJRU5ErkJggg==',
+};
 const ISO_FRAMES = {
   bus_stop: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,57,-63,-9]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,116,94,48,-31,0],"over":[96,116,94,57,-31,-9]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,175,94,48,-63,0],"over":[96,175,94,55,-63,-7]}]},
   bike_rental: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,55,-63,-7]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,114,94,48,-31,0],"over":[96,114,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,171,94,48,-63,0],"over":[96,171,94,55,-63,-7]}]},
@@ -4128,13 +4145,13 @@ const ISO_FRAMES = {
   walkway: {"tint":"#8a8aa3","frames":[{"cells":[[0,0,0],[1,0,0],[2,0,0],[3,0,0]],"floor":[0,0,158,80,-31,0]},{"cells":[[0,0,0],[0,1,0],[0,2,0],[0,3,0]],"floor":[0,82,158,80,-127,0]},{"cells":[[0,0,0],[1,0,0],[2,0,0],[3,0,0]],"floor":[0,164,158,80,-31,0]},{"cells":[[0,0,0],[0,1,0],[0,2,0],[0,3,0]],"floor":[0,246,158,80,-127,0]}]},
 };
 
-return { ISO_SHEETS, ISO_MAPS, ISO_FRAMES };
+return { ISO_SHEETS, ISO_MAPS, GROUND_TEX, ISO_FRAMES };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
 const { tileDef } = __m_src_data_tiles_js;
 const { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS, SPRITE_SINKS } = __m_src_ui_tilesprites_js;
-const { ISO_SHEETS, ISO_MAPS, ISO_FRAMES } = __m_src_ui_isosprites_js;
+const { ISO_SHEETS, ISO_MAPS, ISO_FRAMES, GROUND_TEX } = __m_src_ui_isosprites_js;
 // Board tile art, drawn by harness/tileart.mjs, which also writes the manifest
 // (tilesprites.js): tile key -> PNG drawn top-down in the shape's BASE
 // orientation (see src/sim/shapes.js) at 32px per cell, covering the bounding
@@ -4260,6 +4277,7 @@ function loadSprites(onLoad) {
   load(SPRITES_FLOOR, 'floor:');
   load(ISO_SHEETS, 'iso:');
   load(ISO_MAPS, 'isomap:');
+  load(GROUND_TEX, 'ground:');
 }
 function get(id) {
   const e = cache.get(id);
@@ -4269,6 +4287,8 @@ function sprite(key) { const e = cache.get(key); return e && e.ok ? e.flat || e.
 // the whole over layer and its darkened copy, for drawing blocks
 function spriteBlockArt(key) { const e = cache.get(key); return e && e.ok && e.side ? { top: e.img, side: e.side } : null; }
 function spriteFloor(key) { return get('floor:' + key); }
+// A ground texture (isoart.mjs): 128 x 64, tiling the plane from the grid's origin.
+function groundImg(name) { return get('ground:' + name); }
 
 // ---- isometric sheets -------------------------------------------------------
 // Drawn by harness/isoart.mjs (the manifest is isosprites.js): each tile's art
@@ -4362,7 +4382,7 @@ function nearestCell(cells, X, Y) {
   return best;
 }
 
-return { SPRITE_CELL_PX, spritePad, spriteBlocks, spriteSinks, CARD_ART, cardArt, loadSprites, sprite, spriteBlockArt, spriteFloor, ISO_CELL_PX, isoFrame, isoArt };
+return { SPRITE_CELL_PX, spritePad, spriteBlocks, spriteSinks, CARD_ART, cardArt, loadSprites, sprite, spriteBlockArt, spriteFloor, groundImg, ISO_CELL_PX, isoFrame, isoArt };
 })();
 // ---- src/ui/render.js
 const __m_src_ui_render_js = (() => {
@@ -4375,7 +4395,7 @@ const { tileDef } = __m_src_data_tiles_js;
 const { CONFIG } = __m_src_config_js;
 const { EDGES, fenceSegments, checkpointLine } = __m_src_sim_board_js;
 const { shapeTransform, shapeBaseSize } = __m_src_sim_shapes_js;
-const { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, SPRITE_CELL_PX, ISO_CELL_PX } = __m_src_ui_sprites_js;
+const { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, groundImg, SPRITE_CELL_PX, ISO_CELL_PX } = __m_src_ui_sprites_js;
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
 const TRANSPORT_COLORS = { road: '#2f6bff', rail: '#9b5cff', water: '#00c2d4', corridor: '#1fcfb0', free: '#e05cff', apron: '#6f8cff', underground: '#f28c28' };
@@ -4603,6 +4623,26 @@ class BoardRenderer {
   // Path around a grid-space rect, optionally raised by `z` grid units.
   regionPath(gx, gy, gw, gh, z = 0) { this.ctx.beginPath(); this.rectPath(gx, gy, gw, gh, z); }
   cellPath(x, y, z = 0) { this.regionPath(x, y, 1, 1, z); }
+  // A ground texture as a fill, pinned to the grid so its pixels line up with
+  // the tile sheets': its origin at grid point (dx, dy), moved `drift` art
+  // pixels to the right (the sea's crests). Null in the flat look, or until it loads.
+  groundFill(name, dx = 0, dy = 0, drift = 0) {
+    const img = this.artMode === 'iso' && groundImg(name);
+    if (!img) return null;
+    this.patterns = this.patterns || new Map();
+    if (!this.patterns.has(name)) this.patterns.set(name, this.ctx.createPattern(img, 'repeat'));
+    const p = this.patterns.get(name), s = this.k / ISO_CELL_PX, [ox, oy] = this.project(dx, dy);
+    p.setTransform(new DOMMatrix([s, 0, 0, s, ox + drift * s, oy]));
+    return p;
+  }
+  // An edge strip's texture: its terrain turned to run along the edge and
+  // centred across the strip, so the runs past the corners carry on in step.
+  stripFill(e, terrain) {
+    const [gx, gy, gw, gh] = this.edgeRegion(e);
+    if (terrain === 'green') return this.groundFill('lawn');
+    if (!['road', 'rail', 'apron'].includes(terrain)) return null;
+    return e === 'N' || e === 'S' ? this.groundFill(terrain + '_x', 0, gy + gh / 2 - 1) : this.groundFill(terrain + '_y', gx + gw / 2 - 1, 0);
+  }
   fillRegion(gx, gy, gw, gh, color, z = 0) { this.regionPath(gx, gy, gw, gh, z); this.ctx.fillStyle = color; this.ctx.fill(); }
   fillCell(x, y, color, z = 0) { this.fillRegion(x, y, 1, 1, color, z); }
   // Path around the union of a tile's cells (its footprint outline).
@@ -4793,13 +4833,16 @@ class BoardRenderer {
   // corners until they leave the screen or reach the shore.
   drawWorld(board) {
     const ctx = this.ctx, vb = this.visibleGrid(), m = EDGE_MARGIN;
-    ctx.fillStyle = WORLD_LAND; ctx.fillRect(0, 0, this.viewW, this.viewH);
+    // pixel textures show crisp once a texture pixel covers a screen pixel
+    ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < ISO_CELL_PX;
+    ctx.fillStyle = this.groundFill('grass') || WORLD_LAND; ctx.fillRect(0, 0, this.viewW, this.viewH);
     const water = EDGES.filter(e => board.edges[e] === 'water');
     const seas = water.map(e => this.seaRegion(e, vb)).filter(Boolean);
     if (seas.length) {
       ctx.beginPath(); for (const r of seas) this.rectPath(...r);
-      ctx.fillStyle = TERRAIN_COLORS.water; ctx.fill();
-      this.drawWaves(seas);
+      const sea = this.groundFill('sea', 0, 0, Math.floor(this.time * 3) % 128);
+      ctx.fillStyle = sea || TERRAIN_COLORS.water; ctx.fill();
+      if (!sea) this.drawWaves(seas);
       // surf along each shoreline
       ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.beginPath();
       for (const e of water) {
@@ -4820,7 +4863,8 @@ class BoardRenderer {
       const ta = board.edges[a], tb = board.edges[b];
       if (!RUNS.has(ta) || !RUNS.has(tb)) continue;
       const cx = a === 'E' || b === 'E' ? this.w : -m, cy = a === 'S' || b === 'S' ? this.h : -m;
-      this.fillRegion(cx, cy, m, m, TERRAIN_COLORS[ta === 'road' || tb === 'road' ? 'road' : 'rail']);
+      const road = ta === 'road' || tb === 'road';
+      this.fillRegion(cx, cy, m, m, this.groundFill(road ? 'asphalt' : 'ballast') || TERRAIN_COLORS[road ? 'road' : 'rail']);
       for (const [e, t] of [[a, ta], [b, tb]]) if (t === 'rail') this.edgeTexture(e, t, cx, cy, m, m);
     }
   }
@@ -4852,9 +4896,9 @@ class BoardRenderer {
     const [lo, hi] = this.runRange(e, board, vb);
     for (const [a, b] of [[lo, 0], [len, hi]]) {
       if (b <= a) continue;
-      const r = horiz ? [a, sy, b - a, sh] : [sx, a, sw, b - a];
-      this.fillRegion(...r, TERRAIN_COLORS[terrain]);
-      this.edgeTexture(e, terrain, ...r);
+      const r = horiz ? [a, sy, b - a, sh] : [sx, a, sw, b - a], fill = this.stripFill(e, terrain);
+      this.fillRegion(...r, fill || TERRAIN_COLORS[terrain]);
+      if (!fill) this.edgeTexture(e, terrain, ...r);
     }
   }
 
@@ -4867,18 +4911,23 @@ class BoardRenderer {
     const along = e === 'N' || e === 'S' ? this.w : this.h;
     const r = e === 'N' ? [0, -m - d, along, d] : e === 'S' ? [0, this.h + m, along, d]
       : e === 'W' ? [-m - d, 0, d, along] : [this.w + m, 0, d, along];
-    this.fillRegion(...r, RUNWAY.fill);
-    this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
     // u runs the length of the runway, v across it
     const horiz = e === 'N' || e === 'S';
     const at = (u, v) => horiz ? [r[0] + u, r[1] + v * d] : [r[0] + v * d, r[1] + u];
+    // the texture carries the kerb, the side stripes and the centre line
+    const tex = horiz ? this.groundFill('runway_x', 0, r[1]) : this.groundFill('runway_y', r[0], 0);
+    this.fillRegion(...r, tex || RUNWAY.fill);
+    if (!tex) {
+      this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
+      ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
+      ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
+      this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
+      for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
+      ctx.stroke();
+    }
     ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
-    ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
-    this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
-    ctx.stroke();
-    ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
-    for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
-    ctx.stroke();
     if (this.k < 12) return;   // the keys turn to mush below that
     ctx.lineWidth = Math.max(1, this.k * 0.055); ctx.beginPath();
     for (const [u0, u1] of [[0.2, 1.0], [along - 1.0, along - 0.2]])
@@ -4911,10 +4960,11 @@ class BoardRenderer {
       const r = e === 'N' ? [band, vb.y0, m, cy - vb.y0] : e === 'S' ? [band, cy, m, vb.y1 - cy]
         : e === 'W' ? [vb.x0, band, cx - vb.x0, m] : [cx, band, vb.x1 - cx, m];
       if (r[2] > 0 && r[3] > 0) {
-        this.fillRegion(...r, TERRAIN_COLORS.rail);
-        this.edgeTexture(n, 'rail', ...r);   // the run follows n, so its sleepers do too
+        const fill = this.stripFill(n, 'rail');   // the run follows n, so its sleepers do too
+        this.fillRegion(...r, fill || TERRAIN_COLORS.rail);
+        if (!fill) this.edgeTexture(n, 'rail', ...r);
       }
-      this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail);
+      this.fillRing(cx, cy, R - m, R, aStrip, a1, this.groundFill('ballast') || TERRAIN_COLORS.rail);
       // the same two rails and sleepers edgeTexture lays, bent round the bend
       ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045);
       ctx.beginPath();
@@ -4959,9 +5009,9 @@ class BoardRenderer {
       const terrain = board.edges[e];
       // a water strip is just the near shore of the sea drawWorld painted
       if (terrain !== 'water') {
-        const strip = this.edgeStripRegion(board, e);
-        this.fillRegion(...strip, TERRAIN_COLORS[terrain] || '#333');
-        this.edgeTexture(e, terrain, ...strip);
+        const strip = this.edgeStripRegion(board, e), fill = this.stripFill(e, terrain);
+        this.fillRegion(...strip, fill || TERRAIN_COLORS[terrain] || '#333');
+        if (!fill) this.edgeTexture(e, terrain, ...strip);
       }
       // Subway portals: where a line leaves the board it dives under the strip
       // and the track carries on out of the view, the way a railway does. A
@@ -4988,7 +5038,10 @@ class BoardRenderer {
 
   drawGround(view, board) {
     const ctx = this.ctx;
-    for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
+    // the concourse texture carries the checker and the joints between squares
+    const floor = this.groundFill('concourse');
+    if (floor) this.fillRegion(0, 0, board.w, board.h, floor);
+    else for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
     // A driveway carries the terrain it runs out to, so a boat's jetty and a
     // prop plane's taxiway read as water and tarmac rather than as tarmac road.
     for (const [x, y, terr] of board.driveways) {
@@ -5001,7 +5054,7 @@ class BoardRenderer {
     for (const [x, y] of board.lanes) if (!tracked.has(x + ',' + y)) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
-    if (this.k >= 14) {
+    if (this.k >= 14 && !floor) {
       ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
       for (let x = 0; x <= board.w; x++) this.line([x, 0], [x, board.h]);
       for (let y = 0; y <= board.h; y++) this.line([0, y], [board.w, y]);

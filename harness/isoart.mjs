@@ -313,6 +313,88 @@ for (const key of Object.keys(A)) {
     written++;
   }
 }
+// ---- ground ------------------------------------------------------------------
+// The land and the edge strips round the board, as repeating textures in the
+// same pixel grid as the sheets. Each is drawn top-down over 2 x 2 squares
+// (64 art pixels a side, wrapping), then projected: that makes a 128 x 64
+// picture that tiles the isometric plane, anchored at the grid's origin, so its
+// pixels line up with the tiles'. A strip's texture runs along x with its middle
+// across at y = 32 (one square in); `_y` is the same strip turned to run along
+// y. The runway fills its whole 2 squares across; the sea is drawn straight on
+// the screen's pixels instead, since its crests lie level on the screen. Like the sheets, these are
+// plain pictures to touch up in an editor, and rerunning this overwrites them.
+const hash = (x, y, k = 0) => { let h = (x * 374761393 + y * 668265263 + k * 2147483647) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const wrap = v => ((v % 64) + 64) % 64;
+// speckle: a base colour with a few darker and lighter grains
+const grain = (x, y, base, dark, light, k = 0, dn = 0.12, ln = 0.06) => { const r = hash(x, y, k); return r < dn ? dark : r > 1 - ln ? light : base; };
+const GROUND = {
+  grass: (x, y) => { const r = hash(x >> 1, y, 1); return r < 0.18 ? '#378a37' : r > 0.985 ? '#5cb84a' : r > 0.93 ? '#4aa244' : '#3f9b3f'; },
+  lawn: (x, y) => { const r = hash(x >> 1, y, 2); return r < 0.18 ? '#3f9238' : r > 0.92 ? '#5cb84a' : '#4aa244'; },
+  // open water, drawn on the screen rather than on the ground (see SCREEN):
+  // level crests, each a white cap over a paler trough, and short dark ripples
+  sea: (X, Y) => {
+    for (const [cx, cy] of [[20, 10], [84, 26], [52, 42], [116, 58], [4, 58], [100, 10]]) {
+      const dx = ((X - cx + 192) % 128) - 64, dy = Y - cy;
+      if (dy === 0 && Math.abs(dx) <= 2) return '#e8f6ff';
+      if (dy === 1 && Math.abs(dx) >= 2 && Math.abs(dx) <= 4) return '#6cc8ff';
+    }
+    return hash(X >> 3, Y, 8) < 0.08 ? '#1b90d6' : '#1ea0ea';
+  },
+  // the concourse: squares in two greys, cut into four slabs, with a darker joint round each square
+  concourse: (x, y) => {
+    const base = ((x >> 5) + (y >> 5)) % 2 ? '#848993' : '#8d929c';
+    if (x % 32 === 0 || y % 32 === 0) return '#72767f';
+    if (x % 16 === 0 || y % 16 === 0) return shadeHex(base, 0.93);
+    return grain(x, y, base, shadeHex(base, 0.96), shadeHex(base, 1.04), 3, 0.08, 0.05);
+  },
+  asphalt: (x, y) => grain(x, y, '#555a6e', '#4a4e60', '#62677b', 4),
+  ballast: (x, y) => grain(x, y, '#6b55b0', '#5a4696', '#8470c4', 5, 0.2, 0.12),
+  // a road: tarmac, a white line at each kerb, a dashed yellow centre line
+  road: (x, y) => {
+    if (y === 20 || y === 44) return '#c9ccd6';
+    if ((y === 31 || y === 32) && x % 16 < 9) return '#ffe14d';
+    return GROUND.asphalt(x, y);
+  },
+  // a railway: ballast, a dark sleeper every half square, two steel rails on them
+  rail: (x, y) => {
+    if (y === 28 || y === 36) return '#efe8ff';
+    if (y === 29 || y === 37) return '#8f86b0';
+    if (y >= 24 && y <= 40 && x % 16 < 4) return y === 24 || y === 40 ? '#3f2f70' : '#4a3a80';
+    return GROUND.ballast(x, y);
+  },
+  // an apron: concrete slabs with a yellow taxi line down the middle
+  apron: (x, y) => {
+    if ((y === 31 || y === 32) && x % 16 < 5) return '#fff27a';
+    if (x % 16 === 0 || (y - 18) % 14 === 0) return '#7f889e';
+    return grain(x, y, '#8d96ad', '#838ca3', '#98a1b8', 6, 0.1, 0.05);
+  },
+  // the runway, two squares across: a kerb, a white stripe down each side, a
+  // centre line a square on and a square off
+  runway: (x, y) => {
+    if (y === 0 || y === 63) return '#79839a';
+    if (y === 3 || y === 4 || y === 59 || y === 60) return '#e6e8ee';
+    if ((y === 31 || y === 32) && x < 26) return '#e6e8ee';
+    return grain(x, y, '#3b404d', '#343844', '#454a58', 7, 0.1, 0.05);
+  },
+};
+// textures drawn on the screen's own pixels (X, Y in the 128 x 64 picture), not
+// projected from the ground: things that lie level on the screen, like crests
+const SCREEN = new Set(['sea']);
+function shadeHex(c, f) { const [r, g, b] = hex(c); return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join(''); }
+const strips = new Set(['road', 'rail', 'apron', 'runway']);
+const groundDir = resolve(root, 'assets/ground');
+mkdirSync(groundDir, { recursive: true });
+const groundKeys = [];
+for (const [name, fn] of Object.entries(GROUND)) for (const turn of strips.has(name) ? ['_x', '_y'] : ['']) {
+  const px = new Array(128 * 64);
+  for (let Y = 0; Y < 64; Y++) for (let X = 0; X < 128; X++) {
+    const U = Math.floor(wrap(Y + 0.5 + (X + 0.5) / 2)), V = Math.floor(wrap(Y + 0.5 - (X + 0.5) / 2));
+    px[Y * 128 + X] = SCREEN.has(name) ? fn(X, Y) : turn === '_y' ? fn(V, U) : fn(U, V);
+  }
+  writeFileSync(resolve(groundDir, name + turn + '.png'), png({ IW: 128, IH: 64, px }));
+  groundKeys.push(name + turn);
+}
+
 // As with tilesprites.js: every key is listed whichever were written, and the
 // paths stay literal strings for the bundler to inline.
 const keys = Object.keys(manifest);
@@ -327,8 +409,12 @@ ${keys.map(k => `  ${k}: 'assets/iso/${k}_map.png',`).join('\n')}
 // key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
 // floor, over: [sheet x, sheet y, w, h, frame x, frame y] } }. Frame coordinates are
 // screen pixels from the ground point of the turned bounding box's top corner.
+// The ground textures: 128 x 64, tiling the plane from the grid's origin (see the ground section).
+export const GROUND_TEX = {
+${groundKeys.map(k => `  ${k}: 'assets/ground/${k}.png',`).join('\n')}
+};
 export const ISO_FRAMES = {
 ${keys.map(k => `  ${k}: ${JSON.stringify(manifest[k])},`).join('\n')}
 };
 `);
-console.log(`wrote ${written} iso sheets to assets/iso/ and the manifest to src/ui/isosprites.js`);
+console.log(`wrote ${written} iso sheets to assets/iso/, ${groundKeys.length} ground textures to assets/ground/ and the manifest to src/ui/isosprites.js`);

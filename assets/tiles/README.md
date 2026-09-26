@@ -24,4 +24,6 @@ renderer turns it toward the edge the tile draws from. Design doc §13.3 has the
 default; rerun it after `tileart.mjs`. Each `assets/iso/<key>.png` is a plain
 picture of the tile's four turns that can be touched up in an image editor;
 `<key>_map.png` beside it holds the lighting and cell data. Rerunning the
-baker overwrites both. Design doc §13.3 says how.
+baker overwrites both. It also writes the ground textures in `assets/ground/`
+(grass, sea, road, rail, apron, runway, concourse), likewise plain pictures.
+Design doc §13.3 says how.
