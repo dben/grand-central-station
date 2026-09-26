@@ -33,7 +33,7 @@ const isInk = p => p && p[0] < 24 && p[1] < 16 && p[2] < 48;
 function scene(key, layers, grey) {
   const any = layers.floor || layers.over;
   const { W, H, IW, IH, ox, oy, inside } = any;
-  const def = tileDef(key.replace(/_lane$/, '')), lane = key.endsWith('_lane');
+  const def = tileDef(key.replace(/_lane(_alt)?$/, '')), lane = /_lane(_alt)?$/.test(key);
   const z = lane ? 0 : tileHeight(def);
   const px = s => s ? s.px.map(rgba) : null;
   const floor = px(layers.floor), over = px(layers.over);

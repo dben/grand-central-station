@@ -970,8 +970,10 @@ contact sheet of the lot).
     depth, clipped to the opening at ground level so the ground's edge hides what is under it,
     and draws each step's walls on the two edges that face the camera. Steps paint deepest first,
     so the step above covers the part of each wall it hides and what shows is the riser. The
-    subways have flights of six steps ending in a dark tunnel mouth, the car park a ten-step ramp,
-    and the submarine dock a one-step pool; a block below ground (the submarine) is clipped to the
+    subways have flights of six steps ending in a dark tunnel mouth, the car park a ten-step ramp
+    down to its garage, a sunken bay at the foot of the L 0.2 deep with the cars parked in it
+    (deeper, and a pit's near walls hide most of what is in it), and the submarine dock a
+    one-step pool; a block below ground (the submarine) is clipped to the
     opening it sits in. A whole-footprint pit came first and read as a hole, not a station.
   - No tile casts the old offset drop shadow: it showed as a dark sliver under every glass box.
 - **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
@@ -1001,7 +1003,9 @@ contact sheet of the lot).
   tile with `lane` art in `tileart.mjs` gets a one-square image, `<key>_lane`, that `laneInfos`
   lays along every square of the lane and one past the edge, turned to run with it: the
   monorail's beam on a post a square, the lifts' two cables with a gondola out on one and back
-  on the other, the tram's rails in the floor. Beam, cables and gondolas are floating blocks at
+  on the other, the tram's rails in the floor. A tile with `laneAlt` art has a second square,
+  `<key>_lane_alt`, laid on every other square: the lifts carry one car a square, out on one
+  cable and back on the other in turn, and have four cars on the tile itself (from a dozen). Beam, cables and gondolas are floating blocks at
   the height they have on the tile, so the crowd walks across the lane under them. A lane whose
   tile has no track art keeps its hatching.
 - **Colour:** the main surfaces take the tile's own colour (`colorForDef`), and the walls stay the

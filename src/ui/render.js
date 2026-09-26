@@ -962,15 +962,21 @@ export class BoardRenderer {
   // info, with the lane art (`<key>_lane`) turned to run along the lane, so the
   // same sprite and block drawing serves.
   laneInfos(t, info) {
-    const key = t.key + '_lane', floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
-    const vertical = info.bh0 > info.bw0, lane = t.lane || [];
-    const f = this.artMode === 'iso' && isoFrame(key, { rot: vertical ? 1 : 0, mirror: 0 }), iso = f && isoArt(key, f.m, colorForDef(info.def), false, false);
-    if (!floorImg && !blockArt && !iso) return [];
+    const vertical = info.bh0 > info.bw0, lane = t.lane || [], tf = { rot: vertical ? 1 : 0, mirror: 0 };
+    // the art for a square: `<key>_lane`, or on every other square `<key>_lane_alt` where there is one
+    const art = key => {
+      const floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
+      const f = this.artMode === 'iso' && isoFrame(key, tf), iso = f && isoArt(key, f.m, colorForDef(info.def), false, false);
+      return floorImg || blockArt || iso ? { floorImg, blocks, blockArt, iso } : null;
+    };
+    const main = art(t.key + '_lane'), alt = art(t.key + '_lane_alt') || main;
+    if (!main) return [];
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
     return lane.concat([out]).map(([x, y]) => {
-      const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf: { rot: vertical ? 1 : 0, mirror: 0 }, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
+      const { floorImg, blocks, blockArt, iso } = (x + y) % 2 ? alt : main;
+      const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
       if (iso) return Object.assign(li, { iso: { flip: false, cells: iso } });
       if (blockArt) Object.assign(li, { blockArt, blockTop: Math.max(0, ...blocks.map(b => b[5])) + 0.05, blocks: new Map([[x + ',' + y, blocks]]) });
       return li;
