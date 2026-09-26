@@ -376,6 +376,7 @@ const TILES = {
     over(c, t) { canopy(c, t, 24); train(c, 2, 40, 156, 4, 11, '#e6e6f0', RED); },
   },
   tram_stop: {
+    lane: { floor(c) { rails(c, 17, 26); } },
     floor(c, t) { platform(c, t); c.R(0, 14, c.W, 16, mix('#9a94b2', t, 0.25)); c.R(0, 17, c.W, 1, STEEL_D); c.R(0, 26, c.W, 1, STEEL_D); shadow(c, 6, 16, 84, 12); frame(c, t); },
     over(c, t) {
       c.box(4, 2, 40, 7, shade(t, 1.0)); c.R(5, 3, 39, 1, shade(t, 1.3)); c.box(52, 2, 40, 7, shade(t, 1.0)); c.R(53, 3, 39, 1, shade(t, 1.3));
@@ -383,21 +384,26 @@ const TILES = {
     },
   },
   monorail: {
-    floor(c, t) { platform(c, t); shadow(c, 0, 16, c.W, 10); frame(c, t); },
+    // the beam runs on out along the lane on a post a square
+    lane: { floor: laneFloor, over(c) { c.block(13, 19, 6, 6, 0.1); beam(c, 0, 32); } },
+    floor(c, t) { platform(c, t); frame(c, t); },
     over(c, t) {
       for (let x = 8; x < c.W; x += 30) c.box(x, 1, 10, 7, shade(t, 1.0));
       // the guideway beam, and the pod riding on top of it
-      c.R(0, 18, c.W, 8, '#8f86b0'); c.R(0, 18, c.W, 1, '#d7cce8'); c.block(0, 17, c.W, 10, 0.16);
+      for (let x = 13; x < c.W; x += 32) c.block(x, 19, 6, 6, 0.1);
+      beam(c, 0, c.W);
       const w = 14; c.blot(8, 15, 112, w, (i, j) => { const d = Math.abs(j - (w - 1) / 2), r = w / 2; return i < r ? d <= Math.sqrt(r * r - (r - i) ** 2) : i > 112 - r ? d <= Math.sqrt(Math.max(0, r * r - (i - 112 + r) ** 2)) : true; },
         (i, j) => j === 1 || j === w - 2 ? ((i % 7) ? GLASS : WHITE) : Math.abs(j - (w - 1) / 2) < 1.5 ? t : WHITE);
       c.block(7, 14, 114, w + 2, 0.36, 0.16);
     },
   },
   ski_lift: {
+    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 4, 9, 8, 6, 0.1); gondola(c, t, 20, 22, 8, 6, 0.1); } },
     floor(c, t) { snow(c); frame(c, t); },
     over(c, t) { lift(c, t, 16, 8, 6, 0.1); },
   },
   alpine_lift: {
+    lane: { floor: laneFloor, over(c, t) { cables(c); gondola(c, t, 2, 10, 12, 9, 0.14); gondola(c, t, 18, 21, 12, 9, 0.14); } },
     floor(c, t) { snow(c); for (const [x, y] of [[40, 4], [96, 22], [130, 6]]) c.blot(x - 3, y - 3, 7, 7, (i, j) => Math.abs(i - 3) + Math.abs(j - 3) <= 3, '#2f7a3f'); frame(c, t); },
     over(c, t) { lift(c, t, 26, 12, 9, 0.14); },
   },
@@ -689,14 +695,22 @@ function snow(c) { c.each((x, y) => c.P(x, y, (x * 7 + y * 3) % 19 === 0 ? '#c8d
 // the box, and cars hanging under them, going out on one and back on the other.
 function lift(c, t, step, w, h, z) {
   for (const x of [2, c.W - 12]) { c.box(x, 3, 10, 26, STEEL_D); c.R(x + 1, 12, 8, 8, t); c.block(x - 1, 2, 12, 28, 0.34); }
-  c.R(12, 9, c.W - 24, 1, INK); c.R(12, 22, c.W - 24, 1, INK);
+  cables(c, 12, c.W - 24);
   for (let x = 16; x < c.W - 16 - w; x += step) {
-    for (const [cx, cy] of [[x, 9 - (h >> 1)], [x + (step >> 1), 22 - (h >> 1)]]) {
-      if (cx + w > c.W - 14) continue;
-      c.box(cx, cy, w, h, t); c.R(cx + 1, cy + 1, w - 2, 1, GLASS); c.block(cx - 1, cy - 1, w + 2, h + 2, 0.2, 0.2 - z);
-    }
+    for (const [cx, cy] of [[x, 9], [x + (step >> 1), 22]]) if (cx + w <= c.W - 14) gondola(c, t, cx, cy, w, h, z);
   }
 }
+// The two haul cables, strung at the height of the tile's top: thin floating
+// blocks, so they carry on over the lane at the same height.
+function cables(c, x = 0, w = c.W) { for (const y of [9, 22]) { c.R(x, y, w, 1, INK); c.block(x, y - 1, w, 3, 0.2, 0.185); } }
+// A car hanging from the cable at row `cy`, going out on one and back on the other.
+function gondola(c, t, cx, cy, w, h, z) { const y = cy - (h >> 1); c.box(cx, y, w, h, t); c.R(cx + 1, y + 1, w - 2, 1, GLASS); c.block(cx - 1, y - 1, w + 2, h + 2, 0.2, 0.2 - z); }
+// The monorail guideway: a beam up on posts, floating clear of the crowd.
+function beam(c, x, w) { c.R(x, 18, w, 8, '#8f86b0'); c.R(x, 18, w, 1, '#d7cce8'); c.R(x, 25, w, 1, '#6c6880'); c.block(x, 17, w, 10, 0.16, 0.1); }
+// Tram rails let into the floor, sleepers between them.
+function rails(c, a, b, x = 0, w = c.W) { for (let i = x + 2; i < x + w; i += 6) c.R(i, a + 1, 2, b - a - 1, '#7c7690'); c.R(x, a, w, 1, STEEL_D); c.R(x, b, w, 1, STEEL_D); }
+// Under a floating track, nothing: the lane is concourse, walked across.
+function laneFloor() {}
 
 // A flight of stairs down into the ground: `n` steps along `dir`, each a
 // little darker than the one above it, with a lit nosing at its top edge and
@@ -749,11 +763,17 @@ function png(c) {
 }
 
 // Draw every tile's layers; the manifest needs all their blocks, whichever are written.
-const drawn = Object.fromEntries(Object.entries(TILES).map(([key, art]) => {
-  const def = tileDef(key), tint = colorForDef(def), out = {};
-  for (const layer of ['floor', 'over']) if (art[layer]) { out[layer] = sheet(def.shape, art.pad); art[layer](out[layer], tint, def); }
-  if (out.floor && out.over) castShadows(out.over, out.floor);
-  return [key, out];
+// A corridor tile's `lane` art is a one-square image of its track, drawn as
+// `<key>_lane` along the lane it reserves (laneInfos in render.js).
+const drawn = Object.fromEntries(Object.entries(TILES).flatMap(([key, art]) => {
+  const def = tileDef(key), tint = colorForDef(def);
+  const draw = (a, shape) => {
+    const out = {};
+    for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
+    if (out.floor && out.over) castShadows(out.over, out.floor);
+    return out;
+  };
+  return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : [])];
 }));
 // Anything floating (a plane, a tree top, a gondola) casts its own outline on
 // the floor, a little down and to the right, so it reads as off the ground.
@@ -806,7 +826,7 @@ export const SPRITES_FLOOR = {
 ${list('floor')}
 };
 export const SPRITE_PAD = {
-${table(keys.filter(k => TILES[k].pad).map(k => [k, TILES[k].pad]))}
+${table(keys.filter(k => TILES[k] && TILES[k].pad).map(k => [k, TILES[k].pad]))}
 };
 export const SPRITE_SINKS = {
 ${table(keys.filter(k => drawn[k].floor && drawn[k].floor.sinks.length).map(k => [k, drawn[k].floor.sinks]))}

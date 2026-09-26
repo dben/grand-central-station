@@ -338,6 +338,12 @@ export class BoardRenderer {
         if (info.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, info, info.floorImg, 0) });
         if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
       }
+      // a corridor tile's track, carried along its lane and one square past the edge
+      for (const li of this.laneInfos(t, info)) {
+        const [x, y] = [li.bx0, li.by0];
+        if (li.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, li, li.floorImg, 0) });
+        if (li.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, li) });
+      }
       // a ship past the south edge draws after the tile, so its label waits for it
       if (info.flush || info.out.length) groundLabels.push(info);
     }
@@ -603,7 +609,10 @@ export class BoardRenderer {
       this.fillCell(x, y, TERRAIN_COLORS[terr || 'road']);
       this.fillRegion(x + 0.42, y + 0.42, 0.16, 0.16, terr === 'water' ? 'rgba(255,255,255,0.55)' : '#6d7288');
     }
-    for (const [x, y] of board.lanes) this.hatchCell(x, y, '#1fcfb0');
+    // a lane with its track drawn over it needs no hatching to say it's taken
+    const tracked = new Set();
+    for (const t of board.tiles) if (t.lane && spriteFloor(t.key + '_lane')) for (const [x, y] of t.lane) tracked.add(x + ',' + y);
+    for (const [x, y] of board.lanes) if (!tracked.has(x + ',' + y)) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
     if (this.k >= 14) {
@@ -924,6 +933,24 @@ export class BoardRenderer {
       }
     }
     return info;
+  }
+
+  // The squares a corridor tile's track is drawn over: its lane out to the
+  // edge, and one square past it. Each gets a one-cell stand-in for the tile's
+  // info, with the lane art (`<key>_lane`) turned to run along the lane, so the
+  // same sprite and block drawing serves.
+  laneInfos(t, info) {
+    const key = t.key + '_lane', floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
+    if (!floorImg && !blockArt) return [];
+    const vertical = info.bh0 > info.bw0, lane = t.lane || [];
+    const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
+    const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
+    const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
+    return lane.concat([out]).map(([x, y]) => {
+      const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf: { rot: vertical ? 1 : 0, mirror: 0 }, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
+      if (blockArt) Object.assign(li, { blockArt, blockTop: Math.max(0, ...blocks.map(b => b[5])) + 0.05, blocks: new Map([[x + ',' + y, blocks]]) });
+      return li;
+    });
   }
 
   // Grid position of pixel (u, v) of a tile's image: the same mirror, turn and
