@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, SPRITE_CELL_PX } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, SPRITE_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -324,10 +324,17 @@ export class BoardRenderer {
       const info = this.tileInfo(t, view, occAt);
       for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
-        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
+        if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
+        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
         else if (info.img) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
       }
-      if (info.flush) groundLabels.push(info);
+      // the band past the edge: the floor art flat on the strip, blocks on it
+      for (const [x, y] of info.out) {
+        if (info.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, info, info.floorImg, 0) });
+        if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
+      }
+      // a ship past the south edge draws after the tile, so its label waits for it
+      if (info.flush || info.out.length) groundLabels.push(info);
     }
     // Checkpoint fences stand on the grid lines between cells. A panel sorts
     // just behind the cell south (or east) of it, so a traveller or building
@@ -864,13 +871,54 @@ export class BoardRenderer {
       tf = shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])); base = shapeBaseSize(d.shape);
     }
     const z = tileHeight(d);
-    return {
-      tile: t, def: d, z, flush: z <= 0, dim, img, floorImg, tf, base, bx0, by0, bw0, bh0,
+    // The image covers the bounding box plus any pad, in the sprite's own frame.
+    const pad = (tf && spritePad(t.key)) || [0, 0, 0, 0];
+    const rect = base ? [-base.w / 2 - pad[3], -base.h / 2 - pad[0], base.w + pad[1] + pad[3], base.h + pad[0] + pad[2]] : null;
+    // A padded tile on the edge it works from shows the band in the cells just
+    // past that edge: the ship at the berth, the airliner at the jetway.
+    const out = [];
+    if (pad.some(v => v)) for (const e of t.edges || []) for (const [x, y] of t.cells) {
+      if (e === 'N' && y === 0) out.push([x, -1]); else if (e === 'S' && y === this.h - 1) out.push([x, this.h]);
+      else if (e === 'W' && x === 0) out.push([-1, y]); else if (e === 'E' && x === this.w - 1) out.push([this.w, y]);
+    }
+    const info = {
+      tile: t, def: d, z, flush: z <= 0, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
       color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
       left: t.cells.length, // cells still to draw; the label follows the last one
     };
+    // Blocks, sorted into the cells they stand on: each cell draws its share
+    // clipped to its own column, so a wall in front still covers a bus behind it.
+    const blocks = tf && spriteBlocks(t.key), blockArt = blocks && spriteBlockArt(t.key);
+    if (blockArt) {
+      info.blockArt = blockArt; info.blockTop = Math.max(...blocks.map(b => b[5])) + 0.05;
+      info.blocks = new Map();
+      for (const [x, y] of t.cells.concat(out)) {
+        const here = blocks.filter(([u, v, w, h]) => {
+          const a = this.spritePoint(info, u, v), b = this.spritePoint(info, u + w, v + h);
+          return Math.max(a[0], b[0]) > x && Math.min(a[0], b[0]) < x + 1 && Math.max(a[1], b[1]) > y && Math.min(a[1], b[1]) < y + 1;
+        });
+        if (here.length) info.blocks.set(x + ',' + y, here);
+      }
+    }
+    return info;
+  }
+
+  // Grid position of pixel (u, v) of a tile's image: the same mirror, turn and
+  // offset drawCellSprite hands the canvas.
+  spritePoint(info, u, v) {
+    let lx = info.rect[0] + u / SPRITE_CELL_PX, ly = info.rect[1] + v / SPRITE_CELL_PX;
+    if (info.tf.mirror) lx = -lx;
+    for (let i = 0; i < info.tf.rot; i++) [lx, ly] = [-ly, lx];
+    return [info.bx0 + info.bw0 / 2 + lx, info.by0 + info.bh0 / 2 + ly];
+  }
+  // and back: the image pixel under grid point (gx, gy)
+  imagePoint(info, gx, gy) {
+    let lx = gx - info.bx0 - info.bw0 / 2, ly = gy - info.by0 - info.bh0 / 2;
+    for (let i = 0; i < info.tf.rot; i++) [lx, ly] = [ly, -lx];
+    if (info.tf.mirror) lx = -lx;
+    return [(lx - info.rect[0]) * SPRITE_CELL_PX, (ly - info.rect[1]) * SPRITE_CELL_PX];
   }
 
   // The south- and east-facing sides of one cell, drawn only where the
@@ -936,7 +984,46 @@ export class BoardRenderer {
     // Crisp pixels while an art pixel covers a couple of screen pixels; below
     // that, nearest-neighbour drops whole rows and lines break up, so blend.
     ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
-    ctx.drawImage(img, -base.w / 2, -base.h / 2, base.w, base.h);
+    ctx.drawImage(img, ...info.rect);
+    ctx.restore();
+  }
+
+  // One cell's share of a tile's blocks, clipped to the cell's column. A block
+  // is its darkened copy drawn once per screen pixel from z0 up to z1 (a dozen
+  // copies at most), then its art on top: an extrusion that follows the outline
+  // of the car or the hull. Each cell draws only the part of the block over its
+  // own ground, since copies only move up the screen, and that part stays in
+  // its column.
+  drawCellBlocks(x, y, info) {
+    const list = info.blocks && info.blocks.get(x + ',' + y);
+    if (!list) return;
+    const ctx = this.ctx, tf = info.tf, S = SPRITE_CELL_PX, dpr = this.dpr || 1, art = info.blockArt;
+    ctx.save();
+    const col = [[x, y, info.blockTop], [x + 1, y, info.blockTop], [x + 1, y, 0], [x + 1, y + 1, 0], [x, y + 1, 0], [x, y + 1, info.blockTop]];
+    ctx.beginPath();
+    col.forEach(([gx, gy, z], i) => { const [px, py] = this.project(gx, gy); ctx[i ? 'lineTo' : 'moveTo'](px, py - z * this.hz); });
+    ctx.closePath(); ctx.clip();
+    const origin = this.project(0, 0);
+    ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1]);
+    ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
+    ctx.rotate(tf.rot * Math.PI / 2);
+    if (tf.mirror) ctx.scale(-1, 1);
+    ctx.imageSmoothingEnabled = this.k * dpr < 2 * S;
+    if (info.dim) ctx.globalAlpha = 0.5;
+    const m = ctx.getTransform(), [ix, iy] = info.rect;
+    const a = this.imagePoint(info, x, y), b = this.imagePoint(info, x + 1, y + 1);
+    const cu0 = Math.min(a[0], b[0]), cu1 = Math.max(a[0], b[0]), cv0 = Math.min(a[1], b[1]), cv1 = Math.max(a[1], b[1]);
+    for (const [u0, v0, w0, h0, z0, z1, round] of list) {
+      const u = Math.max(u0, cu0), v = Math.max(v0, cv0), w = Math.min(u0 + w0, cu1) - u, h = Math.min(v0 + h0, cv1) - v;
+      if (w <= 0 || h <= 0) continue;
+      const lo = z0 * this.hz, hi = z1 * this.hz, step = Math.max(1, (hi - lo) / 12);
+      // each copy scaled about the whole block's centre: 1 all the way up, or a bulge
+      const cx = ix + (u0 + w0 / 2) / S, cy = iy + (v0 + h0 / 2) / S;
+      const at = f => [cx + f * (ix + u / S - cx), cy + f * (iy + v / S - cy), f * w / S, f * h / S];
+      const size = dz => round ? 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (dz - lo) / (hi - lo))) : 1;
+      for (let dz = lo; dz < hi; dz += step) { ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - dz * dpr); ctx.drawImage(art.side, u, v, w, h, ...at(size(dz))); }
+      ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - hi * dpr); ctx.drawImage(art.top, u, v, w, h, ...at(size(hi)));
+    }
     ctx.restore();
   }
 
