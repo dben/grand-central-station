@@ -582,11 +582,14 @@ export function simulateCurrent(s, seed = null, seeds = 1) {
   return out;
 }
 // Spread and mean of a set of per-seed point and cash deltas (or totals).
+// `ptsFrom`/`ptsTo` are the badge's range: the extremes once `rangeTrim`
+// seeds are dropped from each end.
 function spread(dp, dm) {
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const pts = mean(dp), cash = mean(dm);
   dp = dp.slice().sort((a, b) => a - b); dm = dm.slice().sort((a, b) => a - b);
-  return { pts, cash, ptsLo: dp[0], ptsHi: dp[dp.length - 1], cashLo: dm[0], cashHi: dm[dm.length - 1] };
+  const trim = Math.min(CONFIG.placement.rangeTrim, Math.floor((dp.length - 1) / 2));
+  return { pts, cash, ptsLo: dp[0], ptsHi: dp[dp.length - 1], ptsFrom: dp[trim], ptsTo: dp[dp.length - 1 - trim], cashLo: dm[0], cashHi: dm[dm.length - 1] };
 }
 
 export function runWeek(s) {

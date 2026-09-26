@@ -649,10 +649,23 @@ export class BoardRenderer {
     this.outlineCells(info.cells, `rgba(${c},0.5)`, 1.5, 0);
   }
 
+  // A star the week may not deliver: a slow fade that runs outward from the
+  // sure ones, so the furthest star is the faintest, broken now and then by a
+  // stutter like a failing bulb. `far` is 0 for the star nearest the sure end.
+  maybeAlpha(far) {
+    const t = this.time;
+    const wave = 0.5 + 0.5 * Math.sin(t * 3.2 - far * 0.9);
+    const stutter = Math.sin(t * 23 + far * 7.1) * Math.sin(t * 5.3 + far * 2.9) > 0.8 ? 0.35 : 1;
+    return (0.25 + 0.6 * wave) * Math.max(0.45, 1 - far * 0.08) * stutter;
+  }
+
   // What a pending action is worth, floated over the tile it would affect: the
-  // star delta, one star per 1,000 points, always rounded down. Ten or fewer are
-  // drawn as glyphs, more as a plain "+12 ★" - never both. Losing placements
-  // show red stars blinking to black.
+  // range of star deltas over the preview weeks, `stars` = [from, to], one star
+  // per 1,000 points, rounded down. Solid stars are the ones every week in the
+  // range agrees on and hollow ones the rest, which flicker because they may not
+  // come. Ten or fewer are drawn as glyphs, more as "+7★ to +12★" - never both.
+  // Losses are red behind a minus, the solid ones blinking to black; a range
+  // that crosses zero agrees on nothing, so every star in it is hollow.
   drawStarBadge(badge) {
     const cells = badge.cells || [];
     if (!cells.length) return;
@@ -665,23 +678,19 @@ export class BoardRenderer {
 
     if (badge.reason) lines.push({ text: badge.reason, color: '#ff9db4', size: small });
     else if (badge.stars == null) lines.push({ text: '…', color: 'rgba(255,255,255,0.65)', size: fs });
-    else {
-      const n = badge.stars, mag = Math.abs(n);
-      if (mag > STAR_GLYPH_MAX) {
-        lines.push({ text: `${n > 0 ? '+' : '−'}${mag} ★`, color: n > 0 ? '#ffd15a' : '#ff4f7a', size: fs * 0.8, weight: 800 });
-      } else {
-        const stars = [];
-        for (let i = 0; i < mag; i++) stars.push({ bad: n < 0 });
-        if (!stars.length) stars.push({ zero: true });
-        lines.push({ stars, size: fs });
-      }
-    }
+    else lines.push({ stars: starRow(badge.stars), size: fs });
     for (const w of (badge.warnings || [])) lines.push({ text: w, color: '#f0c46a', size: small });
 
     const gap = 3;
+    const glyphW = (g, size) => {
+      if (g.gap) return size * 0.35;
+      if (g.text == null) return size * 0.92;
+      ctx.font = glyphFont(g, size);
+      return ctx.measureText(g.text).width + (g.star ? size * 0.08 : size * 0.04);
+    };
     const measure = ln => {
       if (!ln.stars) { ctx.font = `${ln.weight || 600} ${ln.size}px system-ui, sans-serif`; return ctx.measureText(ln.text).width; }
-      return ln.stars.length * ln.size * 0.92;
+      return ln.stars.reduce((w, g) => w + glyphW(g, ln.size), 0);
     };
     const widths = lines.map(measure);
     const heights = lines.map(ln => ln.size * 1.05);
@@ -704,16 +713,24 @@ export class BoardRenderer {
         ctx.textAlign = 'center'; ctx.fillStyle = ln.color;
         ctx.fillText(ln.text, cx, y);
       } else {
-        ctx.font = `${ln.size}px system-ui, sans-serif`;
         ctx.textAlign = 'left';
         let x = cx - widths[i] / 2;
-        for (const st of ln.stars) {
-          if (st.zero) ctx.fillStyle = 'rgba(255,255,255,0.28)';
-          else if (st.bad) ctx.fillStyle = mixHex('#ff4f7a', '#07070a', blink);
-          else ctx.fillStyle = '#ffd15a';
-          ctx.fillText(st.zero ? '☆' : '★', x, y);
-          x += ln.size * 0.92;
+        for (const g of ln.stars) {
+          const w = glyphW(g, ln.size);
+          if (g.gap) { x += w; continue; }
+          const col = g.zero ? 'rgba(255,255,255,0.28)' : g.bad ? '#ff4f7a' : '#ffd15a';
+          ctx.globalAlpha = g.hollow ? this.maybeAlpha(g.far) : 1;
+          ctx.fillStyle = g.bad && g.solid ? mixHex(col, '#07070a', blink) : col;
+          if (g.text != null) {
+            ctx.font = glyphFont(g, ln.size);
+            ctx.fillText(g.text, x, y + (g.star ? ln.size * 0.1 : g.small ? ln.size * 0.28 : 0));
+          } else {
+            ctx.font = `${ln.size}px system-ui, sans-serif`;
+            ctx.fillText(g.hollow || g.zero ? '☆' : '★', x, y);
+          }
+          x += w;
         }
+        ctx.globalAlpha = 1;
       }
       y += heights[i] + gap;
     });
@@ -1104,6 +1121,34 @@ function cellsWithin(a, b, r) {
 // Above this many stars a row stops being countable, so the badge switches to
 // a plain number. Mirrors STAR_GLYPH_MAX in the DOM chrome.
 const STAR_GLYPH_MAX = 10;
+
+// The glyphs for a badge range [lo, hi] in whole stars. Gains read out from
+// zero, solid first; losses sit behind a minus with the sure ones nearest zero,
+// on the right. `far` counts each hollow star away from the sure end, for the
+// fade. Past STAR_GLYPH_MAX the ends become text, with the unsure ones hollow.
+const glyphFont = (g, size) => `${g.small ? 600 : 800} ${size * (g.small ? 0.5 : g.star ? 0.8 : 0.9)}px system-ui, sans-serif`;
+function starRow([lo, hi]) {
+  const sure = lo > 0 ? lo : hi < 0 ? hi : 0;   // the stars every week agrees on
+  if (Math.max(Math.abs(lo), Math.abs(hi)) > STAR_GLYPH_MAX) {
+    const end = (n, hollow) => [{ text: n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0', bad: n < 0, zero: n === 0, hollow, solid: !hollow, far: 0 },
+      { text: hollow ? '☆' : '★', star: true, bad: n < 0, zero: n === 0, hollow, solid: !hollow, far: 0 }];
+    if (lo === hi) return end(lo, false);
+    return [...end(lo, lo !== sure), { gap: true }, { text: 'to', zero: true, small: true }, { gap: true }, ...end(hi, hi !== sure)];
+  }
+  const out = [];
+  if (lo < 0) {
+    out.push({ text: '−', bad: true });
+    for (let i = lo; i < Math.min(hi, 0); i++) out.push({ bad: true, hollow: true, far: (Math.min(hi, 0) - 1) - i });
+    for (let i = Math.min(hi, 0); i < 0; i++) out.push({ bad: true, solid: true });
+  }
+  if (hi > 0) {
+    if (lo < 0) out.push({ gap: true }, { text: '+' });
+    for (let i = 0; i < Math.max(sure, 0); i++) out.push({ solid: true });
+    for (let i = Math.max(lo, 0); i < hi; i++) out.push({ hollow: true, far: i - Math.max(lo, 0) });
+  }
+  if (!out.length) out.push({ zero: true });
+  return out;
+}
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();

@@ -1,7 +1,7 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline } from '../src/game/run.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
@@ -486,6 +486,16 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(sh.w === 8 && sh.h === 16 && line.line === sh.h / 2, 'the fence halves a 8x16 board into an airside and a landside 8x8');
   ok(createRun({ modeKey: 'sky_harbour', seed: 7 }).board.tiles.length === 1, 'a new run is handed that board');
   ok(startBoard(MODES.terminal).tiles.length === 0, 'a level with no starting tiles begins empty');
+}
+
+// the badge quotes a range: the preview weeks with the best and worst dropped
+{
+  const er = createRun({ seed: 3 }); er.week = 3;
+  placeTile(er.board, 'train_station', 4, 0, 0);
+  placeTile(er.board, 'bus_stop', 3, 10, 0);
+  const e = estimatePlacement(er, 'coffee', 5, 5, 0);
+  ok(e && e.ptsLo <= e.ptsFrom && e.ptsFrom <= e.ptsTo && e.ptsTo <= e.ptsHi,
+    `the star badge quotes the trimmed range of the preview weeks (${Math.round(e.ptsFrom)} to ${Math.round(e.ptsTo)}, of ${Math.round(e.ptsLo)} to ${Math.round(e.ptsHi)})`);
 }
 
 const rperf0 = performance.now();
