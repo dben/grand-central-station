@@ -347,6 +347,18 @@ function renderShop() {
   const fee = G.rerollFee(state);
   $('btn-reroll').innerHTML = `Reroll${fee ? `<br><small>$${fmt(fee)}</small>` : ''}`;
   $('btn-reroll').disabled = state.phase !== 'shop' || state.ap < 1 || state.money < fee;
+  // With the week's points spent, Reroll has nothing to pay with, so its place
+  // goes to the one thing cash can still buy: another action point.
+  const hours = G.extraHoursOnSale(state) && ui.mode !== 'playback';
+  $('btn-reroll').classList.toggle('hidden', hours);
+  const hb = $('btn-hours');
+  hb.classList.toggle('hidden', !hours);
+  if (hours) {
+    const c = G.extraHoursCost(state);
+    hb.innerHTML = ''; hb.append('+', apPips(1), h('br'), h('small', {}, `$${fmt(c)}`));
+    hb.disabled = state.money < c;
+    hb.title = `Extra hours: one more action this week for $${fmt(c)}. Each one after that costs twice as much.`;
+  }
 }
 
 // ------------------------------------------------------------ popup
@@ -1188,6 +1200,8 @@ function boot() {
   });
   $('btn-run').addEventListener('click', confirmRunWeek);
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
+  // the card in hand stays in hand: buying the hours is usually for it
+  $('btn-hours').addEventListener('click', () => { const r = G.buyExtraHours(state); if (!r.ok) hint(r.reason); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
   const applyLayout = () => {
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);

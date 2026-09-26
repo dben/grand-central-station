@@ -124,6 +124,14 @@ try {
   const back = await weekState();
   check('redo puts the week back exactly as it started', JSON.stringify(back) === JSON.stringify(week1), `${JSON.stringify(spent)} -> ${JSON.stringify(back)} (was ${JSON.stringify(week1)})`);
   check('and takes its own buttons away again', await page.locator('#tl-redo').count() === 0 && await page.locator('#btn-redo-big:not(.hidden)').count() === 0);
+  // With the week's points spent, Reroll gives way to extra hours, which buy one more.
+  const hoursState = () => page.evaluate(() => ({ ap: window.gcs.state.ap, reroll: !document.getElementById('btn-reroll').classList.contains('hidden'), hours: !document.getElementById('btn-hours').classList.contains('hidden') }));
+  await page.evaluate(() => { window.gcs.saved = window.gcs.state; const s = window.gcs.G.createRun({ seed: 2 }); s.week = 6; s.ap = 0; s.money = 5000; window.gcs.state = s; window.gcs.refresh(); });
+  const h0 = await hoursState();
+  await page.locator('#btn-hours').click(); await page.waitForTimeout(150);
+  const h1 = await hoursState();
+  check('spent points put extra hours where Reroll was, and they buy one', h0.hours && !h0.reroll && h1.ap === 1 && h1.reroll && !h1.hours, JSON.stringify([h0, h1]));
+  await page.evaluate(() => { window.gcs.state = window.gcs.saved; window.gcs.refresh(); });
   check('Hard never offers it', await page.evaluate(() => {
     const G = window.gcs.G, h = G.createRun({ modeKey: 'terminal', diffKey: 'hard', seed: 1 });
     return !h.weekStart && !G.weekTouched(h) && !G.redoWeek(h).ok;

@@ -22,7 +22,9 @@ import { simulateWeek, simulateWeeks, mergeMods } from '../sim/sim.js';
 // is not the run the player left. Discarding is the honest outcome here.
 // 10: money weeks and the Double Week (`weekCash`, `cashSwept`), and five new
 // events in the plan, so an old plan names weeks that no longer line up.
-export const SAVE_VERSION = 10;
+// 11: extra hours (`hoursBought`) and the endless quota ramp, which moves
+// every target past week 16.
+export const SAVE_VERSION = 11;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -34,7 +36,7 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0, hoursBought: 0,
     money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
     board: startBoard(mode),
     shop: { cards: [], rerolls: 0 },
@@ -211,6 +213,22 @@ export function earlyFinishPerAP(s, week = s.week) {
   return e.earlyFinishBase + e.earlyFinishPerWeek * (week - 1);
 }
 export function earlyFinishBonus(s, ap = s.ap) { return earlyFinishPerAP(s) * Math.max(0, ap); }
+
+// Extra hours: cash for an action point, once the week's own are spent. The
+// price climbs with the week and doubles with each one bought that week.
+export function extraHoursCost(s) {
+  const x = CONFIG.economy.extraHours;
+  return Math.round(x.base * Math.pow(x.growth, s.week - 1) * Math.pow(x.step, s.hoursBought || 0));
+}
+export function extraHoursOnSale(s) { return s.phase === 'shop' && s.ap < 1 && s.week >= runRules(s).extraHoursFromWeek; }
+export function buyExtraHours(s) {
+  if (!extraHoursOnSale(s)) return fail(s.ap >= 1 ? 'Spend the action points you have first' : 'No extra hours here');
+  const cost = extraHoursCost(s);
+  if (s.money < cost) return fail(`Need $${cost}`);
+  s.money -= cost; s.ap += 1; s.hoursBought = (s.hoursBought || 0) + 1;
+  log(s, `Paid $${cost} for extra hours`);
+  return { ok: true, cost };
+}
 
 // ------------------------------------------------------------- money weeks
 // An event may reach into the till instead of onto the board. Two of them land
@@ -638,7 +656,7 @@ function advanceWeek(s) {
   // effects tick down first, so one with weeks left still counts toward AP
   for (const e of s.effects) e.weeksLeft--;
   s.effects = s.effects.filter(e => e.weeksLeft > 0);
-  s.ap = apForRun(s);
+  s.ap = apForRun(s); s.hoursBought = 0;
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false; s.cashSwept = 0;
   s.shop.cards = generateShop(s);

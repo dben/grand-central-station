@@ -20,17 +20,20 @@ const PRUNE = !args.includes('--no-prune');
 
 const outcomes = [];
 const ratioByWeek = {};
+// extra hours the bot paid for, per week, over every run that reached it
+const hoursByWeek = {};
 for (let run = 0; run < RUNS; run++) {
   const seed = SEED0 + run;
-  const { s, died, ratios } = playRun({ seed, weeks: WEEKS, mode: MODE, difficulty: DIFF, policy: POLICY, cands: CANDS, verbose: VERBOSE, prune: PRUNE });
+  const { s, died, ratios, hoursBought } = playRun({ seed, weeks: WEEKS, mode: MODE, difficulty: DIFF, policy: POLICY, cands: CANDS, verbose: VERBOSE, prune: PRUNE });
   for (const [w, r] of Object.entries(ratios)) (ratioByWeek[w] = ratioByWeek[w] || []).push(r);
+  for (const [w, n] of Object.entries(hoursBought)) hoursByWeek[w] = (hoursByWeek[w] || 0) + n;
   outcomes.push({ seed, died, tiles: s.board.tiles.length, money: s.money, board: s.board.tiles.map(t => `${t.name}L${t.level}`).join(', ') });
   console.log(`run ${run} (seed ${seed}): ${died ? 'DIED week ' + died : 'survived to week ' + WEEKS}  | ${outcomes[outcomes.length - 1].board}`);
 }
 console.log('\nscore/quota ratio by week (mean, min, max):');
 for (const [w, arr] of Object.entries(ratioByWeek)) {
   const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-  console.log(`  w${String(w).padStart(2)}: ${mean.toFixed(2)}  min ${Math.min(...arr).toFixed(2)}  max ${Math.max(...arr).toFixed(2)}  n=${arr.length}`);
+  console.log(`  w${String(w).padStart(2)}: ${mean.toFixed(2)}  min ${Math.min(...arr).toFixed(2)}  max ${Math.max(...arr).toFixed(2)}  n=${arr.length}  hours ${((hoursByWeek[w] || 0) / arr.length).toFixed(1)}`);
 }
 // The band: what share of weeks land inside 1-2x of quota, and the median week.
 // Survival and the band trade against each other, so both are the reading (doc
