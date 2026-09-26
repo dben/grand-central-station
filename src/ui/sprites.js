@@ -36,8 +36,9 @@ export const SPRITES_FLOOR = {
 // Card headers, drawn by harness/cardart.mjs. A transport gets one per kind of
 // ground it claims, so a card reads as road, water or air at a glance ('free'
 // splits in two: the air tiles fly, the rest are the far-fetched ones). Every
-// other card gets one per kind: food or other shops, parks, lounges, utilities,
-// the sci-fi rares, and the upgrade, bonus and bridge cards.
+// other card gets one per kind: food or other shops, parks, lounges, security,
+// other utilities, the sci-fi rares, and the upgrade and bonus cards. The bridge
+// is out of the shop for now, so it keeps its plain label.
 export const CARD_ART = {
   road:        'assets/cards/road.png',
   rail:        'assets/cards/rail.png',
@@ -55,15 +56,16 @@ export const CARD_ART = {
   future:      'assets/cards/future.png',
   upgrade:     'assets/cards/upgrade.png',
   bonus:       'assets/cards/bonus.png',
-  bridge:      'assets/cards/bridge.png',
+  security:    'assets/cards/security.png',
 };
-const CARD_SCENES = { upgrade: 'upgrade', named_upgrade: 'upgrade', ap: 'upgrade', card: 'bonus', bridge: 'bridge' };
+const CARD_SCENES = { upgrade: 'upgrade', named_upgrade: 'upgrade', ap: 'upgrade', card: 'bonus' };
 function tileScene(def) {
   const tags = def.tags || [];
   if (def.kind === 'transport') return def.terrain === 'free' && tags.includes('air') ? 'sky' : def.terrain;
   if (def.rare) return 'future';
   if (def.special === 'green') return 'park';
   if (def.special === 'waiting') return 'lounge';
+  if (def.special === 'security' || def.special === 'gate') return 'security';
   if (def.rate === 0) return 'utility';
   return tags.includes('food') ? 'food' : 'retail';
 }
