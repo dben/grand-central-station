@@ -816,9 +816,10 @@ and drops the phrase:
   keeps `apron`, `corridor`, `free`). A strike names the tiles that walk out, not their terrain.
 - **Level cards** show the board size and weekly AP as `12×12 ▪▪`, so their text only says what
   sets the level apart. A record line appears only once there is a record.
-- Shop cards are labelled *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*.
-  A transport card carries a pixel-art header of its kind of transport in place of the label, and
-  shows no terrain word; the popup and card bar still spell the terrain out (§13.3).
+- Shop cards carry a pixel-art header in place of a kind label (§13.3). The card's colour still
+  says *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*, and the header
+  narrows it: a transport's shows its kind of ground. A transport card shows no terrain word;
+  the popup and card bar still spell the terrain out.
 - A card's bottom line holds its tier in the left corner and its price in the right, so the price
   stays inside the short phone cards.
 - A tile card's shape preview is drawn in the first orientation that is at least as wide as it is
@@ -919,9 +920,12 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 - **Geometry:** each sprite is drawn in the shape's base orientation at 32 px per cell. The renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one image per tile type is enough. Because the isometric map is linear, the canvas transform lays top-down art flat on the ground plane.
 - **Two layers:** `SPRITES` is the over layer (walls, roof) and `SPRITES_FLOOR` the under layer (`<key>_floor.png`).
 - **Fallback:** tiles without art draw as flat coloured blocks. Missing sprites show up as harmless 404s when served; none are committed yet. The old 4-cell `gate.png` no longer fits the 2-cell checkpoint booth.
-- **Card headers:** `CARD_ART` maps each terrain to a 56×21 scene in `assets/cards/`: road, rail, water,
-  airfield, lane (mountains and a monorail beam, for the trams, monorails and lifts), underground, and
-  `free` split in two — `sky` for the tiles tagged `air`, and a saucer over a beam pad for the rest.
+- **Card headers:** `CARD_ART` holds a 56×21 scene per kind of card, in `assets/cards/`. A transport
+  gets its terrain's: road, rail, water, airfield, lane (mountains and a monorail beam, for the trams,
+  monorails and lifts), underground, and `free` split in two — `sky` for the tiles tagged `air`, and a
+  saucer over a beam pad for the rest. An amenity is `future` if rare, then `park` (green), `lounge`
+  (waiting), `utility` (no draw rate), `food` (tagged food) or `retail`. Upgrade, Extra Shift and
+  named upgrade cards share `upgrade`, one-off cards `bonus`, and the bridge `bridge`.
   `harness/cardart.mjs` draws them in code and writes the PNGs; edit a scene there and rerun it. They
   show at 2x, cropped from the top on phone cards and scaled to fit on the smallest.
 - **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`.

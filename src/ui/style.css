@@ -358,7 +358,9 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   /* too small to crop: the whole scene, scaled to the card */
   .card.has-art { --art-h: 30px; padding-top: calc(var(--art-h) + 3px); }
   .card .art { background-size: cover; }
-  .card.has-art canvas { max-height: 30px; }
+  .card.has-art canvas { max-height: 28px; }
+  /* an upgrade's own name gets one line here; the card bar spells it out in full */
+  .card.has-art > .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .card .icon { font-size: 20px; }
   .card .sub { font-size: 12px; }
   .card .cost { font-size: 14px; }

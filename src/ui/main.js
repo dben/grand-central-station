@@ -332,9 +332,9 @@ function renderShop() {
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
     const kclass = { transport: 'k-transport', shop: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', bonus: 'k-bonus', bridge: 'k-structure' }[kind] || '';
-    const art = def && def.kind === 'transport' ? cardArt(def) : null;
+    const art = cardArt(card);
     const el = h('div', { class: 'card ' + kclass + (art ? ' has-art' : '') + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
-      // a transport's header art says what it is, in place of the kind label
+      // the header art says what kind of card it is, in place of the kind label
       art ? h('div', { class: 'art', style: `background-image: url("${art}")` }) : h('span', { class: 'slot' }, cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),
