@@ -78,6 +78,18 @@ harness/bot.mjs      the greedy bot as a module (playRun); autoplay and sensitiv
 - **Match the surrounding style:** compact, one-line helpers, and comments that explain *why*
   rather than what.
 
+## Pull requests
+
+Every PR description ends with a play link for the branch, so it can be tried on a phone without
+a checkout. raw.githack serves the repo's files with the right types, so the modules load:
+
+```
+https://raw.githack.com/dben/grand-central-station/<branch>/index.html
+```
+
+Put the real branch name in, and give the `dist/grand-central-station.html` link as well when the
+PR touches the build. githack caches for a few minutes, so a fresh push can lag.
+
 ## Balance workflow
 
 A change that touches scoring, the economy or the catalogue isn't done until it's measured:
