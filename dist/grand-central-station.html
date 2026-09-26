@@ -190,6 +190,12 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 .card .sub { font-size: 14px; color: rgba(255,255,255,0.85); }
 .card .cost { margin-top: auto; font-weight: 700; color: var(--accent); font-size: 16px; text-shadow: 1px 1px 0 var(--ink); }
 .card .tier { font-weight: 700; text-shadow: 1px 1px 0 var(--ink); }
+/* A transport card's header: pixel art of the kind of transport, in a band across
+   the top with the ground it needs in a pill over the sky. Always drawn at 2x and
+   cropped from the top on smaller cards, so the pixels stay square. */
+.card.has-art { --art-h: 42px; padding-top: calc(var(--art-h) + 4px); }
+.card .art { position: absolute; left: 0; right: 0; top: 0; height: var(--art-h); border-radius: 3px 3px 0 0; border-bottom: 2px solid var(--ink); background-size: 112px 42px; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
+.card.has-art .slot { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); background: rgba(10,5,32,0.72); padding: 0 4px; border-radius: 2px; }
 .tier1 { color: var(--t1); } .tier2 { color: var(--t2); } .tier3 { color: var(--t3); } .tier4 { color: var(--t4); } .tier5 { color: var(--t5); }
 
 /* ------------------------------------------------------------ side, modal */
@@ -317,6 +323,9 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .card { width: 96px; height: 150px; }
   .card .icon { font-size: 24px; line-height: 60px; height: 60px; }
   .card canvas { max-height: 60px; }
+  .card.has-art { --art-h: 34px; }
+  .card.has-art canvas { max-height: 44px; }
+  .card.has-art .slot { font-size: 11px; letter-spacing: 0; }
   .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
   #board-hint { top: 64px; right: 12px; }
   #btn-run-big { font-size: 17px; padding: 12px 20px; }
@@ -356,6 +365,11 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .card { width: 88px; height: 118px; padding: 3px 5px; }
   .card .name { font-size: 12px; height: 26px; }
   .card canvas { max-height: 40px; }
+  /* too small to crop: the whole scene, scaled to the card */
+  .card.has-art { --art-h: 30px; padding-top: calc(var(--art-h) + 3px); }
+  .card .art { background-size: cover; }
+  .card.has-art canvas { max-height: 26px; }
+  .card.has-art .slot { top: 1px; font-size: 10px; letter-spacing: 0; }
   .card .icon { font-size: 20px; line-height: 40px; height: 40px; }
   .card .sub { font-size: 12px; }
   .card .cost { font-size: 14px; }
@@ -3670,6 +3684,21 @@ const SPRITES_FLOOR = {
   waiting_area:  null,  // O4  64x64  seating a traveller stands among
 };
 
+// Transport card headers, one per kind of ground the tile claims, so a card
+// reads as road, water or air at a glance. Drawn by harness/cardart.mjs.
+// 'free' splits in two: the air tiles fly, the rest are the far-fetched ones.
+const CARD_ART = {
+  road:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABW0lEQVR42s2UvU7DMBDHb8mSp8iM+gYV4hG6ooyVeA62DlGkrqhPYKkTS54hAxIVAzB0yASM7cZ2xJw4Gzt2nKCYWH9ZTu4jP59zhvUeSTz4zawEBuVsWaGs0TXWeyzrSebt5tVQb5QELWt8fDPVmY6c/67ezLYDhKTDsxgB6kEZA2o8V430o9n21q1Vg8aXXFbap5GZNx8oMGKqBlkh8RyrB3aGp0k2VL6KTqQ0yfB+OVQ6q6oo12bQoQQ6t6C3z9iqJfAvFrlY5IJBOX+8io4DVRV9efiIoPCjV6Cf72mScQYJKu5qPekUj2mSnW4uQkSgtP4FilGGXlFualcDsVXOPwMul9dxxARFsTscjkWx67ySdKseHg9UJ7Y5eq3g2Tor/mZsgU1Jl4W6UFb5HFgBn65IRImrvFPS9O1D0qPivFEVxbNwUTLrLI7e1ZKuNvz/f9Rg8jdpNH0BPKaEUGqMVycAAAAASUVORK5CYII=',
+  rail:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABPUlEQVR42mNIWv0fjqJCCpC5RCLydJFqMoO1SZC1SVBUSAEygggSROTpIs9khp4TIPdCSIgPkEWIIUnSxcWqAEckmQxyKBxFhRQgc+EIDrDK4tKFB3GxKhCjDNlkwg5FA5Q7lEhXkuZQXGAAQnTbAxAFISESyCLbHvw//wwdoanBqgsPCXElMSqRTQY5FI6iQgqQuUQi4nUh5yQuVgWSTKahQ9GcRSGiiUMhRr+w8KciYui/EAVHUSEFyFwiEZouLlaF+Y/+z3/0H2IBnI3J6JIy6JIyIFINQ/4GLyoiuCuHgEP/f1xBZGzCHUGMGho49MdzWiDqO5S6eQiRmajrUIhbgaira9b/H8+7umYRXwDh18Jw8sgNWiCIxVysCtTSwpCT0TAkEEN+XEC2nUq2ncogZzD0VmUMCTRkHAoA9oXvFhW2Z3EAAAAASUVORK5CYII=',
+  water:       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABOUlEQVR42tWUoW7DMBBAj5iYlIXGIHAfUA3kA0ZKq8HBJSx/MUXyLxRWKi8ONOtQcNDSTwi7KTrpFtmpm7Zr6lpPF/nOOj3dVYWPHT4FQB8+4YqWBq1Tmr4wf5RCcXSrgCdOae6LFEoK5SZPve8nevixmcHyuFwdlyuPGZX4QS+6b3DmSOMkPC+HVdg3eG+GWgx2LXatlfQ0ge+vt7PcaIld+/K+tSJh5T2usP18Pcs/DnIiI6K6wSxNdIOM/zoF3qw7SH9kpFBWT4h1naVJrGvGf50Iu16BFMptOC6aG8wNuqKU59IQt8T/QZdColZDiIoqS5OoqGJdUyQzzljVi+J1P9DRbn+ijP/6KCA3SLt2zWjyo6K8l9lKEMK0Jk10sd5ERRV+7EV57Iv1xiKcErjZMHk20fC3/wtJ58SDoKsmpgAAAABJRU5ErkJggg==',
+  apron:       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABMUlEQVR42u2UsW7CMBBAb/Hir/AH9B+y8wkdGRnalaESnVGGznwBEgsTX9ChSEhIHUrHTCWfkO0AHTqOs02jENwg1XqyojvH93R2Av0ZEtY4BadSwkPFgS1HX6hI76rGmWj+cRJ9eJySIj1Y4yibZo4Nyh5ECf/oOZWM9Y+GUyDXWeM2q3KzKv/E8jIH0UWBNCtRjndhhkWBjBSV8S7wL3od9DWfiT7Pe4wUlfHE7P+VWG2VAzwNXhkpKuP18f9xDcBqS6JyZ/AtpevL8M23iQWpRpZj41lijZOFoFnngr3McvTrNcM/UqjTqppBa9zy/TtG8JSDy4KFWuvor3c0Zq/eiu0MV3bxwn0djyeyMAWVE72uFgf3PHZU3g+Z7k4cWulfgmDLd/R2AH5md8HddHQHrjhsQu6moLEAAAAASUVORK5CYII=',
+  sky:         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAAA/klEQVR42s2WMQrDMAxFtXjxKTz3BKVLjtA7BLr0LLlD10L2nKFboScIHdqOHbu5GAUj5NTYbhxbfL7BFtaTMCHQdLo22aCbUC0lY4WaKSkuB5VCUa3Pen1wTRNte7O0/YT42u71rbGOmzanoBtQpGSIDBfTCqoYKHtjVHWBMujQiXpYs1KGzJKDzrLmpjzdtf4834cNyvMMoLuYxboUyoJKodjpsm5qEUoEpac034AyYQZ6brH5eTJLgrolPEXBTT0fd6isrL++TVlAbazwSAzoMOpYn42Ee8IdhlHHyh9RN4QXhWUpQ8onNJY4UfdPjCqtzyygfyq2t2KgafoCdF+rykmiEx0AAAAASUVORK5CYII=',
+  corridor:    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABDElEQVR42u3SIQ7CMBTG8ZqZXYJdYobLsCBn8BhQiIUEzxUwU8s0agKBaILFwRFwjywv+egG7d4QgwbIPwWaFX5pnpruyIuUN9B1Vb+ZK1F75xvWGmqGV2t/sGx/rVoPzWcV9xGr45oeUBDNBlamSck9W1Vxtiph5WfeXsMgkgQlMn+nhjqUXHEmedlSm1/DIKLbRZLNyqlOZS9rttQclLGmWBPdLo4PXKzJYZVCJVYoYZVfp+NS2doD6ra2lBxuVJgNmiZlP6jN+lIJqzybsoaeDlcv8ge6WeVe1JjRMj9ykmHFFOKUY1I5c+ZwyjGXjRld7McIh83NzoY5pSbbEcJhc7OzYU79oT8LvQM8F8EqBug+iwAAAABJRU5ErkJggg==',
+  underground: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABC0lEQVR42mPoOfF/SCCG+kNWQwIxxM+SHxKIoSvKpCvK5OSRGxAE4Q5CRLJDVyzYsGLBBqq7g6CxDMgcYpybk9FAFYtJNZahxFOrK8oEQiI7FFmcDDIno4FCE9BIkEPRENy5mFJUQZDAJlUXRQ6d27+DbogBlyOIcS7QCFkhBwj6f8kezkZG1BKnmkNpjUAOjbFSwEXCnYtVlq4OjbFSwIOQHYqJMB3KxapACSLToZDsice5aA7lYlW4cOEO2Ug/+z8et+JzaE5GA/5wxerQ/x9X/P+4gkhGTkZDTkYDXIRMhxJEQ9ih+tn/SUIQh8K5dA1RkhA8RClKo6Q6dMByPTEOtTYJog8aMg4FAA/AGth9pBQKAAAAAElFTkSuQmCC',
+  free:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABBklEQVR42u2SPQqDQBBGp0mTKp2QyhQ2aSyitQcQsc0dPESO4AXSeRh7sfAGa5EDbPeFsCDi+rMru5pA4DHIsDN8PIfOp9tPQL8XFJz9ja6k724kKKroS416TtJVVJFg0N+9kuckA1BFctMUx4PboTVIiy/AmcGUYY2wBjgLa8xklWWRPXmjFqcYpBRsFxScHQ9uWaAsgCqa+igLyFlNGlW8Cl2jkzcaXLItqzhT3SkKLpkMOBvtG+HR4tFC8XGXhOwFGkXoFGgNmg86/zeETi2pOxjt69SVSgZtKV7nOqmfoLGfb1BlnQLFDRT7uVWQNni+lkmb+T10Pd+t8gmqxvwe60FN8QYSjUZd9Hn4JQAAAABJRU5ErkJggg==',
+};
+const cardArt = def => CARD_ART[def.terrain === 'free' && (def.tags || []).includes('air') ? 'sky' : def.terrain] || null;
+
 const cache = new Map();
 // Every image is loaded once, but several views may be waiting on it: the board
 // and each of the start screen's mode thumbnails all want a repaint when one
@@ -3698,7 +3727,7 @@ function get(id) {
 function sprite(key) { return get(key); }
 function spriteFloor(key) { return get('floor:' + key); }
 
-return { SPRITE_CELL_PX, SPRITES, SPRITES_FLOOR, loadSprites, sprite, spriteFloor };
+return { SPRITE_CELL_PX, SPRITES, SPRITES_FLOOR, CARD_ART, cardArt, loadSprites, sprite, spriteFloor };
 })();
 // ---- src/ui/render.js
 const __m_src_ui_render_js = (() => {
@@ -5139,6 +5168,7 @@ const { orientationCount, shapeCells } = __m_src_sim_shapes_js;
 const { cutOffTransports, startBoard } = __m_src_sim_board_js;
 const { effTransport, effAmenity, scaleMult } = __m_src_sim_sim_js;
 const { BoardRenderer, boardStill, colorForDef } = __m_src_ui_render_js;
+const { cardArt } = __m_src_ui_sprites_js;
 const { attachBoardInput } = __m_src_ui_boardinput_js;
 const { playTrack, isMuted, setMuted } = __m_src_ui_audio_js;
 const { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } = __m_src_ui_meta_js;
@@ -5453,12 +5483,15 @@ function renderShop() {
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
     const kclass = { transport: 'k-transport', shop: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', bonus: 'k-bonus', bridge: 'k-structure' }[kind] || '';
-    const el = h('div', { class: 'card ' + kclass + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
-      h('span', { class: 'slot' }, cardKindLabel(card)),
+    const art = def && def.kind === 'transport' ? cardArt(def) : null;
+    const el = h('div', { class: 'card ' + kclass + (art ? ' has-art' : '') + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
+      // a transport's header art says what it is, so its label names the ground it needs instead
+      art ? h('div', { class: 'art', style: `background-image: url("${art}")` }) : null,
+      h('span', { class: 'slot' }, art ? TERRAIN_INFO[def.terrain].label : cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),
-      isTile ? shapeCanvas(def, 84, 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
-      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
+      isTile ? shapeCanvas(def, 84, art ? 54 : 76) : h('div', { class: 'icon' }, CARD_ICONS[card.type] || '?'),
+      h('div', { class: 'sub' }, def ? [def.tier > 0 ? tierTag(def.tier) : null, def.kind === 'transport' && !art ? ` · ${TERRAIN_INFO[def.terrain].label}` : (def.special === 'anytier' ? 'any $' : '')] : (card.type === 'upgrade' ? card.name : '')),
       h('div', { class: 'cost' }, `$${fmt(cost)}`));
     // hover detail only for devices that hover; on touch the card popup would
     // sit on top of the board and the placement controls

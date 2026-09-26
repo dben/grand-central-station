@@ -817,6 +817,8 @@ and drops the phrase:
 - **Level cards** show the board size and weekly AP as `12×12 ▪▪`, so their text only says what
   sets the level apart. A record line appears only once there is a record.
 - Shop cards are labelled *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*.
+  A transport card instead carries a pixel-art header of its kind of transport, and its label is the
+  terrain it needs, so the terrain drops off the tier line underneath (§13.3).
 
 ### 12.6 Controls
 
@@ -913,6 +915,11 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 - **Geometry:** each sprite is drawn in the shape's base orientation at 32 px per cell. The renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one image per tile type is enough. Because the isometric map is linear, the canvas transform lays top-down art flat on the ground plane.
 - **Two layers:** `SPRITES` is the over layer (walls, roof) and `SPRITES_FLOOR` the under layer (`<key>_floor.png`).
 - **Fallback:** tiles without art draw as flat coloured blocks. Missing sprites show up as harmless 404s when served; none are committed yet. The old 4-cell `gate.png` no longer fits the 2-cell checkpoint booth.
+- **Card headers:** `CARD_ART` maps each terrain to a 56×21 scene in `assets/cards/`: road, rail, water,
+  airfield, lane (mountains and a monorail beam, for the trams, monorails and lifts), underground, and
+  `free` split in two — `sky` for the tiles tagged `air`, and a saucer over a beam pad for the rest.
+  `harness/cardart.mjs` draws them in code and writes the PNGs; edit a scene there and rerun it. They
+  show at 2x, cropped from the top on phone cards and scaled to fit on the smallest.
 - **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`.
 
 ---
