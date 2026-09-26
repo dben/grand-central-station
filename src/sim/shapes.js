@@ -58,10 +58,14 @@ for (const [name, cells] of Object.entries(BASE)) {
 // Transform for drawing a base-orientation sprite at orientation `rot`. If `tipAt` is
 // given ([x,y] relative to the tile's bounding box), prefer the variant that maps the
 // sprite's base cell [0,0] onto that cell (used for tip-attached tiles like jetways).
-export function shapeTransform(shape, rot, tipAt = null) {
+// Otherwise `turns` lists quarter turns in order of preference, and the first one
+// this orientation can be drawn with wins: it is how a sprite's working side (the
+// bottom of the image) is turned to face the edge a tile draws from.
+export function shapeTransform(shape, rot, tipAt = null, turns = []) {
   const o = SHAPE_TRANSFORMS[shape];
   const list = o[((rot % o.length) + o.length) % o.length];
   if (tipAt) { const hit = list.find(e => e.tip[0] === tipAt[0] && e.tip[1] === tipAt[1]); if (hit) return hit; }
+  for (const r of turns) { const hit = list.find(e => e.rot === r); if (hit) return hit; }
   return list[0];
 }
 export function shapeBaseSize(shape) {

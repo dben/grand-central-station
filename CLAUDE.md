@@ -18,6 +18,8 @@ python3 -m http.server 8080                        # play at http://localhost:80
 node harness/selftest.js                           # invariants: rules, sim, checkpoints, rezoning (run after any change)
 node harness/build.js                              # rebuild dist/grand-central-station.html (commit it)
 node harness/cardart.mjs                           # redraw the transport card headers in assets/cards/
+node harness/tileart.mjs                           # redraw the board tile art in assets/tiles/ and its manifest
+node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
 node harness/week1.mjs --runs 16                  # week 1 on every level x difficulty: cash, quota, tiles placed
