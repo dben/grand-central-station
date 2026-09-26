@@ -24,6 +24,11 @@ export const CONFIG = {
     rareTilesFromWeek: 10,
     apUpgradeFromWeek: 19,
     apUpgradeCost: 400,
+    // The week extra hours go on sale (see economy.extraHours). Not week 1:
+    // the opening hand's change would buy a third tile, and the opening is
+    // tuned for two (§15). A level can move it, or switch it off with a week
+    // it never reaches.
+    extraHoursFromWeek: 4,
   },
 
   // ------------------------------------------------------------------- quota
@@ -56,6 +61,11 @@ export const CONFIG = {
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
     eventStrength: 0.30,
+    // Endless play. Once the run is won the curve stops settling and bends
+    // upward: each week past `from` adds `add` more to the growth rate than the
+    // week before, so week 17 grows 0.015 faster than week 16, week 20 0.06
+    // faster. Weeks up to the win are untouched.
+    endless: { from: 16, add: 0.015 },
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -80,6 +90,12 @@ export const CONFIG = {
     // ...and deleting a tile placed this week hands its action point back, so
     // the rebuild is the same move over again rather than the week's other one.
     deleteRefundsAP: true,
+    // Extra hours: once the week's action points are spent, cash buys another.
+    // The first costs base * growth^(week-1) and each more that week `step`
+    // times the last, so a full till buys a move or two rather than a new board.
+    // It is what makes cash worth earning after the opening weeks: without it
+    // a run's money piles up unspent once the board is half built (§15).
+    extraHours: { base: 40, growth: 1.25, step: 3 },
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -235,7 +251,8 @@ export function quotaForWeek(week, mode, extraMult = 1, diff = null) {
   const late = ((mode && mode.quotaGrowth) || q.growth) + ((diff && diff.quotaGrowthAdd) || 0);
   const early = Math.max(late, q.earlyGrowth);
   let raw = q.base;
-  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1);
+  const e = q.endless;
+  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1) + (e && i >= e.from ? e.add * (i - e.from + 1) : 0);
   raw *= extraMult * ((diff && diff.quotaMult) || 1) * ((mode && mode.quotaMult) || 1);
   const u = q.starUnit;
   return Math.max(u, Math.round(raw / u) * u);

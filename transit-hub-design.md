@@ -35,7 +35,7 @@ The shape of a run:
 - **Difficulty** (Standard, Hard, Extreme) is picked with the mode and scales the quota, prices and income for the whole run (§10.1.1).
 - **Ordinances** are offered at weeks 5, 12 and 20 (§10.2).
 - **Milestones** change the run at set weeks (§10.5): pickpockets arrive at week 7, rare tiles at week 10, and Extra Shift appears in the shop at week 19.
-- **Week 16** shows the win screen, and play can continue in endless mode.
+- **Week 16** shows the win screen, and play can continue in endless mode, where the quota climbs faster every week (§5.2).
 
 ---
 
@@ -71,6 +71,8 @@ Some tiles also have attachment rules:
 - **Tip** (Jetway, Jumbo Jetway): only the tip of the L (the top of its stem) may touch the apron edge, with the foot pointing inland. Both mirror images are legal.
 - **Broadside** (Ferry Terminal): the mirror of tip. The L's long arm — its three-cell side — has to lie along the water edge, with the short foot pointing inland, so a hull ties up side-on. Two of the L4's eight orientations reach any one edge, both mirror images.
 
+**Choosing the side.** A transport often has more than one way to attach: a road tile in reach of two edges, any berth in a corner, a garage with two road edges to tunnel to, a lift with a clear lane both ways along its axis. The check lists them (`res.sides`, best first) and takes the one the player asks for (`side`), or the first. The default is the nearest edge for a driveway, lane or tunnel, and for a berth an edge that is already its terrain before one it would have to claim. **⇄** in the card bar, or **E**, cycles through them the way **R** cycles rotations, and the choice carries over as the cursor moves, falling back to the default wherever it isn't open. A berth in a corner touches two edges but attaches by one: it claims and depends on that side only, and the other stays as it was, so a corner is no longer a way to lock two edges at once. Its attachment rule (edgewise, tip, broadside) is checked against the side it attaches by.
+
 A Rezoning Permit card (§10.4) turns a claimed edge back into open ground, and **demolishes every transport attached to that edge**: lock-terrain tiles touching it, and road tiles whose driveway runs to it. Leaving a train station standing on open ground, or a bus stop with no road, is a state the rules can't hold. Each transport records the edges it depends on when placed (`tile.edges`).
 
 ### 3.3 Bridges
@@ -97,7 +99,7 @@ Underground transports dig a straight **tunnel** on a second layer beneath the b
 | Tile | Line |
 |---|---|
 | Subway Station (I2), Express Subway (I3) | Along the tile's long axis to **both ends of the board**. Neither end may surface into a water edge, and an edge where a subway surfaces can never afterwards be claimed as water. Two subways at right angles can never coexist; parallel ones can. |
-| Underground Parking (L3) | Straight to the **nearest road edge**, however far. No driveway and no reach limit. It depends on that edge, so a Rezoning Permit there demolishes it. Only offered while some edge is road. |
+| Underground Parking (L3) | Straight to the **nearest road edge** (or another the player picks, §3.2), however far. No driveway and no reach limit. It depends on that edge, so a Rezoning Permit there demolishes it. Only offered while some edge is road. |
 | Submarine Dock (I2) | Straight to the **nearest water edge**; otherwise as the garage. Only offered while some edge is water. |
 
 The shop only offers an underground tile while its tunnel has somewhere to go (`lineAvailable` in `src/sim/board.js`): a subway needs an axis clear of water, so it never appears in Waterfront, where both axes end in the sea.
@@ -120,12 +122,15 @@ The tunnel layer is drawn faintly under the ground. Aiming an underground tile, 
 | Reroll the shop | 1 | free |
 | Play a bonus card | 1 (a Rezoning Permit: 0) | card cost |
 | **Run Week** with AP left | — | pays an **early-finish bonus** for each unspent AP |
+| **Extra hours**, with no AP left, from week 4 | +1 | `$40 × 1.25^(week − 1)`, tripling with each one bought that week |
 
 Undoing a placement costs the money already spent, never the week: deleting a tile and playing a Rezoning Permit take no action points (`economy.deleteCostsAP`, `rezoningCostsAP`), and pulling a tile bought *this* week gives its action point back (`economy.deleteRefundsAP`), so a tile that turned out to sit in everyone's way can be pulled and rebuilt on the same move. The refund is the week's own placement only — the tile records the week it was bought — because handing a point back for last week's tiles would be a free move rather than an undo. The money is the brake: nothing is refunded, so churning a spot costs its full price every time. A Rezoning Permit's demolitions give nothing back — the permit is its own play rather than an undo.
 
 The early-finish bonus is `$10 + $5 × (week − 1)` per unspent point: $10 in week 1, $25 in week 4, $55 in week 10 and $85 in week 16 (`economy.earlyFinishBase`, `earlyFinishPerWeek`). It is paid the moment the week runs. It replaced the old *Wait* action, which paid interest on held cash and so rewarded hoarding.
 
-The only ways to get more AP:
+**Extra hours** are the reverse of the early-finish bonus: once the week's points are spent, cash buys another (`economy.extraHours`). They go on sale in week 4 (`run.extraHoursFromWeek`), where the first costs $78, then $98 in week 5, $298 in week 10 and $1,137 in week 16; each more that week costs three times the last, and the count starts again next week. Week 1 is left out because the opening hand's change would buy a third tile, and the opening is tuned for two. The button takes Reroll's place in the tray, since Reroll has nothing to pay with once the points are gone. Terminus never sells them: one move a week is that level. They exist because cash had nothing to buy after the opening weeks (§15).
+
+The other ways to get more AP:
 
 | Source | Effect |
 |---|---|
@@ -188,7 +193,7 @@ A player who builds an efficient transport-only hub scores acceptably and goes b
 A station's output grows fast while it is small and slowly once it is built out. A single per-week multiplier can't track that: it makes the first half free and the last few weeks a cliff. So the per-week growth rate itself *decays*:
 
 ```
-growth(i) = late + (early − late) × decay^(i − 1)
+growth(i) = late + (early − late) × decay^(i − 1)  [+ 0.015 × (i − 15) once i ≥ 16]
 curve(week) = round(8000 × Π growth(i) for i = 1 … week−1  × eventMult × ordinanceMult × difficultyMult × modeMult, to 1000)
 Quota(week)  = max(curve(week), catchUp)          // see below
 early = 1.32, late = 1.10 (Junction: 1.06, Terminus: 1.145) + difficultyGrowthAdd, decay = 0.65
@@ -200,9 +205,11 @@ early = 1.32, late = 1.10 (Junction: 1.06, Terminus: 1.145) + difficultyGrowthAd
 | 2 | 11,000 | 12 | 39,000 |
 | 3 | 13,000 | 14 | 47,000 |
 | 4 | 16,000 | 16 | 57,000 |
-| 5 | 18,000 | 20 | 84,000 |
-| 6 | 21,000 | 24 | 123,000 |
+| 5 | 18,000 | 20 | 96,000 |
+| 6 | 21,000 | 24 | 197,000 |
 | 8 | 26,000 | | |
+
+**After the win the curve bends upward** (`quota.endless`). Each week past 16 adds 0.015 more to the growth rate than the week before: week 17 grows 1.115×, week 20 1.16×, week 24 1.22×. Without it the settled 1.10 ran on forever, and a board that was full by week 16 kept pace for another ten weeks with nothing left to decide. Week 20 now asks 96k where it asked 84k, week 24 197k against 123k and week 28 493k against 180k, so every endless run meets a wall somewhere in its twenties, and how far it gets is the score. Weeks up to 16 are untouched.
 
 The curve rises harder over the first four weeks and much more gently after that, because the score does: with the multipliers compressed (`sim.multScale`, §7.1) a board gains most while tiles are still going down and far less once it is full.
 
@@ -229,9 +236,10 @@ Where the curve sits, measured (greedy bot, Terminal, 16 runs to week 16): week 
 | Upgrade price | 60, 140, 300, 650 for levels 2–5 |
 | Delete refund | none (half with the Zoning Variance ordinance); deleting costs no AP |
 | Early-finish bonus | $10 + $5 × (week − 1) per unspent AP |
+| Extra hours | once AP is spent, one more AP for `$40 × 1.25^(week − 1)`, each more that week at 3× the last (§4.1) |
 | Money events | Back Taxes, Use It or Lose It, Emergency Budget (§9) — the only rules that move cash without a tile changing hands |
 
-A crowded board is an expensive board, which pushes late-game players toward upgrading over adding. After the first two weeks, one or two purchases a week is typical: money, not AP, is usually what limits a turn.
+A crowded board is an expensive board, which pushes late-game players toward upgrading over adding. Money limits a turn only in the opening weeks, and on Extreme for longer. After that, income outruns two actions a week — the greedy bot on Standard held about $18,000 unspent by week 15 — so extra hours (§4.1) are what the surplus is for, and every cash boost in the game buys moves through them.
 
 ---
 
@@ -569,7 +577,7 @@ A mode sets the board, one standing rule, and its own run clock. It is chosen be
 | **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected), with `startMoney: 275` to match, so the opening hand buys the same two tiles it buys everywhere else. A slow clock: an event every 5th week, ordinances at 6/13/20, crime wave week 9, rares week 12, Extra Shift week 16. The six-cell tiles early, since the board has room (Express Train 3, Cafeteria 3, Cruise Dock 5, Jumbo Jetway 6, Flier Club 7). |
 | **Waterfront** | 12×12 | week 8 | `preLock: W, S water` — two edges start locked to water. `terrainCostMult: water 0.6` — water transports −40%. Boats early: Water Bus, Pontoon, Ferry and Water Taxi from week 1, Sub Dock 3, Marina 4, Cruise Dock 5. The Water Bus Stop and the Pontoon Moorings are sold here and nowhere else, and the opening hand deals a Pontoon in place of the Parking Lot. |
 | **Sky Harbour** | 8×16 | week 12 | `banTerrains: rail, water` — removed from the shop and rejected on placement. `terrainCostMult: free 0.7` — Free-terrain transports −30%. `preLock: N apron, S road` and a Security Checkpoint already built at (3,7)–(3,8): a long board with the airfield at one end, the road at the other and a fence across the waist, cutting it into an 8×8 airside and an 8×8 landside. Light aircraft from week 1 (Prop Plane Stand and Hardstand, sold here and nowhere else), the rest early (Jetway 2, Balloon 2, Helipad 3, Jetpack 4, Jumbo Jetway 6, Private Terminal 8), security early (Station and Guard 3), crime wave week 3 over a 6-week ramp, `quotaMult: 1.05`. The opening hand deals a Prop Plane Stand and a Parking Lot, one for each side of the fence. |
-| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add), so `quotaMult: 0.46` with `quotaGrowth: 1.145`, since a one-action board catches up as it fills. `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. |
+| **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add), so `quotaMult: 0.46` with `quotaGrowth: 1.145`, since a one-action board catches up as it fills. `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. It never sells extra hours (§4.1). |
 
 **A level re-times the run for itself.** Five data fields in `src/data/modes.js`, all optional, all read through the game layer so the simulator never learns that modes exist:
 
@@ -656,9 +664,11 @@ Greedy bot, 8 runs to week 16 on Terminal, over `--seed0 1000` and `2000`:
 
 | Difficulty | Survived | Median week | Weeks inside 1–2× | Deaths |
 |---|---|---|---|---|
-| Standard | 10 / 16 | 1.9× | 48–54% | weeks 4 ×2, 8 ×2, 12, 16 |
-| Hard | 6 / 16 | 1.6× | 63–73% | weeks 1, 4, 8, 9 ×2, 10, 11 ×2, 11 |
-| Extreme | 2 / 16 | 1.5× | 68–73% | weeks 1, 2, 4 ×4, 8 ×4, 9 ×2 |
+| Standard | 14 / 16 | 2.2× | 39–41% | weeks 8 ×2 |
+| Hard | 7 / 16 | 1.6–1.9× | 54–66% | weeks 1, 4, 8 ×5, 10, 16 |
+| Extreme | 4 / 16 | 1.5× | 78–79% | weeks 1, 4 ×2, 8 ×3, 9 ×2, 10, 12, 13, 16 |
+
+Extra hours (§4.1) are most of the gap between the rows' medians: Standard's surplus cash buys moves, while Extreme's rarely stretches to them (§15).
 
 The band widens as the difficulty rises for the obvious reason: a run with no headroom spends every week near its target, which is what makes Extreme feel the way it does — and what makes one bad event week the end of it.
 
@@ -835,17 +845,21 @@ and drops the phrase:
   when it covers too much board, and the choice is remembered. On a narrow screen the bar takes the
   cards' own place instead of stacking above them — the tray keeps its height, so the board does not
   move — and **✕** hands the space back to the cards.
-- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates.
+- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates, and
+  **E** or the bar's **⇄** switches the side a transport attaches by (§3.2). The button names the
+  side, and is greyed where there is only one.
 - **Touch** has no hover, and a finger misses, so a tap only aims — a tile, an upgrade, a bonus
-  card on a tile or an edge alike. A popup opens by the target with the price and **✓ Build**
-  (**Upgrade**, **Play**, **Rezone**), **✕ Cancel**, and **⟳** for a tile that turns. It sits under
-  the target and its star badge, or over them or beside them when the card bar or the zoom buttons
-  are in the way, and follows the camera. Tapping elsewhere re-aims; Cancel drops the aim and keeps
-  the card, and the bar's **✕** puts the card back. A spot that will not take the tile says why in
-  the popup, where a long reason wraps, instead of in the badge. A Rezoning Permit lists the
-  transports it would tear down in the popup, so it does not ask a second time. While the popup is
-  up the bar hides its own Build and Rotate, so there is one button to press. A mouse click still
-  commits at once.
+  card on a tile or an edge alike. The card bar then becomes the confirmation: its title names the
+  target (`Burger Joint L1 → L2`, `Rezoning Permit: north edge`), the line under it gives the
+  reason a spot is refused or what a Rezoning Permit would tear down, and its buttons are **⟳**,
+  **⇄**, **✓ Build** (**Upgrade**, **Play**, **Rezone**) and **✕**. While aimed, the card's text
+  folds away so the bar covers as little board as it can; **⌃** opens it again. **✕** steps back
+  one thing at a time, like Esc: the aim first, then the card. Tapping elsewhere re-aims. The star
+  badge stays over the target, kept on screen at the board's edges. A mouse click still commits at
+  once.
+  - This replaced a popup that opened by the target with the price and its own Build and Cancel.
+    On a phone it sat over the board a hand's width above the card bar, both boxes carrying the
+    same name and price, and between them they covered most of the view.
 - **Tile details:** hover a card or tile to see them; click a tile to pin the popup, which carries
   the Delete button and a close button, and stays inside the screen on a phone. On touch, Delete
   asks once (**Keep** / **Delete**) before it acts.
@@ -865,7 +879,7 @@ and drops the phrase:
   covers the cards rather than the board, and controls take a tap without the double-tap zoom
   delay. A long press neither selects text nor raises the copy menu, and on the board it is not a
   right click, so it cannot rotate or drop the card in hand. The canvas swallows the click a tap
-  leaves behind, or it would land on the confirm popup the tap has just opened under the finger.
+  leaves behind, so it cannot land on whatever sits under the finger.
 - **A phone on its side** (landscape, under 500px tall) keeps the side panel as a column on the
   right, since width is what it has, starts with it collapsed, and shrinks the cards to 88×118 and
   the wallet to one row. The card bar sits bottom-left at half the width rather than across the
@@ -977,7 +991,7 @@ Transports bring travellers; amenities multiply what each traveller is worth. Bo
 - **The band** — what share of weeks land inside 1–2× of quota — is the other half of that reading, and the two trade against each other one for one (§15). `autoplay.js` prints it: the share inside the band, the share above 3×, and the median, p10 and p90 week. On Terminal, 16 runs to week 16: **48–55% of weeks inside the band, 3–7% above 3×, a median week of 1.8–2.0×**. Watch the over-3× share as closely as the band itself — it is the runaway board, and it was 31% before the multipliers were compressed. Every level, 12 runs each, as band / over 3× / median / survived: Terminal 55% / 2% / 1.80× / 6, Junction 41% / 16% / 2.17× / 6, Metroplex 62% / 7% / 1.71× / 4, Waterfront 51% / 0% / 1.89× / 6, Sky Harbour 50% / 4% / 1.94× / 9, Terminus 51% / 3% / 1.97× / 11. Against the old reading (Terminal 37% / 2.36× / 8, Junction 38% / 2.09× / 5, Terminus 28% / 2.43× / 12) every level's band improved and survival held within a run or two.
 
 Junction is the loose one at 16% over 3×, and most of that is survivorship: half its runs end in weeks 5–8, so weeks 9–16 are measured on the half that were strong enough to get there, on a 9×9 board with nothing left to build and nothing to spend on but upgrades. Two fixes were tried and both cost more than they bought — a steeper `quotaGrowth` (1.08) halved survival to 3/12, and leaving it on the global 1.10 with a higher `quotaMult` left the level dying in weeks 6–7. It is a shape the two levers cannot express: a curve that rises, flattens through the middle of the run, then rises again.
-- **`autoplay.js --difficulty`:** on Terminal the same 16 runs survive 10 on Standard, 6 on Hard and 2 on Extreme, with median weeks of 1.9×, 1.6× and 1.5× (§10.1.1). Re-run all three after any change to the quota block or the economy — a change that only reads as "slightly tighter" on Standard can wipe Extreme out in week 2, and one that only reads as "a little more cash" can hide a level dying in week 1 for want of a third tile (§15). Week 1 is worth its own pass: `createRun` plus one bot week over 16 seeds, per level and per difficulty, is a few seconds and catches exactly that.
+- **`autoplay.js --difficulty`:** on Terminal the same 16 runs survive 14 on Standard, 7 on Hard and 4 on Extreme, with median weeks of 2.2×, 1.6–1.9× and 1.5× (§10.1.1). The bot buys extra hours (§4.1) when the best move they open clears its usual bar, and `autoplay.js` prints how many per week. Run it to week 30 to read the endless ramp (§5.2): on Standard nearly every run that wins now ends between weeks 20 and 29. Re-run all three after any change to the quota block or the economy — a change that only reads as "slightly tighter" on Standard can wipe Extreme out in week 2, and one that only reads as "a little more cash" can hide a level dying in week 1 for want of a third tile (§15). Week 1 is worth its own pass: `createRun` plus one bot week over 16 seeds, per level and per difficulty, is a few seconds and catches exactly that.
 - **`tierboard.mjs`, weeks 4/9/13, 10 seeds:** the full ranking lives in `tier-list.md`. The shape to hold: cheap tier-1 transport leads the field at 31–60★ per $100 (the top of that range is Waterfront's own stock, which the level discounts by 40%), good shops sit at 8–21, the big late transports at 3–5, and utility tiles (WiFi, Walkway, Checkpoint, Waiting Area) at 1–3, because they are bought for what they do to other tiles and a five-tile bench gives them almost nothing to do. The cards that buy a crowd or an action point sit at 24–58, Charter Bus at the top; the Coupon Book pass (§15) took the one outlier out of that band.
 - **`sensitivity.mjs`, 24 seeds on the bot's week-9 and week-12 boards** (`--bot 1000 --week 9`, `--bot 1001 --week 9`, `--bot 1002 --week 12`): shift 1.6–2.6%, rotate 1.9–3.1%, noise 0.7–0.9%, stranding 14–22%. Board 1002 is the thin end of that range now: the bot reaches week 12 there with a 48★ board, where it used to build an 82★ one. The checkpoint is what holds the top of those two jump ranges up — the tile rotates its fence, so it swings 9–11★ where an ordinary shop swings 2–3 (§15); over the other five probe tiles it reads shift 1.6–3.9% and rotate 1.3–2.7%, where the whole set read 1.7–3.7% and 1.7–2.7% before. Seed to seed the week swings 10–14%, a little steadier than the 13–18% it read before the multipliers were compressed — fewer stops in a chain means less to compound. Moving an ordinary amenity one cell changes its value by 2–4% of the week's score, rotating it by 2–3%; the estimate's own noise floor is about 1%. All three boards are now full ones: seed 1000 used to die in week 1 and arrive at week 9 with two tiles and a 10★ week, and now reaches it with a 37★ board, so it is the small-board end of the range rather than a degenerate one. The one placement that still costs a quarter of the week is sealing a platform in, which the preview names.
 - **`badge.mjs`, boards 1002–1006 and 1007–1011 at weeks 9 and 12, 28 spots each:** the real week lands a mean 3.5–4.6★ from the badge, an error of 4–5% of the week's score, and a badge of a star or more comes out as a losing week for 11% of placements (5% and 15% on the two sets) and 8% of pairs (§15). What is left is the chain itself: a tile's footprint bends a few other travellers past more or fewer shops, and a tick either way puts someone on the wrong side of the last departure. By week 9 one tile is worth only 2–5% of the week, which is why the misses cluster there and not in the opening weeks.
@@ -1186,6 +1200,25 @@ Changes from the original design, with the reason for each. Original values are 
 - **The Strike is rolled, not chosen.** The player used to pick which transport terrain walked out, which meant picking the one that cost least: a walkout you choose is a formality. The union picks now — a roll keyed by seed and week over the terrains standing on the board, frozen into the run state as the week opens so that building a second terrain mid-week cannot move the walkout onto it, and so that taking the week back lands on the same one. It makes the event bite: 1.12× as hard at week 8, 1.27× at week 12 and 1.03× at week 16, against a 0.9–1.6× band, where before a careful player could hold it near 0.9×. The skeleton-service rule for a one-terrain board is untouched, and is what keeps the roll from ever being a zero-score week.
 
 - **Redo Week leaves the screen the moment the week runs.** Starting a week redrew the top bar, the shop and the board but not the side panel, so the offer under the timeline stayed up through the playback, the summary and a lost run: a take-back that clicked to nothing, since `weekTouched` is false outside the shop phase. `startWeek` rebuilds the side panel now, which is what §10.1.1 always said happened.
+
+
+- **Extra hours: cash buys an action point once the week's are spent** (§4.1). A playtest on Extreme found cash boosts not worth taking: points win the run and money only buys tiles, which two action points a week can only place so fast. The bot agreed: on Standard it held $3,300 unspent by week 7, $12,400 by week 13 and $18,000 by week 15, where a tile costs $100–900. Even Extreme carried $500–800 through the middle weeks. Cash had nothing left to buy, so Retail Compact, the Cash Machine and every other till tile were selling score for nothing (Retail Compact grades D in `tier-list.md` for exactly that). The fix gives cash a use rather than reworking each boost: once the points are spent, pay `$40 × 1.25^(week − 1)` for one more, and each more that week at 3× the last. The price climbs with the week so it stays a real cost, and the step bounds a full till to a move or two. It is the reverse of the early-finish bonus, and always dearer than that pays, so the two cannot be looped.
+
+  Measured, Terminal, `--runs 8 --weeks 16` on `--seed0 1000` and `2000`, before → after, as survived / band / over 3× / median:
+
+  | | Before | ×2 step, from week 1 | ×3 step, from week 4 (built) |
+  |---|---|---|---|
+  | Standard | 14/16 · 50–53% · 4–13% · 1.95–2.02× | 16/16 · 27–43% · 10–16% · 2.10–2.35× | 14/16 · 39–41% · 10–13% · 2.19–2.23× |
+  | Hard | 6/16 · 66–68% · 0–2% · 1.69–1.74× | 10/16 · 65–68% · 0–3% · 1.70–1.79× | 7/16 · 54–66% · 1–11% · 1.64–1.93× |
+  | Extreme | 5/16 · 80–81% · 0–1% · 1.47× | 4/16 · 77–79% · 0–1% · 1.47–1.54× | 4/16 · 78–79% · 0–1% · 1.47–1.54× |
+
+  The first build, from week 1 at ×2, let Standard's opening change buy a third tile: `week1.mjs` read Terminal Standard at 2.06× quota against 1.50×, with 2.8 tiles placed, and Junction and Sky Harbour moved the same way. Extreme did not move, since it has no change left after the opening hand. Opening at week 4 leaves week 1 as it was. At ×3 the bot buys 0.3–0.8 hours a week from week 4 to 13 on every difficulty and almost none past 16, where the price outruns income. Standard's band still slipped by about ten points and its median rose by 0.2×. That is the rich difficulty getting a use for its money. The `quota` block was left alone, because it is shared, and raising it to take Standard back would also have raised Extreme, which the playtest called right. If Standard needs pulling back, a `quotaMult` on Standard in `data/difficulties.js` is the lever. Terminus does not sell hours (one move a week is the level), and `SAVE_VERSION` went to 11 for `hoursBought`.
+
+- **The quota climbs faster after the win** (`quota.endless`, §5.2). The same playtest found the game eased off once week 16 was cleared. The settled 1.10 growth ran on unchanged, and a full board keeps pace with that for a long time: the bot's winning runs on Standard held 1.7–2.0× quota through week 21 and 1.4× at week 24, and 5 of 14 lasted to week 30. The two options were a steeper curve all run (easier middle, harder end) or a ramp that starts only after the win. The ramp was chosen, because it leaves weeks 1–16, which the playtest was happy with, exactly as they were. Each week past 16 now adds 0.015 more to the growth rate than the one before. To week 30, `--seed0 1000` and `2000`, runs that reached week 16, before → after: Standard ended in weeks 20–28 with 5 of 14 lasting to 30, and now ends in weeks 20–29 with 1 of 14 lasting; the mean week-24 ratio (seed set 1000) went 1.45× → 1.26×. Hard ended between weeks 16 and 30, and now between 16 and 27. 0.02 and 0.025 were priced but not run: they move week 28 from 493k to 675k and 914k, which would put the wall at week 24 or so for everyone. 0.015 keeps a strong run going into its late twenties.
+
+- **The side a transport attaches by is the player's** (§3.2). A corner berth used to claim both edges it touched, and a road tile, garage or lift always took the nearest edge, so there was no way to tuck a Parking Lot into a corner without claiming the side you wanted to keep. Each check now lists the edges it could use, and **⇄** or **E** cycles them. A corner berth attaches by one side and locks only that one. By default it prefers an edge that is already its terrain, so a corner no longer locks a second side unasked. The selftests that required a corner berth to fail were rewritten to require it to claim one edge.
+
+- **The touch confirmation moved into the card bar** (§12.6). On a phone the popup by the target and the card bar under the board both showed the card's name and price, and between them covered most of the board. The bar now carries the aim itself (the target, the refusal or warning, ⟳, ⇄, ✓ and ✕), and folds the card's text away while aimed.
 
 ---
 

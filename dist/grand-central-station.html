@@ -489,6 +489,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
             <span id="st-ap" class="sr-only">2</span>
           </div>
           <button id="btn-reroll" title="Costs 1 action point">Reroll</button>
+          <!-- once the week's points are spent, cash buys one more -->
+          <button id="btn-hours" class="hidden"></button>
           <button id="btn-run" class="primary">Run Week ▶</button>
         </div>
         <div id="shop-cards"></div>
@@ -549,6 +551,11 @@ const CONFIG = {
     rareTilesFromWeek: 10,
     apUpgradeFromWeek: 19,
     apUpgradeCost: 400,
+    // The week extra hours go on sale (see economy.extraHours). Not week 1:
+    // the opening hand's change would buy a third tile, and the opening is
+    // tuned for two (§15). A level can move it, or switch it off with a week
+    // it never reaches.
+    extraHoursFromWeek: 4,
   },
 
   // ------------------------------------------------------------------- quota
@@ -581,6 +588,11 @@ const CONFIG = {
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
     eventStrength: 0.30,
+    // Endless play. Once the run is won the curve stops settling and bends
+    // upward: each week past `from` adds `add` more to the growth rate than the
+    // week before, so week 17 grows 0.015 faster than week 16, week 20 0.06
+    // faster. Weeks up to the win are untouched.
+    endless: { from: 16, add: 0.015 },
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -605,6 +617,12 @@ const CONFIG = {
     // ...and deleting a tile placed this week hands its action point back, so
     // the rebuild is the same move over again rather than the week's other one.
     deleteRefundsAP: true,
+    // Extra hours: once the week's action points are spent, cash buys another.
+    // The first costs base * growth^(week-1) and each more that week `step`
+    // times the last, so a full till buys a move or two rather than a new board.
+    // It is what makes cash worth earning after the opening weeks: without it
+    // a run's money piles up unspent once the board is half built (§15).
+    extraHours: { base: 40, growth: 1.25, step: 3 },
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -760,7 +778,8 @@ function quotaForWeek(week, mode, extraMult = 1, diff = null) {
   const late = ((mode && mode.quotaGrowth) || q.growth) + ((diff && diff.quotaGrowthAdd) || 0);
   const early = Math.max(late, q.earlyGrowth);
   let raw = q.base;
-  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1);
+  const e = q.endless;
+  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1) + (e && i >= e.from ? e.add * (i - e.from + 1) : 0);
   raw *= extraMult * ((diff && diff.quotaMult) || 1) * ((mode && mode.quotaMult) || 1);
   const u = q.starUnit;
   return Math.max(u, Math.round(raw / u) * u);
@@ -1182,7 +1201,8 @@ const MODES = {
   terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One action point a week, but eight cards in the shop and Extra Shift comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
-                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
+                // One move a week is the level, so cash never buys a second.
+                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320, extraHoursFromWeek: 999 } },
 };
 const MODE_KEYS = Object.keys(MODES);
 for (const [k, m] of Object.entries(MODES)) m.key = k;
@@ -2933,7 +2953,9 @@ const { simulateWeek, simulateWeeks, mergeMods } = __m_src_sim_sim_js;
 // is not the run the player left. Discarding is the honest outcome here.
 // 10: money weeks and the Double Week (`weekCash`, `cashSwept`), and five new
 // events in the plan, so an old plan names weeks that no longer line up.
-const SAVE_VERSION = 10;
+// 11: extra hours (`hoursBought`) and the endless quota ramp, which moves
+// every target past week 16.
+const SAVE_VERSION = 11;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2945,7 +2967,7 @@ function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } =
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0, hoursBought: 0,
     money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
     board: startBoard(mode),
     shop: { cards: [], rerolls: 0 },
@@ -3122,6 +3144,22 @@ function earlyFinishPerAP(s, week = s.week) {
   return e.earlyFinishBase + e.earlyFinishPerWeek * (week - 1);
 }
 function earlyFinishBonus(s, ap = s.ap) { return earlyFinishPerAP(s) * Math.max(0, ap); }
+
+// Extra hours: cash for an action point, once the week's own are spent. The
+// price climbs with the week and doubles with each one bought that week.
+function extraHoursCost(s) {
+  const x = CONFIG.economy.extraHours;
+  return Math.round(x.base * Math.pow(x.growth, s.week - 1) * Math.pow(x.step, s.hoursBought || 0));
+}
+function extraHoursOnSale(s) { return s.phase === 'shop' && s.ap < 1 && s.week >= runRules(s).extraHoursFromWeek; }
+function buyExtraHours(s) {
+  if (!extraHoursOnSale(s)) return fail(s.ap >= 1 ? 'Spend the action points you have first' : 'No extra hours here');
+  const cost = extraHoursCost(s);
+  if (s.money < cost) return fail(`Need $${cost}`);
+  s.money -= cost; s.ap += 1; s.hoursBought = (s.hoursBought || 0) + 1;
+  log(s, `Paid $${cost} for extra hours`);
+  return { ok: true, cost };
+}
 
 // ------------------------------------------------------------- money weeks
 // An event may reach into the till instead of onto the board. Two of them land
@@ -3549,7 +3587,7 @@ function advanceWeek(s) {
   // effects tick down first, so one with weeks left still counts toward AP
   for (const e of s.effects) e.weeksLeft--;
   s.effects = s.effects.filter(e => e.weeksLeft > 0);
-  s.ap = apForRun(s);
+  s.ap = apForRun(s); s.hoursBought = 0;
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false; s.cashSwept = 0;
   s.shop.cards = generateShop(s);
@@ -3646,7 +3684,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, cashBaseline, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteGivesAPBack, deleteTile, reroll, buyAP, playCard, rezoningVictims, pickStrikeTerrain, chooseOrdinance, computeMods, transportTerrainsOnBoard, weekRepeat, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, extraHoursCost, extraHoursOnSale, buyExtraHours, cashBaseline, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteGivesAPBack, deleteTile, reroll, buyAP, playCard, rezoningVictims, pickStrikeTerrain, chooseOrdinance, computeMods, transportTerrainsOnBoard, weekRepeat, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
@@ -5532,6 +5570,18 @@ function renderShop() {
   const fee = G.rerollFee(state);
   $('btn-reroll').innerHTML = `Reroll${fee ? `<br><small>$${fmt(fee)}</small>` : ''}`;
   $('btn-reroll').disabled = state.phase !== 'shop' || state.ap < 1 || state.money < fee;
+  // With the week's points spent, Reroll has nothing to pay with, so its place
+  // goes to the one thing cash can still buy: another action point.
+  const hours = G.extraHoursOnSale(state) && ui.mode !== 'playback';
+  $('btn-reroll').classList.toggle('hidden', hours);
+  const hb = $('btn-hours');
+  hb.classList.toggle('hidden', !hours);
+  if (hours) {
+    const c = G.extraHoursCost(state);
+    hb.innerHTML = ''; hb.append('+', apPips(1), h('br'), h('small', {}, `$${fmt(c)}`));
+    hb.disabled = state.money < c;
+    hb.title = `Extra hours: one more action this week for $${fmt(c)}. Each one after that costs twice as much.`;
+  }
 }
 
 // ------------------------------------------------------------ popup
@@ -6373,6 +6423,8 @@ function boot() {
   });
   $('btn-run').addEventListener('click', confirmRunWeek);
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
+  // the card in hand stays in hand: buying the hours is usually for it
+  $('btn-hours').addEventListener('click', () => { const r = G.buyExtraHours(state); if (!r.ok) hint(r.reason); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
   const applyLayout = () => {
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);

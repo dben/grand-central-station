@@ -1,11 +1,11 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement } from '../src/game/run.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement, buyExtraHours, extraHoursCost } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, quotaForWeek } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
 const edgeCells = (cells, e) => cells.filter(([x, y]) => e === 'N' ? y === 0 : e === 'W' ? x === 0 : e === 'S' ? y === 11 : x === 11).length;
@@ -525,6 +525,37 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const e = estimatePlacement(er, 'coffee', 5, 5, 0);
   ok(e && e.ptsLo <= e.ptsFrom && e.ptsFrom <= e.ptsTo && e.ptsTo <= e.ptsHi,
     `the star badge quotes the trimmed range of the preview weeks (${Math.round(e.ptsFrom)} to ${Math.round(e.ptsTo)}, of ${Math.round(e.ptsLo)} to ${Math.round(e.ptsHi)})`);
+}
+
+// Extra hours: cash buys an action point once the week's own are spent, each
+// one that week dearer than the last, and the next week starts the count again.
+{
+  const x = createRun({ seed: 5 }); x.week = CONFIG.run.extraHoursFromWeek;
+  ok(!buyExtraHours(x).ok, 'no extra hours while action points are left');
+  x.ap = 0; x.money = 1000;
+  const c1 = extraHoursCost(x);
+  ok(buyExtraHours(x).ok && x.ap === 1 && x.money === 1000 - c1, `extra hours buy one action point for $${c1}`);
+  x.ap = 0;
+  ok(extraHoursCost(x) === Math.round(c1 * CONFIG.economy.extraHours.step), 'the second that week costs more than the first');
+  x.phase = 'summary'; x.lastResult = { score: 1e9, money: { total: 0 }, counts: {} }; settle(x);
+  ok(x.hoursBought === 0 && extraHoursCost(x) > c1 && extraHoursCost(x) < 2 * c1, 'a new week starts the count again, a little dearer');
+  const w1 = createRun({ seed: 5 }); w1.ap = 0; w1.money = 1000;
+  ok(!buyExtraHours(w1).ok, 'none in the opening weeks');
+  const tm = createRun({ modeKey: 'terminus', seed: 5 }); tm.ap = 0; tm.money = 1e6;
+  ok(!buyExtraHours(tm).ok, 'Terminus, the one-move level, never sells them');
+}
+
+// Endless: the curve bends upward after the win and leaves every week up to it alone.
+{
+  const off = { ...CONFIG.quota.endless };
+  const base = [];
+  CONFIG.quota.endless = null;
+  for (let w = 1; w <= 24; w++) base.push(quotaForWeek(w, MODES.terminal));
+  CONFIG.quota.endless = off;
+  const now = []; for (let w = 1; w <= 24; w++) now.push(quotaForWeek(w, MODES.terminal));
+  ok(now.slice(0, 16).join() === base.slice(0, 16).join(), 'the endless ramp leaves weeks 1-16 as they were');
+  const step = w => now[w - 1] / now[w - 2], was = w => base[w - 1] / base[w - 2];
+  ok(now[16] > base[16] && step(24) > step(20) && step(20) > step(17) && step(24) - was(24) > step(18) - was(18), 'after the win each week climbs faster than the last');
 }
 
 const rperf0 = performance.now();

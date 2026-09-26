@@ -106,17 +106,32 @@ export function naiveAction(s, rng) {
 // Play one run. `onWeek(s, result, quota)` is called after each week runs, before
 // settlement. Returns { s, died, ratios } where ratios[week] = score / quota.
 // `stopBefore` ends the run in the shop phase of that week (a board to probe).
-export function playRun({ seed, weeks = 16, mode = 'terminal', difficulty = 'standard', policy = 'greedy', cands = 10, verbose = false, stopBefore = null, onWeek = null, prune = true }) {
+// Would one more action point, bought now, find a move worth making? Tried on
+// the state as it would stand after paying, then put back.
+function hoursWorthIt(s, rng, cands, prune) {
+  if (!G.extraHoursOnSale(s)) return false;
+  const cost = G.extraHoursCost(s);
+  if (cost > s.money) return false;
+  s.money -= cost; s.ap += 1;
+  const a = greedyAction(s, rng, cands, { prune });
+  s.money += cost; s.ap -= 1;
+  return a.score >= 1.5 && !a.label.startsWith('Run early') && !a.label.startsWith('Delete');
+}
+
+export function playRun({ seed, weeks = 16, mode = 'terminal', difficulty = 'standard', policy = 'greedy', cands = 10, verbose = false, stopBefore = null, onWeek = null, prune = true, hours = true }) {
   const s = G.createRun({ modeKey: mode, diffKey: difficulty, seed });
   const rng = new Rng(seed);
   let died = null;
-  const ratios = {};
+  const ratios = {}, hoursBought = {};
   while (s.week <= weeks) {
     if (s.pendingOrdinance) G.chooseOrdinance(s, s.pendingOrdinance[0]);
     if (s.phase === 'won') G.continueAfterWin(s);
     if (stopBefore != null && s.week >= stopBefore) break;
     let guard = 0;
-    while (s.ap > 0 && guard++ < 12) {
+    while (guard++ < 12) {
+      // Out of points: pay for extra hours only if the best move then open,
+      // priced against what is left after the hours, clears the usual bar.
+      if (s.ap < 1) { if (!hours || policy === 'naive' || !hoursWorthIt(s, rng, cands, prune)) break; G.buyExtraHours(s); hoursBought[s.week] = (hoursBought[s.week] || 0) + 1; }
       const a = policy === 'naive' ? naiveAction(s, rng) : greedyAction(s, rng, cands, { prune });
       const r = a.act();
       if (verbose) console.log(`  seed ${seed} w${s.week} AP${s.ap} $${s.money}: ${a.label} -> ${r.ok ? 'ok' : r.reason}`);
@@ -130,7 +145,7 @@ export function playRun({ seed, weeks = 16, mode = 'terminal', difficulty = 'sta
     const st = G.settle(s);
     if (!st.passed) { died = s.week; break; }
   }
-  return { s, died, ratios };
+  return { s, died, ratios, hoursBought };
 }
 
 export const boardSpec = s => ({ mode: s.modeKey, difficulty: s.diffKey, week: s.week, tiles: s.board.tiles.map(t => ({ key: t.key, x: t.x, y: t.y, rot: t.rot, level: t.level })) });
