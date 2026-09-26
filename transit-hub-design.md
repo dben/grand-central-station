@@ -817,8 +817,9 @@ and drops the phrase:
 - **Level cards** show the board size and weekly AP as `12×12 ▪▪`, so their text only says what
   sets the level apart. A record line appears only once there is a record.
 - Shop cards are labelled *shop*, *transport*, *lounge*, *utility*, *upgrade*, *bonus* or *bridge*.
-  A transport card instead carries a pixel-art header of its kind of transport, and its label is the
-  terrain it needs, so the terrain drops off the tier line underneath (§13.3).
+  A transport card carries a pixel-art header of its kind of transport in place of the label, and
+  the terrain word drops off the tier line underneath; the popup and card bar still spell the
+  terrain out (§13.3).
 
 ### 12.6 Controls
 

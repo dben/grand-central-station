@@ -153,8 +153,7 @@ const UFO = [
 ];
 
 // ---- scenes -------------------------------------------------------------------
-// The ground's label sits in a pill over the top middle, so that strip stays
-// plain sky (or turf); the vehicles keep to the sides and the lower rows.
+// The vehicles keep to the lower rows, which small cards keep when they crop.
 const SCENES = {
   road(c) {
     c.bands(0, [[SKY[1], 2], [SKY[2], 2], [SKY[3], 4]]);
