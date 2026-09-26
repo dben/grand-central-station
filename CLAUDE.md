@@ -25,6 +25,7 @@ node harness/run.js harness/layouts/amenity_chain.json --seeds 50 --week 4
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24   # placement landscape of a tile: best/median/negative share, jump per cell or rotation
 node harness/tierboard.mjs --weeks 4,9,13 --seeds 10          # rank tiles, cards and ordinances on fixed benches -> tier-list.md
 node harness/tierlist.mjs --weeks 5,9,13 --seeds 6            # the same ranking, on the bot's own boards
+node harness/badge.mjs --bots 1002,1003,1004,1005,1006 --weeks 9,12   # star badge vs the week actually run: miss, and badges that turn into a loss
 ```
 
 `autoplay.js`, `run.js` and `sensitivity.mjs` take `--set sim.hurry.enabled=false` (any `CONFIG`
