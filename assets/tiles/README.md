@@ -21,4 +21,7 @@ renderer turns it toward the edge the tile draws from. Design doc §13.3 has the
 
 `harness/isoart.mjs` bakes these into the isometric sheets in `assets/iso/`
 (and their manifest, `src/ui/isosprites.js`), which the renderer draws by
-default; rerun it after `tileart.mjs`. Design doc §13.3 says how.
+default; rerun it after `tileart.mjs`. Each `assets/iso/<key>.png` is a plain
+picture of the tile's four turns that can be touched up in an image editor;
+`<key>_map.png` beside it holds the lighting and cell data. Rerunning the
+baker overwrites both. Design doc §13.3 says how.

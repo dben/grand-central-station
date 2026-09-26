@@ -1,6 +1,6 @@
 import { tileDef } from '../data/tiles.js';
 import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS, SPRITE_SINKS } from './tilesprites.js';
-import { ISO_SHEETS, ISO_FRAMES } from './isosprites.js';
+import { ISO_SHEETS, ISO_MAPS, ISO_FRAMES } from './isosprites.js';
 
 // Board tile art, drawn by harness/tileart.mjs, which also writes the manifest
 // (tilesprites.js): tile key -> PNG drawn top-down in the shape's BASE
@@ -85,7 +85,7 @@ function load(manifest, prefix) {
     const img = new Image();
     cache.set(id, { img, ok: false });
     img.onload = () => { Object.assign(cache.get(id), { ok: img.naturalWidth > 0 }, prefix ? {} : bake(img, key)); for (const fn of listeners) fn(key); };
-    img.onerror = () => { cache.get(id).ok = false; };
+    img.onerror = () => { Object.assign(cache.get(id), { ok: false, err: true }); };
     img.src = url;
   }
 }
@@ -126,6 +126,7 @@ export function loadSprites(onLoad) {
   load(SPRITES, '');
   load(SPRITES_FLOOR, 'floor:');
   load(ISO_SHEETS, 'iso:');
+  load(ISO_MAPS, 'isomap:');
 }
 function get(id) {
   const e = cache.get(id);
@@ -138,14 +139,19 @@ export function spriteFloor(key) { return get('floor:' + key); }
 
 // ---- isometric sheets -------------------------------------------------------
 // Drawn by harness/isoart.mjs (the manifest is isosprites.js): each tile's art
-// already projected to screen space, a cell's diamond 64 sheet pixels wide, cut
-// into one piece per cell. A sheet stores four frames, one per quarter turn;
-// the other four orientations are those frames flipped left to right, which is
-// the grid's x and y swapped. Its pixels are neutral: base colour + weight x the
-// tile's colour, with a face index (top, left, right) to light them by. So one
-// sheet is coloured and lit at load for each way it is shown: its colour, full
-// or closed (a grey palette), and flipped or not (the light stays on the right,
-// so a flipped frame's faces swap shades).
+// already projected to screen space, a cell's diamond 64 sheet pixels wide. A
+// sheet is a plain picture, safe to touch up in an image editor: four frames,
+// one per quarter turn, each the floor layer then the over layer, in the tile's
+// own colours and light. Its `_map` image says which cell owns each pixel,
+// which face it is on and how much of it is the tile's colour.
+//
+// The other four orientations are those frames flipped left to right, which is
+// the grid's x and y swapped. The light stays on the right, so a flipped frame
+// is relit: each pixel's face shade is divided out and the other side's put in.
+// A full or closed tile is the same frame in a grey palette, and a tile in
+// another colour than the sheet was drawn in shifts by its weight. Each way a
+// sheet is shown is worked out once, then cut into a canvas per cell so the
+// renderer can keep painting cell by cell.
 export const ISO_CELL_PX = 64;
 const FACE_SHADE = [1, 0.52, 0.70, 0.61];
 const DIM = [70, 74, 84];
@@ -153,54 +159,72 @@ const DIM = [70, 74, 84];
 // then rot quarter turns): tf itself, or the flip (x, y) -> (y, x) of turn m.
 const turn = ([x, y], n) => { for (let i = 0; i < n; i++) [x, y] = [-y, x]; return [x, y]; };
 export function isoFrame(key, tf) {
-  const f = ISO_FRAMES[key];
-  if (!f) return null;
-  if (!tf.mirror) return { m: tf.rot, flip: false, frame: frameCells(key, tf.rot) };
+  if (!ISO_FRAMES[key]) return null;
+  if (!tf.mirror) return { m: tf.rot, flip: false };
   const want = turn([-1, 2], tf.rot);
-  for (let m = 0; m < 4; m++) { const [x, y] = turn([1, 2], m); if (y === want[0] && x === want[1]) return { m, flip: true, frame: frameCells(key, m) }; }
+  for (let m = 0; m < 4; m++) { const [x, y] = turn([1, 2], m); if (y === want[0] && x === want[1]) return { m, flip: true }; }
   return null;
 }
-// a frame's pieces by the cell that owns them: "u,v" -> { floor: [], over: [] }
-const cellMaps = new Map();
-function frameCells(key, m) {
-  const id = key + '#' + m;
-  if (!cellMaps.has(id)) {
-    const map = new Map(), fr = ISO_FRAMES[key].frames[m];
-    for (const layer of ['floor', 'over']) for (const p of fr[layer] || []) {
-      const k = p[0] + ',' + p[1];
-      if (!map.has(k)) map.set(k, { floor: [], over: [] });
-      map.get(k)[layer].push(p);
-    }
-    cellMaps.set(id, map);
-  }
-  return cellMaps.get(id);
-}
 const variants = new Map();
-// The sheet coloured `tint`, greyed if `dim`, lit for a flipped frame if `swap`;
-// null until it has loaded (or if the browser won't let it be read back).
-export function isoArt(key, tint, dim, swap) {
-  const id = key + '|' + tint + '|' + (dim ? 1 : 0) + (swap ? 1 : 0);
+// Frame m of the sheet as shown: "u,v" -> { kind, floor, over }, each layer a
+// { canvas, x, y } in frame coordinates. Null until both images have loaded, or
+// if the browser won't let them be read back.
+export function isoArt(key, m, tint, dim, swap) {
+  const id = [key, m, tint, dim ? 1 : 0, swap ? 1 : 0].join('|');
   if (variants.has(id)) return variants.get(id);
-  const img = get('iso:' + key), half = ISO_FRAMES[key] && ISO_FRAMES[key].half;
-  if (!img || !half) return null;
-  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = half;
-  const x = c.getContext('2d');
-  x.drawImage(img, 0, 0);
-  let data, ctl;
-  try { data = x.getImageData(0, 0, c.width, half); x.clearRect(0, 0, c.width, half); x.drawImage(img, 0, -half); ctl = x.getImageData(0, 0, c.width, half).data; }
-  catch (e) { variants.set(id, null); return null; }
-  const p = data.data, t = [1, 3, 5].map(i => parseInt(tint.slice(i, i + 2), 16));
+  const man = ISO_FRAMES[key], img = get('iso:' + key), mapImg = get('isomap:' + key);
+  // wait for the map too, unless it is missing: the picture alone still draws, unlit
+  if (!man || !img || (!mapImg && !(cache.get('isomap:' + key) || {}).err)) return null;
+  const read = (im, x, y, w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(im, -x, -y); return g.getImageData(0, 0, w, h).data; };
+  const t = hex3(tint), t0 = hex3(man.tint), shift = t.some((v, k) => v !== t0[k]);
   const shades = swap ? [FACE_SHADE[0], FACE_SHADE[2], FACE_SHADE[1], FACE_SHADE[3]] : FACE_SHADE;
-  for (let i = 0; i < p.length; i += 4) {
-    if (!p[i + 3]) continue;
-    const w = ctl[i] / 100, f = shades[Math.round(ctl[i + 1] / 60)] || 1;
-    for (let k = 0; k < 3; k++) {
-      const v = Math.min(255, p[i + k] + w * t[k]) * f;
-      p[i + k] = dim ? 0.3 * v + 0.7 * DIM[k] : v;
+  const out = new Map();
+  try {
+    for (const layer of ['floor', 'over']) {
+      const r = man.frames[m][layer];
+      if (!r) continue;
+      const [sx, sy, w, h, fx, fy] = r, p = read(img, sx, sy, w, h), q = mapImg ? read(mapImg, sx, sy, w, h) : null;
+      // sort the pixels into their cells; one painted in with no map goes to the cell under it
+      const own = new Int32Array(w * h).fill(-1), boxes = new Map();
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        const o = (j * w + i) * 4;
+        if (!p[o + 3]) continue;
+        let c = q && q[o + 3] ? q[o + 1] - 1 : -1;
+        if (c < 0) c = nearestCell(man.frames[m].cells, fx + i + 0.5, fy + j + 0.5);
+        own[j * w + i] = c;
+        const b = boxes.get(c) || [i, j, i, j];
+        boxes.set(c, [Math.min(b[0], i), Math.min(b[1], j), Math.max(b[2], i), Math.max(b[3], j)]);
+      }
+      for (const [c, [x0, y0, x1, y1]] of boxes) {
+        const cw = x1 - x0 + 1, ch = y1 - y0 + 1, cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+        const g = cv.getContext('2d'), data = g.createImageData(cw, ch), d = data.data;
+        for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
+          if (own[j * w + i] !== c) continue;
+          const o = (j * w + i) * 4, e = ((j - y0) * cw + i - x0) * 4;
+          const f = q && q[o + 3] ? Math.round(q[o] / 60) : 0, wt = q && q[o + 3] ? q[o + 2] / 100 : 0;
+          const relit = shades[f] / FACE_SHADE[f];
+          for (let k = 0; k < 3; k++) {
+            let v = p[o + k] * relit;
+            if (shift) v += wt * (t[k] - t0[k]) * shades[f];
+            d[e + k] = dim ? 0.3 * v + 0.7 * DIM[k] : v;
+          }
+          d[e + 3] = p[o + 3];
+        }
+        g.putImageData(data, 0, 0);
+        const [u, v, kind] = man.frames[m].cells[c], ck = u + ',' + v;
+        if (!out.has(ck)) out.set(ck, { u, v, kind, floor: null, over: null });
+        out.get(ck)[layer] = { canvas: cv, x: fx + x0, y: fy + y0 };
+      }
     }
-  }
-  x.clearRect(0, 0, c.width, half);
-  x.putImageData(data, 0, 0);
-  variants.set(id, c);
-  return c;
+  } catch (e) { variants.set(id, null); return null; }
+  variants.set(id, out);
+  return out;
+}
+const hex3 = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+// The listed cell nearest the ground point under frame pixel (X, Y).
+function nearestCell(cells, X, Y) {
+  const U = Y + X / 2, V = Y - X / 2;
+  let best = 0, bd = Infinity;
+  cells.forEach(([u, v], i) => { const d = (U / 32 - u - 0.5) ** 2 + (V / 32 - v - 0.5) ** 2; if (d < bd) { bd = d; best = i; } });
+  return best;
 }
