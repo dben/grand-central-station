@@ -43,6 +43,7 @@ const GRASS = ['#3f8f2f', '#4aa244', '#5cb84a', '#78cf5a'];
 const WOOD = '#a86a3a', WOOD_L = '#d08a4a', WOOD_D = '#6b3e24';
 const STEEL = '#c9c4d8', STEEL_D = '#8a8a9a';
 const WATER = ['#1673c0', '#1ea0ea', '#6cc8ff'];
+const SHADE = '#0a052060';   // a shadow cast on nothing drawn: see-through
 
 // ---- canvas -----------------------------------------------------------------
 // One sheet per layer, clipped to the tile's footprint so nothing spills into
@@ -93,14 +94,16 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   // an inked box
   const box = (x, y, w, h, col, ink = INK) => blot(x, y, w, h, () => true, col, ink);
   const cellOn = (cx, cy) => set.has(cx + ',' + cy);
-  // darken what is already drawn: shadows on the floor
-  const dark = (x, y, w, h, f) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) { const k = (j + oy) * IW + i + ox; if ((inside(i, j) || inBand(i, j)) && px[k]) px[k] = shade(px[k], f); } };
+  // darken what is already drawn: shadows on the floor. Where nothing is drawn
+  // (the band past the edge) the shadow is a see-through wash over the strip.
+  const darkAt = (i, j, f) => { const k = (j + oy) * IW + i + ox; if (inside(i, j) || inBand(i, j)) px[k] = px[k] ? shade(px[k], f) : SHADE; };
+  const dark = (x, y, w, h, f) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) darkAt(i, j, f); };
   // every pixel of the band past the bounding box
   const band = fn => { for (let y = -oy; y < IH - oy; y++) for (let x = -ox; x < IW - ox; x++) if (inBand(x, y)) fn(x, y); };
   // a raised part: it stands from z0 to z1, in units of tile height; a round one
   // bulges and narrows as it rises (a tree top, a balloon) instead of a drum
   const block = (x, y, w, h, z1, z0 = 0, round = false) => blocks.push([x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]);
-  return { W, H, IW, IH, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, dark };
+  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, dark, darkAt };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -170,7 +173,7 @@ function shop(c, t, icon, { awn = RED, alt = WHITE, at = null, plant = true } = 
   if (icon) icon(c, ix, iy);
 }
 // A trunk and its shadow on the floor, and a canopy over it: a park's trees.
-function treeShadow(c, x, y, r) { c.disc(x + 2, y + 3, r, '#2f6f25'); c.R(x, y, 2, 2, WOOD_D); }
+function treeShadow(c, x, y) { c.R(x, y, 2, 2, WOOD_D); }
 function tree(c, x, y, r) {
   c.disc(x, y, r + 1, INK); c.disc(x, y, r, GRASS[0]);
   c.disc(x - 1, y - 1, r - 2, GRASS[1]); c.disc(x - 2, y - 2, Math.max(1, r - 5), GRASS[3]);
@@ -231,7 +234,8 @@ function boat(c, x, y, len, w, hull, deck, cabin = null, z = 0.1) {
   }
 }
 // An aircraft from above: fuselage, swept wings, tailplane. Box is len x span.
-function plane(c, x, y, len, span, body, trim, down = false, z = 0.12) {
+// It flies, or sits high on its gear: the block floats a thin slab off the floor.
+function plane(c, x, y, len, span, body, trim, down = false, z = 0.16) {
   const cy = (span - 1) / 2, fw = Math.max(2, Math.round(span / 12));
   const test = (i, j) => {
     const dy = Math.abs(j - cy);
@@ -246,12 +250,12 @@ function plane(c, x, y, len, span, body, trim, down = false, z = 0.12) {
   if (down) c.blot(x, y, span, len, (i, j) => test(j, i), (i, j) => paint(j, i));
   else c.blot(x, y, len, span, test, paint);
   for (const s of [-1, 1]) { const a = Math.round(len * 0.46), b = Math.round(cy + s * span * 0.24) - 1; down ? c.box(x + b, y + a, 3, 5, STEEL_D) : c.box(x + a, y + b, 5, 3, STEEL_D); }
-  down ? c.block(x - 1, y - 1, span + 2, len + 2, z) : c.block(x - 1, y - 1, len + 2, span + 2, z);
+  down ? c.block(x - 1, y - 1, span + 2, len + 2, z, z - 0.06) : c.block(x - 1, y - 1, len + 2, span + 2, z, z - 0.06);
 }
 function heli(c, cx, cy, col) {
   c.R(cx, cy - 1, 18, 3, INK); c.R(cx + 1, cy, 16, 1, shade(col, 0.8)); c.R(cx + 16, cy - 4, 3, 9, INK);
   c.disc(cx, cy, 7, INK); c.disc(cx, cy, 6, col); c.disc(cx + 3, cy - 1, 3, GLASS);
-  c.block(cx - 8, cy - 8, 28, 17, 0.16);
+  c.block(cx - 8, cy - 8, 28, 17, 0.18, 0.07);
   // the rotor turns over the body, flat at the top of the pad's box
   for (let i = -17; i <= 17; i++) { c.P(cx + i, cy + Math.round(i * 0.35), '#2e374d'); c.P(cx - Math.round(i * 0.35), cy + i, '#2e374d'); }
   c.disc(cx, cy, 1, STEEL);
@@ -472,13 +476,13 @@ const TILES = {
       c.fill(mix('#5a5e70', t, 0.12)); c.ring(32, 32, 27, 2, YELLOW);
       c.R(22, 20, 4, 24, WHITE); c.R(38, 20, 4, 24, WHITE); c.R(26, 30, 12, 4, WHITE);
       for (const [x, y] of [[5, 5], [57, 5], [5, 57], [57, 57]]) c.box(x, y, 2, 2, '#ff9cec');
-      shadow(c, 34, 38, 24, 16); frame(c, t);
+      frame(c, t);
     },
     over(c, t) { heli(c, 42, 46, t); },
   },
   balloon: {
     floor(c, t) {
-      grass(c); c.ring(48, 18, 12, 1, '#d8c89a'); c.disc(51, 22, 15, '#2f6f25'); c.box(45, 16, 6, 6, WOOD);
+      grass(c); c.ring(48, 18, 12, 1, '#d8c89a'); c.box(45, 16, 6, 6, WOOD);
       c.box(6, 6, 10, 10, WOOD_L); c.box(80, 8, 8, 8, WOOD_L); frame(c, t);
     },
     over(c, t) {
@@ -510,17 +514,17 @@ const TILES = {
     },
   },
   prop_stand: {
-    floor(c, t) { apronStrip(c, t, 0); c.R(0, 0, 64, 6, mix('#c4c0d4', t, 0.14)); c.R(0, 5, 64, 1, YELLOW); shadow(c, 10, 6, 34, 26); c.box(52, 22, 8, 6, YELLOW); frame(c, t); },
+    floor(c, t) { apronStrip(c, t, 0); c.R(0, 0, 64, 6, mix('#c4c0d4', t, 0.14)); c.R(0, 5, 64, 1, YELLOW); c.box(52, 22, 8, 6, YELLOW); frame(c, t); },
     over(c, t) { plane(c, 10, 4, 34, 28, '#e6e6f0', RED); },
   },
   hardstand: {
-    floor(c, t) { apronStrip(c, t, 0); for (const [x, y] of [[8, 8], [54, 8], [8, 54], [54, 54]]) c.box(x, y, 2, 2, YELLOW); shadow(c, 12, 16, 38, 34); kerb(c, t); },
+    floor(c, t) { apronStrip(c, t, 0); for (const [x, y] of [[8, 8], [54, 8], [8, 54], [54, 54]]) c.box(x, y, 2, 2, YELLOW); kerb(c, t); },
     over(c, t) { plane(c, 12, 14, 38, 34, WHITE, '#3f8cff'); },
   },
   private_terminal: {
     // the bar of the T meets the apron with a business jet at the stand; the
     // stem is the lounge
-    floor(c, t) { apronStrip(c, t, 0); c.R(0, 30, 96, 2, RED); shadow(c, 14, 2, 58, 28); frame(c, t); },
+    floor(c, t) { apronStrip(c, t, 0); c.R(0, 30, 96, 2, RED); frame(c, t); },
     over(c, t) { plane(c, 14, 0, 58, 30, WHITE, YELLOW, false, 0.16); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
   },
   jetpack: {
@@ -604,14 +608,27 @@ const TILES = {
     for (const [x, y] of [[3, 3], [27, 3], [3, 27], [27, 27]]) c.box(x, y, 2, 2, YELLOW);
     frame(c, t);
   } },
-  gate: { floor(c, t) {
-    // the fence runs between the two cells: a scanner arch straddles it, a
-    // bag belt beside it
-    platform(c, t); c.R(24, 0, 16, 32, mix('#2e374d', t, 0.2)); for (let y = 2; y < 32; y += 4) c.R(26, y, 12, 1, '#3b4050');
-    c.box(22, 12, 20, 8, STEEL_D); c.R(24, 14, 16, 4, '#1a1033'); c.R(30, 14, 4, 4, '#5fc23a');
-    c.box(2, 6, 18, 20, '#3b4050'); for (let y = 8; y < 26; y += 3) c.R(3, y, 16, 1, '#2e374d'); c.box(6, 10, 8, 5, '#ff9cec');
-    c.box(46, 8, 14, 16, '#2e374d'); c.R(48, 10, 10, 5, '#35d4ff'); frame(c, t);
-  } },
+  gate: {
+    // The fence runs across the booth between its two cells, so the lane runs
+    // the length of it: in one end, through the arch on the fence line, out the
+    // other. The bag belt runs alongside, through its scanner.
+    floor(c, t) {
+      platform(c, t);
+      c.R(0, 12, 64, 12, mix('#2e374d', t, 0.25)); c.R(0, 12, 64, 1, YELLOW); c.R(0, 23, 64, 1, YELLOW);
+      for (const x of [8, 48]) for (let j = 0; j < 4; j++) { c.P(x + j, 15 + j, WHITE); c.P(x + j, 20 - j, WHITE); }
+      c.box(2, 2, 60, 6, '#3b4050'); for (let x = 4; x < 62; x += 3) c.R(x, 3, 1, 4, '#2e374d');
+      c.box(8, 3, 6, 4, '#ff9cec'); c.box(46, 3, 5, 4, '#35d4ff');
+      c.box(40, 26, 12, 4, '#2e374d'); c.R(41, 27, 10, 2, '#35d4ff');
+      frame(c, t);
+    },
+    over(c) {
+      // the arch: a hollow frame, raised, so it stands as two posts and a bar
+      c.box(28, 10, 8, 16, null); c.R(28, 10, 8, 2, STEEL_D); c.R(28, 24, 8, 2, STEEL_D); c.R(30, 12, 1, 12, '#5fc23a'); c.R(33, 12, 1, 12, '#5fc23a');
+      c.block(27, 9, 10, 18, 0.42);
+      // the bag scanner over the belt
+      c.box(24, 1, 16, 8, STEEL_D); c.R(26, 3, 12, 4, '#1a1033'); c.block(23, 0, 18, 10, 0.3);
+    },
+  },
   flier_club: { floor(c, t) {
     carpet(c, mix('#3b2a5a', t, 0.35), shade(t, 0.8));
     for (const [x, y] of [[8, 8], [8, 40], [40, 40], [70, 8]]) { c.box(x, y, 8, 8, '#8a2a4a'); c.box(x + 12, y, 8, 8, '#8a2a4a'); c.disc(x + 10, y + 12, 3, WOOD_L); }
@@ -702,7 +719,7 @@ function png(c) {
   const raw = Buffer.alloc(H * (1 + W * 4));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const v = px[y * W + x];
-    if (v && v.startsWith('#')) raw.set([...hex(v), 255], y * (1 + W * 4) + 1 + x * 4);
+    if (v && v.startsWith('#')) raw.set([...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) : 255], y * (1 + W * 4) + 1 + x * 4);
   }
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
@@ -711,8 +728,18 @@ function png(c) {
 const drawn = Object.fromEntries(Object.entries(TILES).map(([key, art]) => {
   const def = tileDef(key), tint = colorForDef(def), out = {};
   for (const layer of ['floor', 'over']) if (art[layer]) { out[layer] = sheet(def.shape, art.pad); art[layer](out[layer], tint, def); }
+  if (out.floor && out.over) castShadows(out.over, out.floor);
   return [key, out];
 }));
+// Anything floating (a plane, a tree top, a gondola) casts its own outline on
+// the floor, a little down and to the right, so it reads as off the ground.
+function castShadows(over, floor) {
+  for (const [bx, by, w, h, z0] of over.blocks) {
+    if (z0 <= 0) continue;
+    const d = Math.round(2 + z0 * 8);
+    for (let j = by; j < by + h; j++) for (let i = bx; i < bx + w; i++) if (over.px[j * over.IW + i]) floor.darkAt(i - over.ox + d, j - over.oy + d, 0.62);
+  }
+}
 
 // --sheet <file>: also write every tile at 3x, floor under over, on one contact
 // sheet, so the drawings can be looked over without the game.
