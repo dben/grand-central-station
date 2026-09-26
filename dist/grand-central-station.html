@@ -368,7 +368,9 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   /* too small to crop: the whole scene, scaled to the card */
   .card.has-art { --art-h: 30px; padding-top: calc(var(--art-h) + 3px); }
   .card .art { background-size: cover; }
-  .card.has-art canvas { max-height: 30px; }
+  .card.has-art canvas { max-height: 28px; }
+  /* an upgrade's own name gets one line here; the card bar spells it out in full */
+  .card.has-art > .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .card .icon { font-size: 20px; }
   .card .sub { font-size: 12px; }
   .card .cost { font-size: 14px; }
@@ -3651,6 +3653,7 @@ return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, a
 })();
 // ---- src/ui/sprites.js
 const __m_src_ui_sprites_js = (() => {
+const { tileDef } = __m_src_data_tiles_js;
 // Sprite manifest: tile key -> PNG drawn in the shape's BASE orientation
 // (see src/sim/shapes.js) at 32px per cell, covering the bounding box.
 // The renderer clips the image to the tile's cells and rotates/mirrors it to
@@ -3662,6 +3665,7 @@ const __m_src_ui_sprites_js = (() => {
 // SPRITES_FLOOR is the under layer - the interior a traveller stands on, like
 // a lounge's seating or a shop's tiling - and SPRITES is the over layer, the
 // walls and roof that hide anyone inside. A tile may have either or both.
+
 const SPRITE_CELL_PX = 32;
 const SPRITES = {
   bus_stop:      null,      // I2  64x32
@@ -3683,9 +3687,11 @@ const SPRITES_FLOOR = {
   waiting_area:  null,  // O4  64x64  seating a traveller stands among
 };
 
-// Transport card headers, one per kind of ground the tile claims, so a card
-// reads as road, water or air at a glance. Drawn by harness/cardart.mjs.
-// 'free' splits in two: the air tiles fly, the rest are the far-fetched ones.
+// Card headers, drawn by harness/cardart.mjs. A transport gets one per kind of
+// ground it claims, so a card reads as road, water or air at a glance ('free'
+// splits in two: the air tiles fly, the rest are the far-fetched ones). Every
+// other card gets one per kind: food or other shops, parks, lounges, utilities,
+// the sci-fi rares, and the upgrade, bonus and bridge cards.
 const CARD_ART = {
   road:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABW0lEQVR42s2UvU7DMBDHb8mSp8iM+gYV4hG6ooyVeA62DlGkrqhPYKkTS54hAxIVAzB0yASM7cZ2xJw4Gzt2nKCYWH9ZTu4jP59zhvUeSTz4zawEBuVsWaGs0TXWeyzrSebt5tVQb5QELWt8fDPVmY6c/67ezLYDhKTDsxgB6kEZA2o8V430o9n21q1Vg8aXXFbap5GZNx8oMGKqBlkh8RyrB3aGp0k2VL6KTqQ0yfB+OVQ6q6oo12bQoQQ6t6C3z9iqJfAvFrlY5IJBOX+8io4DVRV9efiIoPCjV6Cf72mScQYJKu5qPekUj2mSnW4uQkSgtP4FilGGXlFualcDsVXOPwMul9dxxARFsTscjkWx67ySdKseHg9UJ7Y5eq3g2Tor/mZsgU1Jl4W6UFb5HFgBn65IRImrvFPS9O1D0qPivFEVxbNwUTLrLI7e1ZKuNvz/f9Rg8jdpNH0BPKaEUGqMVycAAAAASUVORK5CYII=',
   rail:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABPUlEQVR42mNIWv0fjqJCCpC5RCLydJFqMoO1SZC1SVBUSAEygggSROTpIs9khp4TIPdCSIgPkEWIIUnSxcWqAEckmQxyKBxFhRQgc+EIDrDK4tKFB3GxKhCjDNlkwg5FA5Q7lEhXkuZQXGAAQnTbAxAFISESyCLbHvw//wwdoanBqgsPCXElMSqRTQY5FI6iQgqQuUQi4nUh5yQuVgWSTKahQ9GcRSGiiUMhRr+w8KciYui/EAVHUSEFyFwiEZouLlaF+Y/+z3/0H2IBnI3J6JIy6JIyIFINQ/4GLyoiuCuHgEP/f1xBZGzCHUGMGho49MdzWiDqO5S6eQiRmajrUIhbgaira9b/H8+7umYRXwDh18Jw8sgNWiCIxVysCtTSwpCT0TAkEEN+XEC2nUq2ncogZzD0VmUMCTRkHAoA9oXvFhW2Z3EAAAAASUVORK5CYII=',
@@ -3695,8 +3701,27 @@ const CARD_ART = {
   corridor:    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABDElEQVR42u3SIQ7CMBTG8ZqZXYJdYobLsCBn8BhQiIUEzxUwU8s0agKBaILFwRFwjywv+egG7d4QgwbIPwWaFX5pnpruyIuUN9B1Vb+ZK1F75xvWGmqGV2t/sGx/rVoPzWcV9xGr45oeUBDNBlamSck9W1Vxtiph5WfeXsMgkgQlMn+nhjqUXHEmedlSm1/DIKLbRZLNyqlOZS9rttQclLGmWBPdLo4PXKzJYZVCJVYoYZVfp+NS2doD6ra2lBxuVJgNmiZlP6jN+lIJqzybsoaeDlcv8ge6WeVe1JjRMj9ykmHFFOKUY1I5c+ZwyjGXjRld7McIh83NzoY5pSbbEcJhc7OzYU79oT8LvQM8F8EqBug+iwAAAABJRU5ErkJggg==',
   underground: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABC0lEQVR42mPoOfF/SCCG+kNWQwIxxM+SHxKIoSvKpCvK5OSRGxAE4Q5CRLJDVyzYsGLBBqq7g6CxDMgcYpybk9FAFYtJNZahxFOrK8oEQiI7FFmcDDIno4FCE9BIkEPRENy5mFJUQZDAJlUXRQ6d27+DbogBlyOIcS7QCFkhBwj6f8kezkZG1BKnmkNpjUAOjbFSwEXCnYtVlq4OjbFSwIOQHYqJMB3KxapACSLToZDsice5aA7lYlW4cOEO2Ug/+z8et+JzaE5GA/5wxerQ/x9X/P+4gkhGTkZDTkYDXIRMhxJEQ9ih+tn/SUIQh8K5dA1RkhA8RClKo6Q6dMByPTEOtTYJog8aMg4FAA/AGth9pBQKAAAAAElFTkSuQmCC',
   free:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABBklEQVR42u2SPQqDQBBGp0mTKp2QyhQ2aSyitQcQsc0dPESO4AXSeRh7sfAGa5EDbPeFsCDi+rMru5pA4DHIsDN8PIfOp9tPQL8XFJz9ja6k724kKKroS416TtJVVJFg0N+9kuckA1BFctMUx4PboTVIiy/AmcGUYY2wBjgLa8xklWWRPXmjFqcYpBRsFxScHQ9uWaAsgCqa+igLyFlNGlW8Cl2jkzcaXLItqzhT3SkKLpkMOBvtG+HR4tFC8XGXhOwFGkXoFGgNmg86/zeETi2pOxjt69SVSgZtKV7nOqmfoLGfb1BlnQLFDRT7uVWQNni+lkmb+T10Pd+t8gmqxvwe60FN8QYSjUZd9Hn4JQAAAABJRU5ErkJggg==',
+  food:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAAA/0lEQVR42mN4YeEPR/9/PIejwSbOMOrQUYf+f7ABIfFgw2ATZ3iwo2NIIAaQw0lHXKwKZCPybGTA7wI8DtUz9yUDYZp58sgNNAZWlzCgyX1Y4PD/x3M4iTD3kj0yCXEoPA2B2JfsiRHB6nlMt2K6hAHNlZgIavQle2RErRDFmjCwugTFofGHrDARXDM8P0JMpEqIgrhIZRDcuZjOQHFotp0KJkJ2KKScgzuUKiH6/8fzFVlWK7KskB2K6Qxiox4zRKmS6zFDlHDU4yp0MGXJK1+IKenwuIThQpfXkEAMkPQx+NHQcSjWnD4IEYO1SZC1SRAk0w1m9tBx6OB3IoQNAGr7yDiHy0QKAAAAAElFTkSuQmCC',
+  retail:      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABEElEQVR42tXVMQrCMBQG4C4unsJLCEWFHqFH8B4ewNUjeIW6OTt3kCI0s4s5QAe3iDyNIS+JJfkLbfmHlhdePx5NmrW1nESytpaqFJDw7subgoRBn4934u6DUFoZd++Cjnyi89kCEg4Fdp4a9HhXifFBUZ290MA7fOsDUJmXFHpUTUGhx+1lRflUvx/9f6ieuRPkLPWHig4K3W28k1OndTRUdLiJig4JPeyrxLihWkmxQKSk8BLf+1Zn2GaiXtFQjTPPJt05ej+5J2oqLauptKy+w8+04qE8fUraIfPSuQwMjf6MLKh2qKZI3FLgX2gYCviFKsTFW1vQ9Fdk5+oKD3en9/xBzfPPWjSG0iATHSIvVsiE+r/lkcMAAAAASUVORK5CYII=',
+  park:        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABd0lEQVR42r2UoW7DMBCGj4TkJRYQPh6Q8ZHwkkmjeYORDk+RyofGR4LyAEVhi6aBwaB1j1DmKbrq4jj2+WK5s35ZlfWf/8/n1PD4rlBpkh2Gna6qLaq2SJOMPP8gVxzwlHJWGsF8qMOwo98L0Kb3UBJr008F1tkYjNM685eJHgvompJArXINl9+Q9zLRZoJaKXnQplcfP6aElN42zaASSqrpxqkm7swDIGg3KujGi1VCGV3Cy5xBecrrgXrbRLkX0NsnjxhQek0Y8aCSXNjkdiUNL/eM4oDujwXKVZAmGXmsknTUu4M3Gh5eb0i0L5pQusEqSUfJrD7vXJvw0RPo/ljoS3WZp0lWl7m+aHhwRVXfegajRdWSVd/ZGo0eWJ+sLnOUpJ3EyvTbu4kkGqytClv5/XrbKnkWUI3w3LoCyHgxWRA97EqKCdq3z1u1ATSgxkUW8FnLued//fq46nzi+xHwWfNisoA/tDqfgt8E/b2UVOFL5/L8AaCFfk1gwv0bAAAAAElFTkSuQmCC',
+  lounge:      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABCElEQVR42mOwNgkaEogBQiWt/k8QkacSDig0k7YORQPUcWjPif/4SVJV/scByDMT6tCeE/8JIrhKLlYFLlYFYlSef4aOcKkkiAg4FOImCIKo5GJV+P/jOZEOJd7zFDkU4iY4gkYomD2QDt324D8miTVEIa7Eqh5C4jeTPJVQh2578J8gGliVow6lkUPzshoIooFVyaATtQKC4JlmQETgKP6QFZxERigONb3yH804uonAXYmMsDhUP/s/XDPcr1QRIdJkuDOQXamf/R9niEIQsnH0EUFLEpgJA8WhyCQkJDDFaSSL7IwVWVZwQXigMkhZrRgSiAHZN8hpYrBxGTALiMGJGAZzKCJzAZ+BEDpnLgw3AAAAAElFTkSuQmCC',
+  utility:     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABEklEQVR42mPon7VhSCCGqpY5EBYXqwIxCK4eDdFanAHO4mJV0DP3xY+4WBUoCRViAgJfiEIQskNNr/xHRsgOhasnA3GxKpw8cgOO4g9ZxR+yQhbBYz6WEEV2GZoI5SGK7CxMhC9E0RwKdxNacEIYaAaRms5A2ts2nDxyA1MKq0ORzcGeRpEDFS3qqRKiRDqUcBrFlQYoT6MEQ5SENErTXI8Woh8OTCAhROlWjqKF6AsLfwhCC1ECmYkOCC1EsTqUcBqlAyIyRAmkUfqHKCT8ICQJ5Sgd6mu0ECXoUJRyFH9VQTmKymqjCmIgMrOTjajpUGuTIGuToP+X7P9fsoewqSVCE4fSwq0jNUSHRhqllkG0RgAKHaAqZ8AmJgAAAABJRU5ErkJggg==',
+  future:      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABB0lEQVR42tWVPQqDMBSAs7h0ki6CUNDBpas6txcQ197BQ3iRnqo4eAMdegC318qDR/qiJdH4Bx+Blx/flydJhO/Gh0BMWwZds6Xo+ukXqSjktXX0f5qZ6OV8twgTPTnByQnGwh2JkhzxU9HIy3w3jryMxrAHQxqVRdMKZkKi8vcpL+S1bIJtL0qwDclDkZfJonMKyUQZvejrpmYX6ry0AnXeaqJjCM0NDYpC1yBGoR3RP6iiZQuIUXhsUeia6aJs8QoVZYdYDnvRJCx02oVEWRZ281C/SMJCkyVO/WCi74EuW0BLYoqoxZdpTBRvnr2LDmImah0D0av/0ASeb+voZzcQ3ZbDiH4ANKPHmeBKFXcAAAAASUVORK5CYII=',
+  upgrade:     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABHklEQVR42mNIWv1/SCCGYeXQ/xutBxyBHNpz4j9+kotV4f9G64ElGXpO/CcbcbEqkKcLGWFVk5PRgIx6TvwfGIfWX/sPQSQ4tKtrFrIK/NwBdujJIzfgCJO77QFIJ1aSi1UBjyweXciISF1Qh0IcDnEZhAERgTgUF4JYQx6CZ2ci1TOsyLLCj2jnUEh2JtahxEQ9LlfC444eIUpM1P/PryID0SRE8Tv0hYU/F6vCCwt/khiDKI1SgmgSojRyKPXTKBx9SNXCn7f+X7L/f8kejf0hVQurOB42ObmeAQb+/3gOQQzYAC6L4bpIcigWCwimUbjKD6laEITLoVjFcelCNIuINGrFlAZiEFq9h1UBGbpw2YUpyNBblTEk0JBxKAAhuoLu2ZEUEAAAAABJRU5ErkJggg==',
+  bonus:       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABNUlEQVR42rWXPQ6DMAyFs7Aw9QhcohIDEkdg6mW4RK/RsWdBHbgBrN3YXEEk6vwosR0jPVUVCvDxYpuHGTvI6vlIibhecH3YlvO/oYDCtuBzshBalPi+DFC6W0TQ9Eb5juKrwNTD1MsqIbFARunJOE9AA83aJqjgP8MwwzCH5xpWl4wd1FWjojRoeF9DdB6DwvdF1Hu8RY97oJQNNNxa2UGPCilRXTXEAlMGXdshCrQ7evxiaYLiis6yru1gRbeTuN2aoCdllDXqaKKTvGnvjCfuk2k5ejloWKMWMQqaqFH2wC8HlXX9VaCy8WT9y46nUtD7Z1fYSSrihimDI5K3LgpKfInLIp8T2Q7vHdAw/HGTcjoxcXN0NMqZaPgrpKQkVLzGbp3aK1QW+bLtogxakqNlH16efkrKGcllnhegAAAAAElFTkSuQmCC',
+  bridge:      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAVCAIAAACc1rqhAAABM0lEQVR42tWToQ7CMBBAz2D4gNnxCTMYPgE9T4LGzc2Abkjm9wUkGBR6QeFALCgECiy4uZKlyaW5bu22FhjNyyi39vZ6l8J8y38IDuNK6INlE1dYH8sfJ8/hYETQrK8bdetLUScMByNePHjxwMk4L4OaLac7RbMYXFmOc16J3rU5oParLfy1qbNEV3tgfysT7W9c0GEuYCw9n6+MpZURm/xiAk6Oi2bGSPeKPk/sLwAssiAOg55AxGB5mMjsVlMkDgP575cjRAxmqS/TH1EiRkXVFpD9mFcAbYYmp/pdg2jl4dSMfnKxQV+CRhXViDpRNOo2Fa1rfRwGiyMXeFHmJxf5ia9I3Isy4y7xiS6tVw8Xh4EXZZ+jsrStRT9tia62t14WlftIsHzl4NZ/p6IObn1PRN/uLtHf5RVJNgAAAABJRU5ErkJggg==',
 };
-const cardArt = def => CARD_ART[def.terrain === 'free' && (def.tags || []).includes('air') ? 'sky' : def.terrain] || null;
+const CARD_SCENES = { upgrade: 'upgrade', named_upgrade: 'upgrade', ap: 'upgrade', card: 'bonus', bridge: 'bridge' };
+function tileScene(def) {
+  const tags = def.tags || [];
+  if (def.kind === 'transport') return def.terrain === 'free' && tags.includes('air') ? 'sky' : def.terrain;
+  if (def.rare) return 'future';
+  if (def.special === 'green') return 'park';
+  if (def.special === 'waiting') return 'lounge';
+  if (def.rate === 0) return 'utility';
+  return tags.includes('food') ? 'food' : 'retail';
+}
+const cardArt = card => CARD_ART[card.type === 'tile' ? tileScene(tileDef(card.key)) : CARD_SCENES[card.type]] || null;
 
 const cache = new Map();
 // Every image is loaded once, but several views may be waiting on it: the board
@@ -5486,9 +5511,9 @@ function renderShop() {
     const def = isTile ? tileDef(card.key) : null;
     const kind = cardKindLabel(card);
     const kclass = { transport: 'k-transport', shop: 'k-amenity', utility: 'k-utility', lounge: 'k-lounge', upgrade: 'k-upgrade', bonus: 'k-bonus', bridge: 'k-structure' }[kind] || '';
-    const art = def && def.kind === 'transport' ? cardArt(def) : null;
+    const art = cardArt(card);
     const el = h('div', { class: 'card ' + kclass + (art ? ' has-art' : '') + (ui.card && ui.card.id === card.id ? ' selected' : '') + (affordable ? '' : ' unaffordable'), onclick: () => selectCard(card) },
-      // a transport's header art says what it is, in place of the kind label
+      // the header art says what kind of card it is, in place of the kind label
       art ? h('div', { class: 'art', style: `background-image: url("${art}")` }) : h('span', { class: 'slot' }, cardKindLabel(card)),
       // an upgrade card leads with the tile it upgrades; its own name goes underneath
       h('div', { class: 'name' }, card.type === 'upgrade' ? card.tileName : card.name),

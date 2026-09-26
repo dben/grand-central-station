@@ -1,3 +1,5 @@
+import { tileDef } from '../data/tiles.js';
+
 // Sprite manifest: tile key -> PNG drawn in the shape's BASE orientation
 // (see src/sim/shapes.js) at 32px per cell, covering the bounding box.
 // The renderer clips the image to the tile's cells and rotates/mirrors it to
@@ -9,6 +11,7 @@
 // SPRITES_FLOOR is the under layer - the interior a traveller stands on, like
 // a lounge's seating or a shop's tiling - and SPRITES is the over layer, the
 // walls and roof that hide anyone inside. A tile may have either or both.
+
 export const SPRITE_CELL_PX = 32;
 export const SPRITES = {
   bus_stop:      'assets/tiles/bus_stop.png',      // I2  64x32
@@ -30,9 +33,11 @@ export const SPRITES_FLOOR = {
   waiting_area:  'assets/tiles/waiting_area_floor.png',  // O4  64x64  seating a traveller stands among
 };
 
-// Transport card headers, one per kind of ground the tile claims, so a card
-// reads as road, water or air at a glance. Drawn by harness/cardart.mjs.
-// 'free' splits in two: the air tiles fly, the rest are the far-fetched ones.
+// Card headers, drawn by harness/cardart.mjs. A transport gets one per kind of
+// ground it claims, so a card reads as road, water or air at a glance ('free'
+// splits in two: the air tiles fly, the rest are the far-fetched ones). Every
+// other card gets one per kind: food or other shops, parks, lounges, utilities,
+// the sci-fi rares, and the upgrade, bonus and bridge cards.
 export const CARD_ART = {
   road:        'assets/cards/road.png',
   rail:        'assets/cards/rail.png',
@@ -42,8 +47,27 @@ export const CARD_ART = {
   corridor:    'assets/cards/corridor.png',
   underground: 'assets/cards/underground.png',
   free:        'assets/cards/free.png',
+  food:        'assets/cards/food.png',
+  retail:      'assets/cards/retail.png',
+  park:        'assets/cards/park.png',
+  lounge:      'assets/cards/lounge.png',
+  utility:     'assets/cards/utility.png',
+  future:      'assets/cards/future.png',
+  upgrade:     'assets/cards/upgrade.png',
+  bonus:       'assets/cards/bonus.png',
+  bridge:      'assets/cards/bridge.png',
 };
-export const cardArt = def => CARD_ART[def.terrain === 'free' && (def.tags || []).includes('air') ? 'sky' : def.terrain] || null;
+const CARD_SCENES = { upgrade: 'upgrade', named_upgrade: 'upgrade', ap: 'upgrade', card: 'bonus', bridge: 'bridge' };
+function tileScene(def) {
+  const tags = def.tags || [];
+  if (def.kind === 'transport') return def.terrain === 'free' && tags.includes('air') ? 'sky' : def.terrain;
+  if (def.rare) return 'future';
+  if (def.special === 'green') return 'park';
+  if (def.special === 'waiting') return 'lounge';
+  if (def.rate === 0) return 'utility';
+  return tags.includes('food') ? 'food' : 'retail';
+}
+export const cardArt = card => CARD_ART[card.type === 'tile' ? tileScene(tileDef(card.key)) : CARD_SCENES[card.type]] || null;
 
 const cache = new Map();
 // Every image is loaded once, but several views may be waiting on it: the board

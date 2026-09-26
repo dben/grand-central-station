@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Draws the pixel-art headers for transport cards and writes them as PNGs:
+// Draws the pixel-art card headers and writes them as PNGs:
 //   node harness/cardart.mjs            -> assets/cards/<scene>.png
-// One scene per kind of ground a transport claims (see cardScene in
-// src/ui/sprites.js), so a card says road, water or air before it is read.
+// One scene per kind of ground a transport claims, and one per kind of every
+// other card (see cardArt in src/ui/sprites.js), so a card says road, water,
+// food or upgrade before it is read.
 // Each is 56x21 art pixels, shown at 2x as a band across the top of the card;
 // smaller cards crop it from the top, so the sky goes first and the vehicles
 // stay. No dependencies: the PNG is written with node's own zlib.
@@ -23,8 +24,10 @@ function canvas() {
   // bands of colour from the top down, with a one-row checker between each pair
   const bands = (y0, list) => { let y = y0; list.forEach(([c, n], k) => { R(0, y, W, n, c); y += n; const next = list[k + 1]; if (next) { for (let x = 0; x < W; x++) P(x, y, (x + y) % 2 ? c : next[0]); y++; } }); return y; };
   // a sprite: rows of characters, '.' clear, others looked up in the palette
-  const S = (x, y, rows, pal, flip = false) => rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') P(flip ? x + row.length - 1 - i : x + i, y + j, pal[ch]); }));
-  return { px, P, R, bands, S };
+  const S = (x, y, rows, pal, flip = false) => { rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') P(flip ? x + row.length - 1 - i : x + i, y + j, pal[ch]); })); };
+  // a round blob with an ink rim, lit from the top left: tree tops, bushes
+  const blob = (cx, cy, r, col, dark, light) => { for (let y = -r - 1; y <= r + 1; y++) for (let x = -r - 1; x <= r + 1; x++) { const d = x * x + y * y; if (d <= r * r) P(cx + x, cy + y, y > r / 3 ? dark : (x + y < -r / 2 ? light : col)); else if (d <= (r + 1) * (r + 1)) P(cx + x, cy + y, INK); } };
+  return { px, P, R, bands, S, blob };
 }
 
 // ---- palette ------------------------------------------------------------------
@@ -152,6 +155,19 @@ const UFO = [
   '.kkkkkkkkkkkk.',
 ];
 
+const BURGER = ['..kkkkk..', '.kowowok.', 'koooooook', 'kgggggggk', 'kpppppppk', 'koooooook', '.kkkkkkk.'];
+const CUP = ['.s..s..', '..s..s.', 'kkkkkk.', 'kwwwwkk', 'kwrrwkk', 'kwwwwk.', '.kkkk..'];
+const FRIES = ['y.y.y.', 'yyyyy.', 'krrrk.', 'krwrk.', 'krrrk.', '.kkk..'];
+const BAG = ['..kk..', '.k..k.', 'kkkkkk', 'krrrrk', 'krrrrk', 'krrrrk', 'kkkkkk'];
+const DRESS = ['...k...', '..kkk..', '..kmk..', '..kmk..', '.kmmmk.', '.kmmmk.', 'kmmmmmk', 'kkkkkkk'];
+const BENCH = ['kkkkkkkkkkkk', 'kwwwwwwwwwwk', 'kkkkkkkkkkkk', 'kwwwwwwwwwwk', 'kkkkkkkkkkkk', '.k........k.'];
+const DRONE = ['kk...kk', '.kkkkk.', '..kck..', '..kyk..'];
+const SEAT = ['kkk..', 'kbk..', 'kbkkk', 'kbbbk', 'k.k.k'];
+const JET = ['........kk', '.kkkkkkkwk', 'kwwwwwwwwk', '.kkkkkkkk.'];
+const WIFI = ['..ccccc..', '.c.....c.', 'c..ccc..c', '..c...c..', '....c....'];
+const PERSON = ['.f.', 'bbb', 'bbb', 'bbb', 'k.k', 'k.k'];
+const PLANT = ['.g.g.', 'ggggg', '.ggg.', 'kkkkk', '.kpk.', '.kkk.'];
+
 // ---- scenes -------------------------------------------------------------------
 // The vehicles keep to the lower rows, which small cards keep when they crop.
 const SCENES = {
@@ -253,6 +269,141 @@ const SCENES = {
     c.S(bx - 6, 6, UFO, { k: INK, c: '#35d4ff', w: '#fff8e7', m: '#c7a3ff', y: '#ffd23f' });
     c.R(0, 19, W, 2, '#2a1a58');
     c.R(bx - 6, 18, 14, 2, '#ff4fd8'); c.R(bx - 5, 18, 12, 1, '#ff9cec');
+  },
+
+  // ---- the other card kinds
+  food(c) {
+    c.R(0, 0, W, 21, '#ffe0b0');
+    for (let x = 0; x < W; x++) { const red = Math.floor(x / 4) % 2 === 0; c.R(x, 0, 1, 4, red ? '#e8384f' : '#fff8e7'); if (x % 4 < 3) c.P(x, 4, red ? '#e8384f' : '#fff8e7'); }
+    c.R(0, 5, W, 1, '#e0b888');
+    // a menu board between the dishes
+    c.R(18, 6, 20, 7, INK); c.R(19, 7, 18, 5, '#2e374d');
+    for (const y of [8, 10]) for (let x = 20; x < 36; x += 6) { c.R(x, y, 3, 1, '#fff8e7'); c.P(x + 4, y, '#ffd23f'); }
+    c.R(0, 14, W, 4, '#a86a3a'); c.R(0, 14, W, 1, '#d08a4a'); c.R(0, 17, W, 1, '#6b3e24');
+    for (let y = 18; y < H; y++) for (let x = 0; x < W; x++) c.P(x, y, (Math.floor(x / 2) + Math.floor((y - 18) / 2)) % 2 ? '#fff8e7' : '#3b3452');
+    c.S(3, 7, BURGER, { k: INK, o: '#f0a040', w: '#fff8e7', g: '#5fc23a', p: '#6b3e24' });
+    c.S(13, 8, FRIES, { k: INK, y: '#ffd23f', r: '#e8384f', w: '#fff8e7' });
+    c.S(42, 7, CUP, { k: INK, w: '#fff8e7', r: '#a86a3a', s: '#c9c4d8' });
+    c.S(49, 7, BURGER, { k: INK, o: '#f0a040', w: '#fff8e7', g: '#5fc23a', p: '#6b3e24' });
+  },
+  retail(c) {
+    c.R(0, 0, W, 21, '#d7cce8');
+    const shop = (x, w, sign, inside) => {
+      c.R(x, 1, w, 4, sign); c.R(x, 4, w, 1, INK);
+      for (let i = x + 3; i < x + w - 3; i += 4) c.R(i, 2, 2, 1, '#fff8e7');
+      c.R(x, 5, w, 12, INK); c.R(x + 1, 6, w - 2, 10, '#9fe2ff');
+      for (let i = 0; i < 5; i++) c.P(x + 3 + i, 12 - i, '#d8f4ff');
+      inside(x);
+    };
+    shop(1, 24, '#ff4fd8', x => { c.S(x + 4, 7, DRESS, { k: INK, m: '#7a3cff' }); c.S(x + 13, 7, DRESS, { k: INK, m: '#ffb13b' }); });
+    shop(31, 24, '#35d4ff', x => {
+      for (const y of [10, 15]) c.R(x + 1, y, 22, 1, '#8f86b0');
+      [['#e8384f', 3], ['#ffd23f', 8], ['#5fc23a', 13], ['#ff4fd8', 18]].forEach(([col, i]) => { c.R(x + i, 7, 3, 3, col); c.R(x + i + 1, 12, 3, 3, col); });
+    });
+    c.R(0, 17, W, 4, '#b8b0d0'); c.R(0, 17, W, 1, '#ffffff');
+    for (let x = 3; x < W; x += 9) c.R(x, 19, 4, 1, '#d7cce8');
+    c.S(23, 11, BAG, { k: INK, r: '#e8384f' }); c.S(28, 12, BAG, { k: INK, r: '#ffd23f' });
+  },
+  park(c) {
+    c.bands(0, [[SKY[1], 2], [SKY[2], 2], [SKY[3], 4]]);
+    c.S(22, 1, CLOUD_S, CLOUD);
+    c.R(0, 10, W, 11, '#5f9a1f'); c.R(0, 10, W, 1, '#7fc23a');
+    for (let y = 12; y < H; y += 2) for (let x = (y * 3) % 7; x < W; x += 6) c.P(x, y, '#7fc23a');
+    // a path winding through
+    for (let x = 0; x < W; x++) { const y = 15 + Math.round(Math.sin(x / 7) * 1.5); c.R(x, y, 1, 3, '#e8d4a0'); c.P(x, y + 3, '#c8b080'); }
+    for (const [x, y, col] of [[20, 12, '#ff4fd8'], [37, 11, '#ffd23f'], [9, 19, '#fff8e7'], [46, 20, '#ff4fd8'], [30, 20, '#ffd23f']]) { c.P(x, y, col); c.P(x + 1, y + 1, col); }
+    for (const [x, r] of [[7, 6], [48, 5]]) { c.R(x - 1, 7, 3, 7, '#6b3e24'); c.P(x - 2, 13, INK); c.P(x + 2, 13, INK); c.blob(x, 6 - (r - 5), r, '#4fb03a', '#2f7a20', '#8fd05a'); }
+    c.S(22, 8, BENCH, { k: INK, w: '#d08a4a' });
+  },
+  lounge(c) {
+    // a wall of glass onto the apron, seats in front
+    c.bands(0, [[SKY[1], 3], [SKY[2], 3], [SKY[3], 4]]);
+    c.S(30, 1, CLOUD_S, CLOUD);
+    c.S(9, 4, JET, { k: INK, w: '#fff8e7' });
+    c.R(0, 11, W, 1, '#6e6a80');
+    for (let x = 0; x < W; x += 14) c.R(x, 0, 2, 12, '#3b3452');
+    c.R(0, 0, W, 1, '#3b3452');
+    c.R(0, 12, W, 9, '#2c5aa8');
+    for (let y = 14; y < H; y += 2) for (let x = (y * 3) % 5; x < W; x += 5) c.P(x, y, '#2f6bff');
+    for (let x = 3; x < 42; x += 6) c.S(x, 12, SEAT, { k: INK, b: '#35d4ff' });
+    c.S(47, 12, PLANT, { k: INK, g: '#5fc23a', p: '#a86a3a' });
+    c.R(0, 17, W, 1, '#1a3aa8');
+  },
+  utility(c) {
+    c.R(0, 0, W, 21, '#8f9ab0');
+    for (let y = 3; y < 14; y += 4) c.R(0, y, W, 1, '#7a849c');
+    for (let y = 0; y < 14; y += 4) for (let x = (y % 8 ? 4 : 0); x < W; x += 8) c.P(x, y + 1, '#7a849c');
+    // a WiFi sign, a scanner arch with someone walking through, and a moving walkway
+    c.R(3, 1, 13, 9, INK); c.R(4, 2, 11, 7, '#2e374d');
+    c.S(5, 3, WIFI, { c: '#35d4ff' });
+    const ax = 36;
+    c.R(ax, 2, 12, 13, INK); c.R(ax + 1, 3, 10, 12, '#c9c4d8'); c.R(ax + 3, 5, 6, 10, '#8f9ab0');
+    for (let y = 5; y < 15; y += 2) c.P(ax + 1, y, '#8f86b0');
+    c.R(ax + 5, 3, 2, 1, '#5fc23a');
+    c.S(ax + 5, 8, PERSON, { f: '#f0c090', b: '#e8384f', k: INK });
+    c.R(0, 14, W, 7, '#5a6a86');
+    c.R(0, 15, 32, 5, INK); c.R(1, 16, 30, 3, '#3b3452');
+    for (let x = 3; x < 29; x += 6) for (const d of [0, 1]) { c.P(x + d, 16, '#ffd23f'); c.P(x + d + 1, 17, '#ffd23f'); c.P(x + d, 18, '#ffd23f'); }
+    c.R(0, 14, 32, 1, '#c9c4d8');
+  },
+  future(c) {
+    c.bands(0, [['#1a1033', 6], ['#25174d', 6], ['#34216b', 8]]);
+    for (const [x, y] of [[4, 2], [18, 1], [51, 3], [45, 11], [9, 12]]) c.P(x, y, '#fff8e7');
+    // a neon shopfront with delivery drones
+    c.R(14, 3, 28, 15, '#ff4fd8'); c.R(15, 4, 26, 13, '#1d1240');
+    c.R(17, 6, 22, 1, '#35d4ff'); c.R(17, 6, 1, 9, '#35d4ff'); c.R(38, 6, 1, 9, '#35d4ff');
+    for (let x = 20; x < 36; x += 5) { c.R(x, 9, 3, 5, '#7fe8ff'); c.R(x, 9, 3, 1, '#fff8e7'); }
+    c.R(0, 18, W, 3, '#2a1a58'); c.R(14, 18, 28, 1, '#ff9cec');
+    c.S(3, 6, DRONE, { k: INK, c: '#35d4ff', y: '#ffd23f' }); c.S(46, 4, DRONE, { k: INK, c: '#ff4fd8', y: '#ffd23f' }); c.S(47, 12, DRONE, { k: INK, c: '#7fe8ff', y: '#ffd23f' });
+  },
+  upgrade(c) {
+    c.bands(0, [[SKY[1], 3], [SKY[2], 3], [SKY[3], 8]]);
+    const Y = '#ffb13b';
+    // a crane lifting a girder, beside a building in scaffolding
+    c.R(40, 3, 3, 16, Y); for (let y = 3; y < 19; y += 2) c.P(41, y, INK);
+    c.R(12, 2, 44, 2, Y); for (let x = 12; x < W; x += 2) c.P(x, 3, INK);
+    c.R(50, 4, 5, 3, '#6c6880');
+    c.R(38, 4, 5, 4, INK); c.R(39, 5, 3, 2, '#7fd6ff');
+    c.R(20, 4, 1, 6, INK); c.R(19, 10, 3, 1, INK);
+    c.R(12, 11, 18, 2, '#e8384f'); c.R(12, 11, 18, 1, '#ff6f7a'); for (let x = 13; x < 30; x += 3) c.P(x, 12, INK);
+    c.R(1, 7, 10, 12, '#c9c4d8'); for (let y = 8; y < 19; y += 3) for (let x = 2; x < 10; x += 3) c.R(x, y, 2, 2, '#6c6880');
+    for (const x of [0, 5, 10]) c.R(x, 6, 1, 13, '#8a8a9a');
+    for (const y of [9, 13, 17]) c.R(0, y, 11, 1, '#a86a3a');
+    c.R(0, 18, W, 3, '#8d7a68'); c.R(0, 18, W, 1, '#a89480');
+    for (let x = 0; x < 26; x++) c.R(24 + x, 15, 1, 2, Math.floor((x + 0) / 2) % 2 ? '#ffd23f' : INK);
+    c.R(24, 17, 1, 2, INK); c.R(49, 17, 1, 2, INK);
+    for (const x of [14, 32]) { c.P(x + 1, 15, '#f0652a'); c.R(x, 16, 3, 1, '#fff8e7'); c.R(x, 17, 3, 1, '#f0652a'); c.R(x - 1, 18, 5, 1, INK); }
+  },
+  bonus(c) {
+    // a golden ticket on a burst
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const a = Math.atan2(y - 10, (x - 28) / 1.6); c.P(x, y, Math.floor((a + Math.PI) / (Math.PI / 8)) % 2 ? '#7a3cff' : '#8f55ff'); }
+    const x0 = 16, y0 = 5, w = 24, h = 11, G = '#ffd23f';
+    c.R(x0, y0, w, h, INK); c.R(x0 + 1, y0 + 1, w - 2, h - 2, G); c.R(x0 + 1, y0 + 1, w - 2, 1, '#fff1a8');
+    for (const x of [x0, x0 + w - 1]) { c.R(x, y0 + 4, 1, 3, '#8f55ff'); c.R(x === x0 ? x + 1 : x - 1, y0 + 4, 1, 3, INK); }
+    for (let y = y0 + 1; y < y0 + h - 1; y += 2) c.P(x0 + 15, y, '#b07a10');
+    const sx = x0 + 7, sy = y0 + 5; c.R(sx - 2, sy, 5, 1, '#e8384f'); c.R(sx - 1, sy - 1, 3, 3, '#e8384f'); c.P(sx, sy - 2, '#e8384f'); c.P(sx - 1, sy + 2, '#e8384f'); c.P(sx + 1, sy + 2, '#e8384f');
+    for (const y of [y0 + 3, y0 + 5, y0 + 7]) c.R(x0 + 17, y, 5, 1, '#b07a10');
+    for (const [x, y, col] of [[4, 3, '#ffd23f'], [9, 15, '#35d4ff'], [48, 4, '#ff4fd8'], [51, 16, '#ffd23f'], [44, 18, '#35d4ff'], [7, 9, '#ff4fd8'], [12, 1, '#fff8e7'], [50, 10, '#fff8e7']]) { c.R(x, y, 2, 2, col); }
+    for (const [x, y] of [[3, 17], [52, 1]]) { c.P(x, y, '#fff8e7'); c.P(x - 1, y, '#fff8e7'); c.P(x + 1, y, '#fff8e7'); c.P(x, y - 1, '#fff8e7'); c.P(x, y + 1, '#fff8e7'); }
+  },
+  bridge(c) {
+    c.bands(0, [[SKY[1], 2], [SKY[2], 2], [SKY[3], 5]]);
+    c.S(40, 0, CLOUD_S, CLOUD);
+    c.bands(13, [['#1f8fd6', 2], ['#1673c0', 5]]);
+    for (let y = 15; y < H; y += 3) for (let x = (y * 5) % 7; x < W; x += 9) c.R(x, y, 3, 1, '#6cc8ff');
+    c.R(0, 10, 6, 11, '#5f9a1f'); c.R(50, 10, 6, 11, '#5f9a1f'); c.R(0, 10, 6, 1, '#7fc23a'); c.R(50, 10, 6, 1, '#7fc23a');
+    // a stone deck on an arch, with a car crossing
+    const stone = '#b0804a', mortar = '#7a5430';
+    for (let y = 8; y < H; y++) for (let x = 5; x < 51; x++) {
+      const pier = x < 11 || x > 44, open = ((x - 28) / 17) ** 2 + ((y - 20) / 9) ** 2 < 1;
+      if (y > 11 && !pier && open) continue;
+      if (y >= 12 && !pier) { if (!(((x - 28) / 18) ** 2 + ((y - 20) / 10) ** 2 < 1)) c.P(x, y, stone); else c.P(x, y, mortar); continue; }
+      c.P(x, y, (y % 3 === 0 || (x + (Math.floor(y / 3) % 2) * 3) % 6 === 0) ? mortar : stone);
+    }
+    c.R(0, 8, W, 1, '#f0cf8a'); c.R(0, 7, W, 1, INK);
+    for (let x = 1; x < W; x += 4) c.R(x, 5, 1, 2, INK);
+    c.R(0, 5, W, 1, INK);
+    c.S(22, 2, CAR, { k: INK, r: '#35d4ff', b: '#fff8e7', h: '#fff1a8', g: '#8a8a9a', w: '#d0d0dc' });
   },
 };
 
