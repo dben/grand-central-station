@@ -120,7 +120,23 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 /* The canvas fills the whole area and paints the land around the board
    itself; everything else floats over it. */
 #board-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--land); }
-#board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Things a finger taps: no double-tap zoom, and a long press does not select
+   their text or raise the phone's copy menu. */
+.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #confirm-pop, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+/* The touch confirm popup: JS pins it under (or over) whatever the tap aimed
+   at, clear of the star badge, and moves it with the camera. */
+#confirm-pop { position: absolute; left: 0; top: 0; z-index: 6; width: min(300px, calc(100% - 16px)); display: flex; flex-direction: column; gap: 6px; background: rgba(26,16,51,0.96); border: 2px solid var(--accent); border-radius: 6px; padding: 8px; box-shadow: var(--hard); }
+#confirm-pop .cp-head { display: flex; align-items: baseline; gap: 8px; font-size: 16px; color: var(--accent); }
+#confirm-pop .cp-head b { flex: 1; min-width: 0; font-weight: 400; }
+#confirm-pop .price { color: var(--muted); font-size: 14px; white-space: nowrap; }
+#confirm-pop .cp-line { font-size: 14px; }
+#confirm-pop .cp-line.warn { color: var(--accent); }
+#confirm-pop .cp-line.bad { color: var(--bad); }
+#confirm-pop .cp-tools { display: flex; gap: 8px; }
+#confirm-pop .cp-tools button { min-height: 44px; padding: 6px 12px; font-size: 16px; }
+#confirm-pop .cp-rot { min-width: 48px; font-size: 20px; }
+#confirm-pop .cp-go { flex: 1; }
 #board:active { cursor: grabbing; }
 #board-hint { position: absolute; left: 12px; top: 12px; right: 230px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
 #board-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; z-index: 5; }
@@ -275,6 +291,10 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
 }
 @media (pointer: coarse) {
   #popup { max-width: 240px; font-size: 14px; }
+  /* fingers need bigger targets than the mouse-sized close and delete buttons */
+  #popup.sticky { padding-right: 50px; }
+  .popup-close { min-width: 40px; min-height: 40px; font-size: 18px; }
+  #popup button.small { min-height: 40px; padding: 6px 12px; }
 }
 /* Phones: the board is the game, so give it the screen and shrink the chrome. */
 @media (max-width: 700px) {
@@ -305,6 +325,48 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .car-nav { width: 30px; font-size: 22px; }
   .mode-shot { height: 140px; }
   .mode-carousel { gap: 4px; }
+}
+/* A phone on its side: plenty of width, almost no height. The timeline goes
+   back to a column on the right, the chrome shrinks, and the card in hand sits
+   in a panel at the bottom left instead of covering the whole board. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #topbar { gap: 10px; padding: 3px 8px 6px; flex-wrap: nowrap; }
+  #topbar .title { display: none; }
+  .val.blocky { font-size: 17px; letter-spacing: 0; }
+  #playback { gap: 2px; }
+  #playback button.speed, #btn-menu { padding: 3px 8px; font-size: 14px; }
+  #main, #main.holding { grid-template-columns: 1fr 240px; grid-template-rows: none; }
+  #main.side-collapsed { grid-template-columns: 1fr; }
+  #side { border-top: none; border-left: 3px solid var(--line); max-height: none; }
+  #side-panels { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+  .panel { min-width: 0; border-right: none; border-bottom: 1px solid var(--line); }
+  #btn-side-toggle { position: absolute; width: auto; min-height: 30px; border-bottom: none; border-radius: 4px; }
+  #btn-side-toggle::after { content: '▶'; font-size: 16px; }
+  #side-tab::after { content: '◀'; }
+  #board-tools { top: 8px; right: 8px; }
+  #board-tools button { width: 40px; height: 40px; }
+  #board-hint { top: 8px; left: 12px; right: 190px; font-size: 16px; }
+  #shop { gap: 6px; padding: 0 6px 6px; }
+  #shop-actions { padding: 5px; gap: 4px; flex-direction: row; flex-wrap: wrap; width: 176px; justify-content: center; }
+  #wallet { flex-direction: row; width: 100%; justify-content: center; }
+  #shop-actions button { min-width: 0; flex: 1; font-size: 14px; padding: 4px 6px; }
+  #btn-run { width: auto; }
+  .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
+  #shop-cards { gap: 6px; padding-top: 4px; }
+  .card { width: 88px; height: 118px; padding: 3px 5px; }
+  .card .name { font-size: 12px; height: 26px; }
+  .card canvas { max-height: 40px; }
+  .card .icon { font-size: 20px; line-height: 40px; height: 40px; }
+  .card .sub { font-size: 12px; }
+  .card .cost { font-size: 14px; }
+  #card-bar, #main.holding #card-bar { left: 8px; right: auto; bottom: 8px; width: min(340px, 48%); transform: none; }
+  #card-bar-desc { max-height: 30vh; }
+  #card-bar-tools button { min-height: 40px; }
+  #btn-run-big { font-size: 17px; padding: 10px 18px; }
+  #modal { padding: 8px; }
+  #modal-box { padding: 12px 14px; max-height: 96vh; }
+  #modal-box #chart { height: 110px; }
+  .mode-shot { height: 110px; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }
@@ -405,6 +467,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
+      <!-- On a touch screen a tap only aims: this pops up by the target with the
+           price, and the buttons that commit or drop it -->
+      <div id="confirm-pop" class="hidden" role="dialog" aria-label="Confirm"></div>
       <!-- Nothing left to spend: the big go button, and on Standard the way
            back out of the week under it -->
       <div id="run-stack" class="hidden">
@@ -3985,6 +4050,7 @@ class BoardRenderer {
       const ln = checkpointLine(ghost.cells);
       for (const s of fenceSegments(board, ghost.cells)) if (s.axis === ln.axis && (s.axis === 'h' ? s.y : s.x) === ln.line) this.drawFenceSeg(s, true, ghost.ok);
     }
+    this.badgeRect = null;
     if (view.starBadge) this.drawStarBadge(view.starBadge);
     if (dots.length) this.drawAgentPopups(dots, view.T);
   }
@@ -4309,6 +4375,8 @@ class BoardRenderer {
     const boxW = Math.max(...widths) + 14, boxH = heights.reduce((a, v) => a + v + gap, 0) - gap + 10;
     let top = b.y0 - 12 - boxH;
     if (top < 6) top = b.y0 + 8;   // no room above: drop it under the top corner
+    // the touch confirm popup reads this to keep clear of the badge
+    this.badgeRect = { x0: cx - boxW / 2, y0: top, x1: cx + boxW / 2, y1: top + boxH };
 
     ctx.save();
     roundRect(ctx, cx - boxW / 2, top, boxW, boxH, 8);
@@ -4839,6 +4907,10 @@ function attachBoardInput(canvas, renderer, handlers) {
     }
   }
   canvas.addEventListener('pointerup', release);
+  // A finger's tap is followed by a synthetic click at the same spot, which
+  // would land on whatever the tap just opened there (the confirm popup's
+  // Build button). The canvas never uses click, so swallow it at the source.
+  canvas.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
   canvas.addEventListener('pointercancel', release);
   // Touch pointers "leave" the canvas the moment they lift, which would wipe
   // the aim a two-stage tap placement depends on. Only hovering devices clear.
@@ -5068,13 +5140,17 @@ const ui = {
   ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
   pb: { result: null, T: 0, speed: 2, playing: false, last: 0, flashed: false }, heat: false, summaryShown: false, started: false, barKey: null,
   starKey: null,
+  // touch only: the target a tap has aimed at, waiting on the confirm popup
+  // ({ kind: 'place' | 'tile' | 'edge', tileId?, edge? }); `touch` is whether
+  // the last press anywhere was a finger
+  pending: null, touch: false, confirmKey: null, confirmPos: null,
 };
 const renderer = new BoardRenderer($('board'));
 let boardInput = null;
-// Panel preferences that survive a reload. First visit on a phone hands the
-// whole screen to the board.
+// Panel preferences that survive a reload. First visit on a phone, held either
+// way up, hands the whole screen to the board.
 const layout = (() => { try { return JSON.parse(localStorage.getItem('gcs.layout') || 'null'); } catch { return null; } })()
-  || (window.innerWidth < 700 ? { sideCollapsed: true } : {});
+  || (window.innerWidth < 700 || window.innerHeight < 500 ? { sideCollapsed: true } : {});
 const saveLayout = () => { try { localStorage.setItem('gcs.layout', JSON.stringify(layout)); } catch {} };
 const TICKS_PER_SEC = 2;
 
@@ -5372,10 +5448,16 @@ function tileDetails(t, sticky) {
     const rules = G.gameRules(state);
     const upCard = state.shop.cards.find(c => c.type === 'upgrade' && c.key === t.key);
     const up = upCard ? G.upgradeCost(t, upCard.levels, upCard.costMult) : null;
-    box.append(h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
-      h('button', { class: 'danger small', onclick: () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); else if (r.apBack) hint('That action point is back'); ui.selectedTileId = null; hidePopup(true); renderAll(); } },
+    const del = () => { const r = G.deleteTile(state, t.id); if (!r.ok) hint(r.reason); else if (r.apBack) hint('That action point is back'); ui.selectedTileId = null; hidePopup(true); renderAll(); };
+    // a finger that grazes Delete should not flatten a tile, so touch asks once
+    const row = h('div', { class: 'btnrow', style: 'justify-content:flex-start;margin-top:8px' },
+      h('button', { class: 'danger small', onclick: () => {
+        if (!ui.touch) { del(); return; }
+        row.replaceChildren(h('span', { class: 'desc' }, `Delete ${t.name}?`), h('button', { class: 'small', onclick: () => { ui.selectedTileId = null; hidePopup(true); renderInfo(); } }, 'Keep'), h('button', { class: 'danger small', id: 'btn-delete-confirm', onclick: del }, 'Delete'));
+      } },
         G.deleteGivesAPBack(state, t) ? ['Delete · ', apPips(1), ' back'] : rules.deleteFreeAP ? 'Delete (free)' : ['Delete · ', apPips(1)]),
-      up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name}: $${fmt(up)} in the shop`) : null));
+      up != null && t.kind !== 'bridge' ? h('span', { class: 'desc' }, `${upCard.name}: $${fmt(up)} in the shop`) : null);
+    box.append(row);
   }
   return box;
 }
@@ -5461,10 +5543,12 @@ function renderCardBar() {
     : (place && !ui.ghost) ? 'Pick a square on the board.' : '';
   $('card-bar-desc').classList.toggle('hidden', !!layout.cardInfoCollapsed);
   $('btn-card-info').textContent = layout.cardInfoCollapsed ? '⌃' : '⌄';
-  $('btn-rotate').classList.toggle('hidden', !place);
+  // with the touch popup up, its buttons are the ones to press; the bar keeps ✕
+  const popped = !!ui.pending;
+  $('btn-rotate').classList.toggle('hidden', !place || popped);
   if (place) $('btn-rotate').disabled = orientationCount(tileDef(card.key).shape) < 2;
   const go = $('btn-place');
-  go.classList.toggle('hidden', !place && !confirm);
+  go.classList.toggle('hidden', (!place && !confirm) || popped);
   go.textContent = place ? 'Build here' : 'Play it';
   go.disabled = place && !(ui.ghost && ui.ghost.ok);
 }
@@ -5472,7 +5556,7 @@ function renderCardBar() {
 function renderInfo() {
   const panel = $('info-panel'), title = $('info-title'), body = $('info-body'); body.innerHTML = '';
   panel.classList.remove('hidden');
-  renderCardBar();
+  renderCardBar(); renderConfirm();
   if (ui.mode === 'playback') { title.textContent = 'Running the week'; body.textContent = 'Full shops go grey.'; return; }
   // With a card in hand the board says it all — stars over the ghost, the card
   // bar underneath — so the side panel stays out of the way.
@@ -5522,7 +5606,7 @@ function selectCard(card) {
   if (state.phase !== 'shop' || ui.mode === 'playback') return;
   hint(''); // whatever the last card was told to do no longer applies
   if (ui.card && ui.card.id === card.id) { cancelMode(); return; }
-  ui.card = card; ui.rot = 0; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; hidePopup(true);
+  ui.card = card; ui.rot = 0; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; ui.pending = null; hidePopup(true);
   if (card.type === 'tile' || card.type === 'bridge') ui.mode = 'place';
   else if (card.type === 'upgrade' || card.type === 'named_upgrade') {
     // an "every lounge" upgrade has nothing to aim at, so it confirms instead
@@ -5543,7 +5627,7 @@ function playSelected() {
   if (!r.ok) hint(r.reason);
   cancelMode(); renderAll();
 }
-function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.estimate = null; hidePopup(true); renderShop(); renderInfo(); }
+function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.estimate = null; ui.pending = null; hidePopup(true); renderShop(); renderInfo(); }
 
 function targetFilter(t) {
   const c = ui.card; if (!c) return false;
@@ -5600,42 +5684,54 @@ function commitPlacement() {
   ui.selectedTileId = r.tile.id; cancelMode(); renderAll();
 }
 
+// Spending a card on a tile or an edge, shared by a click and the touch popup.
+function playOnTile(t) {
+  const r = ui.card.type === 'card' ? G.playCard(state, ui.card, { tileId: t.id }) : G.upgradeTile(state, ui.card, t.id);
+  if (!r.ok) hint(r.reason);
+  ui.selectedTileId = t.id; cancelMode(); renderAll();
+}
+// Rezoning demolishes every transport attached to the edge, so a click asks
+// first; the touch popup has already listed them, so it passes `asked`.
+function playOnEdge(edge, asked) {
+  const card = ui.card;
+  const play = () => { const r = G.playCard(state, card, { edge }); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); };
+  const doomed = rezoneVictims(card, edge);
+  if (asked || !doomed.length) { play(); return; }
+  openModal(
+    h('h2', {}, `Rezone the ${EDGE_NAMES[edge]} edge?`),
+    h('p', {}, `The ${EDGE_NAMES[edge]} edge goes back to open ground, and ${doomed.length === 1 ? 'the transport attached to it is' : `all ${doomed.length} transports attached to it are`} torn down. You get no money back:`),
+    h('ul', {}, ...doomed.map(t => h('li', {}, `${t.name}${t.level > 1 ? ' L' + t.level : ''}`))),
+    h('div', { class: 'btnrow', style: 'justify-content:center' },
+      h('button', { onclick: closeModal }, 'Keep it'),
+      h('button', { id: 'btn-rezone-confirm', class: 'danger', onclick: () => { closeModal(); play(); } }, 'Rezone and tear down')));
+}
+const rezoneVictims = (card, edge) => card.key === 'rezoning' && state.board.edges[edge] !== 'green' ? G.rezoningVictims(state, edge) : [];
+
 function onBoardTap(cell, edge, e) {
   if (ui.mode === 'playback') return;
   if (ui.mode === 'confirm') { hint('Play it or cancel first'); return; }
-  // Touch has no hover, so the first tap aims the ghost and the second builds.
-  const twoStage = e.pointerType === 'touch';
+  // Touch has no hover and fingers miss, so a tap only aims; the popup by the
+  // target then commits or drops it. A mouse click still does it at once.
+  const touch = e.pointerType === 'touch';
   if (ui.mode === 'place' && ui.card) {
     if (!cell) return;
-    const aimed = ui.hover && ui.hover.x === cell.x && ui.hover.y === cell.y && ui.ghost;
     ui.hover = cell; ui.edgeHover = null;
+    if (touch) { ui.pending = { kind: 'place' }; hint(''); }
     updateGhost();
-    if (twoStage && !aimed) { hint(ui.ghost && ui.ghost.ok ? 'Tap again, or press Build, to put it here' : (ui.ghost ? ui.ghost.reason : '')); return; }
-    commitPlacement();
+    if (!touch) commitPlacement();
     return;
   }
   if (ui.mode === 'target' && ui.card) {
     if (ui.card.target === 'edge') {
       if (!edge) { hint('Tap one of the strips around the edge of the board'); return; }
-      const card = ui.card;
-      const play = () => { const r = G.playCard(state, card, { edge }); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); };
-      // Rezoning demolishes every transport attached to the edge, so say which first.
-      const doomed = card.key === 'rezoning' && state.board.edges[edge] !== 'green' ? G.rezoningVictims(state, edge) : [];
-      if (!doomed.length) { play(); return; }
-      openModal(
-        h('h2', {}, `Rezone the ${EDGE_NAMES[edge]} edge?`),
-        h('p', {}, `The ${EDGE_NAMES[edge]} edge goes back to open ground, and ${doomed.length === 1 ? 'the transport attached to it is' : `all ${doomed.length} transports attached to it are`} torn down. You get no money back:`),
-        h('ul', {}, ...doomed.map(t => h('li', {}, `${t.name}${t.level > 1 ? ' L' + t.level : ''}`))),
-        h('div', { class: 'btnrow', style: 'justify-content:center' },
-          h('button', { onclick: closeModal }, 'Keep it'),
-          h('button', { id: 'btn-rezone-confirm', class: 'danger', onclick: () => { closeModal(); play(); } }, 'Rezone and tear down')));
+      if (touch) { ui.edgeHover = edge; ui.pending = { kind: 'edge', edge }; hint(''); renderInfo(); return; }
+      playOnEdge(edge);
       return;
     }
     const t = cell ? tileAtCell(cell.x, cell.y) : null;
-    if (!t || !targetFilter(t)) { hint('Pick one of the highlighted tiles'); return; }
-    const r = ui.card.type === 'card' ? G.playCard(state, ui.card, { tileId: t.id }) : G.upgradeTile(state, ui.card, t.id);
-    if (!r.ok) hint(r.reason);
-    ui.selectedTileId = t.id; cancelMode(); renderAll(); return;
+    if (!t || !targetFilter(t)) { hint('Pick one of the highlighted tiles'); if (touch) clearPending(); return; }
+    if (touch) { ui.hoverTileId = t.id; ui.pending = { kind: 'tile', tileId: t.id }; hint(''); scheduleEstimate(); renderInfo(); return; }
+    playOnTile(t); return;
   }
   const t = cell ? tileAtCell(cell.x, cell.y) : null;
   ui.hoverTileId = t ? t.id : null;
@@ -5644,11 +5740,103 @@ function onBoardTap(cell, edge, e) {
   renderInfo();
 }
 
+// ------------------------------------------------------- touch confirm popup
+// Drop the aim but keep the card in hand, so the next tap can try elsewhere.
+function clearPending() {
+  if (!ui.pending) return;
+  if (ui.pending.kind === 'place') { ui.hover = null; ui.ghost = null; }
+  else { ui.hoverTileId = null; ui.edgeHover = null; }
+  ui.pending = null; ui.estimate = null; ui.estimateKey = null;
+  renderInfo();
+}
+function commitPending() {
+  const p = ui.pending;
+  if (!p || !ui.card) return;
+  if (p.kind === 'place') { commitPlacement(); return; }
+  if (p.kind === 'edge') { playOnEdge(p.edge, true); return; }
+  const t = tileById(p.tileId);
+  if (t && targetFilter(t)) playOnTile(t); else clearPending();
+}
+// What the popup says: a heading, an optional line, and the verb on the
+// button. The stars stay in the badge the board draws over the target.
+function pendingText() {
+  const p = ui.pending, card = ui.card;
+  // the reason a spot is refused lives here rather than in the board's badge,
+  // since a long one runs off a phone's screen there and wraps here
+  if (p.kind === 'place') return { head: card.name, line: ui.ghost && !ui.ghost.ok ? ui.ghost.reason : null, bad: !(ui.ghost && ui.ghost.ok), verb: 'Build' };
+  if (p.kind === 'edge') {
+    const doomed = rezoneVictims(card, p.edge);
+    return { head: `${card.name}: ${EDGE_NAMES[p.edge]} edge`, line: doomed.length ? `Tears down ${doomed.map(t => t.name).join(', ')}` : null, warn: doomed.length > 0, verb: card.key === 'rezoning' ? 'Rezone' : 'Play' };
+  }
+  const t = tileById(p.tileId);
+  const up = upgradeLevels(card);
+  if (up) return { head: `${t.name} L${t.level} → L${Math.min(CONFIG.economy.maxLevel, t.level + up.levels)}`, verb: 'Upgrade' };
+  return { head: `${card.name} on ${t.name}`, verb: 'Play' };
+}
+function renderConfirm() {
+  const pop = $('confirm-pop');
+  if (!ui.pending || !ui.card || !holdingCard()) { ui.pending = null; ui.confirmKey = null; ui.confirmPos = null; pop.classList.add('hidden'); return; }
+  const txt = pendingText();
+  const cost = G.cardCost(state, ui.card), ap = G.cardAPCost(state, ui.card);
+  const rotatable = ui.pending.kind === 'place' && orientationCount(tileDef(ui.card.key).shape) > 1;
+  const key = JSON.stringify([txt, cost, ap, rotatable]);
+  pop.classList.remove('hidden');
+  if (ui.confirmKey === key) { placeConfirm(); return; }
+  ui.confirmKey = key;
+  pop.innerHTML = '';
+  pop.append(...[
+    h('div', { class: 'cp-head' }, h('b', {}, txt.head), h('span', { class: 'price' }, `$${fmt(cost)}`, ap ? [' · ', apPips(ap)] : null)),
+    txt.line ? h('div', { class: 'cp-line' + (txt.bad ? ' bad' : txt.warn ? ' warn' : '') }, txt.line) : null,
+    h('div', { class: 'cp-tools' },
+      rotatable ? h('button', { class: 'cp-rot', title: 'Rotate', 'aria-label': 'Rotate', onclick: () => rotate(1) }, '⟳') : null,
+      h('button', { class: 'cp-cancel', onclick: clearPending }, '✕ Cancel'),
+      h('button', { class: 'primary cp-go', onclick: commitPending, ...(txt.bad ? { disabled: '' } : {}) }, `✓ ${txt.verb}`))].filter(Boolean));
+  ui.confirmPos = null; placeConfirm();
+}
+// Screen box of what the pending action points at, in board pixels.
+function pendingBounds() {
+  const p = ui.pending;
+  if (p.kind === 'place') {
+    if (!ui.ghost) return null;
+    const cells = ui.ghost.cells.filter(([x, y]) => x >= 0 && y >= 0 && x < state.board.w && y < state.board.h);
+    return cells.length ? renderer.cellsBounds(cells, renderer.heightOf(ui.card.key)) : null;
+  }
+  if (p.kind === 'tile') { const t = tileById(p.tileId); return t ? renderer.cellsBounds(t.cells, renderer.heightOf(t.key)) : null; }
+  const [gx, gy, gw, gh] = renderer.edgeRegion(p.edge);
+  const pts = [[gx, gy], [gx + gw, gy], [gx, gy + gh], [gx + gw, gy + gh]].map(([x, y]) => renderer.project(x, y));
+  return { x0: Math.min(...pts.map(q => q[0])), x1: Math.max(...pts.map(q => q[0])), y0: Math.min(...pts.map(q => q[1])), y1: Math.max(...pts.map(q => q[1])) };
+}
+// Called every frame, since the camera and the badge both move under it. Tries
+// under the target, over it, then either side, and takes the first spot that
+// keeps the target, its badge, the card bar and the zoom buttons all in view.
+function placeConfirm() {
+  const pop = $('confirm-pop');
+  if (!ui.pending || pop.classList.contains('hidden')) return;
+  const b = pendingBounds();
+  if (!b) return;
+  const bb = renderer.badgeRect;
+  const t = bb ? { x0: Math.min(b.x0, bb.x0), y0: Math.min(b.y0, bb.y0), x1: Math.max(b.x1, bb.x1), y1: Math.max(b.y1, bb.y1) } : b;
+  const wrap = $('board-wrap').getBoundingClientRect();
+  const local = el => { if (el.classList.contains('hidden')) return null; const r = el.getBoundingClientRect(); return { x0: r.left - wrap.left, y0: r.top - wrap.top, x1: r.right - wrap.left, y1: r.bottom - wrap.top }; };
+  const avoid = [t, local($('card-bar')), local($('board-tools'))].filter(Boolean);
+  const w = pop.offsetWidth, ht = pop.offsetHeight, cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2, gap = 10;
+  const clampX = x => Math.max(8, Math.min(x, wrap.width - w - 8)), clampY = y => Math.max(8, Math.min(y, wrap.height - ht - 8));
+  const spots = [[cx - w / 2, t.y1 + gap], [cx - w / 2, t.y0 - gap - ht], [t.x1 + gap, cy - ht / 2], [t.x0 - gap - w, cy - ht / 2]].map(([x, y]) => [clampX(x), clampY(y)]);
+  const overlap = ([x, y], r) => Math.max(0, Math.min(x + w, r.x1) - Math.max(x, r.x0)) * Math.max(0, Math.min(y + ht, r.y1) - Math.max(y, r.y0));
+  // covering the target is worse than covering a button, so it counts double
+  const cost = s => avoid.reduce((a, r, i) => a + overlap(s, r) * (i === 0 ? 2 : 1), 0);
+  const [x, y] = spots.find(s => cost(s) === 0) || spots.reduce((a, s) => cost(s) < cost(a) ? s : a);
+  const pos = `${Math.round(x)},${Math.round(y)}`;
+  if (ui.confirmPos === pos) return;
+  ui.confirmPos = pos;
+  pop.style.left = Math.round(x) + 'px'; pop.style.top = Math.round(y) + 'px';
+}
+
 function onKey(e) {
   if (e.target.closest && e.target.closest('input, select, textarea')) return; // typing a seed is not a shortcut
   if (startPager && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); startPager(e.key === 'ArrowRight' ? 1 : -1); return; }
   if (e.key === 'm' || e.key === 'M') toggleMusic();
-  if (e.key === 'Escape') { hidePopup(true); if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
+  if (e.key === 'Escape') { hidePopup(true); if (ui.pending) clearPending(); else if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
   if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
   if (e.key === ' ' && ui.mode === 'playback') { e.preventDefault(); ui.pb.playing = !ui.pb.playing; }
   if (!boardInput) return;
@@ -5743,6 +5931,7 @@ function frame(now) {
       // aiming a Rezoning Permit at an edge outlines what it would demolish
       dangerTiles: ui.mode === 'target' && ui.card && ui.card.key === 'rezoning' && ui.edgeHover && state.board.edges[ui.edgeHover] !== 'green' ? G.rezoningVictims(state, ui.edgeHover) : null,
     });
+    placeConfirm();
   }
   requestAnimationFrame(frame);
 }
@@ -5757,7 +5946,7 @@ function starBadge() {
     if (!ui.ghost) return null;
     const cells = ui.ghost.cells.filter(([x, y]) => x >= 0 && y >= 0 && x < state.board.w && y < state.board.h);
     const z = ui.ghost.def ? renderer.heightOf(ui.card.key) : 0;
-    if (!ui.ghost.ok) return { cells, z, reason: ui.ghost.reason };
+    if (!ui.ghost.ok) return ui.pending ? null : { cells, z, reason: ui.ghost.reason };
     const warnings = ui.ghost.claims.map(c => c.lock ? `Locks the whole ${EDGE_NAMES[c.edge]} edge to ${c.terrain}, for good` : `Claims the ${EDGE_NAMES[c.edge]} edge as ${c.terrain}`);
     // sealing a platform in loses everyone bound for it, so say so before the stars do
     for (const t of cutOffTransports(state.board, cells, ui.ghost.def)) warnings.push(`Walls in ${t.name}: nobody heading there can reach it`);
@@ -5791,7 +5980,7 @@ function closeModal() { $('modal').classList.add('hidden'); startPager = null; }
 
 function drawHistoryChart(canvas, history) {
   const dpr = window.devicePixelRatio || 1;
-  const W = canvas.clientWidth || 800, H = 190;
+  const W = canvas.clientWidth || 800, H = canvas.clientHeight || 190;   // CSS shortens it on a short screen
   canvas.width = W * dpr; canvas.height = H * dpr;
   const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const padL = 44, padR = 10, padT = 12, padB = 24;
@@ -6072,7 +6261,10 @@ function boot() {
     wheel: e => { if (ui.mode === 'place' && (e.shiftKey || e.altKey)) { rotate(e.deltaY > 0 ? 1 : -1); return true; } return false; },
     camera: () => { hidePopup(false); },
   });
-  c.addEventListener('contextmenu', e => { e.preventDefault(); if (ui.mode === 'place') rotate(1); else cancelMode(); });
+  // A long press on a phone raises contextmenu too; that is a finger resting,
+  // not a right click, so it must not rotate or drop the card in hand.
+  window.addEventListener('pointerdown', e => { ui.touch = e.pointerType === 'touch'; }, true);
+  c.addEventListener('contextmenu', e => { e.preventDefault(); if (ui.touch) return; if (ui.mode === 'place') rotate(1); else cancelMode(); });
   window.addEventListener('keydown', onKey);
   let resizeTimer = null;
   const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (state) renderer.resize(state.board); }, 60); };

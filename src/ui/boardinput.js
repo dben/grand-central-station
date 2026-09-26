@@ -71,6 +71,10 @@ export function attachBoardInput(canvas, renderer, handlers) {
     }
   }
   canvas.addEventListener('pointerup', release);
+  // A finger's tap is followed by a synthetic click at the same spot, which
+  // would land on whatever the tap just opened there (the confirm popup's
+  // Build button). The canvas never uses click, so swallow it at the source.
+  canvas.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
   canvas.addEventListener('pointercancel', release);
   // Touch pointers "leave" the canvas the moment they lift, which would wipe
   // the aim a two-stage tap placement depends on. Only hovering devices clear.
