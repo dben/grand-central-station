@@ -72,5 +72,34 @@ try {
     await focus(spots[i][0], spots[i][1], close); await page.waitForTimeout(150);
     await canvas.screenshot({ path: `${out}/tiles_z${i}.png` });
   }
+  // Then the tiles that draw past the edge, placed for real against edges of the
+  // right terrain, so their band (the ship, the airliner, the train) shows.
+  const placed = await page.evaluate(async () => {
+    const { createBoard, placeTile, checkPlacement } = await import('/src/sim/board.js');
+    const s = window.gcs.state, b = createBoard(16, 12);
+    Object.assign(b.edges, { N: 'apron', S: 'water', W: 'rail', E: 'road' });
+    s.board = b;
+    const want = [['jetway', 2, 0], ['jumbo_jetway', 6, 0], ['private_terminal', 10, 0], ['cruise_dock', 1, 11], ['water_taxi', 9, 11], ['ferry', 13, 10],
+      ['train_station', 0, 1], ['express_train', 0, 6], ['bus_stop', 15, 1], ['taxi_stand', 15, 4], ['car_rental', 14, 7],
+      ['parking_lot', 4, 2], ['green_space', 7, 5], ['helipad', 10, 4], ['monorail', 3, 8], ['coffee_cart', 9, 7]];
+    const got = [];
+    for (const [key, x, y] of want) {
+      let ok = false;
+      for (let dy = 0; dy < 4 && !ok; dy++) for (let dx = 0; dx < 4 && !ok; dx++) for (let r = 0; r < 8 && !ok; r++) {
+        const tx = x - (x > 8 ? dx : -dx), ty = y - (y > 6 ? dy : -dy), c = checkPlacement(b, key, tx, ty, r);
+        if (c.ok) { placeTile(b, key, tx, ty, r, c); ok = true; }
+      }
+      got.push(key + (ok ? '' : ' (no room)'));
+    }
+    window.gcs.renderer.userAdjusted = false; window.gcs.refresh();
+    return got;
+  });
+  await page.waitForTimeout(400);
+  await canvas.screenshot({ path: `${out}/tiles_edges.png` });
+  for (const [i, [gx, gy]] of [[4, 0], [12, 2], [4, 11], [12, 10], [1, 5], [8, 6]].entries()) {
+    await focus(gx, gy, close); await page.waitForTimeout(150);
+    await canvas.screenshot({ path: `${out}/tiles_edges_z${i}.png` });
+  }
+  console.log(`edge scene: ${placed.join(', ')}`);
   console.log(`ok: ${n} tiles -> ${out}/tiles_all.png`);
 } finally { await browser.close(); server.kill(); }

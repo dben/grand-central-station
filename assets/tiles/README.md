@@ -9,8 +9,12 @@ Top-down pixel art, 32 px per cell, drawn in the shape's base orientation
 flat on the isometric grid, clips it to the tile's cells and rotates/mirrors it
 as needed, so one image per layer covers every rotation.
 
-- `<key>.png` is the over layer: roofs, vehicles, tree tops.
+- `<key>.png` is the over layer: roofs, vehicles, tree tops. The manifest's
+  `SPRITE_BLOCKS` marks the parts of it that stand up off the floor.
 - `<key>_floor.png` is the under layer, with the crowd walking over it.
+
+A tile with `pad` in `tileart.mjs` has a wider image: the extra band is drawn
+past the board when the tile sits against its edge (the cruise ship, a train).
 
 The bottom of a transport's image is its working side (road, track, berth); the
 renderer turns it toward the edge the tile draws from. Design doc §13.3 has the rest.

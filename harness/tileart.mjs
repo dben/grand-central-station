@@ -46,14 +46,20 @@ const WATER = ['#1673c0', '#1ea0ea', '#6cc8ff'];
 
 // ---- canvas -----------------------------------------------------------------
 // One sheet per layer, clipped to the tile's footprint so nothing spills into
-// the empty corner of an L or a T.
-function sheet(shape) {
+// the empty corner of an L or a T. `pad` ([top, right, bottom, left], in cells)
+// adds a band round the bounding box for art that lies past the board's edge:
+// coordinates stay those of the bounding box, so the band is at negative x or y,
+// or past W or H. `block` marks a rectangle of the over layer that stands up off
+// the ground (see SPRITE_BLOCKS in sprites.js).
+function sheet(shape, pad = [0, 0, 0, 0]) {
   const cells = SHAPES[shape][0];
   const cw = Math.max(...cells.map(c => c[0])) + 1, ch = Math.max(...cells.map(c => c[1])) + 1;
   const W = cw * CELL, H = ch * CELL;
+  const ox = pad[3] * CELL, oy = pad[0] * CELL, IW = W + (pad[1] + pad[3]) * CELL, IH = H + (pad[0] + pad[2]) * CELL;
   const set = new Set(cells.map(([x, y]) => x + ',' + y));
   const inside = (x, y) => x >= 0 && y >= 0 && x < W && y < H && set.has(Math.floor(x / CELL) + ',' + Math.floor(y / CELL));
-  const px = new Array(W * H).fill(null);
+  const inBand = (x, y) => x >= -ox && y >= -oy && x < IW - ox && y < IH - oy && !(x >= 0 && y >= 0 && x < W && y < H);
+  const px = new Array(IW * IH).fill(null), blocks = [];
   // distance in pixels to the edge of the footprint, along the axes (capped)
   const dist = new Array(W * H).fill(0);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -62,7 +68,7 @@ function sheet(shape) {
     while (d < 12 && inside(x - d - 1, y) && inside(x + d + 1, y) && inside(x, y - d - 1) && inside(x, y + d + 1)) d++;
     dist[y * W + x] = d;
   }
-  const P = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (c && inside(x, y)) px[y * W + x] = c; };
+  const P = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (c && (inside(x, y) || inBand(x, y))) px[(y + oy) * IW + x + ox] = c; };
   const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) P(x + i, y + j, c); };
   const S = (x, y, rows, pal, { flip = false, rot = false } = {}) => rows.forEach((row, j) => [...row].forEach((ch, i) => {
     if (ch === '.') return;
@@ -87,7 +93,14 @@ function sheet(shape) {
   // an inked box
   const box = (x, y, w, h, col, ink = INK) => blot(x, y, w, h, () => true, col, ink);
   const cellOn = (cx, cy) => set.has(cx + ',' + cy);
-  return { W, H, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn };
+  // darken what is already drawn: shadows on the floor
+  const dark = (x, y, w, h, f) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) { const k = (j + oy) * IW + i + ox; if ((inside(i, j) || inBand(i, j)) && px[k]) px[k] = shade(px[k], f); } };
+  // every pixel of the band past the bounding box
+  const band = fn => { for (let y = -oy; y < IH - oy; y++) for (let x = -ox; x < IW - ox; x++) if (inBand(x, y)) fn(x, y); };
+  // a raised part: it stands from z0 to z1, in units of tile height; a round one
+  // bulges and narrows as it rises (a tree top, a balloon) instead of a drum
+  const block = (x, y, w, h, z1, z0 = 0, round = false) => blocks.push([x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]);
+  return { W, H, IW, IH, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, dark };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -156,11 +169,12 @@ function shop(c, t, icon, { awn = RED, alt = WHITE, at = null, plant = true } = 
   const [ix, iy] = at || [c.cells[0][0] * CELL + 16, c.cells[0][1] * CELL + 15];
   if (icon) icon(c, ix, iy);
 }
-// A trunk shadow on the floor and a canopy over it: the over layer of a park.
+// A trunk and its shadow on the floor, and a canopy over it: a park's trees.
 function treeShadow(c, x, y, r) { c.disc(x + 2, y + 3, r, '#2f6f25'); c.R(x, y, 2, 2, WOOD_D); }
 function tree(c, x, y, r) {
   c.disc(x, y, r + 1, INK); c.disc(x, y, r, GRASS[0]);
   c.disc(x - 1, y - 1, r - 2, GRASS[1]); c.disc(x - 2, y - 2, Math.max(1, r - 5), GRASS[3]);
+  c.block(x - r - 1, y - r - 1, 2 * r + 3, 2 * r + 3, 0.4, 0.16, true);
 }
 function bench(c, x, y, v = false) { v ? c.box(x, y, 3, 10, WOOD_L) : c.box(x, y, 10, 3, WOOD_L); }
 // A parasol seen from above: a disc of alternating gores.
@@ -169,21 +183,26 @@ function parasol(c, cx, cy, r, a, b) {
   for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.8) c.P(cx + x, cy + y, Math.floor((Math.atan2(y, x) + Math.PI) / (Math.PI / 4)) % 2 ? a : b);
   c.disc(cx, cy, 1, WHITE);
 }
+// The shadow a vehicle or a building casts on the floor under it.
+function shadow(c, x, y, w, h) { c.dark(x + 1, y + 2, w, h, 0.62); }
 
 // ---- vehicles (top-down, nose to the right) ---------------------------------------
-function car(c, x, y, col, v = false) {
+// Each registers its own block, so it stands up off the floor; `z` is its height.
+function car(c, x, y, col, v = false, z = 0.14) {
   const L = 15, D = 8;
   const test = (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === D - 1));
   const paint = (i, j) => i === L - 1 && (j === 1 || j === D - 2) ? '#fff1a8' : i === 10 || i === 11 ? GLASS : i === 3 ? GLASS_D : i > 3 && i < 10 ? shade(col, 0.82) : col;
   v ? c.blot(x, y, D, L, (i, j) => test(j, i), (i, j) => paint(j, i)) : c.blot(x, y, L, D, test, paint);
+  v ? c.block(x - 1, y - 1, D + 2, L + 2, z) : c.block(x - 1, y - 1, L + 2, D + 2, z);
 }
 function bus(c, x, y, len, col, stripe = WHITE) {
   c.blot(x, y, len, 12, (i, j) => !((i === 0 || i === len - 1) && (j === 0 || j === 11)), (i, j) =>
     i >= len - 3 ? GLASS : (j === 1 || j === 10) ? ((i % 6) ? GLASS : shade(col, 0.7)) : (j === 5 || j === 6) ? stripe : col);
   for (let i = x + 8; i < x + len - 10; i += 14) c.box(i, y + 3, 5, 5, STEEL);
+  c.block(x - 1, y - 1, len + 2, 14, 0.28);
 }
 // A train car seen from above: roof, a lit stripe, roof boxes, glass at a nose.
-function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false } = {}) {
+function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z = 0.26, z0 = 0 } = {}) {
   const r = Math.floor(w / 2);
   c.blot(x, y, len, w, (i, j) => {
     const dy = Math.abs(j - (w - 1) / 2);
@@ -192,21 +211,27 @@ function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false } 
     return true;
   }, (i, j) => (nose && i > len - r - 3 && Math.abs(j - (w - 1) / 2) < r - 1) ? GLASS : Math.abs(j - (w - 1) / 2) < 1 ? stripe : body);
   for (let i = x + 6; i < x + len - 8; i += 12) c.R(i, y + 2, 5, 2, shade(body, 0.8));
+  c.block(x - 1, y - 1, len + 2, w + 2, z, z0);
 }
-function train(c, x, y, len, cars, w, body, stripe, both = false) {
+function train(c, x, y, len, cars, w, body, stripe, { both = false, z, z0 } = {}) {
   const each = Math.floor((len - (cars - 1)) / cars);
-  for (let k = 0; k < cars; k++) carriage(c, x + k * (each + 1), y, k === cars - 1 ? len - k * (each + 1) : each, w, body, stripe, { nose: k === cars - 1, tail: both && k === 0 });
+  for (let k = 0; k < cars; k++) carriage(c, x + k * (each + 1), y, k === cars - 1 ? len - k * (each + 1) : each, w, body, stripe, { nose: k === cars - 1, tail: both && k === 0, z, z0 });
 }
-// A hull pointed at the bow, with a deck inset and a cabin block.
-function boat(c, x, y, len, w, hull, deck, cabin = null) {
+// A hull pointed at the bow, with a deck inset and a cabin that stands above it.
+function boat(c, x, y, len, w, hull, deck, cabin = null, z = 0.1) {
   const bow = Math.min(Math.floor(len / 3), w + 2), cy = (w - 1) / 2;
   const test = (L, W0) => (i, j) => { const hw = W0 / 2 * (i > L - bow ? Math.max(0, (L - i) / bow) ** 0.7 : 1); return Math.abs(j - (W0 - 1) / 2) <= hw - 0.3; };
   c.blot(x, y, len, w, test(len, w), hull);
   c.blot(x + 2, y + 2, len - 5, w - 4, test(len - 5, w - 4), deck, null);
-  if (cabin) { const [cx0, cw, col] = cabin; c.box(x + cx0, y + Math.round(cy) - Math.floor((w - 6) / 2), cw, w - 6, col); c.R(x + cx0 + cw - 2, y + Math.round(cy) - Math.floor((w - 6) / 2), 2, w - 6, GLASS); }
+  c.block(x - 1, y - 1, len + 2, w + 2, z);
+  if (cabin) {
+    const [cx0, cw, col] = cabin, top = y + Math.round(cy) - Math.floor((w - 6) / 2);
+    c.box(x + cx0, top, cw, w - 6, col); c.R(x + cx0 + cw - 2, top, 2, w - 6, GLASS);
+    c.block(x + cx0 - 1, top - 1, cw + 2, w - 4, z + 0.08, z);
+  }
 }
 // An aircraft from above: fuselage, swept wings, tailplane. Box is len x span.
-function plane(c, x, y, len, span, body, trim, down = false) {
+function plane(c, x, y, len, span, body, trim, down = false, z = 0.12) {
   const cy = (span - 1) / 2, fw = Math.max(2, Math.round(span / 12));
   const test = (i, j) => {
     const dy = Math.abs(j - cy);
@@ -221,19 +246,20 @@ function plane(c, x, y, len, span, body, trim, down = false) {
   if (down) c.blot(x, y, span, len, (i, j) => test(j, i), (i, j) => paint(j, i));
   else c.blot(x, y, len, span, test, paint);
   for (const s of [-1, 1]) { const a = Math.round(len * 0.46), b = Math.round(cy + s * span * 0.24) - 1; down ? c.box(x + b, y + a, 3, 5, STEEL_D) : c.box(x + a, y + b, 5, 3, STEEL_D); }
-}
-// An airliner's nose pushed up to a jetway from the apron: the fuselage comes in
-// from the top of the image and rounds off at row `tip`.
-function nose(c, x, tip, w, trim) {
-  const r = w / 2, top = -4;
-  c.blot(x, top, w, tip - top, (i, j) => { const dy = j - (tip - top - r); return dy < 0 || (i + 0.5 - r) ** 2 + dy * dy <= r * r; },
-    (i, j) => { const y = j + top; return y > tip - r && y < tip - r + 4 && Math.abs(i + 0.5 - r) < r - 3 ? '#2e374d' : Math.abs(i + 0.5 - r) < 1.5 && y < tip - r ? trim : WHITE; });
+  down ? c.block(x - 1, y - 1, span + 2, len + 2, z) : c.block(x - 1, y - 1, len + 2, span + 2, z);
 }
 function heli(c, cx, cy, col) {
   c.R(cx, cy - 1, 18, 3, INK); c.R(cx + 1, cy, 16, 1, shade(col, 0.8)); c.R(cx + 16, cy - 4, 3, 9, INK);
   c.disc(cx, cy, 7, INK); c.disc(cx, cy, 6, col); c.disc(cx + 3, cy - 1, 3, GLASS);
+  c.block(cx - 8, cy - 8, 28, 17, 0.16);
+  // the rotor turns over the body, flat at the top of the pad's box
   for (let i = -17; i <= 17; i++) { c.P(cx + i, cy + Math.round(i * 0.35), '#2e374d'); c.P(cx - Math.round(i * 0.35), cy + i, '#2e374d'); }
   c.disc(cx, cy, 1, STEEL);
+}
+// A small building standing on part of a transport: its roof, raised as a block.
+function hut(c, t, x, y, w, h, z = 0.36) {
+  c.box(x, y, w, h, shade(t, 0.88)); c.R(x + 1, y + 1, w - 1, 2, shade(t, 1.2));
+  c.block(x - 1, y - 1, w + 2, h + 2, z);
 }
 
 // ---- icons (centred on cx, cy) ------------------------------------------------------
@@ -265,233 +291,296 @@ const ICON = {
 // ---- tiles --------------------------------------------------------------------------
 // Each entry: floor(c, tint) and/or over(c, tint). Down is the working side.
 const TILES = {
+  // Transports are glass boxes: the ground they work on is the floor, with the
+  // crowd on it, and the top holds only what stands over it - shelters, signs -
+  // plus the vehicles, raised as blocks.
   // ---- road
-  bus_stop: { over(c, t) {
-    platform(c, t); roadStrip(c, t, 18);
-    c.box(8, 3, 26, 9, mix(GLASS, t, 0.35)); c.R(9, 4, 25, 2, shade(t, 1.1)); for (let x = 15; x < 34; x += 6) c.R(x, 6, 1, 6, mix(GLASS_D, t, 0.3));
-    c.box(44, 4, 4, 4, YELLOW);
-    bus(c, 7, 19, 50, t); frame(c, t);
-  } },
-  bike_rental: { over(c, t) {
-    platform(c, t); roadStrip(c, t, 22);
-    c.box(3, 2, 58, 6, shade(t, 1.0)); c.R(4, 3, 57, 1, shade(t, 1.3));
-    for (let x = 6; x < 58; x += 7) { c.box(x, 10, 4, 9, STEEL_D); c.ring(x + 1, 11, 2, 1, INK); c.ring(x + 1, 17, 2, 1, INK); c.P(x + 2, 14, t); }
-    c.box(48, 24, 8, 5, YELLOW); frame(c, t);
-  } },
-  taxi_stand: { over(c, t) {
-    platform(c, t); roadStrip(c, t, 16);
-    c.box(4, 3, 10, 8, t); c.R(6, 5, 6, 4, YELLOW); c.R(8, 6, 2, 2, INK);
-    car(c, 4, 20, YELLOW); car(c, 24, 20, YELLOW); car(c, 44, 20, YELLOW);
-    for (const x of [8, 28, 48]) c.box(x + 4, 22, 4, 3, INK);
-    frame(c, t);
-  } },
-  rideshare: { over(c, t) {
-    platform(c, t); tarmac(c, t, 3, 3, 26, 58); tarmac(c, t, 3, 35, 58, 26);
-    for (let y = 8; y < 30; y += 12) c.R(3, y, 26, 1, PAINT);
-    car(c, 8, 10, '#2e374d'); car(c, 8, 22, WHITE); car(c, 34, 44, t, false); car(c, 12, 44, '#9b5cff');
-    c.box(40, 38, 10, 4, '#ff4fd8'); frame(c, t);
-  } },
-  car_rental: { over(c, t) {
-    platform(c, t); tarmac(c, t, 0, 30, 64, 34);
-    for (let x = 4; x < 64; x += 15) c.R(x, 32, 1, 28, PAINT);
-    car(c, 6, 36, RED, true); car(c, 21, 36, WHITE, true); car(c, 36, 36, '#35d4ff', true); car(c, 51, 36, '#2e374d', true);
-    c.box(3, 3, 58, 22, shade(t, 0.85)); c.R(4, 4, 57, 2, shade(t, 1.15)); hvac(c, 50, 9); c.box(8, 10, 22, 8, WHITE); c.R(10, 12, 18, 1, t); c.R(10, 15, 12, 1, t);
-    frame(c, t);
-  } },
-  limo: { over(c, t) {
-    platform(c, t); roadStrip(c, t, 16);
-    c.box(10, 3, 76, 8, shade(t, 0.95)); c.R(11, 4, 75, 2, shade(t, 1.25));
-    for (let x = 14; x < 84; x += 8) c.P(x, 8, YELLOW);
-    c.R(0, 12, c.W, 2, RED);
-    const L = 58; c.blot(20, 18, L, 10, (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === 9)), (i, j) => i > L - 13 && i < L - 9 ? GLASS_D : i > 6 && i < L - 16 ? (j === 0 || j === 9 ? '#2e374d' : '#1a1a24') : '#22222e');
-    c.R(26, 19, 28, 1, '#6c6880'); frame(c, t);
-  } },
-  parking_lot: { floor(c, t) {
-    tarmac(c, t);
-    for (let x = 1; x < 64; x += 15) { c.R(x, 3, 1, 22, PAINT); c.R(x, 39, 1, 22, PAINT); }
-    for (let x = 6; x < 60; x += 8) c.R(x, 32, 4, 1, YELLOW);
-    car(c, 5, 5, RED, true); car(c, 35, 5, '#35d4ff', true); car(c, 50, 5, WHITE, true); car(c, 20, 41, YELLOW, true); car(c, 50, 41, '#9b5cff', true);
-    kerb(c, t);
-  } },
+  bus_stop: {
+    floor(c, t) { platform(c, t); roadStrip(c, t, 18); shadow(c, 7, 19, 50, 12); frame(c, t); },
+    over(c, t) {
+      c.box(8, 3, 26, 9, mix(GLASS, t, 0.35)); c.R(9, 4, 25, 2, shade(t, 1.1)); for (let x = 15; x < 34; x += 6) c.R(x, 6, 1, 6, mix(GLASS_D, t, 0.3));
+      c.box(44, 4, 4, 4, YELLOW); bus(c, 7, 19, 50, t);
+    },
+  },
+  bike_rental: {
+    floor(c, t) {
+      platform(c, t); roadStrip(c, t, 22);
+      for (let x = 6; x < 58; x += 7) { c.box(x, 10, 4, 9, STEEL_D); c.ring(x + 1, 11, 2, 1, INK); c.ring(x + 1, 17, 2, 1, INK); c.P(x + 2, 14, t); }
+      c.box(48, 24, 8, 5, YELLOW); frame(c, t);
+    },
+    over(c, t) { c.box(3, 2, 58, 6, shade(t, 1.0)); c.R(4, 3, 57, 1, shade(t, 1.3)); },
+  },
+  taxi_stand: {
+    floor(c, t) { platform(c, t); roadStrip(c, t, 16); for (const x of [4, 24, 44]) shadow(c, x, 20, 15, 8); frame(c, t); },
+    over(c, t) {
+      c.box(4, 3, 10, 8, t); c.R(6, 5, 6, 4, YELLOW); c.R(8, 6, 2, 2, INK);
+      for (const x of [4, 24, 44]) { car(c, x, 20, YELLOW); c.box(x + 5, 22, 4, 3, INK); }
+    },
+  },
+  rideshare: {
+    floor(c, t) {
+      platform(c, t); tarmac(c, t, 3, 3, 26, 58); tarmac(c, t, 3, 35, 58, 26);
+      for (let y = 8; y < 30; y += 12) c.R(3, y, 26, 1, PAINT);
+      for (const [x, y] of [[8, 10], [8, 22], [34, 44], [12, 44]]) shadow(c, x, y, 15, 8);
+      frame(c, t);
+    },
+    over(c, t) { car(c, 8, 10, '#2e374d'); car(c, 8, 22, WHITE); car(c, 34, 44, t); car(c, 12, 44, '#9b5cff'); c.box(40, 38, 10, 4, '#ff4fd8'); },
+  },
+  car_rental: {
+    floor(c, t) {
+      platform(c, t); tarmac(c, t, 0, 30, 64, 34);
+      for (let x = 4; x < 64; x += 15) c.R(x, 32, 1, 28, PAINT);
+      for (const x of [6, 21, 36, 51]) shadow(c, x, 36, 8, 15);
+      shadow(c, 3, 3, 58, 22); frame(c, t);
+    },
+    over(c, t) {
+      hut(c, t, 3, 3, 58, 22); hvac(c, 50, 9); c.box(8, 10, 22, 8, WHITE); c.R(10, 12, 18, 1, t); c.R(10, 15, 12, 1, t);
+      car(c, 6, 36, RED, true); car(c, 21, 36, WHITE, true); car(c, 36, 36, '#35d4ff', true); car(c, 51, 36, '#2e374d', true);
+    },
+  },
+  limo: {
+    floor(c, t) { platform(c, t); roadStrip(c, t, 16); c.R(0, 12, c.W, 2, RED); shadow(c, 20, 18, 58, 10); frame(c, t); },
+    over(c, t) {
+      c.box(10, 3, 76, 8, shade(t, 0.95)); c.R(11, 4, 75, 2, shade(t, 1.25)); for (let x = 14; x < 84; x += 8) c.P(x, 8, YELLOW);
+      const L = 58; c.blot(20, 18, L, 10, (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === 9)), (i, j) => i > L - 13 && i < L - 9 ? GLASS_D : i > 6 && i < L - 16 ? (j === 0 || j === 9 ? '#2e374d' : '#1a1a24') : '#22222e');
+      c.R(26, 19, 28, 1, '#6c6880'); c.block(19, 17, L + 2, 12, 0.15);
+    },
+  },
+  parking_lot: {
+    floor(c, t) {
+      tarmac(c, t);
+      for (let x = 1; x < 64; x += 15) { c.R(x, 3, 1, 22, PAINT); c.R(x, 39, 1, 22, PAINT); }
+      for (let x = 6; x < 60; x += 8) c.R(x, 32, 4, 1, YELLOW);
+      for (const [x, y] of PARKED) shadow(c, x, y, 8, 15);
+      kerb(c, t);
+    },
+    over(c) { PARKED.forEach(([x, y], i) => car(c, x, y, [RED, '#35d4ff', WHITE, YELLOW, '#9b5cff'][i], true)); },
+  },
 
-  // ---- rail and corridor
-  train_station: { over(c, t) {
-    platform(c, t); trackStrip(c, 16, 32);
-    c.box(0, 1, c.W, 9, shade(t, 0.95)); c.R(0, 2, c.W, 2, shade(t, 1.25)); for (let x = 10; x < c.W; x += 20) c.R(x, 5, 10, 3, mix(GLASS, t, 0.25));
-    c.R(0, 13, c.W, 1, YELLOW);
-    train(c, 2, 18, 124, 3, 11, WHITE, t); frame(c, t);
-  } },
-  express_train: { over(c, t) {
-    platform(c, t); trackStrip(c, 16, 32);
-    c.box(0, 1, c.W, 9, shade(t, 0.95)); c.R(0, 2, c.W, 2, shade(t, 1.25)); for (let x = 12; x < c.W; x += 24) c.R(x, 5, 12, 3, mix(GLASS, t, 0.25));
-    c.R(0, 13, c.W, 1, YELLOW);
-    train(c, 2, 18, 156, 4, 11, '#e6e6f0', RED); frame(c, t);
-  } },
-  tram_stop: { over(c, t) {
-    platform(c, t); c.R(0, 14, c.W, 16, mix('#9a94b2', t, 0.25)); c.R(0, 17, c.W, 1, STEEL_D); c.R(0, 26, c.W, 1, STEEL_D);
-    c.box(4, 2, 40, 7, shade(t, 1.0)); c.R(5, 3, 39, 1, shade(t, 1.3)); c.box(52, 2, 40, 7, shade(t, 1.0)); c.R(53, 3, 39, 1, shade(t, 1.3));
-    train(c, 6, 16, 84, 3, 12, t, WHITE, true); frame(c, t);
-  } },
-  monorail: { over(c, t) {
-    platform(c, t); c.R(0, 12, c.W, 18, '#8f86b0'); c.R(0, 12, c.W, 1, '#d7cce8');
-    for (let x = 8; x < c.W; x += 30) c.box(x, 1, 10, 7, shade(t, 1.0));
-    const w = 14; c.blot(8, 14, 112, w, (i, j) => { const d = Math.abs(j - (w - 1) / 2), r = w / 2; return i < r ? d <= Math.sqrt(r * r - (r - i) ** 2) : i > 112 - r ? d <= Math.sqrt(Math.max(0, r * r - (i - 112 + r) ** 2)) : true; },
-      (i, j) => j === 1 || j === w - 2 ? ((i % 7) ? GLASS : WHITE) : Math.abs(j - (w - 1) / 2) < 1.5 ? t : WHITE);
-    frame(c, t);
-  } },
-  ski_lift: { over(c, t) {
-    c.each((x, y) => c.P(x, y, (x * 7 + y * 3) % 19 === 0 ? '#c8d8f0' : '#eef4ff'));
-    c.R(0, 9, c.W, 1, INK); c.R(0, 22, c.W, 1, INK);
-    for (const x of [2, c.W - 10]) { c.box(x, 4, 8, 24, STEEL_D); c.R(x + 1, 13, 6, 6, t); }
-    for (let x = 14; x < c.W - 14; x += 16) { c.box(x, 6, 8, 6, t); c.box(x + 8, 19, 8, 6, t); }
-    frame(c, t);
-  } },
-  alpine_lift: { over(c, t) {
-    c.each((x, y) => c.P(x, y, (x * 7 + y * 3) % 19 === 0 ? '#c8d8f0' : '#eef4ff'));
-    for (const [x, y] of [[40, 4], [96, 22], [130, 6]]) { c.P(x, y, '#5fc23a'); c.blot(x - 3, y - 3, 7, 7, (i, j) => Math.abs(i - 3) + Math.abs(j - 3) <= 3, '#2f7a3f'); }
-    c.R(0, 10, c.W, 1, INK); c.R(0, 21, c.W, 1, INK);
-    for (const x of [2, c.W - 12]) { c.box(x, 3, 10, 26, STEEL_D); c.R(x + 1, 12, 8, 8, t); }
-    for (let x = 18; x < c.W - 20; x += 26) { c.box(x, 6, 12, 9, t); c.R(x + 1, 7, 10, 2, GLASS); c.box(x + 13, 17, 12, 9, t); c.R(x + 14, 24, 10, 1, GLASS); }
-    frame(c, t);
-  } },
+  // ---- rail and corridor: an edge station's train waits on the line past the edge
+  train_station: {
+    pad: [0, 0, 1, 0],
+    floor(c, t) { platform(c, t); c.R(0, 29, c.W, 1, YELLOW); frame(c, t); },
+    over(c, t) { canopy(c, t, 20); train(c, 2, 40, 124, 3, 11, WHITE, t); },
+  },
+  express_train: {
+    pad: [0, 0, 1, 0],
+    floor(c, t) { platform(c, t); c.R(0, 29, c.W, 1, YELLOW); frame(c, t); },
+    over(c, t) { canopy(c, t, 24); train(c, 2, 40, 156, 4, 11, '#e6e6f0', RED); },
+  },
+  tram_stop: {
+    floor(c, t) { platform(c, t); c.R(0, 14, c.W, 16, mix('#9a94b2', t, 0.25)); c.R(0, 17, c.W, 1, STEEL_D); c.R(0, 26, c.W, 1, STEEL_D); shadow(c, 6, 16, 84, 12); frame(c, t); },
+    over(c, t) {
+      c.box(4, 2, 40, 7, shade(t, 1.0)); c.R(5, 3, 39, 1, shade(t, 1.3)); c.box(52, 2, 40, 7, shade(t, 1.0)); c.R(53, 3, 39, 1, shade(t, 1.3));
+      train(c, 6, 16, 84, 3, 12, t, WHITE, { both: true, z: 0.24 });
+    },
+  },
+  monorail: {
+    floor(c, t) { platform(c, t); shadow(c, 0, 16, c.W, 10); frame(c, t); },
+    over(c, t) {
+      for (let x = 8; x < c.W; x += 30) c.box(x, 1, 10, 7, shade(t, 1.0));
+      // the guideway beam, and the pod riding on top of it
+      c.R(0, 18, c.W, 8, '#8f86b0'); c.R(0, 18, c.W, 1, '#d7cce8'); c.block(0, 17, c.W, 10, 0.16);
+      const w = 14; c.blot(8, 15, 112, w, (i, j) => { const d = Math.abs(j - (w - 1) / 2), r = w / 2; return i < r ? d <= Math.sqrt(r * r - (r - i) ** 2) : i > 112 - r ? d <= Math.sqrt(Math.max(0, r * r - (i - 112 + r) ** 2)) : true; },
+        (i, j) => j === 1 || j === w - 2 ? ((i % 7) ? GLASS : WHITE) : Math.abs(j - (w - 1) / 2) < 1.5 ? t : WHITE);
+      c.block(7, 14, 114, w + 2, 0.36, 0.16);
+    },
+  },
+  ski_lift: {
+    floor(c, t) { snow(c); frame(c, t); },
+    over(c, t) { lift(c, t, 16, 8, 6, 0.1); },
+  },
+  alpine_lift: {
+    floor(c, t) { snow(c); for (const [x, y] of [[40, 4], [96, 22], [130, 6]]) c.blot(x - 3, y - 3, 7, 7, (i, j) => Math.abs(i - 3) + Math.abs(j - 3) <= 3, '#2f7a3f'); frame(c, t); },
+    over(c, t) { lift(c, t, 26, 12, 9, 0.14); },
+  },
 
   // ---- water
-  ferry: { over(c, t) {
+  ferry: {
     // the long arm is a slip with the ferry in it, the foot the terminal
-    sea(c, 0, 0, 32, 96); c.R(0, 0, 3, 96, WOOD_L); c.R(29, 0, 3, 64, WOOD_L); c.R(0, 0, 32, 3, WOOD_L);
-    for (let y = 8; y < 96; y += 14) { c.R(0, y, 3, 2, WOOD_D); c.R(29, y, 3, 2, WOOD_D); }
-    c.blot(5, 6, 22, 84, (i, j) => { const b = 12; const hw = 11 * (j < b ? Math.max(0, j / b) ** 0.7 : j > 84 - 6 ? (84 - j) / 6 : 1); return Math.abs(i - 10.5) <= hw; }, WHITE);
-    c.box(9, 26, 14, 40, '#e6e6f0'); for (let y = 30; y < 64; y += 5) { c.P(9, y, GLASS_D); c.P(22, y, GLASS_D); }
-    c.box(11, 22, 10, 5, GLASS); c.R(10, 72, 12, 2, RED); c.box(13, 44, 6, 6, RED);
-    c.box(32, 64, 32, 32, shade(t, 0.88)); c.R(33, 65, 30, 3, shade(t, 1.2)); hvac(c, 52, 72); for (let y = 72; y < 92; y += 6) c.R(36, y, 12, 3, GLASS);
-    c.R(29, 76, 4, 8, WOOD_L); frame(c, t);
-  } },
-  water_taxi: { over(c, t) {
-    platform(c, t); seaStrip(c, 14);
-    c.box(6, 3, 14, 7, shade(t, 1.0)); c.R(8, 5, 10, 3, YELLOW);
-    boat(c, 12, 18, 30, 11, YELLOW, WHITE, [8, 9, WHITE]); boat(c, 44, 20, 18, 9, t, WHITE);
-    frame(c, t);
-  } },
-  water_bus: { over(c, t) {
-    platform(c, t); seaStrip(c, 12);
-    c.box(38, 2, 22, 7, shade(t, 1.0)); c.R(39, 3, 21, 1, shade(t, 1.3));
-    boat(c, 6, 15, 52, 15, t, WHITE, [10, 30, '#e6e6f0']); frame(c, t);
-  } },
-  pontoon: { floor(c, t) {
-    sea(c);
-    c.R(28, 0, 8, 64, WOOD_L); for (let y = 2; y < 64; y += 4) c.R(28, y, 8, 1, WOOD);
-    for (const y of [12, 40]) { c.R(4, y, 56, 5, WOOD_L); for (let x = 6; x < 60; x += 4) c.R(x, y, 1, 5, WOOD); }
-    boat(c, 5, 20, 20, 9, WHITE, '#e6e6f0'); boat(c, 38, 21, 22, 9, t, WHITE); boat(c, 5, 49, 18, 9, RED, WHITE); boat(c, 39, 49, 20, 9, WHITE, '#e6e6f0');
-    kerb(c, t);
-  } },
-  marina: { over(c, t) {
-    sea(c);
-    c.R(0, 29, 96, 6, WOOD_L); for (let x = 2; x < 96; x += 4) c.R(x, 29, 1, 6, WOOD);
-    for (const x of [8, 40, 56, 88]) c.R(x - 1, 0, 3, 64, WOOD_L);
-    boat(c, 44, 4, 10, 22, WHITE, '#e6e6f0'); boat(c, 60, 6, 26, 9, WHITE, '#e6e6f0', [8, 8, WHITE]); boat(c, 60, 17, 24, 9, t, WHITE);
-    boat(c, 11, 40, 26, 10, WHITE, WOOD_L, [6, 9, WHITE]); boat(c, 11, 52, 24, 9, '#2e374d', WHITE); boat(c, 60, 44, 24, 12, WHITE, '#e6e6f0', [5, 10, WHITE]);
-    frame(c, t);
-  } },
-  cruise_dock: { over(c, t) {
-    platform(c, t); seaStrip(c, 9);
-    c.box(10, 1, 40, 5, shade(t, 1.0)); c.box(120, 1, 40, 5, shade(t, 1.0));
-    c.blot(4, 12, 184, 19, (i, j) => { const hw = 9.5 * (i > 150 ? Math.max(0, (184 - i) / 34) ** 0.6 : i < 4 ? 0.85 : 1); return Math.abs(j - 9) <= hw; }, WHITE);
-    c.box(20, 15, 120, 13, '#e6e6f0'); c.box(30, 17, 90, 9, WHITE);
-    for (let x = 34; x < 118; x += 6) { c.P(x, 17, GLASS_D); c.P(x, 25, GLASS_D); }
-    c.box(60, 18, 14, 7, '#35d4ff'); c.box(96, 18, 9, 7, RED); c.R(98, 20, 5, 3, INK);
-    c.box(142, 16, 8, 11, GLASS); frame(c, t);
-  } },
+    floor(c, t) {
+      sea(c, 0, 0, 32, 96); c.R(0, 0, 3, 96, WOOD_L); c.R(29, 0, 3, 64, WOOD_L); c.R(0, 0, 32, 3, WOOD_L);
+      for (let y = 8; y < 96; y += 14) { c.R(0, y, 3, 2, WOOD_D); c.R(29, y, 3, 2, WOOD_D); }
+      platform({ ...c, each: fn => c.each((x, y, d) => x >= 32 && fn(x, y, d)) }, t); c.R(29, 76, 4, 8, WOOD_L);
+      frame(c, t);
+    },
+    over(c, t) {
+      c.blot(5, 6, 22, 84, (i, j) => { const b = 12; const hw = 11 * (j < b ? Math.max(0, j / b) ** 0.7 : j > 84 - 6 ? (84 - j) / 6 : 1); return Math.abs(i - 10.5) <= hw; }, WHITE);
+      c.block(4, 5, 24, 86, 0.14);
+      c.box(9, 26, 14, 40, '#e6e6f0'); for (let y = 30; y < 64; y += 5) { c.P(9, y, GLASS_D); c.P(22, y, GLASS_D); }
+      c.box(11, 22, 10, 5, GLASS); c.box(13, 44, 6, 6, RED); c.block(8, 21, 16, 46, 0.3, 0.14);
+      c.R(10, 72, 12, 2, RED);
+      hut(c, t, 33, 65, 30, 30); hvac(c, 52, 72); for (let y = 72; y < 92; y += 6) c.R(36, y, 12, 3, GLASS);
+    },
+  },
+  water_taxi: {
+    pad: [0, 0, 1, 0],
+    floor(c, t) { platform(c, t); c.R(0, 27, c.W, 3, WOOD_L); c.R(0, 30, c.W, 2, WOOD_D); frame(c, t); },
+    over(c, t) { c.box(6, 3, 14, 7, shade(t, 1.0)); c.R(8, 5, 10, 3, YELLOW); boat(c, 10, 38, 30, 11, YELLOW, WHITE, [8, 9, WHITE]); boat(c, 44, 40, 18, 9, t, WHITE); },
+  },
+  water_bus: {
+    floor(c, t) { platform(c, t); seaStrip(c, 12); frame(c, t); },
+    over(c, t) { c.box(38, 2, 22, 7, shade(t, 1.0)); c.R(39, 3, 21, 1, shade(t, 1.3)); boat(c, 6, 15, 52, 15, t, WHITE, [10, 30, '#e6e6f0']); },
+  },
+  pontoon: {
+    floor(c, t) {
+      sea(c);
+      c.R(28, 0, 8, 64, WOOD_L); for (let y = 2; y < 64; y += 4) c.R(28, y, 8, 1, WOOD);
+      for (const y of [12, 40]) { c.R(4, y, 56, 5, WOOD_L); for (let x = 6; x < 60; x += 4) c.R(x, y, 1, 5, WOOD); }
+      kerb(c, t);
+    },
+    over(c, t) { boat(c, 5, 20, 20, 9, WHITE, '#e6e6f0', null, 0.07); boat(c, 38, 21, 22, 9, t, WHITE, null, 0.07); boat(c, 5, 49, 18, 9, RED, WHITE, null, 0.07); boat(c, 39, 49, 20, 9, WHITE, '#e6e6f0', null, 0.07); },
+  },
+  marina: {
+    floor(c, t) {
+      sea(c);
+      c.R(0, 29, 96, 6, WOOD_L); for (let x = 2; x < 96; x += 4) c.R(x, 29, 1, 6, WOOD);
+      for (const x of [8, 40, 56, 88]) c.R(x - 1, 0, 3, 64, WOOD_L);
+      frame(c, t);
+    },
+    over(c, t) {
+      boat(c, 44, 4, 10, 22, WHITE, '#e6e6f0'); boat(c, 60, 6, 26, 9, WHITE, '#e6e6f0', [8, 8, WHITE]); boat(c, 60, 17, 24, 9, t, WHITE);
+      boat(c, 11, 40, 26, 10, WHITE, WOOD_L, [6, 9, WHITE]); boat(c, 11, 52, 24, 9, '#2e374d', WHITE); boat(c, 60, 44, 24, 12, WHITE, '#e6e6f0', [5, 10, WHITE]);
+    },
+  },
+  cruise_dock: {
+    // the quay is the tile; the ship lies alongside it, past the edge
+    pad: [0, 0, 1, 0],
+    floor(c, t) {
+      platform(c, t); c.R(0, 28, c.W, 2, YELLOW); c.R(0, 30, c.W, 2, '#6c6880');
+      for (let x = 8; x < c.W; x += 24) c.box(x, 24, 3, 3, '#2e374d');
+      frame(c, t);
+    },
+    over(c, t) {
+      c.box(10, 3, 40, 8, shade(t, 1.0)); c.R(11, 4, 39, 2, shade(t, 1.3)); c.box(120, 3, 40, 8, shade(t, 1.0)); c.R(121, 4, 39, 2, shade(t, 1.3));
+      for (const x of [40, 130]) c.box(x, 14, 6, 20, STEEL);
+      c.blot(4, 34, 184, 22, (i, j) => { const hw = 11 * (i > 150 ? Math.max(0, (184 - i) / 34) ** 0.6 : i < 4 ? 0.85 : 1); return Math.abs(j - 10.5) <= hw; }, WHITE);
+      c.R(8, 44, 150, 2, '#35d4ff');
+      c.block(3, 33, 186, 24, 0.3);
+      c.box(20, 37, 120, 16, '#e6e6f0'); c.box(30, 39, 90, 12, WHITE);
+      for (let x = 34; x < 118; x += 6) { c.P(x, 39, GLASS_D); c.P(x, 50, GLASS_D); }
+      c.box(60, 41, 14, 8, '#35d4ff');
+      c.block(19, 36, 122, 18, 0.5, 0.3);
+      c.box(96, 40, 9, 10, RED); c.R(98, 42, 5, 6, INK); c.block(95, 39, 11, 12, 0.66, 0.5);
+      c.box(142, 38, 8, 14, GLASS); c.block(141, 37, 10, 16, 0.4, 0.3);
+    },
+  },
 
   // ---- air and far-fetched
-  helipad: { over(c, t) {
-    c.fill(mix('#5a5e70', t, 0.12));
-    c.ring(32, 32, 27, 2, YELLOW);
-    c.R(22, 20, 4, 24, WHITE); c.R(38, 20, 4, 24, WHITE); c.R(26, 30, 12, 4, WHITE);
-    for (const [x, y] of [[5, 5], [57, 5], [5, 57], [57, 57]]) c.box(x, y, 2, 2, '#ff9cec');
-    heli(c, 42, 46, t); frame(c, t);
-  } },
-  balloon: { over(c, t) {
-    grass(c); c.ring(48, 16, 12, 1, '#d8c89a');
-    parasol(c, 48, 18, 17, t, YELLOW); c.ring(48, 18, 4, 1, shade(t, 0.6));
-    c.box(38, 40, 20, 18, WOOD_L); c.R(40, 42, 16, 14, WOOD); c.R(42, 44, 12, 10, '#e8384f');
-    c.box(6, 6, 10, 10, WOOD_L); c.box(80, 8, 8, 8, WOOD_L); frame(c, t);
-  } },
-  jetway: { over(c, t) {
-    // the tip cell is on the apron: an airliner's nose; the bridge runs down
-    // the stem and turns into the terminal at the foot
-    apronStrip(c, t, 0);
-    nose(c, 3, 22, 24, '#3f8cff');
-    c.box(12, 22, 8, 32, '#d7cce8'); c.R(13, 23, 6, 30, STEEL); for (let y = 26; y < 52; y += 5) c.R(13, y, 6, 1, STEEL_D);
-    c.box(12, 46, 30, 8, '#d7cce8'); c.R(13, 47, 28, 6, STEEL);
-    c.box(34, 36, 28, 26, shade(t, 0.9)); c.R(35, 37, 27, 3, shade(t, 1.2)); for (let x = 38; x < 60; x += 6) c.R(x, 42, 3, 16, GLASS);
-    frame(c, t);
-  } },
-  jumbo_jetway: { over(c, t) {
-    apronStrip(c, t, 0);
-    nose(c, 1, 26, 30, '#9b5cff'); c.R(0, 0, 32, 2, WHITE);
-    for (const x of [6, 18]) { c.box(x, 24, 6, 82, '#d7cce8'); c.R(x + 1, 25, 4, 80, STEEL); }
-    c.box(8, 106, 34, 8, '#d7cce8'); c.R(9, 107, 32, 6, STEEL);
-    c.box(34, 98, 28, 28, shade(t, 0.9)); c.R(35, 99, 27, 3, shade(t, 1.2)); for (let x = 38; x < 60; x += 6) c.R(x, 104, 3, 18, GLASS);
-    frame(c, t);
-  } },
-  prop_stand: { over(c, t) {
-    apronStrip(c, t, 0); c.R(0, 0, 64, 6, mix('#c4c0d4', t, 0.14)); c.R(0, 5, 64, 1, YELLOW);
-    plane(c, 10, 4, 34, 28, '#e6e6f0', RED);
-    c.box(44, 16, 1, 9, '#2e374d'); c.box(52, 22, 8, 6, YELLOW); frame(c, t);
-  } },
-  hardstand: { floor(c, t) {
-    apronStrip(c, t, 0);
-    for (const [x, y] of [[8, 8], [54, 8], [8, 54], [54, 54]]) c.box(x, y, 2, 2, YELLOW);
-    plane(c, 12, 14, 38, 34, WHITE, '#3f8cff'); kerb(c, t);
-  } },
-  private_terminal: { over(c, t) {
+  helipad: {
+    floor(c, t) {
+      c.fill(mix('#5a5e70', t, 0.12)); c.ring(32, 32, 27, 2, YELLOW);
+      c.R(22, 20, 4, 24, WHITE); c.R(38, 20, 4, 24, WHITE); c.R(26, 30, 12, 4, WHITE);
+      for (const [x, y] of [[5, 5], [57, 5], [5, 57], [57, 57]]) c.box(x, y, 2, 2, '#ff9cec');
+      shadow(c, 34, 38, 24, 16); frame(c, t);
+    },
+    over(c, t) { heli(c, 42, 46, t); },
+  },
+  balloon: {
+    floor(c, t) {
+      grass(c); c.ring(48, 18, 12, 1, '#d8c89a'); c.disc(51, 22, 15, '#2f6f25'); c.box(45, 16, 6, 6, WOOD);
+      c.box(6, 6, 10, 10, WOOD_L); c.box(80, 8, 8, 8, WOOD_L); frame(c, t);
+    },
+    over(c, t) {
+      // the envelope hangs high over its basket; the booth in the stem stands on the grass
+      parasol(c, 48, 18, 17, t, YELLOW); c.ring(48, 18, 4, 1, shade(t, 0.6)); c.block(30, 0, 37, 37, 1.0, 0.45, true);
+      hut(c, t, 38, 40, 20, 18, 0.3); c.R(42, 44, 12, 10, RED);
+    },
+  },
+  jetway: {
+    // The tip cell meets the apron and the airliner is parked nose-in past the
+    // edge; the bridge runs down the stem into the terminal at the foot.
+    pad: [1, 0, 0, 0],
+    floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 32, YELLOW); frame(c, t); },
+    over(c, t) {
+      plane(c, 1, -32, 50, 30, WHITE, '#3f8cff', true, 0.18);
+      c.box(12, 20, 8, 30, '#d7cce8'); c.R(13, 21, 6, 28, STEEL); for (let y = 24; y < 48; y += 5) c.R(13, y, 6, 1, STEEL_D);
+      c.box(12, 46, 22, 8, '#d7cce8'); c.R(13, 47, 20, 6, STEEL); c.block(11, 19, 24, 36, 0.22, 0.1);
+      hut(c, t, 36, 36, 26, 26); for (let x = 40; x < 60; x += 6) c.R(x, 42, 3, 16, GLASS);
+    },
+  },
+  jumbo_jetway: {
+    pad: [1, 0, 0, 0],
+    floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 64, YELLOW); frame(c, t); },
+    over(c, t) {
+      plane(c, 0, -32, 70, 32, WHITE, '#9b5cff', true, 0.24);
+      for (const x of [4, 20]) { c.box(x, 40, 7, 66, '#d7cce8'); c.R(x + 1, 41, 5, 64, STEEL); }
+      c.box(4, 104, 32, 8, '#d7cce8'); c.R(5, 105, 30, 6, STEEL); c.block(3, 39, 34, 74, 0.26, 0.12);
+      hut(c, t, 36, 98, 26, 28); for (let x = 40; x < 60; x += 6) c.R(x, 104, 3, 18, GLASS);
+    },
+  },
+  prop_stand: {
+    floor(c, t) { apronStrip(c, t, 0); c.R(0, 0, 64, 6, mix('#c4c0d4', t, 0.14)); c.R(0, 5, 64, 1, YELLOW); shadow(c, 10, 6, 34, 26); c.box(52, 22, 8, 6, YELLOW); frame(c, t); },
+    over(c, t) { plane(c, 10, 4, 34, 28, '#e6e6f0', RED); },
+  },
+  hardstand: {
+    floor(c, t) { apronStrip(c, t, 0); for (const [x, y] of [[8, 8], [54, 8], [8, 54], [54, 54]]) c.box(x, y, 2, 2, YELLOW); shadow(c, 12, 16, 38, 34); kerb(c, t); },
+    over(c, t) { plane(c, 12, 14, 38, 34, WHITE, '#3f8cff'); },
+  },
+  private_terminal: {
     // the bar of the T meets the apron with a business jet at the stand; the
     // stem is the lounge
-    apronStrip(c, t, 0);
-    plane(c, 14, 0, 58, 30, WHITE, YELLOW);
-    c.box(34, 32, 28, 30, shade(t, 0.9)); c.R(35, 33, 27, 3, shade(t, 1.25)); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW);
-    c.R(0, 30, 96, 2, RED); frame(c, t);
-  } },
-  jetpack: { over(c, t) {
-    c.fill('#34216b'); for (const cx of [16, 48]) { c.disc(cx, 16, 12, INK); c.disc(cx, 16, 11, shade(t, 0.8)); c.ring(cx, 16, 9, 1, YELLOW); c.box(cx - 4, 12, 9, 9, STEEL); c.R(cx - 3, 13, 3, 7, RED); c.R(cx + 1, 13, 3, 7, RED); }
-    frame(c, t);
-  } },
-  beam_pad: { over(c, t) {
-    c.fill('#1a1033'); for (let y = 2; y < 64; y += 6) for (let x = (y % 12 ? 3 : 0); x < 64; x += 6) c.P(x, y, '#4b2f8f');
-    for (const [r, col] of [[26, t], [21, '#ff9cec'], [16, t], [10, '#35d4ff'], [5, WHITE]]) { c.ring(32, 32, r, 2, col); }
-    c.disc(32, 32, 3, '#35d4ff'); frame(c, t);
-  } },
-  loop_terminal: { over(c, t) {
-    c.fill(mix('#3b3452', t, 0.1)); c.ring(32, 32, 22, 6, '#1a1033'); c.ring(32, 32, 20, 1, '#35d4ff'); c.ring(32, 32, 16, 1, '#35d4ff');
-    c.box(0, 28, 12, 9, '#1a1033'); c.box(52, 28, 12, 9, '#1a1033');
-    for (const [x, y] of [[20, 10], [44, 50], [10, 40]]) { c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS); }
-    c.disc(32, 32, 7, shade(t, 0.9)); c.ring(32, 32, 7, 1, INK); frame(c, t);
-  } },
+    floor(c, t) { apronStrip(c, t, 0); c.R(0, 30, 96, 2, RED); shadow(c, 14, 2, 58, 28); frame(c, t); },
+    over(c, t) { plane(c, 14, 0, 58, 30, WHITE, YELLOW, false, 0.16); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
+  },
+  jetpack: {
+    floor(c, t) { c.fill('#34216b'); for (const cx of [16, 48]) { c.disc(cx, 16, 12, INK); c.disc(cx, 16, 11, shade(t, 0.8)); c.ring(cx, 16, 9, 1, YELLOW); } frame(c, t); },
+    over(c) { for (const cx of [16, 48]) { c.box(cx - 4, 12, 9, 9, STEEL); c.R(cx - 3, 13, 3, 7, RED); c.R(cx + 1, 13, 3, 7, RED); c.block(cx - 5, 11, 11, 11, 0.2); } },
+  },
+  beam_pad: {
+    floor(c, t) {
+      c.fill('#1a1033'); for (let y = 2; y < 64; y += 6) for (let x = (y % 12 ? 3 : 0); x < 64; x += 6) c.P(x, y, '#4b2f8f');
+      for (const [r, col] of [[26, t], [21, '#ff9cec'], [16, t], [10, '#35d4ff'], [5, WHITE]]) c.ring(32, 32, r, 2, col);
+      c.disc(32, 32, 3, '#35d4ff'); frame(c, t);
+    },
+  },
+  loop_terminal: {
+    floor(c, t) {
+      c.fill(mix('#3b3452', t, 0.1)); c.ring(32, 32, 22, 6, '#1a1033'); c.ring(32, 32, 20, 1, '#35d4ff'); c.ring(32, 32, 16, 1, '#35d4ff');
+      c.box(0, 28, 12, 9, '#1a1033'); c.box(52, 28, 12, 9, '#1a1033'); frame(c, t);
+    },
+    over(c, t) {
+      for (const [x, y] of [[20, 10], [44, 50], [10, 40]]) { c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS); c.block(x - 5, y - 4, 14, 9, 0.12); }
+      c.disc(32, 32, 7, shade(t, 0.9)); c.ring(32, 32, 7, 1, INK); c.block(24, 24, 17, 17, 0.3);
+    },
+  },
 
-  // ---- underground
-  subway: { over(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); c.box(46, 4, 14, 24, shade(t, 0.9)); c.R(48, 8, 10, 10, WHITE); c.disc(53, 13, 4, RED); c.R(51, 12, 5, 2, WHITE); frame(c, t); } },
-  express_subway: { over(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); stairs(c, t, 52, 6, 40, 20, true); c.box(40, 4, 12, 24, RED); c.R(43, 10, 6, 12, WHITE); frame(c, t); } },
-  under_parking: { over(c, t) {
-    platform(c, t); tarmac(c, t, 4, 4, 24, 56); tarmac(c, t, 4, 36, 56, 24);
-    for (let y = 8; y < 32; y += 4) c.R(4, y, 24, 1, mix(ASPHALT_D, INK, (y - 8) / 30));
-    for (let x = 30; x < 60; x += 4) c.R(x, 36, 2, 24, mix(ASPHALT, INK, (x - 30) / 50));
-    for (const y of [14, 22]) c.blot(12, y, 8, 5, (i, j) => Math.abs(i - 3.5) <= j * 0.8, YELLOW, null);
-    c.box(8, 40, 14, 14, '#2f6bff'); c.R(12, 43, 2, 8, WHITE); c.R(14, 43, 3, 1, WHITE); c.R(14, 46, 3, 1, WHITE); c.R(17, 44, 1, 2, WHITE);
-    frame(c, t);
-  } },
-  sub_dock: { over(c, t) {
-    platform(c, t); c.box(4, 8, 56, 20, WATER[0]); sea(c, 5, 9, 54, 18);
-    c.blot(10, 12, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
-    c.box(24, 14, 8, 7, '#3b4050'); c.R(26, 16, 4, 1, YELLOW); c.R(0, 0, 64, 4, shade(t, 1.0)); hazard(c, 4, 4, 56, 2);
-    frame(c, t);
-  } },
+  // ---- underground: the stairs go down through the floor; the totem stands up
+  subway: {
+    floor(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); frame(c, t); },
+    over(c, t) { c.box(48, 8, 10, 16, shade(t, 0.9)); c.R(50, 10, 6, 6, WHITE); c.disc(53, 13, 2, RED); c.block(47, 7, 12, 18, 0.5); },
+  },
+  express_subway: {
+    floor(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); stairs(c, t, 52, 6, 40, 20, true); frame(c, t); },
+    over(c) { c.box(42, 8, 10, 16, RED); c.R(44, 12, 6, 8, WHITE); c.block(41, 7, 12, 18, 0.55); },
+  },
+  under_parking: {
+    floor(c, t) {
+      platform(c, t); tarmac(c, t, 4, 4, 24, 56); tarmac(c, t, 4, 36, 56, 24);
+      for (let y = 8; y < 32; y += 4) c.R(4, y, 24, 1, mix(ASPHALT_D, INK, (y - 8) / 30));
+      for (let x = 30; x < 60; x += 4) c.R(x, 36, 2, 24, mix(ASPHALT, INK, (x - 30) / 50));
+      for (const y of [14, 22]) c.blot(12, y, 8, 5, (i, j) => Math.abs(i - 3.5) <= j * 0.8, YELLOW, null);
+      frame(c, t);
+    },
+    over(c) { c.box(8, 40, 14, 14, '#2f6bff'); c.R(12, 43, 2, 8, WHITE); c.R(14, 43, 3, 1, WHITE); c.R(14, 46, 3, 1, WHITE); c.R(17, 44, 1, 2, WHITE); c.block(7, 39, 16, 16, 0.4); },
+  },
+  sub_dock: {
+    floor(c, t) { platform(c, t); c.box(4, 8, 56, 20, WATER[0]); sea(c, 5, 9, 54, 18); hazard(c, 4, 4, 56, 2); frame(c, t); },
+    over(c, t) {
+      c.blot(10, 12, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
+      c.block(9, 11, 44, 13, 0.05);
+      c.box(24, 14, 8, 7, '#3b4050'); c.R(26, 16, 4, 1, YELLOW); c.block(23, 13, 10, 9, 0.2, 0.05);
+      c.R(0, 0, 64, 4, shade(t, 1.0));
+    },
+  },
 
   // ---- shops and services
   vending: { over(c, t) { roof(c, t); ICON.bottle(c, 16, 16); } },
   kiosk: { over(c, t) { roof(c, t); ICON.info(c, 16, 16); } },
   atm: { over(c, t) { roof(c, t); awnings(c, '#5fc23a', WHITE); ICON.cash(c, 16, 14); } },
-  coffee_cart: { over(c, t) { platform(c, t); c.box(6, 18, 20, 10, WOOD_L); parasol(c, 16, 14, 11, t, WHITE); frame(c, t); } },
-  souvenir_cart: { over(c, t) { platform(c, t); c.box(5, 17, 22, 11, '#ff9cec'); ICON.gift(c, 22, 24); parasol(c, 14, 13, 10, t, YELLOW); frame(c, t); } },
+  // the carts are glass boxes too: the crowd round the cart shows under the parasol
+  coffee_cart: { floor(c, t) { platform(c, t); c.box(6, 18, 20, 10, WOOD_L); c.R(8, 20, 5, 3, '#2e374d'); frame(c, t); }, over(c, t) { parasol(c, 16, 14, 11, t, WHITE); } },
+  souvenir_cart: { floor(c, t) { platform(c, t); c.box(5, 17, 22, 11, '#ff9cec'); ICON.gift(c, 22, 24); frame(c, t); }, over(c, t) { parasol(c, 14, 13, 10, t, YELLOW); } },
   newsstand: { over(c, t) { shop(c, t, ICON.news, { awn: '#2f6bff', at: [48, 15] }); for (let x = 6; x < 30; x += 7) c.box(x, 8, 5, 7, [WHITE, YELLOW, '#ff9cec', '#35d4ff'][(x - 6) / 7]); } },
   food_stand: { over(c, t) { shop(c, t, ICON.hotdog, { at: [22, 14] }); } },
   coffee: { over(c, t) { shop(c, t, ICON.cup, { awn: '#6b3e24', alt: '#fff1c8', at: [16, 15] }); ICON.cup(c, 48, 15); } },
@@ -569,6 +658,26 @@ const TILES = {
   } },
 };
 const TREES_O4 = [[12, 12, 8], [51, 13, 7], [13, 50, 7], [50, 51, 8]];
+const PARKED = [[5, 5], [35, 5], [50, 5], [20, 41], [50, 41]];
+
+// A shelter the length of a platform, glass panes let into it.
+function canopy(c, t, step) {
+  c.box(0, 2, c.W, 9, shade(t, 0.95)); c.R(0, 3, c.W, 2, shade(t, 1.25));
+  for (let x = step / 2; x < c.W; x += step) c.R(x, 6, step / 2, 3, mix(GLASS, t, 0.25));
+}
+function snow(c) { c.each((x, y) => c.P(x, y, (x * 7 + y * 3) % 19 === 0 ? '#c8d8f0' : '#eef4ff')); }
+// A lift: pylons at each end standing up, the two cables flat across the top of
+// the box, and cars hanging under them, going out on one and back on the other.
+function lift(c, t, step, w, h, z) {
+  for (const x of [2, c.W - 12]) { c.box(x, 3, 10, 26, STEEL_D); c.R(x + 1, 12, 8, 8, t); c.block(x - 1, 2, 12, 28, 0.34); }
+  c.R(12, 9, c.W - 24, 1, INK); c.R(12, 22, c.W - 24, 1, INK);
+  for (let x = 16; x < c.W - 16 - w; x += step) {
+    for (const [cx, cy] of [[x, 9 - (h >> 1)], [x + (step >> 1), 22 - (h >> 1)]]) {
+      if (cx + w > c.W - 14) continue;
+      c.box(cx, cy, w, h, t); c.R(cx + 1, cy + 1, w - 2, 1, GLASS); c.block(cx - 1, cy - 1, w + 2, h + 2, 0.2, 0.2 - z);
+    }
+  }
+}
 
 // Stairs down into a station: steps darkening as they go, rails either side,
 // and a glass canopy over the top of the flight.
@@ -588,7 +697,7 @@ function chunk(type, data) {
   return Buffer.concat([len, td, crc]);
 }
 function png(c) {
-  const { W, H, px } = c;
+  const { IW: W, IH: H, px } = c;
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
   const raw = Buffer.alloc(H * (1 + W * 4));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -598,18 +707,25 @@ function png(c) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
+// Draw every tile's layers; the manifest needs all their blocks, whichever are written.
+const drawn = Object.fromEntries(Object.entries(TILES).map(([key, art]) => {
+  const def = tileDef(key), tint = colorForDef(def), out = {};
+  for (const layer of ['floor', 'over']) if (art[layer]) { out[layer] = sheet(def.shape, art.pad); art[layer](out[layer], tint, def); }
+  return [key, out];
+}));
+
 // --sheet <file>: also write every tile at 3x, floor under over, on one contact
 // sheet, so the drawings can be looked over without the game.
 function contact(file) {
-  const Z = 3, pad = 8, cols = 1200;
-  const items = Object.keys(TILES).map(key => {
-    const def = tileDef(key), tint = colorForDef(def), c = sheet(def.shape);
-    for (const layer of ['floor', 'over']) if (TILES[key][layer]) TILES[key][layer](c, tint, def);
-    return c;
+  const Z = 3, gap = 8, cols = 1200;
+  const items = Object.values(drawn).map(({ floor, over }) => {
+    const c = floor || over, px = c.px.slice();
+    if (floor && over) over.px.forEach((v, i) => { if (v) px[i] = v; });
+    return { W: c.IW, H: c.IH, px };
   });
-  let x = pad, y = pad, rowH = 0; const at = [];
-  for (const c of items) { if (x + c.W * Z > cols) { x = pad; y += rowH + pad; rowH = 0; } at.push([x, y]); x += c.W * Z + pad; rowH = Math.max(rowH, c.H * Z); }
-  const out = { W: cols, H: y + rowH + pad, px: new Array(cols * (y + rowH + pad)).fill('#3f9b3f') };
+  let x = gap, y = gap, rowH = 0; const at = [];
+  for (const c of items) { if (x + c.W * Z > cols) { x = gap; y += rowH + gap; rowH = 0; } at.push([x, y]); x += c.W * Z + gap; rowH = Math.max(rowH, c.H * Z); }
+  const out = { IW: cols, IH: y + rowH + gap, px: new Array(cols * (y + rowH + gap)).fill('#3f9b3f') };
   items.forEach((c, k) => { for (let j = 0; j < c.H * Z; j++) for (let i = 0; i < c.W * Z; i++) { const v = c.px[Math.floor(j / Z) * c.W + Math.floor(i / Z)]; if (v) out.px[(at[k][1] + j) * cols + at[k][0] + i] = v; } });
   writeFileSync(file, png(out));
 }
@@ -620,26 +736,29 @@ const dir = resolve(root, 'assets/tiles');
 mkdirSync(dir, { recursive: true });
 const want = process.argv.slice(2);
 let n = 0;
-for (const [key, art] of Object.entries(TILES)) {
+for (const [key, layers] of Object.entries(drawn)) {
   if (want.length && !want.includes(key)) continue;
-  const def = tileDef(key), tint = colorForDef(def);
-  for (const [layer, suffix] of [['floor', '_floor'], ['over', '']]) {
-    if (!art[layer]) continue;
-    const c = sheet(def.shape); art[layer](c, tint, def);
-    writeFileSync(resolve(dir, key + suffix + '.png'), png(c)); n++;
-  }
+  for (const [layer, c] of Object.entries(layers)) { writeFileSync(resolve(dir, key + (layer === 'floor' ? '_floor' : '') + '.png'), png(c)); n++; }
 }
 // The manifest lists every tile this file draws, whichever were asked for, so a
 // partial run never drops the rest from the game. The paths stay literal
 // strings: the bundler finds and inlines them by pattern.
-const list = layer => Object.keys(TILES).filter(k => TILES[k][layer]).map(k => `  ${k}: 'assets/tiles/${k}${layer === 'floor' ? '_floor' : ''}.png',`).join('\n');
+const keys = Object.keys(drawn);
+const list = layer => keys.filter(k => drawn[k][layer]).map(k => `  ${k}: 'assets/tiles/${k}${layer === 'floor' ? '_floor' : ''}.png',`).join('\n');
+const table = rows => rows.map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
 writeFileSync(resolve(root, 'src/ui/tilesprites.js'), `// Written by harness/tileart.mjs from its TILES table; rerun it rather than editing.
-// See src/ui/sprites.js for what the two layers are.
+// See src/ui/sprites.js for what the layers, the pad and the blocks are.
 export const SPRITES = {
 ${list('over')}
 };
 export const SPRITES_FLOOR = {
 ${list('floor')}
+};
+export const SPRITE_PAD = {
+${table(keys.filter(k => TILES[k].pad).map(k => [k, TILES[k].pad]))}
+};
+export const SPRITE_BLOCKS = {
+${table(keys.filter(k => drawn[k].over && drawn[k].over.blocks.length).map(k => [k, drawn[k].over.blocks.map(b => b.map(v => Math.round(v * 100) / 100))]))}
 };
 `);
 console.log(`wrote ${n} tile layers to assets/tiles/ and the manifest to src/ui/tilesprites.js`);

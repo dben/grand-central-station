@@ -928,15 +928,35 @@ contact sheet of the lot).
   drop whole rows.
 - **Two layers:** `SPRITES` is the over layer (`<key>.png`: roofs, vehicles, canopies) and
   `SPRITES_FLOOR` the under layer (`<key>_floor.png`), with the crowd drawn between them.
-  - A raised tile (a shop, a stop) has an opaque over layer on its top face, so a traveller who
-    steps inside vanishes into it as before. A clear over layer on a raised tile looked like a glass
-    box with the floor sunk inside it, so none is drawn that way.
+  - A shop has an opaque over layer on its top face, so a traveller who steps inside vanishes
+    into it.
+  - A transport, and a coffee or souvenir cart, is a glass box: its ground (platform, road,
+    track, water) is the floor, with the crowd on it, and its over layer holds only what stands
+    over that ground - a shelter, a sign - with clear pixels between, so the floor and the crowd
+    show through the top.
   - A flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) keeps its
-    art on the floor, under the crowd, with a kerb in the tile's colour since it has no walls. Its
-    over layer, if any, hangs at `CANOPY_Z` above the crowd with no walls under it: the tree tops of
-    a park, over a shadow drawn on the floor.
+    art on the floor, under the crowd, with a kerb in the tile's colour since it has no walls.
+    Anything in its over layer that is not a block hangs at `CANOPY_Z`.
   - A low walk-through tile (guard, checkpoint, Flier Club, Chrono Lounge) has floor art only and
     draws as an open-topped box.
+- **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
+  a base and top height: vehicles, tree tops, the balloon, a rental office. The renderer draws a
+  block as a stack of darkened copies of its own pixels, one per screen pixel (a dozen at most),
+  with the art on top, so the sides follow the outline of the car or the hull. The dark copy
+  paints the ink outline over in the colour just inside it, so a red car has dark red sides
+  rather than black ones. A `round` block narrows at the top and bottom, so a tree top or a
+  balloon bulges instead of reading as a drum. Each cell draws the part of a block over its own
+  ground, clipped to its column, so the wall of a glass box in front still covers a bus behind
+  it. The flat over layer is drawn with the blocks cut out. `tileart.mjs` records blocks as it
+  draws: `car`, `bus`, `carriage`, `boat`, `plane`, `heli`, `hut` and `tree` each add their own.
+  Blocks about double the board's drawing time (5-7 ms a frame on a full 12x12 board in headless
+  Chromium without a GPU, against 2-4 ms flat).
+- **Past the edge:** `SPRITE_PAD` widens a tile's images by whole cells for art that lies beyond
+  the board. When the tile is placed against the edge it works from, the renderer shows that band
+  in the cells just past the edge: the floor art flat on the strip, and any blocks in it. The
+  cruise ship lies off its quay, the train stations' trains wait on the line past the edge, the
+  water taxi's boats sit in the water, and the jetways' airliners stand on the apron. Tiles that
+  do not touch the edge (a driveway stop, a `reach` tile) keep everything on the board.
 - **Colour:** the main surfaces take the tile's own colour (`colorForDef`), and the walls stay the
   flat shaded colour, so the board keeps its colour code with the art on. Vehicles, water and grass
   keep their own colours. The label still sits over the middle of every tile.
