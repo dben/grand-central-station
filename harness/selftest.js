@@ -8,6 +8,7 @@ import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tile
 import { CONFIG } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
+const edgeCells = (cells, e) => cells.filter(([x, y]) => e === 'N' ? y === 0 : e === 'W' ? x === 0 : e === 'S' ? y === 11 : x === 11).length;
 const ok = (cond, msg) => { if (!cond) { fails++; console.log('FAIL:', msg); } else console.log('ok  :', msg); };
 
 // shapes
@@ -20,11 +21,15 @@ let c = checkPlacement(b, 'train_station', 4, 0, 0);
 ok(c.ok && c.claims.length === 1 && c.claims[0].edge === 'N' && c.claims[0].lock, 'rail on north edge locks it');
 placeTile(b, 'train_station', 4, 0, 0, c);
 ok(b.edges.N === 'rail', 'edge locked to rail');
-ok(!checkPlacement(b, 'ferry', 0, 0, 0).ok, 'ferry cannot attach to rail edge');
+ok(!checkPlacement(b, 'ferry', 4, 0, 0).ok, 'ferry cannot attach to rail edge');
+// A corner berth touches two edges but attaches by one: the ferry in the rail
+// corner ties up to the open west side and leaves the rail alone.
+c = checkPlacement(b, 'ferry', 0, 0, 0);
+ok(c.ok && c.sides.join() === 'W' && c.claims.length === 1 && c.claims[0].edge === 'W', 'a corner berth attaches by the side it can use, and claims only that one');
 // edgewise: a train berths alongside the edge, never nose-in
 ok(!checkPlacement(createBoard(12, 12), 'train_station', 4, 0, 1).ok, 'train station cannot point inland from the edge');
 ok(checkPlacement(createBoard(12, 12), 'train_station', 4, 0, 0).ok, 'train station lying flat on the north edge is fine');
-ok(!checkPlacement(createBoard(12, 12), 'cruise_dock', 0, 0, 1).ok, 'cruise dock cannot point inland either');
+ok(!checkPlacement(createBoard(12, 12), 'cruise_dock', 4, 0, 1).ok, 'cruise dock cannot point inland either');
 c = checkPlacement(b, 'bus_stop', 2, 3, 0);
 ok(c.ok && c.roadEdge === 'W' && c.driveway.length === 2, 'bus stop reaches west edge with 2-cell driveway');
 placeTile(b, 'bus_stop', 2, 3, 0, c);
@@ -55,7 +60,10 @@ b = createBoard(12, 12);
 const jet = [0, 1, 2, 3].map(r => checkPlacement(b, 'jetway', 4, 0, r));
 ok(jet.filter(c => c.ok).length === 2 && jet.filter(c => !c.ok).every(c => c.reason.includes('tip')), 'jetway: exactly 2 of 4 orientations attach to the north edge by the tip');
 ok(jet.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 1), 'jetway: legal orientations touch the edge with one cell');
-ok(!checkPlacement(b, 'jetway', 0, 0, 0).ok, 'jetway: corner placement touching two edges is rejected');
+{
+  const corner = [0, 1, 2, 3].map(r => checkPlacement(b, 'jetway', 0, 0, r)).filter(c => c.ok);
+  ok(corner.length && corner.every(c => c.claims.length === 1 && edgeCells(c.cells, c.side) === 1), 'jetway: in a corner it attaches by a side its tip touches, and claims only that');
+}
 
 // broadside: the ferry is the jetway's mirror image - the long side of the L on
 // the water, the short foot inland
@@ -64,7 +72,28 @@ const fer = SHAPES.L4.map((_, r) => checkPlacement(b, 'ferry', 4, 0, r));
 ok(fer.filter(c => c.ok).length === 2, 'ferry: exactly 2 of the L4 orientations lie along the north edge');
 ok(fer.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 3), 'ferry: a legal berth puts its long side of three on the edge');
 ok(fer.filter(c => !c.ok).every(c => c.reason.includes('side-on')), 'ferry: every other orientation is turned away side-on');
-ok(!checkPlacement(b, 'ferry', 0, 0, 1).ok, 'ferry: corner placement touching two edges is rejected');
+{
+  const corner = SHAPES.L4.map((_, r) => checkPlacement(b, 'ferry', 0, 0, r)).filter(c => c.ok);
+  ok(corner.length && corner.every(c => c.claims.length === 1 && edgeCells(c.cells, c.side) === 3), 'ferry: in a corner it ties up by the side its long arm lies along, and claims only that');
+}
+// Choosing the side: a Parking Lot in the north-west corner touches both
+// edges and can take either, and asking for one gets it.
+{
+  const pb = createBoard(12, 12);
+  const def = checkPlacement(pb, 'parking_lot', 0, 0, 0);
+  ok(def.ok && def.sides.length === 2 && def.sides.includes('N') && def.sides.includes('W'), 'a corner road tile can attach to either side');
+  for (const e of ['N', 'W']) {
+    const w = checkPlacement(pb, 'parking_lot', 0, 0, 0, null, e);
+    ok(w.ok && w.side === e && w.roadEdge === e && w.claims.length === 1 && w.claims[0].edge === e, `asking for the ${e} side attaches it there`);
+  }
+  const far = checkPlacement(pb, 'bus_stop', 2, 3, 0);
+  const alt = far.sides.find(e => e !== far.side);
+  const pick = alt ? checkPlacement(pb, 'bus_stop', 2, 3, 0, null, alt) : null;
+  ok(far.ok && far.side === 'W' && pick && pick.ok && pick.side === alt && pick.driveway.length > far.driveway.length, 'a road tile back from the edge can run its driveway to a further edge on request');
+  ok(checkPlacement(pb, 'parking_lot', 0, 0, 0, null, 'E').side === def.side, 'a side it cannot reach falls back to the default');
+  const t = placeTile(pb, 'parking_lot', 0, 0, 0, null, null, 'W');
+  ok(t.edges.join() === 'W' && pb.edges.W === 'road' && pb.edges.N === 'green', 'the placed tile depends on the side it was given, and only that edge is claimed');
+}
 ok(shapeTransform('L3', 0).rot === 0 && shapeTransform('L3', 0).mirror === 0 && shapeTransform('L4', 4).mirror === 1 && SHAPES.L4.length === 8, 'shape transforms recorded');
 ok(shapeTransform('L3', 3).rot === 3 && shapeTransform('L3', 3, [1, 0]).mirror === 1 && shapeTransform('L3', 3, [1, 0]).rot === 0, 'L3 orientation 3: mirror variant chosen when the tip must sit top-right');
 ok(shapeTransform('I2', 1, [0, 1]).tip[1] === 1 && shapeTransform('I2', 1, [0, 0]).tip[1] === 0, 'I2 vertical: either end can be the tip');

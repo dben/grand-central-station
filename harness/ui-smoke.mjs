@@ -408,8 +408,8 @@ try {
   });
   check('Sky Harbour starts airside, roadside and gated', sky.mode === 'sky_harbour' && sky.edges.N === 'apron' && sky.edges.S === 'road' && sky.tiles === 1 && !!sky.gate, JSON.stringify(sky));
   await page.screenshot({ path: SP + '/shot15_sky_harbour.png' });
-  // A phone, held both ways up. A finger's tap only aims: the popup by the
-  // target builds, upgrades or plays the card, or drops the aim.
+  // A phone, held both ways up. A finger's tap only aims: the card bar then
+  // builds, upgrades or plays the card, or drops the aim.
   for (const dev of ['iPhone 13', 'iPhone 13 landscape']) {
     const ctx = await browser.newContext({ ...devices[dev] });
     const ph = await ctx.newPage();
@@ -417,22 +417,30 @@ try {
     const px = (x, y) => ph.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
     const tap = async ([x, y]) => { await ph.touchscreen.tap(x, y); await ph.waitForTimeout(300); };
     const st = () => ph.evaluate(() => ({ tiles: window.gcs.state.board.tiles.length, mode: window.gcs.ui.mode, pending: !!window.gcs.ui.pending }));
-    const popped = async () => await ph.locator('#confirm-pop:not(.hidden)').count() === 1;
+    // aimed: the bar's own button turns into the confirmation
+    const popped = async () => await ph.evaluate(() => !!window.gcs.ui.pending) && (await ph.locator('#btn-place').textContent()).startsWith('✓');
     await ph.goto('http://localhost:8791/', { waitUntil: 'load' }); await ph.waitForTimeout(400);
     await ph.locator('.mode-track > .mode button.primary').first().tap(); await ph.waitForTimeout(400);
     check(`${dev}: the timeline starts folded`, await ph.evaluate(() => document.getElementById('main').classList.contains('side-collapsed')));
     await ph.locator('.card').first().tap(); await ph.waitForTimeout(200);
     await tap(await px(5, 5));
-    check(`${dev}: a tap aims a tile and pops up the confirm`, (await st()).tiles === 0 && await popped(), JSON.stringify(await st()));
+    check(`${dev}: a tap aims a tile and the bar asks to confirm`, (await st()).tiles === 0 && await popped(), JSON.stringify(await st()));
     await tap(await px(5, 5));
     check(`${dev}: a second tap still builds nothing`, (await st()).tiles === 0);
-    await ph.locator('#confirm-pop .cp-cancel').tap(); await ph.waitForTimeout(150);
+    await ph.locator('#btn-place-cancel').tap(); await ph.waitForTimeout(150);
     const c = await st();
-    check(`${dev}: Cancel drops the aim and keeps the card`, !c.pending && c.mode === 'place' && !await popped(), JSON.stringify(c));
-    // the popup opens under the finger, so the tap's own click must not press it
+    check(`${dev}: ✕ drops the aim and keeps the card`, !c.pending && c.mode === 'place' && !await popped(), JSON.stringify(c));
+    // a corner gives a road tile two sides to attach by, and ⇄ swaps them
+    await tap(await px(0, 0));
+    const side = () => ph.evaluate(() => ({ sides: (window.gcs.ui.ghost || {}).sides, side: (window.gcs.ui.ghost || {}).side }));
+    const s0 = await side();
+    await ph.locator('#btn-side').tap(); await ph.waitForTimeout(200);
+    const s1 = await side();
+    check(`${dev}: in a corner ⇄ swaps the side a road tile attaches by`, s0.sides && s0.sides.length === 2 && s1.side && s1.side !== s0.side && (await ph.locator('#btn-side').textContent()).includes(s1.side === 'N' ? 'North' : 'West'), JSON.stringify([s0, s1]));
+    await ph.locator('#btn-place-cancel').tap(); await ph.waitForTimeout(150);
     await tap(await px(6, 4));
-    check(`${dev}: the tap that opens the popup does not also press Build`, (await st()).tiles === 0 && await popped());
-    await ph.locator('#confirm-pop .cp-go').tap(); await ph.waitForTimeout(250);
+    check(`${dev}: aiming again builds nothing yet`, (await st()).tiles === 0 && await popped());
+    await ph.locator('#btn-place').tap(); await ph.waitForTimeout(250);
     check(`${dev}: Build commits`, (await st()).tiles === 1 && !await popped());
     const cell = await ph.evaluate(() => {
       const s = window.gcs.state, t = s.board.tiles[0]; s.money += 1000; s.ap = 3;
@@ -443,7 +451,7 @@ try {
     await ph.locator('.card', { hasText: 'Phone Upgrade' }).tap(); await ph.waitForTimeout(200);
     await tap(await px(...cell));
     check(`${dev}: an upgrade tap asks before it spends`, await level() === 1 && await popped());
-    await ph.locator('#confirm-pop .cp-go').tap(); await ph.waitForTimeout(250);
+    await ph.locator('#btn-place').tap(); await ph.waitForTimeout(250);
     check(`${dev}: and Upgrade commits`, await level() === 2);
     await tap(await px(...cell));
     await ph.locator('#popup button.danger').tap(); await ph.waitForTimeout(150);

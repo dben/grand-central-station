@@ -113,20 +113,7 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 /* Things a finger taps: no double-tap zoom, and a long press does not select
    their text or raise the phone's copy menu. */
-.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #confirm-pop, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-/* The touch confirm popup: JS pins it under (or over) whatever the tap aimed
-   at, clear of the star badge, and moves it with the camera. */
-#confirm-pop { position: absolute; left: 0; top: 0; z-index: 6; width: min(300px, calc(100% - 16px)); display: flex; flex-direction: column; gap: 6px; background: rgba(26,16,51,0.96); border: 2px solid var(--accent); border-radius: 6px; padding: 8px; box-shadow: var(--hard); }
-#confirm-pop .cp-head { display: flex; align-items: baseline; gap: 8px; font-size: 16px; color: var(--accent); }
-#confirm-pop .cp-head b { flex: 1; min-width: 0; font-weight: 400; }
-#confirm-pop .price { color: var(--muted); font-size: 14px; white-space: nowrap; }
-#confirm-pop .cp-line { font-size: 14px; }
-#confirm-pop .cp-line.warn { color: var(--accent); }
-#confirm-pop .cp-line.bad { color: var(--bad); }
-#confirm-pop .cp-tools { display: flex; gap: 8px; }
-#confirm-pop .cp-tools button { min-height: 44px; padding: 6px 12px; font-size: 16px; }
-#confirm-pop .cp-rot { min-width: 48px; font-size: 20px; }
-#confirm-pop .cp-go { flex: 1; }
+.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #board:active { cursor: grabbing; }
 #board-hint { position: absolute; left: 12px; top: 12px; right: 230px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
 #board-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; z-index: 5; }
@@ -142,9 +129,10 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #btn-card-info { font-size: 16px; line-height: 1; padding: 6px 12px; color: var(--accent); }
 #card-bar-prompt { color: var(--accent); font-size: 14px; }
 #card-bar-prompt:empty { display: none; }
+#card-bar-prompt.bad { color: var(--bad); }
 #card-bar-desc { max-height: min(200px, 28vh); overflow-y: auto; font-size: 14px; }
 #card-bar-tools { display: flex; gap: 8px; }
-#card-bar-tools button { min-height: 40px; padding: 6px 14px; }
+#card-bar-tools button { min-height: 40px; padding: 6px 14px; white-space: nowrap; }
 #btn-place { flex: 1; }
 
 /* ------------------------------------------------------------------- shop */
@@ -276,7 +264,8 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #main.holding #card-bar { bottom: 8px; }
   #main.holding #side-tab { display: none; }
   #card-bar-tools button { flex: 1; min-height: 46px; }
-  #card-bar-tools #btn-place-cancel { flex: 0 0 auto; min-width: 56px; }
+  #card-bar-tools #btn-place-cancel, #card-bar-tools #btn-rotate { flex: 0 0 auto; min-width: 56px; font-size: 20px; }
+  #btn-rotate .btn-lbl { display: none; }
   #btn-card-info { padding: 8px 14px; }
 }
 @media (pointer: coarse) {

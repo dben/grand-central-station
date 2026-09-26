@@ -362,14 +362,14 @@ function fail(reason) { return { ok: false, reason }; }
 function log(s, msg) { s.log.push(`W${s.week}: ${msg}`); if (s.log.length > 200) s.log.shift(); }
 function removeCard(s, card) { s.shop.cards = s.shop.cards.filter(c => c.id !== card.id); }
 
-export function placementCheck(s, key, x, y, rot) { return checkPlacement(s.board, key, x, y, rot, modeOf(s)); }
+export function placementCheck(s, key, x, y, rot, side = null) { return checkPlacement(s.board, key, x, y, rot, modeOf(s), side); }
 
-export function buyTile(s, card, x, y, rot) {
+export function buyTile(s, card, x, y, rot, side = null) {
   if (s.phase !== 'shop') return fail('You can only do that while building');
   if (s.ap < 1) return fail('No action points left this week');
   const cost = cardCost(s, card);
   if (s.money < cost) return fail(`Need $${cost}`);
-  const c = placementCheck(s, card.key, x, y, rot);
+  const c = placementCheck(s, card.key, x, y, rot, side);
   if (!c.ok) return fail(c.reason);
   const tile = placeTile(s.board, card.key, x, y, rot, c, modeOf(s));
   tile.paid = cost;
@@ -680,12 +680,12 @@ export function redoWeek(s) {
 }
 
 // ----------------------------------------------------------- estimates
-export function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSeeds) {
-  const c = placementCheck(s, key, x, y, rot);
+export function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSeeds, side = null) {
+  const c = placementCheck(s, key, x, y, rot, side);
   if (!c.ok) return null;
   const mods = computeMods(s);
   const after = cloneBoard(s.board);
-  placeTile(after, key, x, y, rot, null, modeOf(s));
+  placeTile(after, key, x, y, rot, null, modeOf(s), side);
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
     const a = estimateRun(s, s.board, i, mods);
