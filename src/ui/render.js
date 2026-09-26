@@ -430,7 +430,6 @@ export class BoardRenderer {
       const ln = checkpointLine(ghost.cells);
       for (const s of fenceSegments(board, ghost.cells)) if (s.axis === ln.axis && (s.axis === 'h' ? s.y : s.x) === ln.line) this.drawFenceSeg(s, true, ghost.ok);
     }
-    this.badgeRect = null;
     if (view.starBadge) this.drawStarBadge(view.starBadge);
     if (dots.length) this.drawAgentPopups(dots, view.T);
   }
@@ -762,7 +761,7 @@ export class BoardRenderer {
     if (!cells.length) return;
     const ctx = this.ctx;
     const b = this.cellsBounds(cells, badge.z || 0);
-    const cx = (b.x0 + b.x1) / 2;
+    let cx = (b.x0 + b.x1) / 2;
     const fs = Math.max(16, Math.min(34, this.k * 0.7));
     const small = Math.max(11, fs * 0.42);
     const lines = [];
@@ -786,10 +785,10 @@ export class BoardRenderer {
     const widths = lines.map(measure);
     const heights = lines.map(ln => ln.size * 1.05);
     const boxW = Math.max(...widths) + 14, boxH = heights.reduce((a, v) => a + v + gap, 0) - gap + 10;
+    // a tile at the side of the screen keeps its badge on the screen
+    cx = Math.max(boxW / 2 + 6, Math.min(this.viewW - boxW / 2 - 6, cx));
     let top = b.y0 - 12 - boxH;
     if (top < 6) top = b.y0 + 8;   // no room above: drop it under the top corner
-    // the touch confirm popup reads this to keep clear of the badge
-    this.badgeRect = { x0: cx - boxW / 2, y0: top, x1: cx + boxW / 2, y1: top + boxH };
 
     ctx.save();
     roundRect(ctx, cx - boxW / 2, top, boxW, boxH, 8);

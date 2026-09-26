@@ -1,13 +1,14 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
-import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
-import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement } from '../src/game/run.js';
+import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength, mergeMods } from '../src/sim/sim.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement, buyExtraHours, extraHoursCost } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, quotaForWeek } from '../src/config.js';
 import { SHAPES, shapeTransform } from '../src/sim/shapes.js';
 let fails = 0;
+const edgeCells = (cells, e) => cells.filter(([x, y]) => e === 'N' ? y === 0 : e === 'W' ? x === 0 : e === 'S' ? y === 11 : x === 11).length;
 const ok = (cond, msg) => { if (!cond) { fails++; console.log('FAIL:', msg); } else console.log('ok  :', msg); };
 
 // shapes
@@ -20,11 +21,15 @@ let c = checkPlacement(b, 'train_station', 4, 0, 0);
 ok(c.ok && c.claims.length === 1 && c.claims[0].edge === 'N' && c.claims[0].lock, 'rail on north edge locks it');
 placeTile(b, 'train_station', 4, 0, 0, c);
 ok(b.edges.N === 'rail', 'edge locked to rail');
-ok(!checkPlacement(b, 'ferry', 0, 0, 0).ok, 'ferry cannot attach to rail edge');
+ok(!checkPlacement(b, 'ferry', 4, 0, 0).ok, 'ferry cannot attach to rail edge');
+// A corner berth touches two edges but attaches by one: the ferry in the rail
+// corner ties up to the open west side and leaves the rail alone.
+c = checkPlacement(b, 'ferry', 0, 0, 0);
+ok(c.ok && c.sides.join() === 'W' && c.claims.length === 1 && c.claims[0].edge === 'W', 'a corner berth attaches by the side it can use, and claims only that one');
 // edgewise: a train berths alongside the edge, never nose-in
 ok(!checkPlacement(createBoard(12, 12), 'train_station', 4, 0, 1).ok, 'train station cannot point inland from the edge');
 ok(checkPlacement(createBoard(12, 12), 'train_station', 4, 0, 0).ok, 'train station lying flat on the north edge is fine');
-ok(!checkPlacement(createBoard(12, 12), 'cruise_dock', 0, 0, 1).ok, 'cruise dock cannot point inland either');
+ok(!checkPlacement(createBoard(12, 12), 'cruise_dock', 4, 0, 1).ok, 'cruise dock cannot point inland either');
 c = checkPlacement(b, 'bus_stop', 2, 3, 0);
 ok(c.ok && c.roadEdge === 'W' && c.driveway.length === 2, 'bus stop reaches west edge with 2-cell driveway');
 placeTile(b, 'bus_stop', 2, 3, 0, c);
@@ -55,7 +60,10 @@ b = createBoard(12, 12);
 const jet = [0, 1, 2, 3].map(r => checkPlacement(b, 'jetway', 4, 0, r));
 ok(jet.filter(c => c.ok).length === 2 && jet.filter(c => !c.ok).every(c => c.reason.includes('tip')), 'jetway: exactly 2 of 4 orientations attach to the north edge by the tip');
 ok(jet.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 1), 'jetway: legal orientations touch the edge with one cell');
-ok(!checkPlacement(b, 'jetway', 0, 0, 0).ok, 'jetway: corner placement touching two edges is rejected');
+{
+  const corner = [0, 1, 2, 3].map(r => checkPlacement(b, 'jetway', 0, 0, r)).filter(c => c.ok);
+  ok(corner.length && corner.every(c => c.claims.length === 1 && edgeCells(c.cells, c.side) === 1), 'jetway: in a corner it attaches by a side its tip touches, and claims only that');
+}
 
 // broadside: the ferry is the jetway's mirror image - the long side of the L on
 // the water, the short foot inland
@@ -64,7 +72,28 @@ const fer = SHAPES.L4.map((_, r) => checkPlacement(b, 'ferry', 4, 0, r));
 ok(fer.filter(c => c.ok).length === 2, 'ferry: exactly 2 of the L4 orientations lie along the north edge');
 ok(fer.filter(c => c.ok).every(c => c.cells.filter(([, y]) => y === 0).length === 3), 'ferry: a legal berth puts its long side of three on the edge');
 ok(fer.filter(c => !c.ok).every(c => c.reason.includes('side-on')), 'ferry: every other orientation is turned away side-on');
-ok(!checkPlacement(b, 'ferry', 0, 0, 1).ok, 'ferry: corner placement touching two edges is rejected');
+{
+  const corner = SHAPES.L4.map((_, r) => checkPlacement(b, 'ferry', 0, 0, r)).filter(c => c.ok);
+  ok(corner.length && corner.every(c => c.claims.length === 1 && edgeCells(c.cells, c.side) === 3), 'ferry: in a corner it ties up by the side its long arm lies along, and claims only that');
+}
+// Choosing the side: a Parking Lot in the north-west corner touches both
+// edges and can take either, and asking for one gets it.
+{
+  const pb = createBoard(12, 12);
+  const def = checkPlacement(pb, 'parking_lot', 0, 0, 0);
+  ok(def.ok && def.sides.length === 2 && def.sides.includes('N') && def.sides.includes('W'), 'a corner road tile can attach to either side');
+  for (const e of ['N', 'W']) {
+    const w = checkPlacement(pb, 'parking_lot', 0, 0, 0, null, e);
+    ok(w.ok && w.side === e && w.roadEdge === e && w.claims.length === 1 && w.claims[0].edge === e, `asking for the ${e} side attaches it there`);
+  }
+  const far = checkPlacement(pb, 'bus_stop', 2, 3, 0);
+  const alt = far.sides.find(e => e !== far.side);
+  const pick = alt ? checkPlacement(pb, 'bus_stop', 2, 3, 0, null, alt) : null;
+  ok(far.ok && far.side === 'W' && pick && pick.ok && pick.side === alt && pick.driveway.length > far.driveway.length, 'a road tile back from the edge can run its driveway to a further edge on request');
+  ok(checkPlacement(pb, 'parking_lot', 0, 0, 0, null, 'E').side === def.side, 'a side it cannot reach falls back to the default');
+  const t = placeTile(pb, 'parking_lot', 0, 0, 0, null, null, 'W');
+  ok(t.edges.join() === 'W' && pb.edges.W === 'road' && pb.edges.N === 'green', 'the placed tile depends on the side it was given, and only that edge is claimed');
+}
 ok(shapeTransform('L3', 0).rot === 0 && shapeTransform('L3', 0).mirror === 0 && shapeTransform('L4', 4).mirror === 1 && SHAPES.L4.length === 8, 'shape transforms recorded');
 ok(shapeTransform('L3', 3).rot === 3 && shapeTransform('L3', 3, [1, 0]).mirror === 1 && shapeTransform('L3', 3, [1, 0]).rot === 0, 'L3 orientation 3: mirror variant chosen when the tip must sit top-right');
 ok(shapeTransform('I2', 1, [0, 1]).tip[1] === 1 && shapeTransform('I2', 1, [0, 0]).tip[1] === 0, 'I2 vertical: either end can be the tip');
@@ -84,6 +113,25 @@ ok(r3.score !== r1.score, 'different seed gives different score');
 ok(r1.counts.spawned > 0 && r1.score > 0, 'travellers spawn and score');
 ok(Object.values(r1.tileStats).some(s => s.serves > 0), 'amenities serve');
 for (const a of r1.agents) { if (a.frames.length !== a.endTick - a.spawnTick + 2) { ok(false, `frame count for agent ${a.id}: ${a.frames.length} vs ${a.endTick - a.spawnTick + 2}`); break; } }
+
+// weather: a front slips only the timetables it names
+{
+  const wx = mods => simulateWeek(b, { seed: 7, week: 3, mods });
+  const fog = wx(EVENTS.fog.mods);
+  ok(fog.score === r1.score && fog.ticks === r1.ticks && fog.agents.every((a, i) => a.key === r1.agents[i].key && a.value === r1.agents[i].value && a.outcome === r1.agents[i].outcome), 'fog on a board with nothing that flies or sails changes nothing');
+  const rain = mergeMods(EVENTS.heavy_rain.mods), snow = mergeMods(EVENTS.snowstorm.mods), late = EVENTS.heavy_rain.mods.weather[0].late;
+  const bus = b.tiles.find(t => t.key === 'bus_stop'), train = b.tiles.find(t => t.key === 'train_station');
+  ok(effTransport(bus, rain).late === late && effTransport(bus, rain).batch < effTransport(bus).batch && JSON.stringify(effTransport(train, rain)) === JSON.stringify({ ...effTransport(train), delayed: false }), 'heavy rain slows the road and leaves the rail alone');
+  const sub = { key: 'subway', level: 1 };
+  ok(!effTransport(sub, snow).delayed && effTransport(sub, snow).batch === effTransport(sub).batch && effTransport(train, snow).late > 0, 'a snowstorm stops at the underground');
+  const wet = wx(EVENTS.heavy_rain.mods), T = CONFIG.sim.ticks;
+  const to = (r, key) => r.agents.filter(a => a.kind === 'traveller' && a.dest === b.tiles.find(t => t.key === key).id);
+  ok(wet.ticks === T + late && to(wet, 'bus_stop').some(a => a.endTick > T) && to(wet, 'train_station').every(a => a.endTick <= T), 'the week runs on for the late platform alone');
+  ok(wet.agents.every(a => a.outcome !== 'stranded' || !a.events.some(e => e.type === 'arrive')), 'and everyone who reached a platform still boards');
+  // no crowd cut: the extra ticks on their own are time to shop
+  const serves = r => r.agents.reduce((n, a) => n + a.events.filter(e => e.type === 'serve').length, 0);
+  ok(serves(wx({ weather: [{ on: ['surface'], late: 3 }] })) > serves(r1), 'travellers linger and shop while their ride is late');
+}
 
 // security checkpoint: a two-cell booth whose fence runs edge to edge between cells
 b = createBoard(12, 12);
@@ -496,6 +544,37 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const e = estimatePlacement(er, 'coffee', 5, 5, 0);
   ok(e && e.ptsLo <= e.ptsFrom && e.ptsFrom <= e.ptsTo && e.ptsTo <= e.ptsHi,
     `the star badge quotes the trimmed range of the preview weeks (${Math.round(e.ptsFrom)} to ${Math.round(e.ptsTo)}, of ${Math.round(e.ptsLo)} to ${Math.round(e.ptsHi)})`);
+}
+
+// Extra hours: cash buys an action point once the week's own are spent, each
+// one that week dearer than the last, and the next week starts the count again.
+{
+  const x = createRun({ seed: 5 }); x.week = CONFIG.run.extraHoursFromWeek;
+  ok(!buyExtraHours(x).ok, 'no extra hours while action points are left');
+  x.ap = 0; x.money = 1000;
+  const c1 = extraHoursCost(x);
+  ok(buyExtraHours(x).ok && x.ap === 1 && x.money === 1000 - c1, `extra hours buy one action point for $${c1}`);
+  x.ap = 0;
+  ok(extraHoursCost(x) === Math.round(c1 * CONFIG.economy.extraHours.step), 'the second that week costs more than the first');
+  x.phase = 'summary'; x.lastResult = { score: 1e9, money: { total: 0 }, counts: {} }; settle(x);
+  ok(x.hoursBought === 0 && extraHoursCost(x) > c1 && extraHoursCost(x) < 2 * c1, 'a new week starts the count again, a little dearer');
+  const w1 = createRun({ seed: 5 }); w1.ap = 0; w1.money = 1000;
+  ok(!buyExtraHours(w1).ok, 'none in the opening weeks');
+  const tm = createRun({ modeKey: 'terminus', seed: 5 }); tm.ap = 0; tm.money = 1e6;
+  ok(!buyExtraHours(tm).ok, 'Terminus, the one-move level, never sells them');
+}
+
+// Endless: the curve bends upward after the win and leaves every week up to it alone.
+{
+  const off = { ...CONFIG.quota.endless };
+  const base = [];
+  CONFIG.quota.endless = null;
+  for (let w = 1; w <= 24; w++) base.push(quotaForWeek(w, MODES.terminal));
+  CONFIG.quota.endless = off;
+  const now = []; for (let w = 1; w <= 24; w++) now.push(quotaForWeek(w, MODES.terminal));
+  ok(now.slice(0, 16).join() === base.slice(0, 16).join(), 'the endless ramp leaves weeks 1-16 as they were');
+  const step = w => now[w - 1] / now[w - 2], was = w => base[w - 1] / base[w - 2];
+  ok(now[16] > base[16] && step(24) > step(20) && step(20) > step(17) && step(24) - was(24) > step(18) - was(18), 'after the win each week climbs faster than the last');
 }
 
 const rperf0 = performance.now();

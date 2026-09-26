@@ -51,7 +51,8 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <button id="btn-zoom-fit" title="Fit board (0)" aria-label="Fit board">Fit</button>
       </div>
       <!-- the card in hand: its name, its details (the only way to read them
-           on a touch screen) and the action that spends the money -->
+           on a touch screen) and the action that spends the money. On touch a
+           tap only aims, and this bar then carries the confirmation -->
       <div id="card-bar" class="hidden">
         <div id="card-bar-head">
           <span id="card-bar-title"></span>
@@ -60,14 +61,12 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         <div id="card-bar-prompt"></div>
         <div id="card-bar-desc"></div>
         <div id="card-bar-tools">
-          <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
+          <button id="btn-rotate" title="Rotate (R)">⟳<span class="btn-lbl"> Rotate</span></button>
+          <button id="btn-side" title="Attach by another side (E)">⇄ Side</button>
           <button id="btn-place" class="primary">Build here</button>
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
-      <!-- On a touch screen a tap only aims: this pops up by the target with the
-           price, and the buttons that commit or drop it -->
-      <div id="confirm-pop" class="hidden" role="dialog" aria-label="Confirm"></div>
       <!-- Nothing left to spend: the big go button, and on Standard the way
            back out of the week under it -->
       <div id="run-stack" class="hidden">
@@ -84,6 +83,8 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
             <span id="st-ap" class="sr-only">2</span>
           </div>
           <button id="btn-reroll" title="Costs 1 action point">Reroll</button>
+          <!-- once the week's points are spent, cash buys one more -->
+          <button id="btn-hours" class="hidden"></button>
           <button id="btn-run" class="primary">Run Week ▶</button>
         </div>
         <div id="shop-cards"></div>

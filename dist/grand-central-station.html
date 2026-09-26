@@ -123,20 +123,7 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 /* Things a finger taps: no double-tap zoom, and a long press does not select
    their text or raise the phone's copy menu. */
-.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #confirm-pop, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-/* The touch confirm popup: JS pins it under (or over) whatever the tap aimed
-   at, clear of the star badge, and moves it with the camera. */
-#confirm-pop { position: absolute; left: 0; top: 0; z-index: 6; width: min(300px, calc(100% - 16px)); display: flex; flex-direction: column; gap: 6px; background: rgba(26,16,51,0.96); border: 2px solid var(--accent); border-radius: 6px; padding: 8px; box-shadow: var(--hard); }
-#confirm-pop .cp-head { display: flex; align-items: baseline; gap: 8px; font-size: 16px; color: var(--accent); }
-#confirm-pop .cp-head b { flex: 1; min-width: 0; font-weight: 400; }
-#confirm-pop .price { color: var(--muted); font-size: 14px; white-space: nowrap; }
-#confirm-pop .cp-line { font-size: 14px; }
-#confirm-pop .cp-line.warn { color: var(--accent); }
-#confirm-pop .cp-line.bad { color: var(--bad); }
-#confirm-pop .cp-tools { display: flex; gap: 8px; }
-#confirm-pop .cp-tools button { min-height: 44px; padding: 6px 12px; font-size: 16px; }
-#confirm-pop .cp-rot { min-width: 48px; font-size: 20px; }
-#confirm-pop .cp-go { flex: 1; }
+.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #board:active { cursor: grabbing; }
 #board-hint { position: absolute; left: 12px; top: 12px; right: 230px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
 #board-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; z-index: 5; }
@@ -152,9 +139,10 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 #btn-card-info { font-size: 16px; line-height: 1; padding: 6px 12px; color: var(--accent); }
 #card-bar-prompt { color: var(--accent); font-size: 14px; }
 #card-bar-prompt:empty { display: none; }
+#card-bar-prompt.bad { color: var(--bad); }
 #card-bar-desc { max-height: min(200px, 28vh); overflow-y: auto; font-size: 14px; }
 #card-bar-tools { display: flex; gap: 8px; }
-#card-bar-tools button { min-height: 40px; padding: 6px 14px; }
+#card-bar-tools button { min-height: 40px; padding: 6px 14px; white-space: nowrap; }
 #btn-place { flex: 1; }
 
 /* ------------------------------------------------------------------- shop */
@@ -293,7 +281,8 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #main.holding #card-bar { bottom: 8px; }
   #main.holding #side-tab { display: none; }
   #card-bar-tools button { flex: 1; min-height: 46px; }
-  #card-bar-tools #btn-place-cancel { flex: 0 0 auto; min-width: 56px; }
+  #card-bar-tools #btn-place-cancel, #card-bar-tools #btn-rotate { flex: 0 0 auto; min-width: 56px; font-size: 20px; }
+  #btn-rotate .btn-lbl { display: none; }
   #btn-card-info { padding: 8px 14px; }
 }
 @media (pointer: coarse) {
@@ -468,7 +457,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
         <button id="btn-zoom-fit" title="Fit board (0)" aria-label="Fit board">Fit</button>
       </div>
       <!-- the card in hand: its name, its details (the only way to read them
-           on a touch screen) and the action that spends the money -->
+           on a touch screen) and the action that spends the money. On touch a
+           tap only aims, and this bar then carries the confirmation -->
       <div id="card-bar" class="hidden">
         <div id="card-bar-head">
           <span id="card-bar-title"></span>
@@ -477,14 +467,12 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
         <div id="card-bar-prompt"></div>
         <div id="card-bar-desc"></div>
         <div id="card-bar-tools">
-          <button id="btn-rotate" title="Rotate (R)">⟳ Rotate</button>
+          <button id="btn-rotate" title="Rotate (R)">⟳<span class="btn-lbl"> Rotate</span></button>
+          <button id="btn-side" title="Attach by another side (E)">⇄ Side</button>
           <button id="btn-place" class="primary">Build here</button>
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
-      <!-- On a touch screen a tap only aims: this pops up by the target with the
-           price, and the buttons that commit or drop it -->
-      <div id="confirm-pop" class="hidden" role="dialog" aria-label="Confirm"></div>
       <!-- Nothing left to spend: the big go button, and on Standard the way
            back out of the week under it -->
       <div id="run-stack" class="hidden">
@@ -501,6 +489,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; text-tr
             <span id="st-ap" class="sr-only">2</span>
           </div>
           <button id="btn-reroll" title="Costs 1 action point">Reroll</button>
+          <!-- once the week's points are spent, cash buys one more -->
+          <button id="btn-hours" class="hidden"></button>
           <button id="btn-run" class="primary">Run Week ▶</button>
         </div>
         <div id="shop-cards"></div>
@@ -561,6 +551,11 @@ const CONFIG = {
     rareTilesFromWeek: 10,
     apUpgradeFromWeek: 19,
     apUpgradeCost: 400,
+    // The week extra hours go on sale (see economy.extraHours). Not week 1:
+    // the opening hand's change would buy a third tile, and the opening is
+    // tuned for two (§15). A level can move it, or switch it off with a week
+    // it never reaches.
+    extraHoursFromWeek: 4,
   },
 
   // ------------------------------------------------------------------- quota
@@ -593,6 +588,11 @@ const CONFIG = {
     // event's quota has to be read against the headroom a normal week leaves:
     // the tighter the band, the less room a x1.8 week has to be survivable.
     eventStrength: 0.30,
+    // Endless play. Once the run is won the curve stops settling and bends
+    // upward: each week past `from` adds `add` more to the growth rate than the
+    // week before, so week 17 grows 0.015 faster than week 16, week 20 0.06
+    // faster. Weeks up to the win are untouched.
+    endless: { from: 16, add: 0.015 },
     // Quota(week) = round(base * growth^(week-1) * eventMult * ordinanceMult, starUnit)
   },
 
@@ -617,6 +617,12 @@ const CONFIG = {
     // ...and deleting a tile placed this week hands its action point back, so
     // the rebuild is the same move over again rather than the week's other one.
     deleteRefundsAP: true,
+    // Extra hours: once the week's action points are spent, cash buys another.
+    // The first costs base * growth^(week-1) and each more that week `step`
+    // times the last, so a full till buys a move or two rather than a new board.
+    // It is what makes cash worth earning after the opening weeks: without it
+    // a run's money piles up unspent once the board is half built (§15).
+    extraHours: { base: 40, growth: 1.25, step: 3 },
     strandedMultiplier: 0.5,              // stranded travellers bank value * this
     lostMultiplier: 0,                    // travellers with no route to their platform bank nothing
   },
@@ -772,7 +778,8 @@ function quotaForWeek(week, mode, extraMult = 1, diff = null) {
   const late = ((mode && mode.quotaGrowth) || q.growth) + ((diff && diff.quotaGrowthAdd) || 0);
   const early = Math.max(late, q.earlyGrowth);
   let raw = q.base;
-  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1);
+  const e = q.endless;
+  for (let i = 1; i < week; i++) raw *= late + (early - late) * Math.pow(q.growthDecay, i - 1) + (e && i >= e.from ? e.add * (i - e.from + 1) : 0);
   raw *= extraMult * ((diff && diff.quotaMult) || 1) * ((mode && mode.quotaMult) || 1);
   const u = q.starUnit;
   return Math.max(u, Math.round(raw / u) * u);
@@ -1039,6 +1046,22 @@ const EVENTS = {
   charter:       { name: 'Charter Season',  quota: 1.7,  desc: 'Travellers head for platforms a tier above their own.',
                    mods: { destTierShift: 1 } },
 
+  // ---- weather. A front slips the timetable of whatever it hits (`weather`
+  // in the sim): every departure leaves `late` ticks late, the week's last one
+  // included, so those travellers linger in the concourse that much longer -
+  // more time to shop, and to be stranded if they wander too far. The linger
+  // alone is worth 20-30% more score, so each front thins the crowd as well;
+  // `batch` rounds, so x0.6 turns the cheap two-a-time transports into one.
+  // The underground is out of the weather. Priced in §14.2.
+  fog:           { name: 'Fog',             quota: 1,    desc: 'Aircraft and boats leave 4 ticks late, and far fewer people turn up for them. Those who do linger in the concourse.',
+                   mods: { weather: [{ on: ['air', 'water'], late: 4, batch: 0.6 }] } },
+  snowstorm:     { name: 'Snowstorm',       quota: 0.9,  desc: 'Everything above ground leaves 3 ticks late and brings far fewer people. The underground runs to time.',
+                   mods: { weather: [{ on: ['surface'], late: 3, batch: 0.6 }] } },
+  heavy_rain:    { name: 'Heavy Rain',      quota: 0.9,  desc: 'The roads flood: road transports leave 3 ticks late and bring far fewer people.',
+                   mods: { weather: [{ on: ['road'], late: 3, batch: 0.6 }] } },
+  thunderstorm:  { name: 'Thunderstorm',    quota: 1.3,  desc: 'Everything above ground leaves 6 ticks late and far fewer people set out. Those who do have a long time to spend.',
+                   mods: { weather: [{ on: ['surface'], late: 6, batch: 0.6 }] } },
+
   // ---- money weeks. These take nothing off the board, so the week scores
   // exactly what a quiet week would and their quota is a flat x1: the bill is
   // in the other currency, and lands on the weeks that come after. Discounting
@@ -1194,7 +1217,8 @@ const MODES = {
   terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One action point a week, but eight cards in the shop and Extra Shift comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
-                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
+                // One move a week is the level, so cash never buys a second.
+                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320, extraHoursFromWeek: 999 } },
 };
 const MODE_KEYS = Object.keys(MODES);
 for (const [k, m] of Object.entries(MODES)) m.key = k;
@@ -1577,6 +1601,17 @@ function lineToEdge(b, cells, edge) {
   return { dist: best.dist, cells: line, edgeIndex: (edge === 'N' || edge === 'S') ? x : y };
 }
 
+// Most transports could attach more than one way: a road tile to any edge in
+// reach, a corner berth to either side, a garage to any road edge. Each check
+// lists those ways as `options` (best first) and takes the one the player asked
+// for, or the first. `res.sides` is what the player can cycle through.
+function pickSide(res, options, side) {
+  res.sides = options.map(o => o.e);
+  const pick = options.find(o => o.e === side) || options[0];
+  res.side = pick.e;
+  return pick;
+}
+
 function lineClear(occ, b, line, allowDriveway) {
   for (const [x, y] of line) {
     const o = occ[y * b.w + x];
@@ -1592,7 +1627,7 @@ function lineClear(occ, b, line, allowDriveway) {
 // a road tile uses, but aimed only at edges that are already its terrain (or
 // still open, which it then claims and locks). The run becomes a driveway,
 // tagged with the terrain so the renderer paints a jetty rather than tarmac.
-function reachInland(b, occ, res, def, cells, terrain) {
+function reachInland(b, occ, res, def, cells, terrain, side) {
   const options = [];
   for (const e of EDGES) {
     const line = lineToEdge(b, cells, e);
@@ -1605,7 +1640,7 @@ function reachInland(b, occ, res, def, cells, terrain) {
   }
   if (!options.length) { res.reason = `No way out to the ${terrain}: a ${def.name} needs a clear straight run of ${def.reach} squares or less to it`; return res; }
   options.sort((a, c) => a.line.dist - c.line.dist);
-  const pick = options[0];
+  const pick = pickSide(res, options, side);
   res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]).map(([lx, ly]) => [lx, ly, terrain]);
   if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain, lock: true });
   res.attachEdges = [pick.e];
@@ -1615,9 +1650,10 @@ function reachInland(b, occ, res, def, cells, terrain) {
 
 /**
  * Check whether a tile can be placed. Returns a result object:
- * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}] }
+ * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}], sides, side }
+ * `side` asks for the edge a transport attaches by, when it has a choice.
  */
-function checkPlacement(b, key, x, y, rot, mode = null) {
+function checkPlacement(b, key, x, y, rot, mode = null, side = null) {
   const def = tileDef(key);
   const cells = shapeCells(def.shape, rot).map(([cx, cy]) => [cx + x, cy + y]);
   const res = { ok: false, reason: '', cells, claims: [], lane: [], driveway: [], opens: [], def };
@@ -1647,33 +1683,36 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     // A small boat or a prop plane does not need a berth on the shore itself:
     // `reach` lets it sit that many squares inland, with a jetty or a taxiway
     // run out to the water or the apron, exactly the way a road tile does.
-    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain);
+    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain, side);
     if (touched.length === 0) { res.reason = `A ${def.name} has to touch the edge of the board`; return res; }
-    if (def.attach === 'tip') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; return res; }
-    }
-    // Long vehicles berth alongside, not nose-in: every cell has to sit on the
-    // same edge, which pins a straight tile to the two orientations that lie flat.
-    if (def.attach === 'edgewise') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `A ${def.name} has to lie flat along one edge — rotate it`; return res; }
-    }
-    // Broadside is the mirror of tip: a hull ties up along its long side, so the
-    // whole long arm sits on the water and only the short foot points inland.
-    if (def.attach === 'broadside') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== longestRun(cells)) { res.reason = `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; return res; }
-    }
+    // A berth attaches by one edge, even in a corner where it touches two: the
+    // player picks which, and the other side stays as it was.
     const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
+    const options = [];
+    let why = '';
     for (const e of touched) {
+      const n = edgeIndices(b, cells, e).length;
+      if (def.attach === 'tip' && n !== 1) { why = why || `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; continue; }
+      // Long vehicles berth alongside, not nose-in: every cell has to sit on the
+      // same edge, which pins a straight tile to the two orientations that lie flat.
+      if (def.attach === 'edgewise' && n !== cells.length) { why = why || `A ${def.name} has to lie flat along one edge — rotate it`; continue; }
+      // Broadside is the mirror of tip: a hull ties up along its long side, so the
+      // whole long arm sits on the water and only the short foot points inland.
+      if (def.attach === 'broadside' && n !== longestRun(cells)) { why = why || `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; continue; }
       const cur = b.edges[e];
-      const idx = edgeIndices(b, cells, e);
-      const allOpen = idx.every(i => spanOpen(b, e, i));
+      const allOpen = edgeIndices(b, cells, e).every(i => spanOpen(b, e, i));
       // a subway line surfaces at this edge, and a tunnel can't end in the sea
-      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway comes up at the ${EDGE_NAME[e]} edge, so that edge can't become water`; return res; }
-      if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
-      else if (cur === terrain || allOpen) { /* fine */ }
-      else { res.reason = `The ${EDGE_NAME[e]} edge is already ${cur}, so nothing on ${terrain} can attach there without a bridge`; return res; }
+      if (cur === 'green' && surfacing && surfacing.has(e)) { why = why || `A subway comes up at the ${EDGE_NAME[e]} edge, so that edge can't become water`; continue; }
+      if (cur === 'green') options.push({ e, claim: true });
+      else if (cur === terrain || allOpen) options.push({ e, claim: false });
+      else why = why || `The ${EDGE_NAME[e]} edge is already ${cur}, so nothing on ${terrain} can attach there without a bridge`;
     }
-    res.attachEdges = touched;
+    if (!options.length) { res.reason = why; return res; }
+    // an edge that is already this terrain first, so a corner does not lock a second side unasked
+    options.sort((a, c) => a.claim - c.claim);
+    const pick = pickSide(res, options, side);
+    if (pick.claim) res.claims.push({ edge: pick.e, terrain, lock: true });
+    res.attachEdges = [pick.e];
     res.ok = true; return res;
   }
 
@@ -1691,7 +1730,7 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     }
     if (options.length === 0) { res.reason = `No way in by road: needs a clear straight run of ${reach} squares or less to a road or an open edge`; return res; }
     options.sort((a, c) => a.line.dist - c.line.dist);
-    const pick = options[0];
+    const pick = pickSide(res, options, side);
     res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
     if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain: 'road', lock: false });
     res.roadEdge = pick.e;
@@ -1715,14 +1754,11 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
       const wet = ends.find(e => b.edges[e] === 'water');
       if (wet) { res.reason = `A ${def.name} can't come up in the water at the ${EDGE_NAME[wet]} edge — rotate it`; return res; }
     } else {
-      // straight to the nearest edge of the wanted terrain, however far
-      let best = null;
-      for (const e of EDGES) {
-        if (b.edges[e] !== def.line) continue;
-        const line = lineToEdge(b, cells, e);
-        if (best === null || line.dist < best.line.dist) best = { e, line };
-      }
-      if (!best) { res.reason = `A ${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      // straight to an edge of the wanted terrain, however far: the nearest unless the player picks another
+      const options = EDGES.filter(e => b.edges[e] === def.line).map(e => ({ e, line: lineToEdge(b, cells, e) }));
+      if (!options.length) { res.reason = `A ${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      options.sort((a, c) => a.line.dist - c.line.dist);
+      const best = pickSide(res, options, side);
       res.tunnel = { line: def.line, axis: best.e === 'N' || best.e === 'S' ? 'v' : 'h', ends: [best.e], cells: best.line.cells };
       res.attachEdges = [best.e];
     }
@@ -1737,12 +1773,9 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
     const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
     const vertical = (Math.max(...ys) - Math.min(...ys)) > (Math.max(...xs) - Math.min(...xs));
     const allowed = vertical ? ['N', 'S'] : ['E', 'W'];
-    let best = null;
-    for (const e of allowed) {
-      const line = lineToEdge(b, cells, e);
-      if (!lineClear(occ, b, line.cells, false)) continue;
-      if (best === null || line.dist < best.line.dist) best = { e, line };
-    }
+    const options = allowed.map(e => ({ e, line: lineToEdge(b, cells, e) })).filter(o => lineClear(occ, b, o.line.cells, false));
+    options.sort((a, c) => a.line.dist - c.line.dist);
+    const best = options.length ? pickSide(res, options, side) : null;
     if (!best) { res.reason = `A ${def.name} needs a clear straight lane to the ${vertical ? 'north or south' : 'east or west'} edge — rotate it to aim at a different one`; return res; }
     res.lane = best.line.cells;
     res.laneEdge = best.e;
@@ -1753,8 +1786,8 @@ function checkPlacement(b, key, x, y, rot, mode = null) {
   return res;
 }
 
-function placeTile(b, key, x, y, rot, check = null, mode = null) {
-  const c = check || checkPlacement(b, key, x, y, rot, mode);
+function placeTile(b, key, x, y, rot, check = null, mode = null, side = null) {
+  const c = check || checkPlacement(b, key, x, y, rot, mode, side);
   if (!c.ok) throw new Error('Illegal placement: ' + c.reason);
   const def = c.def;
   const tile = {
@@ -1978,6 +2011,7 @@ const DEFAULT_MODS = {
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
   ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, pickpocketRamp: null, amenityRadiusBonus: 0,
+  weather: [],
 };
 
 function mergeMods(...list) {
@@ -1989,7 +2023,7 @@ function mergeMods(...list) {
       if (k === 'batchMult' || k === 'dwellMult' || k === 'fareMult' || k === 'capacityMult' || k === 'revenueMult' || k === 'flatMult') out[k] *= v;
       else if (k === 'dwellAdd' || k === 'stopBudgetBonus' || k === 'transportMultBonus' || k === 'amenityMultBonus' || k === 'destTierShift' || k === 'vipCount' || k === 'vipBudgetBonus' || k === 'amenityRadiusBonus') out[k] += v;
       else if (k === 'cadenceDiv') out[k] *= v;
-      else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns') out[k] = out[k].concat(v);
+      else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns' || k === 'weather') out[k] = out[k].concat(v);
       else if (k === 'rateBonusTags') { out[k] = { ...out[k] }; for (const [t, b] of Object.entries(v)) out[k][t] = (out[k][t] || 0) + b; }
       else out[k] = v;
     }
@@ -2017,14 +2051,23 @@ function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
   const offline = mods.offlineTerrains.includes(def.terrain) || tags.some(t => mods.offlineTags.includes(t)) || mods.strikeTerrain === def.terrain;
   // struck, but it is the only terrain running: skeleton service, not a shutdown
   const skeleton = mods.strikeSkeleton === def.terrain;
+  // Weather: each front names the terrains and tags it hits ('surface' is
+  // everything but the underground). The service keeps running, but its whole
+  // timetable slips `late` ticks - every departure, the last call included -
+  // and it can thin the crowd that turns up.
+  let late = 0, wBatch = 1;
+  for (const w of mods.weather) {
+    if (!w.on.some(k => k === def.terrain || tags.includes(k) || (k === 'surface' && def.terrain !== 'underground'))) continue;
+    late = Math.max(late, w.late || 0); wBatch *= w.batch ?? 1;
+  }
   return {
-    def, tier: def.tier, skeleton,
-    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
+    def, tier: def.tier, skeleton, late, delayed: late > 0 || wBatch < 1,
+    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * wBatch * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
     mult: scaleMult(def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit, cfg),
     flat: def.flat * mods.flatMult,
     arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
     dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
-    dwell: Math.round(def.dwell * mods.dwellMult + mods.dwellAdd),
+    dwell: Math.round(def.dwell * mods.dwellMult + mods.dwellAdd) + late,
     offline,
   };
 }
@@ -2188,7 +2231,7 @@ function simulateWeek(board, opts = {}) {
   const transports = [], amenities = [], waitingAreas = [], security = [];
   const tileStats = {};
   for (const t of board.tiles) {
-    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, lost: 0, occ: new Int16Array(TICKS + 1), fullTicks: 0, cap: 0 };
+    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, lost: 0, occ: null, fullTicks: 0, cap: 0 };
     if (t.kind === 'bridge') continue;
     const doors = doorCells(board, t, passOpen, blocked);
     if (t.kind === 'transport') {
@@ -2209,6 +2252,12 @@ function simulateWeek(board, opts = {}) {
     }
   }
   const activeTransports = transports.filter(t => !t.e.offline && t.doors.length > 0);
+  // A traveller's clock is their platform's: a platform running late keeps
+  // its crowd in the concourse, and its last call waits, `late` ticks past the
+  // usual end. The week runs until the latest of them.
+  const deadline = a => TICKS + transports[a.dest].e.late;
+  const END = TICKS + Math.max(0, ...transports.filter(t => t.doors.length).map(t => t.e.late));
+  for (const id in tileStats) tileStats[id].occ = new Int16Array(END + 1);
 
   // ---- distance fields (memoized)
   const fields = new Map();
@@ -2295,10 +2344,10 @@ function simulateWeek(board, opts = {}) {
   const heat = new Float32Array(N);
   let score = 0, fares = 0, revenue = 0, banked = 0, strandedPts = 0, stolen = 0;
   // score credited on each tick, so the UI can fill the week's stars during playback
-  const scoreByTick = new Array(TICKS + 1).fill(0);
+  const scoreByTick = new Array(END + 1).fill(0);
   // what the crowd still on the board is worth on each tick, so the top bar can
   // colour by the whole week in progress rather than by the turnstiles alone
-  const pendingByTick = new Array(TICKS + 1).fill(0);
+  const pendingByTick = new Array(END + 1).fill(0);
   let best = null;
   const counts = { spawned: 0, boarded: 0, stranded: 0, lost: 0, pickpockets: 0, removed: 0, looped: 0 };
   const dw = cfg.destinationWeights;
@@ -2377,7 +2426,7 @@ function simulateWeek(board, opts = {}) {
   // Top up a lost traveller's wander so they keep circulating instead of
   // freezing on the spot. Returns false for anyone with a route to follow.
   function wanderOn(a, t) {
-    if (!a.lost || t > TICKS) return false;
+    if (!a.lost || t > deadline(a)) return false;
     const wps = makeWaypoints(a, a.x, a.y, a.origin, a.gateOpen, true, ++a.legs);
     for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
     return a.ti < a.targets.length;
@@ -2511,7 +2560,7 @@ function simulateWeek(board, opts = {}) {
   function serviceRolls(a, t) {
     if (a.budget <= 0) return;
     const i = a.y * W + a.x;
-    const left = TICKS - t - hurry.slack;
+    const left = deadline(a) - t - hurry.slack;
     const inRange = [];
     for (const am of amenities) {
       if (am.e.closed || am.e.rate <= 0) continue;
@@ -2626,7 +2675,7 @@ function simulateWeek(board, opts = {}) {
     // cannot make even this is stranded whatever their route says. One lookup
     // in a field that is already built, so it costs nothing per tick.
     const walk = transportField(a.dest, a.gateOpen)[a.y * W + a.x] + (a.state === 'serving' ? a.serveTicks : 0);
-    if (a.state !== 'waiting' && t + walk > TICKS) return a.value * cfg.economy.strandedMultiplier;
+    if (a.state !== 'waiting' && t + walk > deadline(a)) return a.value * cfg.economy.strandedMultiplier;
     const e = transports[a.dest].e;
     let v = a.value * e.mult + e.flat;
     if (a.tier === e.tier) v *= scaleMult(cfg.sim.tierMatchExitBonus, cfg);
@@ -2642,7 +2691,7 @@ function simulateWeek(board, opts = {}) {
   const extraQueue = [];
   for (const ex of mods.extraSpawns) for (let i = 0; i < ex.count; i++) extraQueue.push({ tier: ex.tier, tick: 1 + (i % Math.min(8, SPAWN_TICKS)) });
 
-  for (let t = 1; t <= TICKS; t++) {
+  for (let t = 1; t <= END; t++) {
     currentTick = t;
     // ---- spawns
     if (t <= SPAWN_TICKS && activeTransports.length) {
@@ -2686,7 +2735,7 @@ function simulateWeek(board, opts = {}) {
         if (a.serveTicks <= 0) endService(a);
       } else if (a.state === 'walking' || a.state === 'detour') {
         // Late in the week the wander no longer fits: head straight for the platform.
-        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > TICKS) {
+        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > deadline(a)) {
           a.ti = a.targets.length - 1; a.events.push({ t, type: 'hurry' });
         }
         const onWalkway = isWalkway(a.y * W + a.x);
@@ -2740,9 +2789,13 @@ function simulateWeek(board, opts = {}) {
           }
         }
         const tr = transports[a.dest];
-        const lastCall = cfg.sim.lastCallDeparture && t === TICKS;
+        const lastCall = cfg.sim.lastCallDeparture && t === deadline(a);
         if ((t >= a.arrivedTick + tr.e.dwell && t % tr.e.dep === 0) || lastCall) board_(a, t);
       }
+      // A late platform's week ends after the others': anyone whose own clock
+      // has run out is settled now rather than walking on. Everyone else waits
+      // for the pass at the end, as they always have.
+      if (a.state !== 'done' && t === deadline(a) && t < END) strand(a, t);
     }
 
     // ---- frames + occupancy
@@ -2788,36 +2841,40 @@ function simulateWeek(board, opts = {}) {
     }
   }
 
-  // ---- end of week: strand everyone still on the board
-  for (const a of agents) {
-    if (a.state === 'done') continue;
-    a.endTick = TICKS;
-    if (a.kind === 'pickpocket') { a.outcome = 'left'; a.state = 'done'; continue; }
+  function strand(a, t) {
+    a.endTick = t;
     const v = a.value * (a.lost ? cfg.economy.lostMultiplier : cfg.economy.strandedMultiplier);
-    score += v; strandedPts += v; scoreByTick[TICKS] += v;
+    score += v; strandedPts += v; scoreByTick[t] += v;
     if (a.lost) { counts.lost++; tileStats[transports[a.origin].tile.id].lost++; }
     else { counts.stranded++; tileStats[transports[a.dest].tile.id].stranded++; }
     if (a.waitSlot) { a.waitSlot.occ--; a.waitSlot = null; }
     if (a.serve) { a.serve.occ--; a.serve = null; }
     a.outcome = a.lost ? 'lost' : 'stranded'; a.state = 'done';
-    a.events.push({ t: TICKS, type: a.lost ? 'lost' : 'strand', value: v });
+    a.events.push({ t, type: a.lost ? 'lost' : 'strand', value: v });
+  }
+
+  // ---- end of week: strand everyone still on the board
+  for (const a of agents) {
+    if (a.state === 'done') continue;
+    if (a.kind === 'pickpocket') { a.endTick = END; a.outcome = 'left'; a.state = 'done'; continue; }
+    strand(a, END);
   }
 
   for (const id in tileStats) {
     const s = tileStats[id];
-    s.saturation = s.cap > 0 ? s.fullTicks / TICKS : 0;
+    s.saturation = s.cap > 0 ? s.fullTicks / END : 0;
   }
 
   // running total, so scoreByTick[t] is the score on the board at tick t
-  for (let t = 1; t <= TICKS; t++) scoreByTick[t] += scoreByTick[t - 1];
-  for (let t = 0; t <= TICKS; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
+  for (let t = 1; t <= END; t++) scoreByTick[t] += scoreByTick[t - 1];
+  for (let t = 0; t <= END; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
   // the strand pass above settles everyone left, so nothing is in flight at the
-  // last tick: scoreByTick[TICKS] + pendingByTick[TICKS] is the final score
-  pendingByTick[TICKS] = 0;
-  for (let t = 0; t <= TICKS; t++) pendingByTick[t] = Math.round(pendingByTick[t]);
+  // last tick: scoreByTick[END] + pendingByTick[END] is the final score
+  pendingByTick[END] = 0;
+  for (let t = 0; t <= END; t++) pendingByTick[t] = Math.round(pendingByTick[t]);
 
   return {
-    seed, week, ticks: TICKS, spawnTicks: SPAWN_TICKS,
+    seed, week, ticks: END, spawnTicks: SPAWN_TICKS,
     score: Math.round(score),
     points: { banked: Math.round(banked), stranded: Math.round(strandedPts), stolen: Math.round(stolen) },
     scoreByTick, pendingByTick,
@@ -2940,7 +2997,9 @@ const { simulateWeek, simulateWeeks, mergeMods } = __m_src_sim_sim_js;
 // is not the run the player left. Discarding is the honest outcome here.
 // 10: money weeks and the Double Week (`weekCash`, `cashSwept`), and five new
 // events in the plan, so an old plan names weeks that no longer line up.
-const SAVE_VERSION = 10;
+// 11: extra hours (`hoursBought`) and the endless quota ramp, which moves
+// every target past week 16.
+const SAVE_VERSION = 11;
 
 function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
@@ -2952,7 +3011,7 @@ function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } =
   const plan = [];
   while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
   const state = {
-    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0,
+    version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0, hoursBought: 0,
     money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
     board: startBoard(mode),
     shop: { cards: [], rerolls: 0 },
@@ -3130,6 +3189,22 @@ function earlyFinishPerAP(s, week = s.week) {
 }
 function earlyFinishBonus(s, ap = s.ap) { return earlyFinishPerAP(s) * Math.max(0, ap); }
 
+// Extra hours: cash for an action point, once the week's own are spent. The
+// price climbs with the week and doubles with each one bought that week.
+function extraHoursCost(s) {
+  const x = CONFIG.economy.extraHours;
+  return Math.round(x.base * Math.pow(x.growth, s.week - 1) * Math.pow(x.step, s.hoursBought || 0));
+}
+function extraHoursOnSale(s) { return s.phase === 'shop' && s.ap < 1 && s.week >= runRules(s).extraHoursFromWeek; }
+function buyExtraHours(s) {
+  if (!extraHoursOnSale(s)) return fail(s.ap >= 1 ? 'Spend the action points you have first' : 'No extra hours here');
+  const cost = extraHoursCost(s);
+  if (s.money < cost) return fail(`Need $${cost}`);
+  s.money -= cost; s.ap += 1; s.hoursBought = (s.hoursBought || 0) + 1;
+  log(s, `Paid $${cost} for extra hours`);
+  return { ok: true, cost };
+}
+
 // ------------------------------------------------------------- money weeks
 // An event may reach into the till instead of onto the board. Two of them land
 // as the week opens, before the shop has been touched: a fine takes a share of
@@ -3280,14 +3355,14 @@ function fail(reason) { return { ok: false, reason }; }
 function log(s, msg) { s.log.push(`W${s.week}: ${msg}`); if (s.log.length > 200) s.log.shift(); }
 function removeCard(s, card) { s.shop.cards = s.shop.cards.filter(c => c.id !== card.id); }
 
-function placementCheck(s, key, x, y, rot) { return checkPlacement(s.board, key, x, y, rot, modeOf(s)); }
+function placementCheck(s, key, x, y, rot, side = null) { return checkPlacement(s.board, key, x, y, rot, modeOf(s), side); }
 
-function buyTile(s, card, x, y, rot) {
+function buyTile(s, card, x, y, rot, side = null) {
   if (s.phase !== 'shop') return fail('You can only do that while building');
   if (s.ap < 1) return fail('No action points left this week');
   const cost = cardCost(s, card);
   if (s.money < cost) return fail(`Need $${cost}`);
-  const c = placementCheck(s, card.key, x, y, rot);
+  const c = placementCheck(s, card.key, x, y, rot, side);
   if (!c.ok) return fail(c.reason);
   const tile = placeTile(s.board, card.key, x, y, rot, c, modeOf(s));
   tile.paid = cost;
@@ -3556,7 +3631,7 @@ function advanceWeek(s) {
   // effects tick down first, so one with weeks left still counts toward AP
   for (const e of s.effects) e.weeksLeft--;
   s.effects = s.effects.filter(e => e.weeksLeft > 0);
-  s.ap = apForRun(s);
+  s.ap = apForRun(s); s.hoursBought = 0;
   s.shop.rerolls = 0;
   s.strikeChoice = null; s.surveyed = false; s.cashSwept = 0;
   s.shop.cards = generateShop(s);
@@ -3598,12 +3673,12 @@ function redoWeek(s) {
 }
 
 // ----------------------------------------------------------- estimates
-function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSeeds) {
-  const c = placementCheck(s, key, x, y, rot);
+function estimatePlacement(s, key, x, y, rot, seeds = CONFIG.placement.previewSeeds, side = null) {
+  const c = placementCheck(s, key, x, y, rot, side);
   if (!c.ok) return null;
   const mods = computeMods(s);
   const after = cloneBoard(s.board);
-  placeTile(after, key, x, y, rot, null, modeOf(s));
+  placeTile(after, key, x, y, rot, null, modeOf(s), side);
   const dp = [], dm = [];
   for (let i = 0; i < seeds; i++) {
     const a = estimateRun(s, s.board, i, mods);
@@ -3653,7 +3728,7 @@ function deserialize(json) {
   return s;
 }
 
-return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, cashBaseline, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteGivesAPBack, deleteTile, reroll, buyAP, playCard, rezoningVictims, pickStrikeTerrain, chooseOrdinance, computeMods, transportTerrainsOnBoard, weekRepeat, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
+return { SAVE_VERSION, createRun, modeOf, runRules, tileMinWeek, difficultyOf, apForRun, isEventWeek, eventForWeek, currentEvent, milestoneForWeek, nextEventWeek, gameRules, eventMult, fmtMult, quotaFromForm, quotaFor, tileCount, tileCost, cardCost, upgradeCost, upgradableKeys, upgradeTargets, upgradeCardCost, namedUpgradeKeys, rerollFee, cardAPCost, quotaStars, earlyFinishPerAP, earlyFinishBonus, extraHoursCost, extraHoursOnSale, buyExtraHours, cashBaseline, shopPool, generateShop, placementCheck, buyTile, upgradeTile, deleteGivesAPBack, deleteTile, reroll, buyAP, playCard, rezoningVictims, pickStrikeTerrain, chooseOrdinance, computeMods, transportTerrainsOnBoard, weekRepeat, simulateCurrent, runWeek, settle, continueAfterWin, weekTouched, redoWeek, estimatePlacement, estimateUpgrade, estimateCurrent, serialize, saveIsCurrent, deserialize };
 })();
 // ---- src/ui/tilesprites.js
 const __m_src_ui_tilesprites_js = (() => {
@@ -4755,7 +4830,6 @@ class BoardRenderer {
       const ln = checkpointLine(ghost.cells);
       for (const s of fenceSegments(board, ghost.cells)) if (s.axis === ln.axis && (s.axis === 'h' ? s.y : s.x) === ln.line) this.drawFenceSeg(s, true, ghost.ok);
     }
-    this.badgeRect = null;
     if (view.starBadge) this.drawStarBadge(view.starBadge);
     if (dots.length) this.drawAgentPopups(dots, view.T);
   }
@@ -5087,7 +5161,7 @@ class BoardRenderer {
     if (!cells.length) return;
     const ctx = this.ctx;
     const b = this.cellsBounds(cells, badge.z || 0);
-    const cx = (b.x0 + b.x1) / 2;
+    let cx = (b.x0 + b.x1) / 2;
     const fs = Math.max(16, Math.min(34, this.k * 0.7));
     const small = Math.max(11, fs * 0.42);
     const lines = [];
@@ -5111,10 +5185,10 @@ class BoardRenderer {
     const widths = lines.map(measure);
     const heights = lines.map(ln => ln.size * 1.05);
     const boxW = Math.max(...widths) + 14, boxH = heights.reduce((a, v) => a + v + gap, 0) - gap + 10;
+    // a tile at the side of the screen keeps its badge on the screen
+    cx = Math.max(boxW / 2 + 6, Math.min(this.viewW - boxW / 2 - 6, cx));
     let top = b.y0 - 12 - boxH;
     if (top < 6) top = b.y0 + 8;   // no room above: drop it under the top corner
-    // the touch confirm popup reads this to keep clear of the badge
-    this.badgeRect = { x0: cx - boxW / 2, y0: top, x1: cx + boxW / 2, y1: top + boxH };
 
     ctx.save();
     roundRect(ctx, cx - boxW / 2, top, boxW, boxH, 8);
@@ -6118,10 +6192,13 @@ const ui = {
   ghost: null, estimate: null, estimateKey: null, estimateTimer: null, projection: null, projectionTimer: null,
   pb: { result: null, T: 0, speed: 2, playing: false, last: 0, flashed: false }, heat: false, summaryShown: false, started: false, barKey: null,
   starKey: null,
-  // touch only: the target a tap has aimed at, waiting on the confirm popup
-  // ({ kind: 'place' | 'tile' | 'edge', tileId?, edge? }); `touch` is whether
-  // the last press anywhere was a finger
-  pending: null, touch: false, confirmKey: null, confirmPos: null,
+  // touch only: the target a tap has aimed at, waiting on the card bar's
+  // button ({ kind: 'place' | 'tile' | 'edge', tileId?, edge? }); `touch` is
+  // whether the last press anywhere was a finger, and `aimInfo` whether the
+  // card's text stays open while aimed
+  pending: null, touch: false, aimInfo: false,
+  // the edge the player asked a transport to attach by (null: the default)
+  side: null,
 };
 const renderer = new BoardRenderer($('board'));
 let boardInput = null;
@@ -6161,6 +6238,7 @@ function describeTile(tile, def) {
     }
     if (e.offline) rows.push(['Status', 'Not running this week']);
     else if (e.skeleton) rows.push(['Status', `On strike: ${Math.round(CONFIG.sim.strikeSkeletonBatch * 100)}% of the usual crowd`]);
+    else if (e.delayed) rows.push(['Status', e.late ? `Weather: running ${e.late} tick${e.late === 1 ? '' : 's'} late` : 'Weather: a thinner crowd']);
     if (def.special === 'loop') rows.push(['Loop', `${Math.round(def.loopChance * 100)}% of riders come back round, boost and all`]);
   } else if (def.kind === 'amenity') {
     const e = effAmenity(tile || { key: def.key, level: 1 }, m);
@@ -6393,6 +6471,18 @@ function renderShop() {
   const fee = G.rerollFee(state);
   $('btn-reroll').innerHTML = `Reroll${fee ? `<br><small>$${fmt(fee)}</small>` : ''}`;
   $('btn-reroll').disabled = state.phase !== 'shop' || state.ap < 1 || state.money < fee;
+  // With the week's points spent, Reroll has nothing to pay with, so its place
+  // goes to the one thing cash can still buy: another action point.
+  const hours = G.extraHoursOnSale(state) && ui.mode !== 'playback';
+  $('btn-reroll').classList.toggle('hidden', hours);
+  const hb = $('btn-hours');
+  hb.classList.toggle('hidden', !hours);
+  if (hours) {
+    const c = G.extraHoursCost(state);
+    hb.innerHTML = ''; hb.append('+', apPips(1), h('br'), h('small', {}, `$${fmt(c)}`));
+    hb.disabled = state.money < c;
+    hb.title = `Extra hours: one more action this week for $${fmt(c)}. Each one after that costs twice as much.`;
+  }
 }
 
 // ------------------------------------------------------------ popup
@@ -6512,36 +6602,60 @@ function renderCardBar() {
   bar.classList.toggle('hidden', !holdingCard());
   // on a narrow screen the bar sits where the cards are, so they stand down
   $('main').classList.toggle('holding', holdingCard());
-  if (!holdingCard()) { ui.barKey = null; return; }
+  if (!holdingCard()) { ui.barKey = null; ui.pending = null; return; }
   const card = ui.card, place = ui.mode === 'place', confirm = ui.mode === 'confirm';
   const cost = G.cardCost(state, card), ap = G.cardAPCost(state, card);
-  const key = `${card.id}|${ui.mode}|${cost}|${ap}`;
+  // A tap on a touch screen only aims; the bar then says what it aimed at and
+  // its own button commits, so the confirmation sits where the thumb already is
+  // rather than in a second box over the board.
+  const txt = ui.pending ? pendingText() : null;
+  const key = `${card.id}|${ui.mode}|${cost}|${ap}|${txt ? txt.head : ''}`;
   if (ui.barKey !== key) {
     ui.barKey = key;
     const title = $('card-bar-title'); title.innerHTML = '';
-    title.append(h('b', {}, card.name), h('span', { class: 'price' }, `$${fmt(cost)}`, ap ? [' · ', apPips(ap)] : null));
+    title.append(h('b', {}, txt ? txt.head : card.name), h('span', { class: 'price' }, `$${fmt(cost)}`, ap ? [' · ', apPips(ap)] : null));
     const desc = $('card-bar-desc'); desc.innerHTML = ''; desc.append(cardBody(card));
     desc.scrollTop = 0;
   }
-  $('card-bar-prompt').textContent = ui.mode === 'target'
+  const prompt = $('card-bar-prompt');
+  prompt.textContent = txt ? (txt.line || '')
+    : ui.mode === 'target'
     ? (card.target === 'edge' ? 'Pick one of the highlighted edges.' : card.type === 'upgrade' ? `Pick a ${card.tileName} to raise it.` : 'Pick one of the highlighted tiles.')
     : (place && !ui.ghost) ? 'Pick a square on the board.' : '';
-  $('card-bar-desc').classList.toggle('hidden', !!layout.cardInfoCollapsed);
-  $('btn-card-info').textContent = layout.cardInfoCollapsed ? '⌃' : '⌄';
-  // with the touch popup up, its buttons are the ones to press; the bar keeps ✕
-  const popped = !!ui.pending;
-  $('btn-rotate').classList.toggle('hidden', !place || popped);
+  prompt.className = txt && txt.bad ? 'bad' : txt && txt.warn ? 'warn' : '';
+  // once aimed, the text folds away so the bar covers as little board as it can
+  const folded = ui.pending ? !ui.aimInfo : !!layout.cardInfoCollapsed;
+  $('card-bar-desc').classList.toggle('hidden', folded);
+  $('btn-card-info').textContent = folded ? '⌃' : '⌄';
+  const aimPlace = ui.pending && ui.pending.kind === 'place';
+  $('btn-rotate').classList.toggle('hidden', !place || (ui.pending && !aimPlace));
   if (place) $('btn-rotate').disabled = orientationCount(tileDef(card.key).shape) < 2;
+  // the side a transport attaches by, for a tile that can have more than one
+  const sideBtn = $('btn-side'), sides = place && ui.ghost && ui.ghost.ok ? ui.ghost.sides || [] : [];
+  sideBtn.classList.toggle('hidden', !place || !canPickSide(tileDef(card.key)) || (ui.pending && !aimPlace));
+  sideBtn.disabled = sides.length < 2;
+  sideBtn.textContent = '⇄ ' + (sides.length ? cap(EDGE_NAMES[ui.ghost.side]) : 'Side');
   const go = $('btn-place');
-  go.classList.toggle('hidden', (!place && !confirm) || popped);
-  go.textContent = place ? 'Build here' : 'Play it';
-  go.disabled = place && !(ui.ghost && ui.ghost.ok);
+  go.classList.toggle('hidden', !place && !confirm && !ui.pending);
+  go.textContent = txt ? `✓ ${txt.verb}` : place ? 'Build here' : 'Play it';
+  go.disabled = txt ? !!txt.bad : place && !(ui.ghost && ui.ghost.ok);
+  $('btn-place-cancel').title = ui.pending ? 'Drop the aim (Esc)' : 'Put the card back (Esc)';
+}
+const cap = w => w[0].toUpperCase() + w.slice(1);
+// Transports that attach to an edge by a driveway, a berth, a lane or a tunnel
+// can have more than one edge to choose from; a subway runs to both ends.
+const canPickSide = def => def.kind === 'transport' && def.terrain !== 'free' && !(def.terrain === 'underground' && def.line === 'through');
+function cycleSide() {
+  const g = ui.ghost;
+  if (ui.mode !== 'place' || !g || !g.ok || !g.sides || g.sides.length < 2) return;
+  ui.side = g.sides[(g.sides.indexOf(g.side) + 1) % g.sides.length];
+  updateGhost();
 }
 
 function renderInfo() {
   const panel = $('info-panel'), title = $('info-title'), body = $('info-body'); body.innerHTML = '';
   panel.classList.remove('hidden');
-  renderCardBar(); renderConfirm();
+  renderCardBar();
   if (ui.mode === 'playback') { title.textContent = 'Running the week'; body.textContent = 'Full shops go grey.'; return; }
   // With a card in hand the board says it all — stars over the ghost, the card
   // bar underneath — so the side panel stays out of the way.
@@ -6564,9 +6678,9 @@ function scheduleEstimate() {
   const up = upgradeLevels(ui.card);
   let key = null, run = null;
   if (ui.mode === 'place' && ui.card && ui.ghost && ui.ghost.ok) {
-    const snap = { key: ui.card.key, x: ui.ghost.x, y: ui.ghost.y, rot: ui.rot };
-    key = `place:${snap.key},${snap.x},${snap.y},${snap.rot}`;
-    run = () => G.estimatePlacement(state, snap.key, snap.x, snap.y, snap.rot);
+    const snap = { key: ui.card.key, x: ui.ghost.x, y: ui.ghost.y, rot: ui.rot, side: ui.ghost.side || null };
+    key = `place:${snap.key},${snap.x},${snap.y},${snap.rot},${snap.side}`;
+    run = () => G.estimatePlacement(state, snap.key, snap.x, snap.y, snap.rot, undefined, snap.side);
   } else if (ui.mode === 'target' && up && ui.hoverTileId != null) {
     const t = tileById(ui.hoverTileId);
     if (t && targetFilter(t)) {
@@ -6591,7 +6705,7 @@ function selectCard(card) {
   if (state.phase !== 'shop' || ui.mode === 'playback') return;
   hint(''); // whatever the last card was told to do no longer applies
   if (ui.card && ui.card.id === card.id) { cancelMode(); return; }
-  ui.card = card; ui.rot = 0; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; ui.pending = null; hidePopup(true);
+  ui.card = card; ui.rot = 0; ui.side = null; ui.aimInfo = false; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; ui.pending = null; hidePopup(true);
   if (card.type === 'tile' || card.type === 'bridge') ui.mode = 'place';
   else if (card.type === 'upgrade' || card.type === 'named_upgrade') {
     // an "every lounge" upgrade has nothing to aim at, so it confirms instead
@@ -6632,7 +6746,7 @@ function updateGhost() {
   if (ui.mode !== 'place' || !ui.card || !ui.hover) { ui.ghost = null; return; }
   const def = tileDef(ui.card.key);
   const o = ghostOrigin(def, ui.hover);
-  const c = G.placementCheck(state, ui.card.key, o.x, o.y, ui.rot);
+  const c = G.placementCheck(state, ui.card.key, o.x, o.y, ui.rot, ui.side);
   ui.ghost = { ...c, x: o.x, y: o.y, def };
   scheduleEstimate();
   renderInfo();
@@ -6664,19 +6778,19 @@ function commitPlacement() {
   if (ui.mode !== 'place' || !ui.card) return;
   if (!ui.ghost) { hint('Pick a spot on the board first'); return; }
   if (!ui.ghost.ok) { hint(ui.ghost.reason); return; }
-  const r = G.buyTile(state, ui.card, ui.ghost.x, ui.ghost.y, ui.rot);
+  const r = G.buyTile(state, ui.card, ui.ghost.x, ui.ghost.y, ui.rot, ui.ghost.side || null);
   if (!r.ok) { hint(r.reason); return; }
   ui.selectedTileId = r.tile.id; cancelMode(); renderAll();
 }
 
-// Spending a card on a tile or an edge, shared by a click and the touch popup.
+// Spending a card on a tile or an edge, shared by a click and a touch aim.
 function playOnTile(t) {
   const r = ui.card.type === 'card' ? G.playCard(state, ui.card, { tileId: t.id }) : G.upgradeTile(state, ui.card, t.id);
   if (!r.ok) hint(r.reason);
   ui.selectedTileId = t.id; cancelMode(); renderAll();
 }
 // Rezoning demolishes every transport attached to the edge, so a click asks
-// first; the touch popup has already listed them, so it passes `asked`.
+// first; a touch aim has already listed them in the bar, so it passes `asked`.
 function playOnEdge(edge, asked) {
   const card = ui.card;
   const play = () => { const r = G.playCard(state, card, { edge }); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); };
@@ -6695,8 +6809,8 @@ const rezoneVictims = (card, edge) => card.key === 'rezoning' && state.board.edg
 function onBoardTap(cell, edge, e) {
   if (ui.mode === 'playback') return;
   if (ui.mode === 'confirm') { hint('Play it or cancel first'); return; }
-  // Touch has no hover and fingers miss, so a tap only aims; the popup by the
-  // target then commits or drops it. A mouse click still does it at once.
+  // Touch has no hover and fingers miss, so a tap only aims; the card bar then
+  // commits or drops it. A mouse click still does it at once.
   const touch = e.pointerType === 'touch';
   if (ui.mode === 'place' && ui.card) {
     if (!cell) return;
@@ -6725,7 +6839,7 @@ function onBoardTap(cell, edge, e) {
   renderInfo();
 }
 
-// ------------------------------------------------------- touch confirm popup
+// ------------------------------------------------------------ touch aim
 // Drop the aim but keep the card in hand, so the next tap can try elsewhere.
 function clearPending() {
   if (!ui.pending) return;
@@ -6742,12 +6856,12 @@ function commitPending() {
   const t = tileById(p.tileId);
   if (t && targetFilter(t)) playOnTile(t); else clearPending();
 }
-// What the popup says: a heading, an optional line, and the verb on the
-// button. The stars stay in the badge the board draws over the target.
+// What the bar says once aimed: a heading, an optional line, and the verb on
+// its button. The stars stay in the badge the board draws over the target.
 function pendingText() {
   const p = ui.pending, card = ui.card;
   // the reason a spot is refused lives here rather than in the board's badge,
-  // since a long one runs off a phone's screen there and wraps here
+  // since a long one runs off a phone's screen there and wraps in the bar
   if (p.kind === 'place') return { head: card.name, line: ui.ghost && !ui.ghost.ok ? ui.ghost.reason : null, bad: !(ui.ghost && ui.ghost.ok), verb: 'Build' };
   if (p.kind === 'edge') {
     const doomed = rezoneVictims(card, p.edge);
@@ -6758,71 +6872,13 @@ function pendingText() {
   if (up) return { head: `${t.name} L${t.level} → L${Math.min(CONFIG.economy.maxLevel, t.level + up.levels)}`, verb: 'Upgrade' };
   return { head: `${card.name} on ${t.name}`, verb: 'Play' };
 }
-function renderConfirm() {
-  const pop = $('confirm-pop');
-  if (!ui.pending || !ui.card || !holdingCard()) { ui.pending = null; ui.confirmKey = null; ui.confirmPos = null; pop.classList.add('hidden'); return; }
-  const txt = pendingText();
-  const cost = G.cardCost(state, ui.card), ap = G.cardAPCost(state, ui.card);
-  const rotatable = ui.pending.kind === 'place' && orientationCount(tileDef(ui.card.key).shape) > 1;
-  const key = JSON.stringify([txt, cost, ap, rotatable]);
-  pop.classList.remove('hidden');
-  if (ui.confirmKey === key) { placeConfirm(); return; }
-  ui.confirmKey = key;
-  pop.innerHTML = '';
-  pop.append(...[
-    h('div', { class: 'cp-head' }, h('b', {}, txt.head), h('span', { class: 'price' }, `$${fmt(cost)}`, ap ? [' · ', apPips(ap)] : null)),
-    txt.line ? h('div', { class: 'cp-line' + (txt.bad ? ' bad' : txt.warn ? ' warn' : '') }, txt.line) : null,
-    h('div', { class: 'cp-tools' },
-      rotatable ? h('button', { class: 'cp-rot', title: 'Rotate', 'aria-label': 'Rotate', onclick: () => rotate(1) }, '⟳') : null,
-      h('button', { class: 'cp-cancel', onclick: clearPending }, '✕ Cancel'),
-      h('button', { class: 'primary cp-go', onclick: commitPending, ...(txt.bad ? { disabled: '' } : {}) }, `✓ ${txt.verb}`))].filter(Boolean));
-  ui.confirmPos = null; placeConfirm();
-}
-// Screen box of what the pending action points at, in board pixels.
-function pendingBounds() {
-  const p = ui.pending;
-  if (p.kind === 'place') {
-    if (!ui.ghost) return null;
-    const cells = ui.ghost.cells.filter(([x, y]) => x >= 0 && y >= 0 && x < state.board.w && y < state.board.h);
-    return cells.length ? renderer.cellsBounds(cells, renderer.heightOf(ui.card.key)) : null;
-  }
-  if (p.kind === 'tile') { const t = tileById(p.tileId); return t ? renderer.cellsBounds(t.cells, renderer.heightOf(t.key)) : null; }
-  const [gx, gy, gw, gh] = renderer.edgeRegion(p.edge);
-  const pts = [[gx, gy], [gx + gw, gy], [gx, gy + gh], [gx + gw, gy + gh]].map(([x, y]) => renderer.project(x, y));
-  return { x0: Math.min(...pts.map(q => q[0])), x1: Math.max(...pts.map(q => q[0])), y0: Math.min(...pts.map(q => q[1])), y1: Math.max(...pts.map(q => q[1])) };
-}
-// Called every frame, since the camera and the badge both move under it. Tries
-// under the target, over it, then either side, and takes the first spot that
-// keeps the target, its badge, the card bar and the zoom buttons all in view.
-function placeConfirm() {
-  const pop = $('confirm-pop');
-  if (!ui.pending || pop.classList.contains('hidden')) return;
-  const b = pendingBounds();
-  if (!b) return;
-  const bb = renderer.badgeRect;
-  const t = bb ? { x0: Math.min(b.x0, bb.x0), y0: Math.min(b.y0, bb.y0), x1: Math.max(b.x1, bb.x1), y1: Math.max(b.y1, bb.y1) } : b;
-  const wrap = $('board-wrap').getBoundingClientRect();
-  const local = el => { if (el.classList.contains('hidden')) return null; const r = el.getBoundingClientRect(); return { x0: r.left - wrap.left, y0: r.top - wrap.top, x1: r.right - wrap.left, y1: r.bottom - wrap.top }; };
-  const avoid = [t, local($('card-bar')), local($('board-tools'))].filter(Boolean);
-  const w = pop.offsetWidth, ht = pop.offsetHeight, cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2, gap = 10;
-  const clampX = x => Math.max(8, Math.min(x, wrap.width - w - 8)), clampY = y => Math.max(8, Math.min(y, wrap.height - ht - 8));
-  const spots = [[cx - w / 2, t.y1 + gap], [cx - w / 2, t.y0 - gap - ht], [t.x1 + gap, cy - ht / 2], [t.x0 - gap - w, cy - ht / 2]].map(([x, y]) => [clampX(x), clampY(y)]);
-  const overlap = ([x, y], r) => Math.max(0, Math.min(x + w, r.x1) - Math.max(x, r.x0)) * Math.max(0, Math.min(y + ht, r.y1) - Math.max(y, r.y0));
-  // covering the target is worse than covering a button, so it counts double
-  const cost = s => avoid.reduce((a, r, i) => a + overlap(s, r) * (i === 0 ? 2 : 1), 0);
-  const [x, y] = spots.find(s => cost(s) === 0) || spots.reduce((a, s) => cost(s) < cost(a) ? s : a);
-  const pos = `${Math.round(x)},${Math.round(y)}`;
-  if (ui.confirmPos === pos) return;
-  ui.confirmPos = pos;
-  pop.style.left = Math.round(x) + 'px'; pop.style.top = Math.round(y) + 'px';
-}
-
 function onKey(e) {
   if (e.target.closest && e.target.closest('input, select, textarea')) return; // typing a seed is not a shortcut
   if (startPager && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); startPager(e.key === 'ArrowRight' ? 1 : -1); return; }
   if (e.key === 'm' || e.key === 'M') toggleMusic();
   if (e.key === 'Escape') { hidePopup(true); if (ui.pending) clearPending(); else if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
   if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
+  if ((e.key === 'e' || e.key === 'E') && ui.mode === 'place') { cycleSide(); }
   if (e.key === ' ' && ui.mode === 'playback') { e.preventDefault(); ui.pb.playing = !ui.pb.playing; }
   if (!boardInput) return;
   if (e.key === '+' || e.key === '=') boardInput.zoomBy(1.35);
@@ -6916,7 +6972,6 @@ function frame(now) {
       // aiming a Rezoning Permit at an edge outlines what it would demolish
       dangerTiles: ui.mode === 'target' && ui.card && ui.card.key === 'rezoning' && ui.edgeHover && state.board.edges[ui.edgeHover] !== 'green' ? G.rezoningVictims(state, ui.edgeHover) : null,
     });
-    placeConfirm();
   }
   requestAnimationFrame(frame);
 }
@@ -7259,11 +7314,18 @@ function boot() {
   $('btn-zoom-out').addEventListener('click', () => boardInput.zoomBy(1 / 1.35));
   $('btn-zoom-fit').addEventListener('click', () => boardInput.fit());
   $('btn-rotate').addEventListener('click', () => rotate(1));
-  $('btn-place').addEventListener('click', () => { if (ui.mode === 'confirm') playSelected(); else commitPlacement(); });
-  $('btn-place-cancel').addEventListener('click', () => cancelMode());
-  $('btn-card-info').addEventListener('click', () => { layout.cardInfoCollapsed = !layout.cardInfoCollapsed; saveLayout(); renderInfo(); });
+  $('btn-side').addEventListener('click', cycleSide);
+  $('btn-place').addEventListener('click', () => { if (ui.pending) commitPending(); else if (ui.mode === 'confirm') playSelected(); else commitPlacement(); });
+  // ✕ steps back one thing at a time, like Esc: the aim first, then the card
+  $('btn-place-cancel').addEventListener('click', () => { if (ui.pending) clearPending(); else cancelMode(); });
+  $('btn-card-info').addEventListener('click', () => {
+    if (ui.pending) ui.aimInfo = !ui.aimInfo; else { layout.cardInfoCollapsed = !layout.cardInfoCollapsed; saveLayout(); }
+    renderInfo();
+  });
   $('btn-run').addEventListener('click', confirmRunWeek);
   $('btn-reroll').addEventListener('click', () => { const r = G.reroll(state); if (!r.ok) hint(r.reason); cancelMode(); renderAll(); });
+  // the card in hand stays in hand: buying the hours is usually for it
+  $('btn-hours').addEventListener('click', () => { const r = G.buyExtraHours(state); if (!r.ok) hint(r.reason); renderAll(); });
   $('btn-menu').addEventListener('click', () => { if (state) showMenu(); else showStart(); });
   const applyLayout = () => {
     $('main').classList.toggle('side-collapsed', !!layout.sideCollapsed);

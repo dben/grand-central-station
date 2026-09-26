@@ -69,7 +69,8 @@ export const MODES = {
   terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One action point a week, but eight cards in the shop and Extra Shift comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.
-                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320 } },
+                // One move a week is the level, so cash never buys a second.
+                run: { eventEvery: 5, ordinanceWeeks: [4, 10, 18], rareTilesFromWeek: 8, apUpgradeFromWeek: 8, apUpgradeCost: 320, extraHoursFromWeek: 999 } },
 };
 export const MODE_KEYS = Object.keys(MODES);
 for (const [k, m] of Object.entries(MODES)) m.key = k;
