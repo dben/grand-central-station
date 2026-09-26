@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { spawn } from 'node:child_process';
 // UI smoke test. Requires: npm i playwright && npx playwright install chromium
 // (or PW_CHROME=/path/to/chrome to use one that is already installed)
@@ -408,6 +408,51 @@ try {
   });
   check('Sky Harbour starts airside, roadside and gated', sky.mode === 'sky_harbour' && sky.edges.N === 'apron' && sky.edges.S === 'road' && sky.tiles === 1 && !!sky.gate, JSON.stringify(sky));
   await page.screenshot({ path: SP + '/shot15_sky_harbour.png' });
+  // A phone, held both ways up. A finger's tap only aims: the popup by the
+  // target builds, upgrades or plays the card, or drops the aim.
+  for (const dev of ['iPhone 13', 'iPhone 13 landscape']) {
+    const ctx = await browser.newContext({ ...devices[dev] });
+    const ph = await ctx.newPage();
+    ph.on('pageerror', e => errors.push('pageerror: ' + e.message));
+    const px = (x, y) => ph.evaluate(([x, y]) => { const r = window.gcs.renderer; const b = r.canvas.getBoundingClientRect(); const [px, py] = r.cellCenterPx(x, y); return [b.left + px, b.top + py]; }, [x, y]);
+    const tap = async ([x, y]) => { await ph.touchscreen.tap(x, y); await ph.waitForTimeout(300); };
+    const st = () => ph.evaluate(() => ({ tiles: window.gcs.state.board.tiles.length, mode: window.gcs.ui.mode, pending: !!window.gcs.ui.pending }));
+    const popped = async () => await ph.locator('#confirm-pop:not(.hidden)').count() === 1;
+    await ph.goto('http://localhost:8791/', { waitUntil: 'load' }); await ph.waitForTimeout(400);
+    await ph.locator('.mode-track > .mode button.primary').first().tap(); await ph.waitForTimeout(400);
+    check(`${dev}: the timeline starts folded`, await ph.evaluate(() => document.getElementById('main').classList.contains('side-collapsed')));
+    await ph.locator('.card').first().tap(); await ph.waitForTimeout(200);
+    await tap(await px(5, 5));
+    check(`${dev}: a tap aims a tile and pops up the confirm`, (await st()).tiles === 0 && await popped(), JSON.stringify(await st()));
+    await tap(await px(5, 5));
+    check(`${dev}: a second tap still builds nothing`, (await st()).tiles === 0);
+    await ph.locator('#confirm-pop .cp-cancel').tap(); await ph.waitForTimeout(150);
+    const c = await st();
+    check(`${dev}: Cancel drops the aim and keeps the card`, !c.pending && c.mode === 'place' && !await popped(), JSON.stringify(c));
+    // the popup opens under the finger, so the tap's own click must not press it
+    await tap(await px(6, 4));
+    check(`${dev}: the tap that opens the popup does not also press Build`, (await st()).tiles === 0 && await popped());
+    await ph.locator('#confirm-pop .cp-go').tap(); await ph.waitForTimeout(250);
+    check(`${dev}: Build commits`, (await st()).tiles === 1 && !await popped());
+    const cell = await ph.evaluate(() => {
+      const s = window.gcs.state, t = s.board.tiles[0]; s.money += 1000; s.ap = 3;
+      s.shop.cards.push({ id: 'ph-up', slot: 4, type: 'upgrade', key: t.key, name: 'Phone Upgrade', tileName: t.name, cost: 60, levels: 1, costMult: 1 });
+      window.gcs.refresh(); return t.cells[0];
+    });
+    const level = () => ph.evaluate(() => window.gcs.state.board.tiles[0].level);
+    await ph.locator('.card', { hasText: 'Phone Upgrade' }).tap(); await ph.waitForTimeout(200);
+    await tap(await px(...cell));
+    check(`${dev}: an upgrade tap asks before it spends`, await level() === 1 && await popped());
+    await ph.locator('#confirm-pop .cp-go').tap(); await ph.waitForTimeout(250);
+    check(`${dev}: and Upgrade commits`, await level() === 2);
+    await tap(await px(...cell));
+    await ph.locator('#popup button.danger').tap(); await ph.waitForTimeout(150);
+    check(`${dev}: Delete asks once on touch`, (await st()).tiles === 1 && await ph.locator('#btn-delete-confirm').count() === 1);
+    await ph.locator('#btn-delete-confirm').tap(); await ph.waitForTimeout(150);
+    check(`${dev}: and deletes on the second button`, (await st()).tiles === 0);
+    await ph.screenshot({ path: SP + `/shot16_${dev.replace(/ /g, '_')}.png` });
+    await ctx.close();
+  }
 } catch (e) { results.push('TEST ERROR ' + e.message.split('\n').slice(0, 25).join(' | ')); await page.screenshot({ path: SP + '/shot_err2.png' }); }
 console.log(results.join('\n'));
 console.log('console errors:', errors.length ? errors.join('\n') : 'none');

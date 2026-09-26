@@ -110,7 +110,23 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
 /* The canvas fills the whole area and paints the land around the board
    itself; everything else floats over it. */
 #board-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--land); }
-#board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#board { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Things a finger taps: no double-tap zoom, and a long press does not select
+   their text or raise the phone's copy menu. */
+.card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #confirm-pop, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+/* The touch confirm popup: JS pins it under (or over) whatever the tap aimed
+   at, clear of the star badge, and moves it with the camera. */
+#confirm-pop { position: absolute; left: 0; top: 0; z-index: 6; width: min(300px, calc(100% - 16px)); display: flex; flex-direction: column; gap: 6px; background: rgba(26,16,51,0.96); border: 2px solid var(--accent); border-radius: 6px; padding: 8px; box-shadow: var(--hard); }
+#confirm-pop .cp-head { display: flex; align-items: baseline; gap: 8px; font-size: 16px; color: var(--accent); }
+#confirm-pop .cp-head b { flex: 1; min-width: 0; font-weight: 400; }
+#confirm-pop .price { color: var(--muted); font-size: 14px; white-space: nowrap; }
+#confirm-pop .cp-line { font-size: 14px; }
+#confirm-pop .cp-line.warn { color: var(--accent); }
+#confirm-pop .cp-line.bad { color: var(--bad); }
+#confirm-pop .cp-tools { display: flex; gap: 8px; }
+#confirm-pop .cp-tools button { min-height: 44px; padding: 6px 12px; font-size: 16px; }
+#confirm-pop .cp-rot { min-width: 48px; font-size: 20px; }
+#confirm-pop .cp-go { flex: 1; }
 #board:active { cursor: grabbing; }
 #board-hint { position: absolute; left: 12px; top: 12px; right: 230px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
 #board-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; z-index: 5; }
@@ -265,6 +281,10 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
 }
 @media (pointer: coarse) {
   #popup { max-width: 240px; font-size: 14px; }
+  /* fingers need bigger targets than the mouse-sized close and delete buttons */
+  #popup.sticky { padding-right: 50px; }
+  .popup-close { min-width: 40px; min-height: 40px; font-size: 18px; }
+  #popup button.small { min-height: 40px; padding: 6px 12px; }
 }
 /* Phones: the board is the game, so give it the screen and shrink the chrome. */
 @media (max-width: 700px) {
@@ -295,6 +315,48 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   .car-nav { width: 30px; font-size: 22px; }
   .mode-shot { height: 140px; }
   .mode-carousel { gap: 4px; }
+}
+/* A phone on its side: plenty of width, almost no height. The timeline goes
+   back to a column on the right, the chrome shrinks, and the card in hand sits
+   in a panel at the bottom left instead of covering the whole board. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #topbar { gap: 10px; padding: 3px 8px 6px; flex-wrap: nowrap; }
+  #topbar .title { display: none; }
+  .val.blocky { font-size: 17px; letter-spacing: 0; }
+  #playback { gap: 2px; }
+  #playback button.speed, #btn-menu { padding: 3px 8px; font-size: 14px; }
+  #main, #main.holding { grid-template-columns: 1fr 240px; grid-template-rows: none; }
+  #main.side-collapsed { grid-template-columns: 1fr; }
+  #side { border-top: none; border-left: 3px solid var(--line); max-height: none; }
+  #side-panels { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+  .panel { min-width: 0; border-right: none; border-bottom: 1px solid var(--line); }
+  #btn-side-toggle { position: absolute; width: auto; min-height: 30px; border-bottom: none; border-radius: 4px; }
+  #btn-side-toggle::after { content: '▶'; font-size: 16px; }
+  #side-tab::after { content: '◀'; }
+  #board-tools { top: 8px; right: 8px; }
+  #board-tools button { width: 40px; height: 40px; }
+  #board-hint { top: 8px; left: 12px; right: 190px; font-size: 16px; }
+  #shop { gap: 6px; padding: 0 6px 6px; }
+  #shop-actions { padding: 5px; gap: 4px; flex-direction: row; flex-wrap: wrap; width: 176px; justify-content: center; }
+  #wallet { flex-direction: row; width: 100%; justify-content: center; }
+  #shop-actions button { min-width: 0; flex: 1; font-size: 14px; padding: 4px 6px; }
+  #btn-run { width: auto; }
+  .roller { font-size: 16px; min-width: 84px; padding: 2px 8px; }
+  #shop-cards { gap: 6px; padding-top: 4px; }
+  .card { width: 88px; height: 118px; padding: 3px 5px; }
+  .card .name { font-size: 12px; height: 26px; }
+  .card canvas { max-height: 40px; }
+  .card .icon { font-size: 20px; line-height: 40px; height: 40px; }
+  .card .sub { font-size: 12px; }
+  .card .cost { font-size: 14px; }
+  #card-bar, #main.holding #card-bar { left: 8px; right: auto; bottom: 8px; width: min(340px, 48%); transform: none; }
+  #card-bar-desc { max-height: 30vh; }
+  #card-bar-tools button { min-height: 40px; }
+  #btn-run-big { font-size: 17px; padding: 10px 18px; }
+  #modal { padding: 8px; }
+  #modal-box { padding: 12px 14px; max-height: 96vh; }
+  #modal-box #chart { height: 110px; }
+  .mode-shot { height: 110px; }
 }
 
 #popup { position: fixed; z-index: 20; background: var(--panel); border: 2px solid var(--blue); border-radius: 4px; padding: 10px 12px; max-width: 280px; box-shadow: 4px 4px 0 var(--ink); font-size: 14px; pointer-events: none; }

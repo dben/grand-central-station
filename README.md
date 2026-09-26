@@ -77,8 +77,8 @@ the points and the shop back to how the week started. Hard and Extreme don't: a 
 ## Controls
 
 - **Drag** to pan, **scroll** or **pinch** to zoom; **Fit** (or **0**) reframes the board.
-- **Click a card**, then click the board to place it. **R** rotates, **Esc** cancels. On touch, tap
-  once to aim and again to build.
+- **Click a card**, then click the board to place it. **R** rotates, **Esc** cancels. On touch, a tap
+  aims, and a popup by the target builds, upgrades or plays the card, or cancels.
 - **Hover** anything for details; **click** a tile to pin its popup (that's where Delete lives).
 - While placing, the **star badge** over the tile shows what it would be worth this week. Red stars
   mean it would lose you points.

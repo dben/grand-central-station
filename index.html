@@ -65,6 +65,9 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
       </div>
+      <!-- On a touch screen a tap only aims: this pops up by the target with the
+           price, and the buttons that commit or drop it -->
+      <div id="confirm-pop" class="hidden" role="dialog" aria-label="Confirm"></div>
       <!-- Nothing left to spend: the big go button, and on Standard the way
            back out of the week under it -->
       <div id="run-stack" class="hidden">

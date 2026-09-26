@@ -825,9 +825,19 @@ and drops the phrase:
   cards' own place instead of stacking above them — the tray keeps its height, so the board does not
   move — and **✕** hands the space back to the cards.
 - **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates.
-- **Touch** has no hover, so the first tap aims and a second tap builds.
+- **Touch** has no hover, and a finger misses, so a tap only aims — a tile, an upgrade, a bonus
+  card on a tile or an edge alike. A popup opens by the target with the price and **✓ Build**
+  (**Upgrade**, **Play**, **Rezone**), **✕ Cancel**, and **⟳** for a tile that turns. It sits under
+  the target and its star badge, or over them or beside them when the card bar or the zoom buttons
+  are in the way, and follows the camera. Tapping elsewhere re-aims; Cancel drops the aim and keeps
+  the card, and the bar's **✕** puts the card back. A spot that will not take the tile says why in
+  the popup, where a long reason wraps, instead of in the badge. A Rezoning Permit lists the
+  transports it would tear down in the popup, so it does not ask a second time. While the popup is
+  up the bar hides its own Build and Rotate, so there is one button to press. A mouse click still
+  commits at once.
 - **Tile details:** hover a card or tile to see them; click a tile to pin the popup, which carries
-  the Delete button and a close button, and stays inside the screen on a phone.
+  the Delete button and a close button, and stays inside the screen on a phone. On touch, Delete
+  asks once (**Keep** / **Delete**) before it acts.
 - **Targeted cards:** upgrades and bonus cards that need a target highlight the valid tiles (or
   edges, for Rezoning Permit), and the bar says what to pick.
 - **Run Week** asks for confirmation only while AP is unspent, and shows the unspent pips and what they pay. Once all AP is spent, a large Run Week button also appears on the board.
@@ -842,7 +852,13 @@ and drops the phrase:
 - **On a phone:** the side panel starts collapsed, the top bar and cards shrink, the page is sized
   to the visible viewport (`dvh`) so the tray is not hidden behind the address bar, a card in hand
   covers the cards rather than the board, and controls take a tap without the double-tap zoom
-  delay.
+  delay. A long press neither selects text nor raises the copy menu, and on the board it is not a
+  right click, so it cannot rotate or drop the card in hand. The canvas swallows the click a tap
+  leaves behind, or it would land on the confirm popup the tap has just opened under the finger.
+- **A phone on its side** (landscape, under 500px tall) keeps the side panel as a column on the
+  right, since width is what it has, starts with it collapsed, and shrinks the cards to 88×118 and
+  the wallet to one row. The card bar sits bottom-left at half the width rather than across the
+  board, and the summary chart drops to 110px so its buttons stay on screen.
 
 ---
 
