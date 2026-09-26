@@ -821,6 +821,8 @@ and drops the phrase:
   shows no terrain word; the popup and card bar still spell the terrain out (§13.3).
 - A card's bottom line holds its tier in the left corner and its price in the right, so the price
   stays inside the short phone cards.
+- A tile card's shape preview is drawn in the first orientation that is at least as wide as it is
+  tall, since the preview box is landscape; an upright L5 would otherwise draw at half size.
 
 ### 12.6 Controls
 
