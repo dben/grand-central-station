@@ -883,7 +883,7 @@ export class BoardRenderer {
       else if (e === 'W' && x === 0) out.push([-1, y]); else if (e === 'E' && x === this.w - 1) out.push([this.w, y]);
     }
     const info = {
-      tile: t, def: d, z, flush: z <= 0, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
+      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0,
       color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
@@ -928,30 +928,30 @@ export class BoardRenderer {
   cellWalls(x, y, info) {
     const ctx = this.ctx, dz = info.z * this.hz;
     if (dz <= 0.001) return;
+    // A glass box (a tile with floor art under an open top) has panes for
+    // walls: a wash of its colour with the frame drawn round it, so the floor
+    // and the crowd show through. A building's walls are solid.
     const face = (g0, g1, f) => {
       const a = this.project(g0[0], g0[1]), b = this.project(g1[0], g1[1]);
       ctx.beginPath();
       ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b[0], b[1] - dz); ctx.lineTo(a[0], a[1] - dz);
-      ctx.closePath(); ctx.fillStyle = shade(info.color, f); ctx.fill();
+      ctx.closePath();
+      if (!info.glass) { ctx.fillStyle = shade(info.color, f); ctx.fill(); return; }
+      ctx.save(); ctx.globalAlpha = 0.2; ctx.fillStyle = info.color; ctx.fill(); ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = shade(info.color, f + 0.2); ctx.lineWidth = Math.max(1, this.k * 0.02); ctx.stroke(); ctx.restore();
     };
     if (!info.set.has(x + ',' + (y + 1))) face([x, y + 1], [x + 1, y + 1], 0.52);
     if (!info.set.has((x + 1) + ',' + y)) face([x + 1, y], [x + 1, y + 1], 0.70);
   }
 
-  // One cell's column: its contact shadow, the walls it exposes, its slice of
-  // the top face, and the outline of whichever footprint edges it owns.
-  // Under layer: the shadow the tile casts and the ground it stands on.
+  // One cell's column: the walls it exposes, its slice of the top face, and
+  // the outline of whichever footprint edges it owns.
+  // Under layer: the ground the tile stands on.
   // Travellers paint on top of this and under drawTileRoof, so anyone who
   // steps inside is covered by the building. Give a tile a `<key>_floor.png`
   // and its interior art (seats, tiling) lands here with the crowd on top.
   drawTileFloor(x, y, info) {
     const ctx = this.ctx;
-    // Nothing standing up means nothing to cast a shadow, and no dark base
-    // course under the top face: a flush tile is only its own surface.
-    if (!info.flush && (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y))) {
-      ctx.save(); ctx.globalAlpha = 0.3; ctx.translate(0, this.k * 0.035);
-      this.cellPath(x, y); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
-    }
     if (info.floorImg) {
       this.drawCellSprite(x, y, info, info.floorImg, 0);
       if (info.flush) {

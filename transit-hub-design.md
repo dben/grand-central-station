@@ -928,23 +928,30 @@ contact sheet of the lot).
   drop whole rows.
 - **Two layers:** `SPRITES` is the over layer (`<key>.png`: roofs, vehicles, canopies) and
   `SPRITES_FLOOR` the under layer (`<key>_floor.png`), with the crowd drawn between them.
-  - A shop has an opaque over layer on its top face, so a traveller who steps inside vanishes
-    into it.
+  - A shop has an opaque over layer on its top face and solid walls, so a traveller who steps
+    inside vanishes into it.
   - A transport, and a coffee or souvenir cart, is a glass box: its ground (platform, road,
     track, water) is the floor, with the crowd on it, and its over layer holds only what stands
     over that ground - a shelter, a sign - with clear pixels between, so the floor and the crowd
-    show through the top.
+    show through the top. Its walls are panes: a faint wash of the tile's colour inside a frame,
+    so the crowd shows through the front too. Any raised tile with floor art is drawn this way.
   - A flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) keeps its
     art on the floor, under the crowd, with a kerb in the tile's colour since it has no walls.
     Anything in its over layer that is not a block hangs at `CANOPY_Z`.
-  - A low walk-through tile (guard, checkpoint, Flier Club, Chrono Lounge) has floor art only and
-    draws as an open-topped box.
+  - A low walk-through tile (guard, Flier Club, Chrono Lounge) has floor art only and draws as an
+    open-topped glass box. The checkpoint adds its scanner arch and bag scanner as blocks; its
+    lane runs the length of the booth, through the arch on the fence line, the way the fence
+    between its two cells makes travellers cross it.
+  - No tile casts the old offset drop shadow: it showed as a dark sliver under every glass box.
 - **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
   a base and top height: vehicles, tree tops, the balloon, a rental office. The renderer draws a
   block as a stack of darkened copies of its own pixels, one per screen pixel (a dozen at most),
   with the art on top, so the sides follow the outline of the car or the hull. The dark copy
   paints the ink outline over in the colour just inside it, so a red car has dark red sides
-  rather than black ones. A `round` block narrows at the top and bottom, so a tree top or a
+  rather than black ones. A block with a base above zero floats: aircraft, tree tops, gondolas
+  and the balloon. `tileart.mjs` casts each floating block's own outline onto the floor as its
+  shadow, and past the board's edge, where the floor is empty, the shadow is a see-through wash
+  over the strip (tile PNGs carry alpha, `#rrggbbaa` in the drawing code). A `round` block narrows at the top and bottom, so a tree top or a
   balloon bulges instead of reading as a drum. Each cell draws the part of a block over its own
   ground, clipped to its column, so the wall of a glass box in front still covers a bus behind
   it. The flat over layer is drawn with the blocks cut out. `tileart.mjs` records blocks as it
