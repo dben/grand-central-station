@@ -145,6 +145,23 @@ export const ISO_MAPS = {
 // key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
 // floor, over: [sheet x, sheet y, w, h, frame x, frame y] } }. Frame coordinates are
 // screen pixels from the ground point of the turned bounding box's top corner.
+// The ground textures: 128 x 64, tiling the plane from the grid's origin (see the ground section).
+export const GROUND_TEX = {
+  grass: 'assets/ground/grass.png',
+  lawn: 'assets/ground/lawn.png',
+  sea: 'assets/ground/sea.png',
+  concourse: 'assets/ground/concourse.png',
+  asphalt: 'assets/ground/asphalt.png',
+  ballast: 'assets/ground/ballast.png',
+  road_x: 'assets/ground/road_x.png',
+  road_y: 'assets/ground/road_y.png',
+  rail_x: 'assets/ground/rail_x.png',
+  rail_y: 'assets/ground/rail_y.png',
+  apron_x: 'assets/ground/apron_x.png',
+  apron_y: 'assets/ground/apron_y.png',
+  runway_x: 'assets/ground/runway_x.png',
+  runway_y: 'assets/ground/runway_y.png',
+};
 export const ISO_FRAMES = {
   bus_stop: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,57,-63,-9]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,116,94,48,-31,0],"over":[96,116,94,57,-31,-9]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,175,94,48,-63,0],"over":[96,175,94,55,-63,-7]}]},
   bike_rental: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,55,-63,-7]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,114,94,48,-31,0],"over":[96,114,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,171,94,48,-63,0],"over":[96,171,94,55,-63,-7]}]},

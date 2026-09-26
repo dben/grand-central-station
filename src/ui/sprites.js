@@ -1,6 +1,6 @@
 import { tileDef } from '../data/tiles.js';
 import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS, SPRITE_SINKS } from './tilesprites.js';
-import { ISO_SHEETS, ISO_MAPS, ISO_FRAMES } from './isosprites.js';
+import { ISO_SHEETS, ISO_MAPS, ISO_FRAMES, GROUND_TEX } from './isosprites.js';
 
 // Board tile art, drawn by harness/tileart.mjs, which also writes the manifest
 // (tilesprites.js): tile key -> PNG drawn top-down in the shape's BASE
@@ -127,6 +127,7 @@ export function loadSprites(onLoad) {
   load(SPRITES_FLOOR, 'floor:');
   load(ISO_SHEETS, 'iso:');
   load(ISO_MAPS, 'isomap:');
+  load(GROUND_TEX, 'ground:');
 }
 function get(id) {
   const e = cache.get(id);
@@ -136,6 +137,8 @@ export function sprite(key) { const e = cache.get(key); return e && e.ok ? e.fla
 // the whole over layer and its darkened copy, for drawing blocks
 export function spriteBlockArt(key) { const e = cache.get(key); return e && e.ok && e.side ? { top: e.img, side: e.side } : null; }
 export function spriteFloor(key) { return get('floor:' + key); }
+// A ground texture (isoart.mjs): 128 x 64, tiling the plane from the grid's origin.
+export function groundImg(name) { return get('ground:' + name); }
 
 // ---- isometric sheets -------------------------------------------------------
 // Drawn by harness/isoart.mjs (the manifest is isosprites.js): each tile's art

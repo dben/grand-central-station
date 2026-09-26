@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, groundImg, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -236,6 +236,26 @@ export class BoardRenderer {
   // Path around a grid-space rect, optionally raised by `z` grid units.
   regionPath(gx, gy, gw, gh, z = 0) { this.ctx.beginPath(); this.rectPath(gx, gy, gw, gh, z); }
   cellPath(x, y, z = 0) { this.regionPath(x, y, 1, 1, z); }
+  // A ground texture as a fill, pinned to the grid so its pixels line up with
+  // the tile sheets': its origin at grid point (dx, dy), moved `drift` art
+  // pixels to the right (the sea's crests). Null in the flat look, or until it loads.
+  groundFill(name, dx = 0, dy = 0, drift = 0) {
+    const img = this.artMode === 'iso' && groundImg(name);
+    if (!img) return null;
+    this.patterns = this.patterns || new Map();
+    if (!this.patterns.has(name)) this.patterns.set(name, this.ctx.createPattern(img, 'repeat'));
+    const p = this.patterns.get(name), s = this.k / ISO_CELL_PX, [ox, oy] = this.project(dx, dy);
+    p.setTransform(new DOMMatrix([s, 0, 0, s, ox + drift * s, oy]));
+    return p;
+  }
+  // An edge strip's texture: its terrain turned to run along the edge and
+  // centred across the strip, so the runs past the corners carry on in step.
+  stripFill(e, terrain) {
+    const [gx, gy, gw, gh] = this.edgeRegion(e);
+    if (terrain === 'green') return this.groundFill('lawn');
+    if (!['road', 'rail', 'apron'].includes(terrain)) return null;
+    return e === 'N' || e === 'S' ? this.groundFill(terrain + '_x', 0, gy + gh / 2 - 1) : this.groundFill(terrain + '_y', gx + gw / 2 - 1, 0);
+  }
   fillRegion(gx, gy, gw, gh, color, z = 0) { this.regionPath(gx, gy, gw, gh, z); this.ctx.fillStyle = color; this.ctx.fill(); }
   fillCell(x, y, color, z = 0) { this.fillRegion(x, y, 1, 1, color, z); }
   // Path around the union of a tile's cells (its footprint outline).
@@ -427,13 +447,16 @@ export class BoardRenderer {
   // corners until they leave the screen or reach the shore.
   drawWorld(board) {
     const ctx = this.ctx, vb = this.visibleGrid(), m = EDGE_MARGIN;
-    ctx.fillStyle = WORLD_LAND; ctx.fillRect(0, 0, this.viewW, this.viewH);
+    // pixel textures show crisp once a texture pixel covers a screen pixel
+    ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < ISO_CELL_PX;
+    ctx.fillStyle = this.groundFill('grass') || WORLD_LAND; ctx.fillRect(0, 0, this.viewW, this.viewH);
     const water = EDGES.filter(e => board.edges[e] === 'water');
     const seas = water.map(e => this.seaRegion(e, vb)).filter(Boolean);
     if (seas.length) {
       ctx.beginPath(); for (const r of seas) this.rectPath(...r);
-      ctx.fillStyle = TERRAIN_COLORS.water; ctx.fill();
-      this.drawWaves(seas);
+      const sea = this.groundFill('sea', 0, 0, Math.floor(this.time * 3) % 128);
+      ctx.fillStyle = sea || TERRAIN_COLORS.water; ctx.fill();
+      if (!sea) this.drawWaves(seas);
       // surf along each shoreline
       ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.beginPath();
       for (const e of water) {
@@ -454,7 +477,8 @@ export class BoardRenderer {
       const ta = board.edges[a], tb = board.edges[b];
       if (!RUNS.has(ta) || !RUNS.has(tb)) continue;
       const cx = a === 'E' || b === 'E' ? this.w : -m, cy = a === 'S' || b === 'S' ? this.h : -m;
-      this.fillRegion(cx, cy, m, m, TERRAIN_COLORS[ta === 'road' || tb === 'road' ? 'road' : 'rail']);
+      const road = ta === 'road' || tb === 'road';
+      this.fillRegion(cx, cy, m, m, this.groundFill(road ? 'asphalt' : 'ballast') || TERRAIN_COLORS[road ? 'road' : 'rail']);
       for (const [e, t] of [[a, ta], [b, tb]]) if (t === 'rail') this.edgeTexture(e, t, cx, cy, m, m);
     }
   }
@@ -486,9 +510,9 @@ export class BoardRenderer {
     const [lo, hi] = this.runRange(e, board, vb);
     for (const [a, b] of [[lo, 0], [len, hi]]) {
       if (b <= a) continue;
-      const r = horiz ? [a, sy, b - a, sh] : [sx, a, sw, b - a];
-      this.fillRegion(...r, TERRAIN_COLORS[terrain]);
-      this.edgeTexture(e, terrain, ...r);
+      const r = horiz ? [a, sy, b - a, sh] : [sx, a, sw, b - a], fill = this.stripFill(e, terrain);
+      this.fillRegion(...r, fill || TERRAIN_COLORS[terrain]);
+      if (!fill) this.edgeTexture(e, terrain, ...r);
     }
   }
 
@@ -501,18 +525,23 @@ export class BoardRenderer {
     const along = e === 'N' || e === 'S' ? this.w : this.h;
     const r = e === 'N' ? [0, -m - d, along, d] : e === 'S' ? [0, this.h + m, along, d]
       : e === 'W' ? [-m - d, 0, d, along] : [this.w + m, 0, d, along];
-    this.fillRegion(...r, RUNWAY.fill);
-    this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
     // u runs the length of the runway, v across it
     const horiz = e === 'N' || e === 'S';
     const at = (u, v) => horiz ? [r[0] + u, r[1] + v * d] : [r[0] + v * d, r[1] + u];
+    // the texture carries the kerb, the side stripes and the centre line
+    const tex = horiz ? this.groundFill('runway_x', 0, r[1]) : this.groundFill('runway_y', r[0], 0);
+    this.fillRegion(...r, tex || RUNWAY.fill);
+    if (!tex) {
+      this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
+      ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
+      ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
+      this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
+      for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
+      ctx.stroke();
+    }
     ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
-    ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
-    this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
-    ctx.stroke();
-    ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
-    for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
-    ctx.stroke();
     if (this.k < 12) return;   // the keys turn to mush below that
     ctx.lineWidth = Math.max(1, this.k * 0.055); ctx.beginPath();
     for (const [u0, u1] of [[0.2, 1.0], [along - 1.0, along - 0.2]])
@@ -545,10 +574,11 @@ export class BoardRenderer {
       const r = e === 'N' ? [band, vb.y0, m, cy - vb.y0] : e === 'S' ? [band, cy, m, vb.y1 - cy]
         : e === 'W' ? [vb.x0, band, cx - vb.x0, m] : [cx, band, vb.x1 - cx, m];
       if (r[2] > 0 && r[3] > 0) {
-        this.fillRegion(...r, TERRAIN_COLORS.rail);
-        this.edgeTexture(n, 'rail', ...r);   // the run follows n, so its sleepers do too
+        const fill = this.stripFill(n, 'rail');   // the run follows n, so its sleepers do too
+        this.fillRegion(...r, fill || TERRAIN_COLORS.rail);
+        if (!fill) this.edgeTexture(n, 'rail', ...r);
       }
-      this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail);
+      this.fillRing(cx, cy, R - m, R, aStrip, a1, this.groundFill('ballast') || TERRAIN_COLORS.rail);
       // the same two rails and sleepers edgeTexture lays, bent round the bend
       ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045);
       ctx.beginPath();
@@ -593,9 +623,9 @@ export class BoardRenderer {
       const terrain = board.edges[e];
       // a water strip is just the near shore of the sea drawWorld painted
       if (terrain !== 'water') {
-        const strip = this.edgeStripRegion(board, e);
-        this.fillRegion(...strip, TERRAIN_COLORS[terrain] || '#333');
-        this.edgeTexture(e, terrain, ...strip);
+        const strip = this.edgeStripRegion(board, e), fill = this.stripFill(e, terrain);
+        this.fillRegion(...strip, fill || TERRAIN_COLORS[terrain] || '#333');
+        if (!fill) this.edgeTexture(e, terrain, ...strip);
       }
       // Subway portals: where a line leaves the board it dives under the strip
       // and the track carries on out of the view, the way a railway does. A
@@ -622,7 +652,10 @@ export class BoardRenderer {
 
   drawGround(view, board) {
     const ctx = this.ctx;
-    for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
+    // the concourse texture carries the checker and the joints between squares
+    const floor = this.groundFill('concourse');
+    if (floor) this.fillRegion(0, 0, board.w, board.h, floor);
+    else for (let y = 0; y < board.h; y++) for (let x = 0; x < board.w; x++) this.fillCell(x, y, BOARD_CELLS[(x + y) % 2]);
     // A driveway carries the terrain it runs out to, so a boat's jetty and a
     // prop plane's taxiway read as water and tarmac rather than as tarmac road.
     for (const [x, y, terr] of board.driveways) {
@@ -635,7 +668,7 @@ export class BoardRenderer {
     for (const [x, y] of board.lanes) if (!tracked.has(x + ',' + y)) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
-    if (this.k >= 14) {
+    if (this.k >= 14 && !floor) {
       ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
       for (let x = 0; x <= board.w; x++) this.line([x, 0], [x, board.h]);
       for (let y = 0; y <= board.h; y++) this.line([0, y], [board.w, y]);

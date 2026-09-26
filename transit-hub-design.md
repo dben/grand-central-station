@@ -1047,8 +1047,22 @@ contact sheet of the lot).
     band, shown only where it lies past the board's edge) or 2 (anything else a vehicle reaches,
     such as a wing over the next square, always shown and painted at that square's depth). The
     flat renderer still clips to the tile and keeps the old narrow aircraft.
-  The 67 sheets and their maps come to about 0.8 MB. Measured on the full catalogue board in
-  headless Chromium, drawing takes 5-7 ms a frame against 13-15 ms for the flat art with blocks.
+  - *Ground:* the land round the board, the sea, the edge strips and the concourse are filled
+    with pixel textures from the same bake, `assets/ground/<name>.png`, in the sheets' pixel
+    grid: 128 x 64 pictures that tile the plane from the grid's origin, so their pixels line up
+    with the tiles'. Each is drawn top-down over 2 x 2 squares and projected, except the sea,
+    drawn straight on the screen's pixels so its crests lie level. Road, rail and apron come
+    in two turns (`_x` along N and S, `_y` along E and W) and are laid centred across their
+    strip, so the runs past the corners carry on in step with the strip beside the board:
+    tarmac with white kerb lines and a dashed yellow centre, purple ballast with sleepers and
+    two rails, concrete slabs with a taxi line. The runway texture carries its kerb, side
+    stripes and centre line (the piano keys at its ends are still drawn), the concourse its
+    grey checker with a joint round each square in place of the grid lines, and the corner
+    junctions and the shore bend plain asphalt or ballast. The crests drift a pixel at a
+    time. Everything drawn over the ground (driveways, lanes, tunnels, portals, highlights)
+    is unchanged, and the flat look keeps the old vector ground.
+  The 69 sheets and their maps come to about 0.8 MB, the ground textures to 60 KB. Measured on the full catalogue board in
+  headless Chromium, drawing takes 4-7 ms a frame against 11-15 ms for the flat art with blocks.
   The cost is the look at in-between zooms: nearest-neighbour at a scale that is not a whole
   number doubles some pixel columns and not others, so fine top-down detail (a 1 px stripe in an
   icon) turns into a zigzag, where the flat renderer's turned art blends. `renderer.artMode =
