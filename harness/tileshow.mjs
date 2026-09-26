@@ -81,7 +81,8 @@ try {
     s.board = b;
     const want = [['jetway', 2, 0], ['jumbo_jetway', 6, 0], ['private_terminal', 10, 0], ['cruise_dock', 1, 11], ['water_taxi', 9, 11], ['ferry', 13, 10],
       ['train_station', 0, 1], ['express_train', 0, 6], ['bus_stop', 15, 1], ['taxi_stand', 15, 4], ['car_rental', 14, 7],
-      ['parking_lot', 4, 2], ['green_space', 7, 5], ['helipad', 10, 4], ['monorail', 3, 8], ['coffee_cart', 9, 7]];
+      ['parking_lot', 4, 2], ['green_space', 7, 5], ['helipad', 10, 4], ['monorail', 3, 8], ['coffee_cart', 9, 7],
+      ['ski_lift', 6, 3], ['tram_stop', 11, 6], ['alpine_lift', 3, 3]];
     const got = [];
     for (const [key, x, y] of want) {
       let ok = false;

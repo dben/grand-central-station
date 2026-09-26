@@ -997,6 +997,13 @@ contact sheet of the lot).
   cruise ship lies off its quay, the train stations' trains wait on the line past the edge, the
   water taxi's boats sit in the water, and the jetways' airliners stand on the apron. Tiles that
   do not touch the edge (a driveway stop, a `reach` tile) keep everything on the board.
+- **Corridor tracks:** a corridor tile's lane (§4) is drawn as its track rather than hatched. A
+  tile with `lane` art in `tileart.mjs` gets a one-square image, `<key>_lane`, that `laneInfos`
+  lays along every square of the lane and one past the edge, turned to run with it: the
+  monorail's beam on a post a square, the lifts' two cables with a gondola out on one and back
+  on the other, the tram's rails in the floor. Beam, cables and gondolas are floating blocks at
+  the height they have on the tile, so the crowd walks across the lane under them. A lane whose
+  tile has no track art keeps its hatching.
 - **Colour:** the main surfaces take the tile's own colour (`colorForDef`), and the walls stay the
   flat shaded colour, so the board keeps its colour code with the art on. Vehicles, water and grass
   keep their own colours. The label still sits over the middle of every tile.
