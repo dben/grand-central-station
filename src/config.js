@@ -216,6 +216,11 @@ export const CONFIG = {
     // Sims per estimate. The "without" runs are cached for the phase, so a
     // preview costs one sim per seed; the badge shows the mean over them.
     previewSeeds: 8,
+    // The badge quotes a range, not the mean: from the worst to the best of
+    // those weeks once this many are dropped from each end, so one freak week
+    // cannot stretch it. The real week is one more draw from the same spread
+    // (§12.2, §15).
+    rangeTrim: 1,
   },
 };
 

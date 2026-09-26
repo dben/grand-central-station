@@ -873,9 +873,9 @@ function frame(now) {
 }
 
 // What the pending action is worth, floated over the tile it would affect.
-// Estimates are a spread across a few seeds; the badge shows their midpoint as
-// a single star count so there is one number to read, not a range.
-const estStars = e => e ? starsOf(e.pts) : null;
+// Estimates are a spread across a few seeds, and the week is one more of them,
+// so the badge quotes the range in stars: [from, to], both rounded down.
+const estStars = e => e ? [starsOf(e.ptsFrom), starsOf(e.ptsTo)] : null;
 function starBadge() {
   if (state.phase !== 'shop' || !ui.card) return null;
   if (ui.mode === 'place') {
