@@ -1,33 +1,24 @@
 #!/usr/bin/env node
 // Bakes the board tiles into isometric sprite sheets, drawn in screen space:
-//   node harness/isoart.mjs [key ...]   -> assets/iso/<key>.png and src/ui/isosprites.js
+//   node harness/isoart.mjs [key ...]   -> assets/iso/<key>.png, <key>_map.png and src/ui/isosprites.js
 // The drawings are tileart.mjs's own top-down art. This ray-casts them once, here,
 // into the classic 2:1 pixel projection (a cell is a 64x32 diamond, and a tile
 // height unit is 64 * H_UNIT pixels), with the walls, the vehicles and the tree
 // tops stood up as solid shapes. The renderer then only copies pixels.
 //
-// Three old tricks keep the drawing count down:
-//  - Mirroring. Flipping a view left to right is the same as swapping the grid's
-//    x and y, so of a tile's eight orientations only the four turns are baked;
-//    the mirrored four are those frames flipped (see isoFrame in sprites.js).
-//  - Shading after the fact. A flip moves a south wall onto the right-hand side,
-//    where the light is, so walls are stored unlit with a face index (top, left,
-//    right) and the light is applied when the sheet is loaded, per side.
-//  - Palette swaps. Every sheet is drawn twice, in two greys, and each pixel is
-//    stored as base + weight x tile colour. The game colours a sheet by the tile's
-//    colour at load, and a full or closed tile is the same sheet in a grey palette.
-//
-// A sheet is a PNG twice the height of its pieces: the top half is the base
-// colour and alpha, the bottom half the control data (red: tint weight x 100,
-// green: face x 60). Each frame is cut into one piece per cell, owned by the cell
-// under the surface that shows there, so the renderer keeps painting cell by cell
-// back to front and a long building still interleaves with its neighbours.
+// The sheets it writes are plain pictures, safe to touch up in an image editor
+// (see the baking section below for the layout and the map that goes with them).
+// Mirroring halves the drawing: of a tile's eight orientations only the four
+// turns are baked, and the game flips them for the rest and relights the flip
+// from the map. Vehicles are sprite stacks (c.stack in tileart.mjs): drawn slice
+// by slice from the wheels up, so their sides carry their own detail, and free
+// to reach past the tile (an airliner's wings over the next squares).
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drawAll, CELL, hex, png } from './tileart.mjs';
 import { tileDef } from '../src/data/tiles.js';
-import { tileHeight, H_UNIT, CANOPY_Z } from '../src/ui/render.js';
+import { tileHeight, H_UNIT, CANOPY_Z, colorForDef } from '../src/ui/render.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HZ = 2 * CELL * H_UNIT;          // screen pixels per unit of tile height
@@ -46,9 +37,15 @@ function scene(key, layers, grey) {
   const z = lane ? 0 : tileHeight(def);
   const px = s => s ? s.px.map(rgba) : null;
   const floor = px(layers.floor), over = px(layers.over);
-  const blocks = (layers.over ? layers.over.blocks : []).map(b => { const [x, y, w, h, z0, z1, round] = b; return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack }; });
-  // the flat part of the over layer: the blocks' rectangles are cut out of it
-  const flat = over && over.map((p, i) => { const x = i % IW, y = (i / IW) | 0; return blocks.some(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) ? null : p; });
+  const all = (layers.over ? layers.over.blocks : []).map(b => {
+    const [x, y, w, h, z0, z1, round] = b, k = b.stack;
+    return { x, y, w, h, lo: (k && k.z0 != null ? k.z0 : z0) * HZ, hi: (k && k.z1 != null ? k.z1 : z1) * HZ, round: !!round && !k, cx: x + w / 2, cy: y + h / 2, stack: k, hide: b.hide };
+  });
+  const blocks = all.filter(b => !b.hide);
+  // the flat part of the over layer: every block's rectangle is cut out of it,
+  // and whatever a stack now draws in the round
+  const cuts = (layers.over ? layers.over.cuts : []).map(([x, y, w, h]) => ({ x, y, w, h }));
+  const flat = over && over.map((p, i) => { const x = i % IW, y = (i / IW) | 0; return all.concat(cuts).some(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) ? null : p; });
   // a block's sides: its art with the ink outline painted over in the colour
   // just inside it, so a red car's side reads red rather than black
   let side = over && over.slice();
@@ -65,7 +62,14 @@ function scene(key, layers, grey) {
       : dir === 'S' ? [x, y + h * i / n, w, h / n] : [x, y + h * (n - 1 - i) / n, w, h / n];
     sinks.push({ x: r[0], y: r[1], w: r[2], h: r[3], d: (n > 1 ? d0 + (d1 - d0) * i / (n - 1) : d1) * HZ });
   }
-  return { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
+  // what the frame must cover: the drawing and its band, and any vehicle that
+  // reaches past them (an airliner's wings over the next squares)
+  const ext = [-ox, -oy, IW - ox, IH - oy];
+  for (const { stack: k } of blocks) if (k) {
+    const [w, h] = k.vertical ? [k.D, k.L] : [k.L, k.D];
+    ext[0] = Math.min(ext[0], k.x - ox); ext[1] = Math.min(ext[1], k.y - oy); ext[2] = Math.max(ext[2], k.x + w - ox); ext[3] = Math.max(ext[3], k.y + h - oy);
+  }
+  return { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
     glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
 }
 
@@ -81,7 +85,8 @@ function frameOf(s, m) {
     return [Math.floor(x + s.W / 2), Math.floor(y + s.H / 2)];
   };
   // the padded image's corners, turned, bound the frame
-  const pts = [[-s.ox, -s.oy], [s.IW - s.ox, -s.oy], [-s.ox, s.IH - s.oy], [s.IW - s.ox, s.IH - s.oy]].map(([u, v]) => {
+  const [e0, e1, e2, e3] = s.ext;
+  const pts = [[e0, e1], [e2, e1], [e0, e3], [e2, e3]].map(([u, v]) => {
     let x = u - s.W / 2, y = v - s.H / 2;
     for (let i = 0; i < m; i++) [x, y] = [-y, x];
     return [x + W2 / 2, y + H2 / 2];
@@ -104,14 +109,15 @@ function blockAt(s, b, u, v, h, top = false) {
   let x = u + s.ox + 0.5, y = v + s.oy + 0.5;
   if (b.round) { const f = 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (h - b.lo) / (b.hi - b.lo))); x = b.cx + (x - b.cx) / f; y = b.cy + (y - b.cy) / f; }
   x = Math.floor(x); y = Math.floor(y);
-  if (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h) return null;
   const i = y * s.IW + x, k = b.stack;
+  // a stack is bounded by its own plan, which may reach past the block and the drawing
+  if (!k && (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h)) return null;
   if (k) {
     const along = k.vertical ? y - k.y : x - k.x, across = k.vertical ? x - k.x : y - k.y;
     if (along < 0 || across < 0 || along >= k.L || across >= k.D) return null;
     // t runs over the block's pixel rows, so the top row is t = 1: the roof
     const lo = Math.floor(b.lo), p = k.fn(along, across, Math.max(0, Math.min(1, (h - lo) / Math.max(1, Math.floor(b.hi) - lo))));
-    if (p === 'top') return s.over[i];
+    if (p === 'top') return x >= 0 && y >= 0 && x < s.IW && y < s.IH ? s.over[i] : null;
     if (p && !stackPx.has(p)) stackPx.set(p, rgba(p));
     return p ? stackPx.get(p) : null;
   }
@@ -140,9 +146,6 @@ function cast(s, f, X, Y, layer) {
   for (let h = hTop; h >= hBot; h--) {
     const U = Y + 0.5 + h + (X + 0.5) / 2, V = Y + 0.5 + h - (X + 0.5) / 2;
     const [u, v] = f.toBase(U, V);
-    // past the drawing: open air above the ground, the ground itself at it
-    if (!inPad(s, u, v)) { if (h <= 0) break; wasIn = false; continue; }
-    const foot = s.inside(u, v);
     // which side of a shape the ray came in through: left (a south face) where the
     // shape ends in front of it along V, right (an east face) where it ends along
     // U, and the middle shade where a curve runs between the two. Looking a few
@@ -152,6 +155,21 @@ function cast(s, f, X, Y, layer) {
       for (let k = 1; k <= 3; k++) { if (!test(...f.toBase(U, V + k))) l += 4 - k; if (!test(...f.toBase(U + k, V))) r += 4 - k; }
       return l > r ? LEFT : r > l ? RIGHT : MID;
     };
+    // past the drawing: open air above the ground, the ground itself at it,
+    // and whatever part of a vehicle reaches out there
+    if (!inPad(s, u, v)) {
+      if (h < 0) break;
+      wasIn = false;
+      if (layer === 'over') for (const b of s.blocks) {
+        const p = b.stack && blockAt(s, b, u, v, h);
+        if (!p) continue;
+        const top = h + 1 > b.hi || !blockAt(s, b, u, v, h + 1);
+        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+      }
+      if (h === 0) break;
+      continue;
+    }
+    const foot = s.inside(u, v);
     if (layer === 'over') {
       for (const b of s.blocks) {
         let p = blockAt(s, b, u, v, h);
@@ -222,69 +240,93 @@ function castFrame(s, f, layer) {
 }
 
 // ---- baking ----------------------------------------------------------------
+// Each tile's sheet is an ordinary picture: its four turns, one row each, the
+// floor layer then the over layer, whole and in their real colours and light,
+// so it can be opened and touched up in any image editor. `<key>_map.png`, the
+// same layout, carries what the picture can't: which cell owns each pixel
+// (green: index + 1 into the manifest's cell list), the face it is on (red:
+// face x 60) and how much of it is the tile's colour (blue: weight x 100). A
+// pixel painted in later with no map under it goes to the cell beneath it.
 const want = process.argv.slice(2);
-const A = drawAll(() => '#' + TA.toString(16).padStart(2, '0').repeat(3)), B = drawAll(() => '#' + TB.toString(16).repeat(3));
+const grey = v => '#' + v.toString(16).padStart(2, '0').repeat(3);
+const A = drawAll(() => grey(TA)), B = drawAll(() => grey(TB));
 const dir = resolve(root, 'assets/iso');
 mkdirSync(dir, { recursive: true });
 const manifest = {};
+const toHex2 = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
 let written = 0;
 for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
-  const frames = [], pieces = [];
+  const tint = colorForDef(sa.def), T = hex(tint);
+  const frames = [];
+  // the band's sides: where the drawing is padded past the bounding box
+  const padded = [sa.oy > 0, sa.IW - sa.ox > sa.W, sa.IH - sa.oy > sa.H, sa.ox > 0];
   for (let m = 0; m < 4; m++) {
-    const f = frameOf(sa, m), fr = {};
+    const f = frameOf(sa, m), fr = { cells: [] }, cellIx = new Map();
+    // a cell of this turn: 0 under the tile, 1 past a padded side (the band,
+    // shown only past the edge it works from), 2 anywhere else it reaches (a wing)
+    const cellOf = (cu, cv) => {
+      const k = cu + ',' + cv;
+      if (!cellIx.has(k)) {
+        const [u, v] = f.toBase((cu + 0.5) * CELL, (cv + 0.5) * CELL);
+        const band = (v < 0 && padded[0]) || (u >= sa.W && padded[1]) || (v >= sa.H && padded[2]) || (u < 0 && padded[3]);
+        cellIx.set(k, fr.cells.length); fr.cells.push([cu, cv, sa.inside(u, v) ? 0 : band ? 1 : 2]);
+      }
+      return cellIx.get(k);
+    };
     for (const layer of ['floor', 'over']) {
       if (layer === 'floor' ? !sa.floor : !(sa.over || (!sa.flush && !sa.lane))) continue;
-      const ha = castFrame(sa, f, layer), hb = castFrame(sb, f, layer);
-      // group by the cell that owns each pixel, then cut a piece per cell
-      const byCell = new Map();
+      const ha = castFrame(sa, f, layer), hb = castFrame(sb, f, layer), list = [];
       for (const [xy, r] of ha) {
-        const rb = hb.get(xy), ck = r.cell.join(',');
-        // base + weight x tint, per pixel; the weight is the same in every channel
-        const w = rb ? (r.c.reduce((a, v, i) => a + v - rb.c[i], 0) / 3) / (TA - TB) : 0;
-        const base = r.c.map(v => v - w * TA);
+        // base + weight x colour; the weight is the same in every channel
+        const rb = hb.get(xy), w = rb ? (r.c.reduce((a, v, i) => a + v - rb.c[i], 0) / 3) / (TA - TB) : 0;
         const [X, Y] = xy.split(',').map(Number);
-        if (!byCell.has(ck)) byCell.set(ck, []);
-        byCell.get(ck).push({ X, Y, base, w, a: r.a, face: r.face });
+        const lit = [1, 0.52, 0.70, 0.61][r.face];
+        list.push({ X, Y, c: r.c.map((v, i) => Math.min(255, v + w * (T[i] - TA)) * lit), a: r.a, w, face: r.face, cell: cellOf(...r.cell) });
       }
-      fr[layer] = [];
-      for (const [ck, list] of byCell) {
-        const [cu, cv] = ck.split(',').map(Number);
-        const x0 = Math.min(...list.map(p => p.X)), y0 = Math.min(...list.map(p => p.Y));
-        const w = Math.max(...list.map(p => p.X)) - x0 + 1, h = Math.max(...list.map(p => p.Y)) - y0 + 1;
-        const piece = { cu, cv, x0, y0, w, h, list };
-        pieces.push(piece); fr[layer].push(piece);
-      }
+      if (!list.length) continue;
+      const x0 = Math.min(...list.map(p => p.X)), y0 = Math.min(...list.map(p => p.Y));
+      fr[layer] = { x0, y0, w: Math.max(...list.map(p => p.X)) - x0 + 1, h: Math.max(...list.map(p => p.Y)) - y0 + 1, list };
     }
     frames.push(fr);
   }
-  // shelf-pack every piece of every frame onto one sheet
-  const SW = Math.max(256, ...pieces.map(p => p.w + 1));
-  let x = 0, y = 0, rowH = 0;
-  for (const p of [...pieces].sort((a, b) => b.h - a.h)) {
-    if (x + p.w > SW) { x = 0; y += rowH + 1; rowH = 0; }
-    p.sx = x; p.sy = y; x += p.w + 1; rowH = Math.max(rowH, p.h);
+  // lay the frames out: a row per turn, floor then over
+  const colW = ['floor', 'over'].map(l => Math.max(0, ...frames.map(fr => fr[l] ? fr[l].w : 0)));
+  for (const fr of frames) if (fr.cells.length > 254) throw new Error(key + ': too many cells for the map');
+  let y = 0;
+  for (const fr of frames) {
+    let x = 0;
+    ['floor', 'over'].forEach((l, i) => { if (fr[l]) { fr[l].sx = x; fr[l].sy = y; } x += colW[i] + (colW[i] ? 2 : 0); });
+    y += Math.max(0, ...['floor', 'over'].map(l => fr[l] ? fr[l].h : 0)) + 2;
   }
-  const half = y + rowH;
-  const px = new Array(SW * half * 2).fill(null);
-  const toHex2 = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-  for (const p of pieces) for (const q of p.list) {
-    const i = (p.sy + q.Y - p.y0) * SW + p.sx + q.X - p.x0;
-    px[i] = '#' + q.base.map(toHex2).join('') + toHex2(q.a * 255);
-    px[i + SW * half] = '#' + toHex2(q.w * 100) + toHex2(q.face * 60) + '00';
+  const SW = colW[0] + colW[1] + 4, SH = y;
+  const pic = new Array(SW * SH).fill(null), map = new Array(SW * SH).fill(null);
+  for (const fr of frames) for (const l of ['floor', 'over']) if (fr[l]) for (const q of fr[l].list) {
+    const i = (fr[l].sy + q.Y - fr[l].y0) * SW + fr[l].sx + q.X - fr[l].x0;
+    pic[i] = '#' + q.c.map(toHex2).join('') + toHex2(q.a * 255);
+    map[i] = '#' + toHex2(q.face * 60) + toHex2(q.cell + 1) + toHex2(q.w * 100);
   }
-  manifest[key] = { half, frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, ps]) => [l, ps.map(p => [p.cu, p.cv, p.sx, p.sy, p.w, p.h, p.x0, p.y0])]))) };
-  if (!want.length || want.includes(key)) { writeFileSync(resolve(dir, key + '.png'), png({ IW: SW, IH: half * 2, px })); written++; }
+  manifest[key] = { tint, frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
+  if (!want.length || want.includes(key)) {
+    writeFileSync(resolve(dir, key + '.png'), png({ IW: SW, IH: SH, px: pic }));
+    writeFileSync(resolve(dir, key + '_map.png'), png({ IW: SW, IH: SH, px: map }));
+    written++;
+  }
 }
 // As with tilesprites.js: every key is listed whichever were written, and the
 // paths stay literal strings for the bundler to inline.
 const keys = Object.keys(manifest);
 writeFileSync(resolve(root, 'src/ui/isosprites.js'), `// Written by harness/isoart.mjs from tileart.mjs's drawings; rerun it rather than editing.
-// See src/ui/sprites.js for how a sheet is coloured, lit and cut into cells.
+// See src/ui/sprites.js for how a sheet is lit, recoloured and cut into cells.
 export const ISO_SHEETS = {
 ${keys.map(k => `  ${k}: 'assets/iso/${k}.png',`).join('\n')}
 };
-// key -> { half, frames: [turn 0..3] -> { floor, over: [[cell u, cell v, sheet x, sheet y, w, h, frame x, frame y]] } }
+export const ISO_MAPS = {
+${keys.map(k => `  ${k}: 'assets/iso/${k}_map.png',`).join('\n')}
+};
+// key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
+// floor, over: [sheet x, sheet y, w, h, frame x, frame y] } }. Frame coordinates are
+// screen pixels from the ground point of the turned bounding box's top corner.
 export const ISO_FRAMES = {
 ${keys.map(k => `  ${k}: ${JSON.stringify(manifest[k])},`).join('\n')}
 };

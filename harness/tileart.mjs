@@ -23,7 +23,11 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { tileDef } from '../src/data/tiles.js';
 import { SHAPES } from '../src/sim/shapes.js';
-import { colorForDef } from '../src/ui/render.js';
+import { colorForDef, H_UNIT } from '../src/ui/render.js';
+
+// One screen pixel of height in the isometric sheets, in units of tile height:
+// sprite stacks give heights in pixels, the way they are drawn.
+const PX = 1 / (2 * 32 * H_UNIT);
 
 const CELL = 32;
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -109,10 +113,16 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   // plan (`L` long, `D` wide, nose at along = L - 1) and height t (0 at the
   // bottom, 1 at the top): a colour, 'top' for the top-down art, or nothing.
   // The flat renderer ignores it and stacks the top-down art as before.
-  const stack = (x, y, L, D, vertical, fn) => { blocks[blocks.length - 1].stack = { x: x + ox, y: y + oy, L, D, vertical, fn }; };
+  // `z0`/`z1` give it its own height, where it stands taller than the block (a
+  // parked airliner's fin) or takes over several blocks; `hide` marks the last
+  // block as drawn by a stack elsewhere, and `cut` clears a rectangle of the
+  // flat over art that a stack now draws in the round (a helicopter's rotor).
+  const stack = (x, y, L, D, vertical, fn, { z0, z1 } = {}) => { blocks[blocks.length - 1].stack = { x: x + ox, y: y + oy, L, D, vertical, fn, z0, z1 }; };
+  const hide = () => { blocks[blocks.length - 1].hide = true; };
+  const cuts = [], cut = (x, y, w, h) => cuts.push([x + ox, y + oy, w, h]);
   // a part of the floor that steps down into the ground (see SPRITE_SINKS)
   const sinks = [], sink = (x, y, w, h, d0, d1, dir, n) => sinks.push([x + ox, y + oy, w, h, d0, d1, dir, n]);
-  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, stack, dark, darkAt, sink, sinks };
+  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, stack, hide, cut, cuts, dark, darkAt, sink, sinks };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -206,37 +216,64 @@ function car(c, x, y, col, v = false, z = 0.2) {
   const paint = (i, j) => i === L - 1 && (j === 1 || j === D - 2) ? '#fff1a8' : i === 10 || i === 11 ? GLASS : i === 3 ? GLASS_D : i > 3 && i < 10 ? shade(col, 0.82) : col;
   v ? c.blot(x, y, D, L, (i, j) => test(j, i), (i, j) => paint(j, i)) : c.blot(x, y, L, D, test, paint);
   v ? c.block(x - 1, y - 1, D + 2, L + 2, z) : c.block(x - 1, y - 1, L + 2, D + 2, z);
-  c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col));
+  c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col, L, D));
 }
 // A car in slices, nose at a = 14: tyres under a sill set in from the sides,
 // the body with its lamps, door seams and a lit waistline, then a narrower
 // cabin whose windscreen leans back, and the top-down roof on top of it.
-function carSlice(a, w, t, col) {
-  const L = 15, D = 8, side = w === 0 || w === D - 1;
+// A limousine is the same car stretched: more pillars, darker glass.
+function carSlice(a, w, t, col, L = 15, D = 8, tinted = '#2e5a8a') {
+  const side = w === 0 || w === D - 1, rw = Math.round(0.2 * L), fw = L - 1 - rw;
   if ((a === 0 || a === L - 1) && side) return null;
   if (t < 0.28) {
-    if (side) return (a >= 2 && a <= 4) || (a >= 10 && a <= 12) ? (a === 3 || a === 11) && t > 0.08 ? '#8a8a9a' : '#1a1a24' : null;
+    if (side) return Math.abs(a - rw) <= 1 || Math.abs(a - fw) <= 1 ? (a === rw || a === fw) && t > 0.08 ? '#8a8a9a' : '#1a1a24' : null;
     return a === 0 || a === L - 1 ? null : '#2e374d';
   }
+  const c0 = Math.round(0.2 * L), c1 = Math.round(0.73 * L);
   if (t < 0.58) {
     if (a === L - 1) return w === 1 || w === D - 2 ? '#fff1a8' : t < 0.44 ? '#2e374d' : col;
     if (a === 0) return w === 1 || w === D - 2 ? RED : col;
-    if (side && (a === 6 || a === 10) && t < 0.5) return shade(col, 0.72);
+    if (side && (a - c0) % 8 === 3 && a < c1 && t < 0.5) return shade(col, 0.72);
     return t >= 0.5 ? shade(col, 1.15) : col;
   }
-  const a0 = t > 0.8 ? 4 : 3, a1 = 11 - Math.floor((t - 0.58) / 0.42 * 3);
+  const a0 = c0 + (t > 0.8 ? 1 : 0), a1 = c1 - Math.floor((t - 0.58) / 0.42 * 3);
   if (a < a0 || a > a1 || w < 1 || w > D - 2) return null;
   if (t >= 0.9) return 'top';
   if (a === a1) return GLASS;
   if (a === a0) return GLASS_D;
-  if (a === 7) return shade(col, 0.7);
-  return t > 0.8 ? GLASS : '#2e5a8a';
+  if ((a - c0) % 8 === 4) return shade(col, 0.7);
+  return t > 0.8 ? mix(GLASS, tinted, 0.4) : tinted;
 }
 function bus(c, x, y, len, col, stripe = WHITE) {
   c.blot(x, y, len, 12, (i, j) => !((i === 0 || i === len - 1) && (j === 0 || j === 11)), (i, j) =>
     i >= len - 3 ? GLASS : (j === 1 || j === 10) ? ((i % 6) ? GLASS : shade(col, 0.7)) : (j === 5 || j === 6) ? stripe : col);
   for (let i = x + 8; i < x + len - 10; i += 14) c.box(i, y + 3, 5, 5, STEEL);
-  c.block(x - 1, y - 1, len + 2, 14, 0.28);
+  c.block(x - 1, y - 1, len + 2, 14, 0.36);
+  c.stack(x, y, len, 12, false, (a, w, t) => busSlice(a, w, t, len, col, stripe));
+}
+// A bus in slices, nose at a = len - 1 and its doors on the kerb side (w = 0):
+// two axles, the livery stripe, a long band of windows, a wide windscreen
+// under a lit destination board, the top-down roof with its air units.
+function busSlice(a, w, t, len, col, stripe) {
+  const D = 12, side = w === 0 || w === D - 1, end = a === 0 || a === len - 1;
+  if (end && side) return null;
+  const door = w === 0 && (Math.abs(a - (len - 7)) <= 2 || Math.abs(a - Math.floor(len / 2)) <= 2);
+  if (t < 0.18) {
+    if (side) return Math.abs(a - 7) <= 2 || Math.abs(a - (len - 9)) <= 2 ? (a === 7 || a === len - 9) && t > 0.05 ? '#8a8a9a' : '#1a1a24' : null;
+    return end ? null : '#2e374d';
+  }
+  if (t >= 0.94) return 'top';
+  if (a === len - 1) {
+    if (t < 0.26) return w > 0 && w < D - 1 ? '#2e374d' : col;
+    if (t < 0.36) return w === 1 || w === 2 || w === D - 3 || w === D - 2 ? '#fff1a8' : col;
+    if (t < 0.78) return w > 0 && w < D - 1 ? (t > 0.7 ? GLASS : mix(GLASS, GLASS_D, 0.5)) : col;
+    return t < 0.88 && w > 1 && w < D - 2 ? (w % 2 ? YELLOW : '#1a1a24') : col;
+  }
+  if (a === 0) return t > 0.3 && t < 0.38 && (w === 1 || w === D - 2) ? RED : t > 0.5 && t < 0.8 && w > 1 && w < D - 2 ? GLASS_D : col;
+  if (door && side) return t > 0.3 && t < 0.86 ? (a % 2 ? GLASS_D : '#2e5a8a') : '#2e374d';
+  if (t < 0.5) return t >= 0.36 && t < 0.46 ? stripe : col;
+  if (t < 0.86) return a % 7 === 0 || a < 2 ? col : t > 0.78 ? GLASS : '#2e5a8a';
+  return shade(col, 0.92);
 }
 // A train car seen from above: roof, a lit stripe, roof boxes, glass at a nose.
 function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z = 0.32, z0 = 0 } = {}) {
@@ -292,11 +329,33 @@ function boat(c, x, y, len, w, hull, deck, cabin = null, z = 0.1) {
   c.blot(x, y, len, w, test(len, w), hull);
   c.blot(x + 2, y + 2, len - 5, w - 4, test(len - 5, w - 4), deck, null);
   c.block(x - 1, y - 1, len + 2, w + 2, z);
+  // in the round: one stack for the hull and the cabin on it
+  const hullPx = Math.max(4, Math.round(z / PX)), cabPx = cabin ? Math.max(4, Math.round(w / 2)) : 0;
+  c.stack(x, y, len, w, false, (a, k, t) => boatSlice(a, k, t * (hullPx + cabPx), len, w, bow, hullPx, cabPx, hull, cabin), { z0: 0, z1: (hullPx + cabPx) * PX });
   if (cabin) {
     const [cx0, cw, col] = cabin, top = y + Math.round(cy) - Math.floor((w - 6) / 2);
     c.box(x + cx0, top, cw, w - 6, col); c.R(x + cx0 + cw - 2, top, 2, w - 6, GLASS);
-    c.block(x + cx0 - 1, top - 1, cw + 2, w - 4, z + 0.08, z);
+    c.block(x + cx0 - 1, top - 1, cw + 2, w - 4, z + 0.08, z); c.hide();
   }
+}
+// A boat in slices, h in pixels: a vee hull that widens to the gunwale, dark
+// below the waterline and a lit rubbing strake along the top, the deck (the
+// top-down art) inside it, and a cabin with a band of windows and a windscreen.
+function boatSlice(a, k, h, len, w, bow, hullPx, cabPx, hull, cabin) {
+  const f = Math.min(1, h / hullPx), taper = a > len - bow ? Math.max(0, (len - a) / bow) ** 0.7 : 1;
+  const hw = w / 2 * taper * (0.62 + 0.38 * f), dy = Math.abs(k - (w - 1) / 2);
+  if (h < hullPx) {
+    if (dy > hw - 0.3) return null;
+    if (h < 1.5) return shade(hull, 0.5);
+    if (dy > hw - 1.3 && h >= hullPx - 1.2) return shade(hull, 1.2);
+    return dy < hw - 1.3 && h >= hullPx - 1.2 ? 'top' : hull;
+  }
+  if (!cabin) return null;
+  const [cx0, cw, col] = cabin, hh = (w - 6) / 2, ch = h - hullPx;
+  if (a < cx0 || a >= cx0 + cw || dy > hh) return null;
+  if (ch >= cabPx - 1) return 'top';
+  if (a === cx0 + cw - 1) return ch > 0.8 ? GLASS : col;
+  return ch > 1 && ch < cabPx - 1.5 && a % 3 ? '#2e5a8a' : col;
 }
 // An aircraft from above: fuselage, swept wings, tailplane. Box is len x span.
 // It flies, or sits high on its gear: the block floats a thin slab off the floor.
@@ -316,6 +375,42 @@ function plane(c, x, y, len, span, body, trim, down = false, z = 0.16) {
   else c.blot(x, y, len, span, test, paint);
   for (const s of [-1, 1]) { const a = Math.round(len * 0.46), b = Math.round(cy + s * span * 0.24) - 1; down ? c.box(x + b, y + a, 3, 5, STEEL_D) : c.box(x + a, y + b, 5, 3, STEEL_D); }
   down ? c.block(x - 1, y - 1, span + 2, len + 2, z, z - 0.06) : c.block(x - 1, y - 1, len + 2, span + 2, z, z - 0.06);
+  // In the round it is parked on its gear, at its full span: the flat art has
+  // to fit the tile, but the wings may reach over the squares either side.
+  const S = Math.round(len * 0.9), off = Math.round((span - S) / 2), m = planeModel(len, S, body, trim);
+  down ? c.stack(x + off, y, len, S, true, m.fn, { z0: 0, z1: m.H * PX }) : c.stack(x, y + off, len, S, false, m.fn, { z0: 0, z1: m.H * PX });
+}
+// An airliner in slices, nose at a = len - 1, h in pixels: a round fuselage
+// with a cheatline, a row of cabin windows and the flight deck glass at the
+// nose, low wings with a little dihedral and an engine slung under each, a
+// tailplane, a fin in the livery colour, and the gear it stands on.
+function planeModel(len, S, body, trim) {
+  const fw = Math.max(2, Math.round(len / 14)), g = Math.max(2, Math.round(len / 16)), zc = g + fw;
+  const H = zc + fw + Math.round(len / 6) + 1, cy = (S - 1) / 2;
+  const fn = (a, c, t) => {
+    const h = t * H, dy = Math.abs(c - cy);
+    const r = fw * (a > len - 6 ? Math.sqrt(Math.max(0, (len - a) / 6)) : a < len * 0.22 ? 0.35 + 0.65 * a / (len * 0.22) : 1);
+    // fuselage: a circle in section; toward the tail it narrows and rises to meet the fin
+    const zcA = a < len * 0.22 ? zc + (fw - r) * 0.8 : zc;
+    if (dy * dy + (h - zcA) ** 2 <= r * r + 0.3) {
+      if (a > len - 6 && h > zcA && h < zcA + r * 0.8 && dy > r * 0.3) return '#2e5a8a';
+      if (Math.abs(h - zcA - r * 0.35) < 0.6 && a % 3 === 0 && a > len * 0.2 && a < len - 7) return '#2e374d';
+      if (Math.abs(h - zcA) < 0.7) return trim;
+      return h < zcA - r * 0.4 ? shade(body, 0.9) : body;
+    }
+    // wings, with dihedral, and an engine under each
+    const wz = g + fw * 0.45 + dy * 0.06, le = len * 0.62 - dy * 0.45, te = len * 0.44 - dy * 0.3;
+    if (dy <= S / 2 && a <= le && a >= te && Math.abs(h - wz) <= 0.8) return dy > S / 2 - 2 ? trim : body;
+    const de = S * 0.24, re = Math.max(1.2, fw * 0.6), he = g + fw * 0.45 + de * 0.06 - re - 0.3;
+    if (a >= len * 0.4 && a <= len * 0.56 && (dy - de) ** 2 + (h - he) ** 2 <= re * re) return a >= len * 0.55 ? '#2e374d' : STEEL_D;
+    // tailplane and fin
+    if (dy <= S * 0.2 && a >= 1 && a <= len * 0.14 - dy * 0.3 && Math.abs(h - (zc + fw * 0.6)) <= 0.7) return body;
+    if (dy < 0.8 && a >= 1 && h > zc && h <= H && a <= len * 0.2 - (h - zc) * 0.55) return h > zc + fw ? trim : body;
+    // gear: a nose leg and two main legs, with their wheels
+    if (h < g + 0.5 && ((a >= len - 8 && a <= len - 7 && dy < 0.8) || (Math.abs(a - len * 0.47) <= 1 && Math.abs(dy - fw * 0.8) < 0.8))) return h < 1.5 ? '#1a1a24' : '#6c6880';
+    return null;
+  };
+  return { fn, H };
 }
 // An oval cabin with its glass at the nose (-x), a tail boom and a fin.
 function heli(c, cx, cy, col) {
@@ -325,7 +420,93 @@ function heli(c, cx, cy, col) {
   // the rotor turns over the body, flat at the top of the pad's box
   for (let i = -17; i <= 17; i++) { c.P(cx + i, cy + Math.round(i * 0.35), '#2e374d'); c.P(cx - Math.round(i * 0.35), cy + i, '#2e374d'); }
   c.disc(cx, cy, 1, STEEL);
+  // in the round it stands on its skids, the rotor on a mast above it
+  c.stack(cx - 18, cy - 18, 37, 37, false, (a, k, t) => heliSlice(a - 18, k - 18, t * 15, col), { z0: 0, z1: 15 * PX });
+  c.cut(cx - 18, cy - 18, 37, 37);
 }
+// A helicopter in slices about its rotor hub, h in pixels: skids and struts,
+// an egg of a cabin with its glass at the nose (-x), the tail boom, fin and
+// tail rotor, the mast, and two blades crossing over the top.
+function heliSlice(dx, dy, h, col) {
+  const e = ((dx + 2.5) / 10) ** 2 + (dy / 6.5) ** 2 + ((h - 7) / 4.6) ** 2;
+  if (e <= 1) return dx < -5 && h > 6 ? (h > 9.5 ? GLASS : '#2e5a8a') : Math.abs(h - 7) < 0.6 && dx > -5 ? shade(col, 0.75) : col;
+  if (dx >= 5 && dx <= 20 && Math.abs(dy) <= 1 && h >= 6.5 && h <= 8.5 - dx * 0.05) return shade(col, 0.85);
+  if (dx >= 18 && dx <= 21 && Math.abs(dy) <= 0.5 && h >= 6 && h <= 12.5) return col;
+  if (dx >= 18 && dx <= 20 && Math.abs(dy) >= 1 && Math.abs(dy) <= 2 && h >= 7 && h <= 11) return STEEL_D;
+  if (Math.abs(Math.abs(dy) - 5) <= 0.5 && ((h < 1.2 && dx >= -12 && dx <= 6) || (h < 3.5 && (dx === -7 || dx === 2)))) return '#2e374d';
+  if (Math.abs(dx) <= 0.5 && Math.abs(dy) <= 0.5 && h >= 11 && h < 13.5) return STEEL;
+  if (h >= 13.4 && Math.hypot(dx, dy) <= 17.5 && (Math.abs(dy - dx * 0.35) <= 0.7 || Math.abs(dx + dy * 0.35) <= 0.7)) return '#2e374d';
+  return null;
+}
+// The ferry in slices, bow up the image (along = 0), h in pixels: a white hull
+// with a dark boot-top, a blue sheer line and the car deck's stern door, then
+// two decks of windows with the bridge wrapping the front and the red funnel.
+function ferrySlice(a, k, t) {
+  const h = t * 17, hw = 11 * (a < 12 ? Math.max(0, a / 12) ** 0.7 : a > 78 ? (84 - a) / 6 : 1), dy = Math.abs(k - 10.5);
+  if (h < 6) {
+    if (dy > hw * (0.8 + 0.2 * h / 6)) return null;
+    if (h < 1.5) return '#8a2a4a';
+    if (a > 74 && h > 2 && h < 5 && dy < 5) return '#2e374d';
+    return h >= 4 && h < 5 ? '#2f6bff' : h >= 5 ? 'top' : WHITE;
+  }
+  if (dy > 6.5 || a < 20 || a > 60) return a >= 38 && a <= 44 && dy <= 3 && h < 17 ? (h > 15 ? '#1a1a24' : RED) : null;
+  if (h > 12.5) return a >= 38 && a <= 44 && dy <= 3 ? RED : null;
+  if (h > 11.5) return 'top';
+  if (a < 24) return h > 8 ? GLASS : '#e6e6f0';
+  return (h > 7 && h < 9) || (h > 9.5 && h < 11) ? (a % 3 ? '#2e5a8a' : '#e6e6f0') : '#e6e6f0';
+}
+// The cruise ship in slices, bow at +x, h in pixels: hull with portholes and a
+// blue line, three decks of balconies stepping in toward the top, the bridge
+// wrapping the front of them and the red and black funnel.
+function cruiseSlice(a, k, t) {
+  const h = t * 31, hw = 11 * (a > 150 ? Math.max(0, (184 - a) / 34) ** 0.6 : a < 4 ? 0.85 : 1), dy = Math.abs(k - 10.5);
+  if (h < 12) {
+    if (dy > hw * (0.85 + 0.15 * h / 12)) return null;
+    if (h < 2.5) return '#8a2a4a';
+    if (h >= 11) return dy > hw - 1.5 ? WHITE : 'top';
+    if (h >= 7 && h < 8) return '#35d4ff';
+    return (h >= 4.5 && h < 5.5 || h >= 9 && h < 10) && a % 4 === 0 && a > 8 && a < 170 ? '#2e374d' : WHITE;
+  }
+  const deck = Math.floor((h - 12) / 2.7), inset = 3 + deck;
+  if (a >= 138 && a <= 146 && dy <= 7 && h < 16) return h > 15 ? 'top' : h > 12.5 ? GLASS : WHITE;
+  if (a >= 92 && a <= 101 && dy <= 4.5 && h >= 19) return h > 29 ? '#1a1a24' : RED;
+  // lifeboats slung along the first deck, outboard of it
+  if (h < 14.5 && dy > 7.5 && dy <= 9.5 && a > 24 && a < 128 && a % 10 < 6) return h > 13.5 ? WHITE : '#f28c28';
+  if (deck > 2 || a < 16 + 4 * deck || a > 136 - 6 * deck || dy > 10.5 - inset) return null;
+  if (h - 12 - deck * 2.7 > 2) return 'top';
+  return (h - 12) % 2.7 < 1.2 ? WHITE : a % 3 ? GLASS_D : '#e6e6f0';
+}
+// The submarine in slices, h in pixels from 12 below ground: a round dark hull
+// in its pool, the conning tower rising out of the water with a yellow band.
+function subSlice(a, k, t) {
+  const h = t * 12.7, hw = 5.5 * (a < 6 ? Math.sqrt(a / 6) : a > 34 ? Math.sqrt(Math.max(0, (42 - a) / 8)) : 1), dy = Math.abs(k - 5);
+  if (dy * dy / (hw * hw || 1) + ((h - 2) / 2.3) ** 2 <= 1) return h > 3 ? '#3b4050' : '#2e374d';
+  if (a >= 14 && a <= 21 && k >= 2 && k <= 8) { if (h > 12) return 'top'; return h > 9 && h < 10 ? YELLOW : '#3b4050'; }
+  return null;
+}
+// A loop pod in slices: a white capsule on a dark skid, glass at its nose
+// (+x) and a window band down its side.
+function podSlice(a, k, t) {
+  const dy = Math.abs(k - 3), r = 3.5 * Math.sqrt(Math.max(0, 1 - ((t - 0.55) / 0.55) ** 2));
+  if (dy > r || (a === 0 || a === 11) && dy > r - 1) return null;
+  if (t < 0.15) return a > 1 && a < 10 ? '#2e374d' : null;
+  if (t > 0.9) return 'top';
+  if (a >= 8) return t > 0.4 ? GLASS : WHITE;
+  return t > 0.45 && t < 0.75 && a % 3 ? '#2e5a8a' : WHITE;
+}
+// A hot-air balloon in slices about its centre, h in pixels from its basket:
+// a wicker basket, the burner and ropes, and the envelope, a teardrop of gores
+// in the tile's colour and yellow with a crown on top.
+function balloonSlice(dx, dy, h, t) {
+  const r = Math.hypot(dx, dy);
+  if (h < 5) return r <= 3 ? (h > 4 ? '#6b3e24' : r > 2.2 || (dx + dy) % 2 ? WOOD : WOOD_L) : null;
+  if (h < 11) return (Math.abs(Math.abs(dx) - 3) < 0.6 && Math.abs(Math.abs(dy) - 3) < 0.6) || (r < 1 && h < 7) ? '#6c6880' : null;
+  const s = (h - 11) / 29, R = 17 * (s < 0.35 ? 0.3 + 0.7 * Math.sin(s / 0.35 * Math.PI / 2) : Math.sqrt(Math.max(0, 1 - ((s - 0.35) / 0.66) ** 2)));
+  if (r > R) return null;
+  if (s > 0.97) return shade(t, 0.6);
+  return Math.floor((Math.atan2(dy, dx) + Math.PI) / (Math.PI / 4)) % 2 ? t : YELLOW;
+}
+
 // A small building standing on part of a transport: its roof, raised as a block.
 function hut(c, t, x, y, w, h, z = 0.36) {
   c.box(x, y, w, h, shade(t, 0.88)); c.R(x + 1, y + 1, w - 1, 2, shade(t, 1.2));
@@ -413,7 +594,8 @@ const TILES = {
     over(c, t) {
       c.box(10, 3, 76, 8, shade(t, 0.95)); c.R(11, 4, 75, 2, shade(t, 1.25)); for (let x = 14; x < 84; x += 8) c.P(x, 8, YELLOW);
       const L = 58; c.blot(20, 18, L, 10, (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === 9)), (i, j) => i > L - 13 && i < L - 9 ? GLASS_D : i > 6 && i < L - 16 ? (j === 0 || j === 9 ? '#2e374d' : '#1a1a24') : '#22222e');
-      c.R(26, 19, 28, 1, '#6c6880'); c.block(19, 17, L + 2, 12, 0.15);
+      c.R(26, 19, 28, 1, '#6c6880'); c.block(19, 17, L + 2, 12, 0.2);
+      c.stack(20, 18, L, 10, false, (a, w, t) => carSlice(a, w, t, '#22222e', L, 10, '#14141c'));
     },
   },
   parking_lot: {
@@ -458,6 +640,7 @@ const TILES = {
       const w = 14; c.blot(8, 15, 112, w, (i, j) => { const d = Math.abs(j - (w - 1) / 2), r = w / 2; return i < r ? d <= Math.sqrt(r * r - (r - i) ** 2) : i > 112 - r ? d <= Math.sqrt(Math.max(0, r * r - (i - 112 + r) ** 2)) : true; },
         (i, j) => j === 1 || j === w - 2 ? ((i % 7) ? GLASS : WHITE) : Math.abs(j - (w - 1) / 2) < 1.5 ? t : WHITE);
       c.block(7, 14, 114, w + 2, 0.36, 0.16);
+      c.stack(8, 15, 112, w, false, (a, k, s) => carriageSlice(a, k, s, 112, w, WHITE, t, true, true));
     },
   },
   ski_lift: {
@@ -482,9 +665,10 @@ const TILES = {
     },
     over(c, t) {
       c.blot(5, 6, 22, 84, (i, j) => { const b = 12; const hw = 11 * (j < b ? Math.max(0, j / b) ** 0.7 : j > 84 - 6 ? (84 - j) / 6 : 1); return Math.abs(i - 10.5) <= hw; }, WHITE);
-      c.block(4, 5, 24, 86, 0.14);
+      c.block(4, 5, 24, 86, 0.14); c.hide();
       c.box(9, 26, 14, 40, '#e6e6f0'); for (let y = 30; y < 64; y += 5) { c.P(9, y, GLASS_D); c.P(22, y, GLASS_D); }
       c.box(11, 22, 10, 5, GLASS); c.box(13, 44, 6, 6, RED); c.block(8, 21, 16, 46, 0.3, 0.14);
+      c.stack(5, 6, 84, 22, true, ferrySlice, { z0: 0, z1: 17 * PX });
       c.R(10, 72, 12, 2, RED);
       hut(c, t, 33, 65, 30, 30); hvac(c, 52, 72); for (let y = 72; y < 92; y += 6) c.R(36, y, 12, 3, GLASS);
     },
@@ -532,13 +716,14 @@ const TILES = {
       for (const x of [40, 130]) c.box(x, 14, 6, 20, STEEL);
       c.blot(4, 34, 184, 22, (i, j) => { const hw = 11 * (i > 150 ? Math.max(0, (184 - i) / 34) ** 0.6 : i < 4 ? 0.85 : 1); return Math.abs(j - 10.5) <= hw; }, WHITE);
       c.R(8, 44, 150, 2, '#35d4ff');
-      c.block(3, 33, 186, 24, 0.3);
+      c.block(3, 33, 186, 24, 0.3); c.hide();
       c.box(20, 37, 120, 16, '#e6e6f0'); c.box(30, 39, 90, 12, WHITE);
       for (let x = 34; x < 118; x += 6) { c.P(x, 39, GLASS_D); c.P(x, 50, GLASS_D); }
       c.box(60, 41, 14, 8, '#35d4ff');
-      c.block(19, 36, 122, 18, 0.5, 0.3);
-      c.box(96, 40, 9, 10, RED); c.R(98, 42, 5, 6, INK); c.block(95, 39, 11, 12, 0.66, 0.5);
+      c.block(19, 36, 122, 18, 0.5, 0.3); c.hide();
+      c.box(96, 40, 9, 10, RED); c.R(98, 42, 5, 6, INK); c.block(95, 39, 11, 12, 0.66, 0.5); c.hide();
       c.box(142, 38, 8, 14, GLASS); c.block(141, 37, 10, 16, 0.4, 0.3);
+      c.stack(4, 34, 184, 22, false, cruiseSlice, { z0: 0, z1: 31 * PX });
     },
   },
 
@@ -560,6 +745,7 @@ const TILES = {
     over(c, t) {
       // the envelope hangs high over its basket; the booth in the stem stands on the grass
       parasol(c, 48, 18, 17, t, YELLOW); c.ring(48, 18, 4, 1, shade(t, 0.6)); c.block(30, 0, 37, 37, 1.0, 0.45, true);
+      c.stack(30, 0, 37, 37, false, (a, k, s) => balloonSlice(a - 18, k - 18, s * 40, t), { z0: 0, z1: 40 * PX });
       hut(c, t, 38, 40, 20, 18, 0.3); c.R(42, 44, 12, 10, RED);
     },
   },
@@ -569,7 +755,7 @@ const TILES = {
     pad: [1, 0, 0, 0],
     floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 32, YELLOW); frame(c, t); },
     over(c, t) {
-      plane(c, 1, -32, 50, 30, WHITE, '#3f8cff', true, 0.18);
+      plane(c, 3, -30, 46, 26, WHITE, '#3f8cff', true, 0.18);
       c.box(12, 20, 8, 30, '#d7cce8'); c.R(13, 21, 6, 28, STEEL); for (let y = 24; y < 48; y += 5) c.R(13, y, 6, 1, STEEL_D);
       c.box(12, 46, 22, 8, '#d7cce8'); c.R(13, 47, 20, 6, STEEL); c.block(11, 19, 24, 36, 0.22, 0.1);
       hut(c, t, 36, 36, 26, 26); for (let x = 40; x < 60; x += 6) c.R(x, 42, 3, 16, GLASS);
@@ -579,7 +765,7 @@ const TILES = {
     pad: [1, 0, 0, 0],
     floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 64, YELLOW); frame(c, t); },
     over(c, t) {
-      plane(c, 0, -32, 70, 32, WHITE, '#9b5cff', true, 0.24);
+      plane(c, 1, -30, 62, 30, WHITE, '#9b5cff', true, 0.24);
       for (const x of [4, 20]) { c.box(x, 40, 7, 66, '#d7cce8'); c.R(x + 1, 41, 5, 64, STEEL); }
       c.box(4, 104, 32, 8, '#d7cce8'); c.R(5, 105, 30, 6, STEEL); c.block(3, 39, 34, 74, 0.26, 0.12);
       hut(c, t, 36, 98, 26, 28); for (let x = 40; x < 60; x += 6) c.R(x, 104, 3, 18, GLASS);
@@ -597,7 +783,7 @@ const TILES = {
     // the bar of the T meets the apron with a business jet at the stand; the
     // stem is the lounge
     floor(c, t) { apronStrip(c, t, 0); c.R(0, 30, 96, 2, RED); frame(c, t); },
-    over(c, t) { plane(c, 14, 0, 58, 30, WHITE, YELLOW, false, 0.16); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
+    over(c, t) { plane(c, 18, 1, 52, 28, WHITE, YELLOW, false, 0.16); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
   },
   jetpack: {
     floor(c, t) { c.fill('#34216b'); for (const cx of [16, 48]) { c.disc(cx, 16, 12, INK); c.disc(cx, 16, 11, shade(t, 0.8)); c.ring(cx, 16, 9, 1, YELLOW); } frame(c, t); },
@@ -616,7 +802,10 @@ const TILES = {
       c.box(0, 28, 12, 9, '#1a1033'); c.box(52, 28, 12, 9, '#1a1033'); frame(c, t);
     },
     over(c, t) {
-      for (const [x, y] of [[20, 10], [44, 50], [10, 40]]) { c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS); c.block(x - 5, y - 4, 14, 9, 0.12); }
+      for (const [x, y] of [[20, 10], [44, 50], [10, 40]]) {
+        c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS); c.block(x - 5, y - 4, 14, 9, 0.16);
+        c.stack(x - 4, y - 3, 12, 7, false, podSlice);
+      }
       c.disc(32, 32, 7, shade(t, 0.9)); c.ring(32, 32, 7, 1, INK); c.block(24, 24, 17, 17, 0.3);
     },
   },
@@ -644,8 +833,9 @@ const TILES = {
     floor(c, t) { platform(c, t); sea(c, 4, 9, 56, 19); c.sink(4, 9, 56, 19, 0.3, 0.3, 'S', 1); hazard(c, 4, 6, 56, 2); frame(c, t); },
     over(c) {
       c.blot(10, 13, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
-      c.block(9, 12, 44, 13, -0.2, -0.3);
+      c.block(9, 12, 44, 13, -0.2, -0.3); c.hide();
       c.box(24, 15, 8, 7, '#3b4050'); c.R(26, 17, 4, 1, YELLOW); c.block(23, 14, 10, 9, 0.02, -0.2);
+      c.stack(10, 13, 42, 11, false, subSlice, { z0: -0.3, z1: 0.02 });
     },
   },
 
@@ -767,7 +957,15 @@ function lift(c, t, step, w, h, z) {
 // blocks, so they carry on over the lane at the same height.
 function cables(c, x = 0, w = c.W) { for (const y of [9, 22]) { c.R(x, y, w, 1, INK); c.block(x, y - 1, w, 3, 0.2, 0.185); } }
 // A car hanging from the cable at row `cy`, going out on one and back on the other.
-function gondola(c, t, cx, cy, w, h, z) { const y = cy - (h >> 1); c.box(cx, y, w, h, t); c.R(cx + 1, y + 1, w - 2, 1, GLASS); c.block(cx - 1, y - 1, w + 2, h + 2, 0.2, 0.2 - z); }
+function gondola(c, t, cx, cy, w, h, z) {
+  const y = cy - (h >> 1); c.box(cx, y, w, h, t); c.R(cx + 1, y + 1, w - 2, 1, GLASS); c.block(cx - 1, y - 1, w + 2, h + 2, 0.2, 0.2 - z);
+  // in the round: a floor, glass all round between corner posts, a roof
+  c.stack(cx, y, w, h, false, (a, k, s) => {
+    if (s > 0.85) return 'top';
+    const corner = (a === 0 || a === w - 1) && (k === 0 || k === h - 1);
+    return s < 0.18 || corner ? shade(t, s < 0.18 ? 0.7 : 1) : s > 0.72 ? t : s > 0.6 ? GLASS : '#2e5a8a';
+  });
+}
 // The monorail guideway: a beam up on posts, floating clear of the crowd.
 function beam(c, x, w) { c.R(x, 18, w, 8, '#8f86b0'); c.R(x, 18, w, 1, '#d7cce8'); c.R(x, 25, w, 1, '#6c6880'); c.block(x, 17, w, 10, 0.16, 0.1); }
 // Tram rails let into the floor, sleepers between them.

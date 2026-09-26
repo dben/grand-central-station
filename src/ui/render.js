@@ -334,9 +334,14 @@ export class BoardRenderer {
           layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
           layers.push({ k: x + y, fn: () => { this.drawIsoCell(x, y, info, 'over'); if (!info.flush && --info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
         }
-        for (const [x, y] of info.out) {
-          layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
-          layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, info, 'over') });
+        // and the squares it reaches beyond its own: the band past the edge it
+        // works from (only when it sits on that edge), and a vehicle's overhang
+        for (const e of info.iso.cells.values()) {
+          if (e.kind === 0 || (e.kind === 1 && !info.out.length)) continue;
+          const [x, y] = info.iso.flip ? [info.bx0 + e.v, info.by0 + e.u] : [info.bx0 + e.u, info.by0 + e.v];
+          if (e.kind === 1 && x >= 0 && y >= 0 && x < this.w && y < this.h) continue;
+          if (e.floor) layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
+          if (e.over) layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, info, 'over') });
         }
       }
       // a pit is below everything that stands on the ground, so it goes down first
@@ -891,7 +896,7 @@ export class BoardRenderer {
     const bw0 = Math.max(...t.cells.map(c => c[0])) - bx0 + 1, bh0 = Math.max(...t.cells.map(c => c[1])) - by0 + 1;
     const img = sprite(t.key), floorImg = spriteFloor(t.key);
     const color = dim ? '#555a66' : colorForDef(d);
-    const isoArtFor = tf => { const f = this.artMode === 'iso' && isoFrame(t.key, tf), art = f && isoArt(t.key, colorForDef(d), dim, f.flip); return art ? { art, flip: f.flip, cells: f.frame } : null; };
+    const isoArtFor = tf => { const f = this.artMode === 'iso' && isoFrame(t.key, tf), cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip); return cells ? { flip: f.flip, cells } : null; };
     let tf = null, base = null;
     if (img || floorImg || this.artMode === 'iso') {
       let tipAt = null;
@@ -959,14 +964,14 @@ export class BoardRenderer {
   laneInfos(t, info) {
     const key = t.key + '_lane', floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
     const vertical = info.bh0 > info.bw0, lane = t.lane || [];
-    const f = this.artMode === 'iso' && isoFrame(key, { rot: vertical ? 1 : 0, mirror: 0 }), iso = f && isoArt(key, colorForDef(info.def), false, false);
+    const f = this.artMode === 'iso' && isoFrame(key, { rot: vertical ? 1 : 0, mirror: 0 }), iso = f && isoArt(key, f.m, colorForDef(info.def), false, false);
     if (!floorImg && !blockArt && !iso) return [];
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
     return lane.concat([out]).map(([x, y]) => {
       const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf: { rot: vertical ? 1 : 0, mirror: 0 }, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
-      if (iso) return Object.assign(li, { iso: { art: iso, flip: false, cells: f.frame } });
+      if (iso) return Object.assign(li, { iso: { flip: false, cells: iso } });
       if (blockArt) Object.assign(li, { blockArt, blockTop: Math.max(0, ...blocks.map(b => b[5])) + 0.05, blocks: new Map([[x + ',' + y, blocks]]) });
       return li;
     });
@@ -1075,15 +1080,16 @@ export class BoardRenderer {
   // which on screen is a mirror about that corner, and its cells swap with them.
   drawIsoCell(x, y, info, layer) {
     const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
-    const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), list = here && here[layer];
-    if (!list || !list.length) return;
-    const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
-    ctx.save();
-    ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
-    // crisp pixels once a sheet pixel covers a screen pixel; blend below that
-    ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
-    for (const [, , sx, sy, w, h, dx, dy] of list) ctx.drawImage(iso.art, sx, sy, w, h, dx, dy, w, h);
-    ctx.restore();
+    const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), piece = here && here[layer];
+    if (piece) {
+      const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
+      ctx.save();
+      ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
+      // crisp pixels once a sheet pixel covers a screen pixel; blend below that
+      ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
+      ctx.drawImage(piece.canvas, piece.x, piece.y);
+      ctx.restore();
+    }
     if (layer === 'floor' && info.flush && info.set && info.set.has(x + ',' + y)) this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
   }
 

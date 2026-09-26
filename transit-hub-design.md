@@ -1017,36 +1017,55 @@ contact sheet of the lot).
   into screen-space sprite sheets, the way a classic isometric game ships its tiles, and the
   renderer copies pixels instead of laying art flat and stacking blocks. It ray-casts each tile
   once in the 2:1 pixel projection (a cell is a 64x32 diamond, a unit of tile height 64 x `H_UNIT`
-  pixels): walls, roofs, glass panes, blocks, the canopy and the stairs all stand up as solid
-  shapes, so a block's sides are real faces rather than stacked copies. Each frame is cut into one
-  piece per cell, owned by the cell under whatever shows there, and the renderer paints pieces in
-  the same cell-by-cell order as before (floor pieces under the crowd, the rest over it), so a long
-  building still interleaves with its neighbours. Three pixel-art tricks keep the drawing count
-  down:
+  pixels): walls, roofs, glass panes, vehicles, the canopy and the stairs all stand up as solid
+  shapes, so their sides are real faces rather than stacked copies.
+  - *Editable images:* `assets/iso/<key>.png` is a plain picture: the four quarter turns, one row
+    each, floor layer then over layer, whole and in the tile's real colours and light, so it can
+    be touched up in any image editor. `<key>_map.png`, in the same layout, carries what a picture
+    can't: which cell owns each pixel (green, index + 1 into the turn's cell list in
+    `isosprites.js`), the face it is on (red, face x 60: top, left, right, or a middle shade
+    where a curve runs between them) and how much of it is the tile's colour (blue, weight x
+    100). At load the game cuts each turn into one canvas per cell and paints them in the same
+    cell-by-cell order as before (floor pieces under the crowd, the rest over it), so a long
+    building still interleaves with its neighbours. A pixel painted in later with no map under
+    it goes to the cell beneath it and is not relit; a missing map still draws. Rerunning
+    `isoart.mjs` overwrites both files.
   - *Mirroring:* flipping a view left to right is the same as swapping the grid's x and y, so a
     sheet holds only the four quarter turns and the mirrored four are those frames flipped
-    (`isoFrame` finds which turn to flip).
-  - *Shading after the fact:* a flip moves a south wall to the lit right-hand side, so pixels are
-    stored unlit with a face index (top, left, right, or a middle shade where a curve such as a
-    bow runs between them) and lit when the sheet is loaded, once per side.
-  - *Palette swaps:* each sheet is drawn twice, in two greys, and stored per pixel as base +
-    weight x tile colour, so one sheet takes any tile colour at load. A full or closed tile is the
-    same sheet in a grey palette rather than a wash over it.
-  - *Sprite stacks for vehicles:* a car or a train carriage is drawn as a pile of slices from
-    its wheels to its roof (`c.stack` in `tileart.mjs`, a function of the point on the
-    vehicle's plan and its height), and the baker stands it up slice by slice. The sides then
-    carry their own detail: a car's tyres under a sill, lamps, door seams, a waistline and a
-    narrower cabin whose windscreen leans back; a carriage's bogies, the line's stripe, a band
-    of windows and doors. The leading carriage is the engine, its nose leaning back into a cab
-    window over a yellow warning panel and lamps, and a tram that runs both ways has a cab at
-    each end. The top slice shows the top-down art, so a taxi's roof sign still comes from the
-    drawing. Stacks are turned, mirrored and lit like everything else, so one drawing covers
-    every heading and every paint colour. Cars stand 0.2 of a tile high and carriages 0.32
-    (from 0.14 and 0.26) to give the sides room for it; the flat renderer ignores the slices and
-    shows the taller blocks.
-  A sheet is a PNG twice the height of its pieces: colour and alpha on top, the control data (tint
-  weight, face) below. The 67 sheets come to about 0.6 MB. Measured on the full catalogue board in
-  headless Chromium, drawing takes about 5 ms a frame against 14 ms for the flat art with blocks.
+    (`isoFrame` finds which turn to flip). The light stays on the right, so a flipped frame is
+    relit from the map: each face's shade divided out and the other side's put in.
+  - *Palette swaps:* a full or closed tile is the same frame in a grey palette rather than a wash
+    over it, and a tile shown in another colour than it was drawn in shifts each pixel by its
+    weight.
+  - *Sprite stacks for vehicles:* each vehicle is drawn as a pile of slices from its wheels to its
+    roof (`c.stack` in `tileart.mjs`, a function of the point on the vehicle's plan and its
+    height), and the baker stands it up slice by slice, so the sides carry their own detail. Cars
+    have tyres under a sill, lamps, door seams and a narrower cabin with a raked windscreen; the
+    limousine is the same car stretched. The bus has two axles, its livery stripe, a band of
+    windows, doors on the kerb side and a lit destination board. Carriages have bogies, the line's
+    stripe, windows and doors; the leading one is an engine with a cab window over a yellow
+    warning panel, a tram has a cab at each end, and the monorail pod is a carriage with cabs at
+    both ends. Boats have a vee hull, dark below the waterline, with the deck inside and a cabin
+    of windows on it; the ferry has its stern door, two decks and a red funnel; the cruise ship
+    portholes, three decks of balconies stepping in, lifeboats and a funnel. Airliners stand on
+    their gear with a round fuselage, cheatline, cabin windows, flight deck glass, engines under
+    the wings and a fin in the livery colour. The helicopter sits on skids under its rotor, the
+    gondolas are glass boxes on their cables, the loop pods white capsules, the submarine a hull
+    in its pool under its tower, and the balloon a teardrop of gores over its basket. A top
+    slice of `'top'` shows the top-down art, so a taxi's roof sign still comes from the drawing.
+    `stack` may set its own heights (a parked airliner is taller than its old floating slab),
+    `hide` drops a block a stack has taken over, and `cut` clears flat over art a stack now
+    draws in the round (the helicopter's painted rotor). Cars stand 0.2 of a tile high, buses
+    0.36 and carriages 0.32 (from 0.14, 0.28 and 0.26) to give the sides room.
+  - *Overhang:* a stack may reach past its tile's drawing. Airliners are drawn at 0.9 of their
+    length in span, where the flat art squeezed their wings into the tile's width, and are a
+    little shorter than before (the jumbo 62 px from 70, the jetway's 46 from 50, the business
+    jet 52 from 58). Each turn's cells are tagged 0 (under the tile), 1 (past a padded side: the
+    band, shown only where it lies past the board's edge) or 2 (anything else a vehicle reaches,
+    such as a wing over the next square, always shown and painted at that square's depth). The
+    flat renderer still clips to the tile and keeps the old narrow aircraft.
+  The 67 sheets and their maps come to about 0.8 MB. Measured on the full catalogue board in
+  headless Chromium, drawing takes 5-7 ms a frame against 13-15 ms for the flat art with blocks.
   The cost is the look at in-between zooms: nearest-neighbour at a scale that is not a whole
   number doubles some pixel columns and not others, so fine top-down detail (a 1 px stripe in an
   icon) turns into a zigzag, where the flat renderer's turned art blends. `renderer.artMode =
