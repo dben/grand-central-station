@@ -936,11 +936,38 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 
 ### 13.3 Sprites and audio
 
-`src/ui/sprites.js` maps tile keys to PNGs in `assets/tiles/`.
+Every tile in the catalogue has board art in `assets/tiles/`. `harness/tileart.mjs` draws it in
+code, the way `cardart.mjs` draws the card headers, and writes the manifest `src/ui/tilesprites.js`
+that `src/ui/sprites.js` loads; edit a tile there and rerun it (`--sheet file.png` also writes a
+contact sheet of the lot).
 
-- **Geometry:** each sprite is drawn in the shape's base orientation at 32 px per cell. The renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one image per tile type is enough. Because the isometric map is linear, the canvas transform lays top-down art flat on the ground plane.
-- **Two layers:** `SPRITES` is the over layer (walls, roof) and `SPRITES_FLOOR` the under layer (`<key>_floor.png`).
-- **Fallback:** tiles without art draw as flat coloured blocks. Missing sprites show up as harmless 404s when served; none are committed yet. The old 4-cell `gate.png` no longer fits the 2-cell checkpoint booth.
+- **Geometry:** each sprite is drawn top-down in the shape's base orientation at 32 px per cell. The
+  renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one
+  image per layer covers every rotation and no turned copies are needed. Because the isometric map
+  is linear, the canvas transform lays the art flat on the tile's top face. Art pixels stay crisp
+  while each covers two screen pixels or more, and blend below that, where nearest-neighbour would
+  drop whole rows.
+- **Two layers:** `SPRITES` is the over layer (`<key>.png`: roofs, vehicles, canopies) and
+  `SPRITES_FLOOR` the under layer (`<key>_floor.png`), with the crowd drawn between them.
+  - A raised tile (a shop, a stop) has an opaque over layer on its top face, so a traveller who
+    steps inside vanishes into it as before. A clear over layer on a raised tile looked like a glass
+    box with the floor sunk inside it, so none is drawn that way.
+  - A flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) keeps its
+    art on the floor, under the crowd, with a kerb in the tile's colour since it has no walls. Its
+    over layer, if any, hangs at `CANOPY_Z` above the crowd with no walls under it: the tree tops of
+    a park, over a shadow drawn on the floor.
+  - A low walk-through tile (guard, checkpoint, Flier Club, Chrono Lounge) has floor art only and
+    draws as an open-topped box.
+- **Colour:** the main surfaces take the tile's own colour (`colorForDef`), and the walls stay the
+  flat shaded colour, so the board keeps its colour code with the art on. Vehicles, water and grass
+  keep their own colours. The label still sits over the middle of every tile.
+- **Working side:** the bottom of a transport's image is the side it works from: the kerb a bus
+  pulls up to, the track, the berth. `shapeTransform` turns that side toward the edge the tile
+  depends on (`tile.edges`) when the orientation allows it, so an I-shaped stop always has its
+  vehicle on the road side. Shapes with one transform per orientation (L, S) can't be turned that
+  way, so their art does not depend on it: the ferry's slip is symmetric, and a jetway's nose sits
+  in its tip cell, which `attach: 'tip'` already places at the apron.
+- **Fallback:** a tile without art still draws as a flat coloured block.
 - **Card headers:** `CARD_ART` holds a 56×21 scene per kind of card, in `assets/cards/`. A transport
   gets its terrain's: road, rail, water, airfield, lane (mountains and a monorail beam, for the trams,
   monorails and lifts), underground, and `free` split in two — `sky` for the tiles tagged `air`, and a
@@ -1242,7 +1269,7 @@ Changes from the original design, with the reason for each. Original values are 
 
 ## 16. Not built yet, and open questions
 
-**Designed but not built:** Gravity Well Concourse, the Rain Check card, the Concession Monopoly ordinance, tile unlock progression, a daily seed, running the simulator in a web worker (not needed at current speeds), and per-tile sprites.
+**Designed but not built:** Gravity Well Concourse, the Rain Check card, the Concession Monopoly ordinance, tile unlock progression, a daily seed, and running the simulator in a web worker (not needed at current speeds).
 
 **Open questions:**
 

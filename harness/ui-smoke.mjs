@@ -356,6 +356,8 @@ try {
     const add = (name, key, cells) => s.board.tiles.push({ id: s.board.nextId++, key, name, kind: 'amenity', cells, rot: 0, level: 1 });
     add('Bar', 'waiting_area', [[4, 4], [4, 5], [4, 6], [4, 7]]); // sorts last as a whole tile
     add('Fr', 'vending', [[5, 5]]);                               // stands in front of the bar's far end
+    // flat colours for this one: the check reads a tile's colour off its roof
+    const info = r.tileInfo; r.tileInfo = (...a) => ({ ...info.apply(r, a), img: null, floorImg: null }); r.plainTileInfo = info;
     window.gcs.ui.selectedTileId = null; window.gcs.ui.hoverTileId = null;
     r.fit(); window.gcs.refresh();
   });
@@ -365,6 +367,7 @@ try {
     const [x, y] = r.project(5.5, 5.5);
     const sy = y - r.heightOf('vending') * r.hz - r.hh * 0.75; // roof, above the label chip
     const im = r.canvas.getContext('2d').getImageData(Math.round(x * d), Math.round(sy * d), 1, 1).data;
+    r.tileInfo = r.plainTileInfo; delete r.plainTileInfo;
     return [im[0], im[1], im[2]];
   });
   const near = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < 40;

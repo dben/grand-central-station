@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor } from './sprites.js';
+import { loadSprites, sprite, spriteFloor, SPRITE_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -44,6 +44,12 @@ const FIT_ROOM = 0.30;
 const FENCE_H = 0.30;
 // Isometric angle of the grid's +x axis on screen (atan(hh/hw) = atan(1/2)).
 const AXIS_ANGLE = Math.atan2(1, 2);
+// A flush tile's over layer (the tree tops in a park) hangs this high above the
+// crowd, in units of tile height, with no walls under it.
+const CANOPY_Z = 0.32;
+// The quarter turn that points a sprite's working side (the bottom of the image)
+// at each edge of the board: see shapeTransform.
+const FACE_TURN = { S: 0, W: 1, N: 2, E: 3 };
 
 export function colorForDef(d) {
   if (d.kind === 'bridge') return '#c8904f';
@@ -319,6 +325,7 @@ export class BoardRenderer {
       for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
         if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0) this.drawTileLabel(info); } });
+        else if (info.img) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
       }
       if (info.flush) groundLabels.push(info);
     }
@@ -854,7 +861,7 @@ export class BoardRenderer {
         const edgeCell = t.cells.find(([x, y]) => y === 0 || y === this.h - 1 || x === 0 || x === this.w - 1);
         if (edgeCell) tipAt = [edgeCell[0] - bx0, edgeCell[1] - by0];
       }
-      tf = shapeTransform(d.shape, t.rot, tipAt); base = shapeBaseSize(d.shape);
+      tf = shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])); base = shapeBaseSize(d.shape);
     }
     const z = tileHeight(d);
     return {
@@ -896,9 +903,22 @@ export class BoardRenderer {
       ctx.save(); ctx.globalAlpha = 0.3; ctx.translate(0, this.k * 0.035);
       this.cellPath(x, y); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
     }
-    if (info.floorImg) this.drawCellSprite(x, y, info, info.floorImg, 0);
-    else if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
-    if (info.flush) this.drawTileRoof(x, y, info);
+    if (info.floorImg) {
+      this.drawCellSprite(x, y, info, info.floorImg, 0);
+      if (info.flush) {
+        if (info.dim) { this.cellPath(x, y); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
+        this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
+      }
+    } else if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    // a flush tile with no floor art is painted flat, as a roof at ground level
+    else if (!info.img) this.drawTileRoof(x, y, info);
+    else { this.cellPath(x, y); ctx.fillStyle = info.color; ctx.fill(); }
+  }
+
+  // A flush tile's over layer: the tree tops the crowd walks under,
+  // hung at CANOPY_Z with nothing holding them up but what the floor art draws.
+  drawCanopy(x, y, info) {
+    this.drawCellSprite(x, y, info, info.img, CANOPY_Z);
   }
 
   // The grid -> screen map is linear, so feeding it to the context as a
@@ -913,7 +933,9 @@ export class BoardRenderer {
     ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
     ctx.rotate(tf.rot * Math.PI / 2);
     if (tf.mirror) ctx.scale(-1, 1);
-    ctx.imageSmoothingEnabled = false;
+    // Crisp pixels while an art pixel covers a couple of screen pixels; below
+    // that, nearest-neighbour drops whole rows and lines break up, so blend.
+    ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
     ctx.drawImage(img, -base.w / 2, -base.h / 2, base.w, base.h);
     ctx.restore();
   }
@@ -927,6 +949,9 @@ export class BoardRenderer {
     if (info.img) {
       this.drawCellSprite(x, y, info, info.img, z);
       if (info.dim) { this.cellPath(x, y, z); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
+    } else if (info.floorImg && !info.flush) {
+      // floor art and no roof: an open-topped box, looking down on the floor
+      if (info.dim) { this.cellPath(x, y); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
     } else {
       const d = info.def;
       this.cellPath(x, y, z); ctx.fillStyle = info.color; ctx.fill();
