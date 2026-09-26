@@ -161,7 +161,18 @@ export const GROUND_TEX = {
   apron_y: 'assets/ground/apron_y.png',
   runway_x: 'assets/ground/runway_x.png',
   runway_y: 'assets/ground/runway_y.png',
+  bend_nw: 'assets/ground/bend_nw.png',
+  bend_ne: 'assets/ground/bend_ne.png',
+  bend_sw: 'assets/ground/bend_sw.png',
+  bend_se: 'assets/ground/bend_se.png',
+  bend_wn: 'assets/ground/bend_wn.png',
+  bend_ws: 'assets/ground/bend_ws.png',
+  bend_en: 'assets/ground/bend_en.png',
+  bend_es: 'assets/ground/bend_es.png',
 };
+// a rail bend's anchor: [x, y] squares from the corner it turns at, and its
+// height in squares (the picture's left edge is that many half-cells left of the anchor)
+export const GROUND_BENDS = {"bend_nw":[0,-4,4],"bend_ne":[-4,-4,4],"bend_sw":[0,0,4],"bend_se":[-4,0,4],"bend_wn":[-4,0,4],"bend_ws":[-4,-4,4],"bend_en":[0,0,4],"bend_es":[0,-4,4]};
 export const ISO_FRAMES = {
   bus_stop: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,57,-63,-9]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,116,94,48,-31,0],"over":[96,116,94,57,-31,-9]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,175,94,48,-63,0],"over":[96,175,94,55,-63,-7]}]},
   bike_rental: {"tint":"#2f6bff","frames":[{"cells":[[0,0,0],[1,0,0]],"floor":[0,0,94,48,-31,0],"over":[96,0,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,57,94,48,-63,0],"over":[96,57,94,55,-63,-7]},{"cells":[[0,0,0],[1,0,0]],"floor":[0,114,94,48,-31,0],"over":[96,114,94,55,-31,-7]},{"cells":[[0,0,0],[0,1,0]],"floor":[0,171,94,48,-63,0],"over":[96,171,94,55,-63,-7]}]},

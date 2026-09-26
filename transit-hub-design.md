@@ -1079,7 +1079,11 @@ contact sheet of the lot).
     two rails, concrete slabs with a taxi line. The runway texture carries its kerb, side
     stripes and centre line (the piano keys at its ends are still drawn), the concourse its
     grey checker with a joint round each square in place of the grid lines, and the corner
-    junctions and the shore bend plain asphalt or ballast. The crests drift a pixel at a
+    junctions plain asphalt. Where a railway meets the sea, the 2 x 2 bend is a picture too,
+    `bend_<rail side><sea side>`, one for each corner and way round: the rail texture bent round
+    the ring, across it for across the strip and along it for the arc, anchored at a whole grid
+    point so its pixels stay in the grid (`GROUND_BENDS` in `isosprites.js`). The straight run
+    along the shore after it is centred on its own band, just inland of the waterline. The crests drift a pixel at a
     time. Everything drawn over the ground (driveways, lanes, tunnels, portals, highlights)
     is unchanged, and the flat look keeps the old vector ground.
   The 69 sheets and their maps come to about 0.8 MB, the ground textures to 60 KB. Measured on the full catalogue board in
