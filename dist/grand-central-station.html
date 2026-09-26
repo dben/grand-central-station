@@ -5430,8 +5430,12 @@ function renderTop() {
 function shapeCanvas(def, w = 84, h = 84) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
-  const cells = shapeCells(def.shape, 0);
-  const bw = Math.max(...cells.map(x => x[0])) + 1, bh = Math.max(...cells.map(x => x[1])) + 1;
+  // the preview area is wider than tall, so show the shape lying on its side: an
+  // upright L5 would be drawn at half the cell size of the same tile turned over
+  const box = cs => [Math.max(...cs.map(x => x[0])) + 1, Math.max(...cs.map(x => x[1])) + 1];
+  const turns = Array.from({ length: orientationCount(def.shape) }, (_, r) => shapeCells(def.shape, r));
+  const cells = turns.find(cs => { const [bw, bh] = box(cs); return bw >= bh; }) || turns[0];
+  const [bw, bh] = box(cells);
   const cs = Math.min(18, Math.floor((w - 4) / Math.max(bw, 1)), Math.floor((h - 4) / Math.max(bh, 1)));
   const ox = (w - bw * cs) / 2, oy = (h - bh * cs) / 2;
   g.fillStyle = colorForDef(def);
