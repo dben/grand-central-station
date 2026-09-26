@@ -252,10 +252,11 @@ function plane(c, x, y, len, span, body, trim, down = false, z = 0.16) {
   for (const s of [-1, 1]) { const a = Math.round(len * 0.46), b = Math.round(cy + s * span * 0.24) - 1; down ? c.box(x + b, y + a, 3, 5, STEEL_D) : c.box(x + a, y + b, 5, 3, STEEL_D); }
   down ? c.block(x - 1, y - 1, span + 2, len + 2, z, z - 0.06) : c.block(x - 1, y - 1, len + 2, span + 2, z, z - 0.06);
 }
+// An oval cabin with its glass at the nose (-x), a tail boom and a fin.
 function heli(c, cx, cy, col) {
-  c.R(cx, cy - 1, 18, 3, INK); c.R(cx + 1, cy, 16, 1, shade(col, 0.8)); c.R(cx + 16, cy - 4, 3, 9, INK);
-  c.disc(cx, cy, 7, INK); c.disc(cx, cy, 6, col); c.disc(cx + 3, cy - 1, 3, GLASS);
-  c.block(cx - 8, cy - 8, 28, 17, 0.18, 0.07);
+  c.R(cx + 4, cy - 1, 16, 3, INK); c.R(cx + 5, cy, 14, 1, shade(col, 0.8)); c.R(cx + 18, cy - 4, 3, 9, INK);
+  c.blot(cx - 12, cy - 6, 20, 13, (i, j) => ((i - 9.5) / 10) ** 2 + ((j - 6) / 6.5) ** 2 <= 1, (i, j) => i < 7 && ((i - 6) / 6) ** 2 + ((j - 6) / 4.5) ** 2 <= 1 ? GLASS : col);
+  c.block(cx - 13, cy - 7, 35, 15, 0.18, 0.07);
   // the rotor turns over the body, flat at the top of the pad's box
   for (let i = -17; i <= 17; i++) { c.P(cx + i, cy + Math.round(i * 0.35), '#2e374d'); c.P(cx - Math.round(i * 0.35), cy + i, '#2e374d'); }
   c.disc(cx, cy, 1, STEEL);
@@ -549,32 +550,32 @@ const TILES = {
     },
   },
 
-  // ---- underground: the stairs go down through the floor; the totem stands up
+  // ---- underground: sunk into the concourse (drawPit in render.js). The floor
+  // is the bottom of the pit, the blocks stand on it, and a sign pokes out.
   subway: {
-    floor(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); frame(c, t); },
-    over(c, t) { c.box(48, 8, 10, 16, shade(t, 0.9)); c.R(50, 10, 6, 6, WHITE); c.disc(53, 13, 2, RED); c.block(47, 7, 12, 18, 0.5); },
+    floor(c, t) { pitPlatform(c, t); stairs(c, t, 2, 2, 22, 10); },
+    over(c, t) { carriage(c, 4, 17, 56, 11, '#d0d0dc', t, { nose: true, tail: true }); totem(c, t, 48, 1); },
   },
   express_subway: {
-    floor(c, t) { platform(c, t); stairs(c, t, 4, 6, 40, 20); stairs(c, t, 52, 6, 40, 20, true); frame(c, t); },
-    over(c) { c.box(42, 8, 10, 16, RED); c.R(44, 12, 6, 8, WHITE); c.block(41, 7, 12, 18, 0.55); },
+    floor(c, t) { pitPlatform(c, t); stairs(c, t, 2, 2, 22, 10); stairs(c, t, 72, 2, 22, 10, true); },
+    over(c, t) { train(c, 4, 17, 88, 2, 11, '#d0d0dc', RED, { both: true }); totem(c, t, 44, 1, RED); },
   },
   under_parking: {
     floor(c, t) {
-      platform(c, t); tarmac(c, t, 4, 4, 24, 56); tarmac(c, t, 4, 36, 56, 24);
-      for (let y = 8; y < 32; y += 4) c.R(4, y, 24, 1, mix(ASPHALT_D, INK, (y - 8) / 30));
-      for (let x = 30; x < 60; x += 4) c.R(x, 36, 2, 24, mix(ASPHALT, INK, (x - 30) / 50));
-      for (const y of [14, 22]) c.blot(12, y, 8, 5, (i, j) => Math.abs(i - 3.5) <= j * 0.8, YELLOW, null);
-      frame(c, t);
+      c.fill(mix('#6c6880', t, 0.1)); tarmac(c, t, 3, 3, 26, 58); tarmac(c, t, 3, 35, 58, 26);
+      // the ramp up to the street, lightening toward the top
+      for (let y = 4; y < 30; y++) c.R(4, y, 24, 1, mix(INK, ASPHALT, y / 30));
+      for (const y of [12, 20]) c.blot(12, y, 8, 5, (i, j) => Math.abs(i - 3.5) <= (4 - j) * 0.8, YELLOW, null);
+      for (let x = 34; x < 62; x += 9) c.R(x, 37, 1, 22, PAINT);
     },
-    over(c) { c.box(8, 40, 14, 14, '#2f6bff'); c.R(12, 43, 2, 8, WHITE); c.R(14, 43, 3, 1, WHITE); c.R(14, 46, 3, 1, WHITE); c.R(17, 44, 1, 2, WHITE); c.block(7, 39, 16, 16, 0.4); },
+    over(c, t) { car(c, 36, 40, WHITE, true); car(c, 45, 40, RED, true, 0.14); totem(c, t, 6, 38, '#2f6bff'); },
   },
   sub_dock: {
-    floor(c, t) { platform(c, t); c.box(4, 8, 56, 20, WATER[0]); sea(c, 5, 9, 54, 18); hazard(c, 4, 4, 56, 2); frame(c, t); },
-    over(c, t) {
-      c.blot(10, 12, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
-      c.block(9, 11, 44, 13, 0.05);
-      c.box(24, 14, 8, 7, '#3b4050'); c.R(26, 16, 4, 1, YELLOW); c.block(23, 13, 10, 9, 0.2, 0.05);
-      c.R(0, 0, 64, 4, shade(t, 1.0));
+    floor(c, t) { c.fill('#3b4050'); sea(c, 2, 8, 60, 22); c.R(0, 0, 64, 7, mix('#c4c0d4', t, 0.14)); hazard(c, 0, 6, 64, 2); },
+    over(c) {
+      c.blot(10, 13, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
+      c.block(9, 12, 44, 13, 0.1);
+      c.box(24, 15, 8, 7, '#3b4050'); c.R(26, 17, 4, 1, YELLOW); c.block(23, 14, 10, 9, 0.3, 0.1);
     },
   },
 
@@ -696,6 +697,10 @@ function lift(c, t, step, w, h, z) {
   }
 }
 
+// The bottom of a station pit: platform along the back, track along the front.
+function pitPlatform(c, t) { platform(c, t); trackStrip(c, 14, 32); c.R(0, 13, c.W, 1, YELLOW); }
+// A station sign on a post, standing up out of the pit past ground level.
+function totem(c, t, x, y, col = t) { c.box(x, y, 6, 6, col); c.R(x + 1, y + 1, 4, 4, WHITE); c.R(x + 2, y + 2, 2, 2, col); c.block(x - 1, y - 1, 8, 8, 0.62); }
 // Stairs down into a station: steps darkening as they go, rails either side,
 // and a glass canopy over the top of the flight.
 function stairs(c, t, x, y, w, h, flip = false) {
