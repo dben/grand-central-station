@@ -1,5 +1,5 @@
 import { tileDef } from '../data/tiles.js';
-import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS } from './tilesprites.js';
+import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS, SPRITE_SINKS } from './tilesprites.js';
 
 // Board tile art, drawn by harness/tileart.mjs, which also writes the manifest
 // (tilesprites.js): tile key -> PNG drawn top-down in the shape's BASE
@@ -28,6 +28,11 @@ import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS } from './tilesprites
 export const SPRITE_CELL_PX = 32;
 export const spritePad = key => SPRITE_PAD[key] || null;
 export const spriteBlocks = key => SPRITE_BLOCKS[key] || null;
+// SPRITE_SINKS lists rectangles of the floor layer that step down into the
+// ground: [x, y, w, h, d0, d1, dir, steps], cut into `steps` strips along
+// `dir` (the way down, in the image) from depth d0 to d1. A flight of stairs,
+// or with one step, a pool.
+export const spriteSinks = key => SPRITE_SINKS[key] || null;
 
 // Card headers, drawn by harness/cardart.mjs. A transport gets one per kind of
 // ground it claims, so a card reads as road, water or air at a glance ('free'
