@@ -1,5 +1,6 @@
 import { tileDef } from '../data/tiles.js';
 import { SPRITES, SPRITES_FLOOR, SPRITE_PAD, SPRITE_BLOCKS, SPRITE_SINKS } from './tilesprites.js';
+import { ISO_SHEETS, ISO_FRAMES } from './isosprites.js';
 
 // Board tile art, drawn by harness/tileart.mjs, which also writes the manifest
 // (tilesprites.js): tile key -> PNG drawn top-down in the shape's BASE
@@ -124,6 +125,7 @@ export function loadSprites(onLoad) {
   if (onLoad) listeners.add(onLoad);
   load(SPRITES, '');
   load(SPRITES_FLOOR, 'floor:');
+  load(ISO_SHEETS, 'iso:');
 }
 function get(id) {
   const e = cache.get(id);
@@ -133,3 +135,72 @@ export function sprite(key) { const e = cache.get(key); return e && e.ok ? e.fla
 // the whole over layer and its darkened copy, for drawing blocks
 export function spriteBlockArt(key) { const e = cache.get(key); return e && e.ok && e.side ? { top: e.img, side: e.side } : null; }
 export function spriteFloor(key) { return get('floor:' + key); }
+
+// ---- isometric sheets -------------------------------------------------------
+// Drawn by harness/isoart.mjs (the manifest is isosprites.js): each tile's art
+// already projected to screen space, a cell's diamond 64 sheet pixels wide, cut
+// into one piece per cell. A sheet stores four frames, one per quarter turn;
+// the other four orientations are those frames flipped left to right, which is
+// the grid's x and y swapped. Its pixels are neutral: base colour + weight x the
+// tile's colour, with a face index (top, left, right) to light them by. So one
+// sheet is coloured and lit at load for each way it is shown: its colour, full
+// or closed (a grey palette), and flipped or not (the light stays on the right,
+// so a flipped frame's faces swap shades).
+export const ISO_CELL_PX = 64;
+const FACE_SHADE = [1, 0.52, 0.70, 0.61];
+const DIM = [70, 74, 84];
+// The quarter turn m and flip that show a tile turned by `tf` (mirror first,
+// then rot quarter turns): tf itself, or the flip (x, y) -> (y, x) of turn m.
+const turn = ([x, y], n) => { for (let i = 0; i < n; i++) [x, y] = [-y, x]; return [x, y]; };
+export function isoFrame(key, tf) {
+  const f = ISO_FRAMES[key];
+  if (!f) return null;
+  if (!tf.mirror) return { m: tf.rot, flip: false, frame: frameCells(key, tf.rot) };
+  const want = turn([-1, 2], tf.rot);
+  for (let m = 0; m < 4; m++) { const [x, y] = turn([1, 2], m); if (y === want[0] && x === want[1]) return { m, flip: true, frame: frameCells(key, m) }; }
+  return null;
+}
+// a frame's pieces by the cell that owns them: "u,v" -> { floor: [], over: [] }
+const cellMaps = new Map();
+function frameCells(key, m) {
+  const id = key + '#' + m;
+  if (!cellMaps.has(id)) {
+    const map = new Map(), fr = ISO_FRAMES[key].frames[m];
+    for (const layer of ['floor', 'over']) for (const p of fr[layer] || []) {
+      const k = p[0] + ',' + p[1];
+      if (!map.has(k)) map.set(k, { floor: [], over: [] });
+      map.get(k)[layer].push(p);
+    }
+    cellMaps.set(id, map);
+  }
+  return cellMaps.get(id);
+}
+const variants = new Map();
+// The sheet coloured `tint`, greyed if `dim`, lit for a flipped frame if `swap`;
+// null until it has loaded (or if the browser won't let it be read back).
+export function isoArt(key, tint, dim, swap) {
+  const id = key + '|' + tint + '|' + (dim ? 1 : 0) + (swap ? 1 : 0);
+  if (variants.has(id)) return variants.get(id);
+  const img = get('iso:' + key), half = ISO_FRAMES[key] && ISO_FRAMES[key].half;
+  if (!img || !half) return null;
+  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = half;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  let data, ctl;
+  try { data = x.getImageData(0, 0, c.width, half); x.clearRect(0, 0, c.width, half); x.drawImage(img, 0, -half); ctl = x.getImageData(0, 0, c.width, half).data; }
+  catch (e) { variants.set(id, null); return null; }
+  const p = data.data, t = [1, 3, 5].map(i => parseInt(tint.slice(i, i + 2), 16));
+  const shades = swap ? [FACE_SHADE[0], FACE_SHADE[2], FACE_SHADE[1], FACE_SHADE[3]] : FACE_SHADE;
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const w = ctl[i] / 100, f = shades[Math.round(ctl[i + 1] / 60)] || 1;
+    for (let k = 0; k < 3; k++) {
+      const v = Math.min(255, p[i + k] + w * t[k]) * f;
+      p[i + k] = dim ? 0.3 * v + 0.7 * DIM[k] : v;
+    }
+  }
+  x.clearRect(0, 0, c.width, half);
+  x.putImageData(data, 0, 0);
+  variants.set(id, c);
+  return c;
+}

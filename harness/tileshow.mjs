@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Lays every tile in the catalogue on one big board, each in two orientations,
 // and screenshots it, so tile art can be judged in place without playing a run.
-//   node harness/tileshow.mjs [out-dir] [--zoom 2.2] [--close 3.2] [--only key,key] [--nolabels]
+//   node harness/tileshow.mjs [out-dir] [--zoom 2.2] [--close 3.2] [--only key,key] [--nolabels] [--flat]
+// --flat draws the top-down art laid on the grid instead of the isometric sheets,
+// so the two can be compared shot for shot.
 // Placement rules are ignored: the tiles are pushed straight onto the board.
 // Needs Playwright (npm i playwright), like ui-smoke.mjs.
 import { chromium } from 'playwright';
@@ -52,6 +54,7 @@ try {
   // hide the chrome so the board fills the shot
   await page.addStyleTag({ content: '#shop, .shop, #topbar, #hud, .floating { visibility: hidden !important; }' });
   if (args.includes('--nolabels')) await page.evaluate(() => { window.gcs.renderer.drawTileLabel = () => {}; });
+  if (args.includes('--flat')) await page.evaluate(() => { window.gcs.renderer.artMode = 'flat'; });
   await page.evaluate((z) => { const r = window.gcs.renderer; r.setZoom(z); r.userAdjusted = true; window.gcs.refresh(); }, zoom);
   await page.waitForTimeout(300);
   const canvas = page.locator('canvas').first();

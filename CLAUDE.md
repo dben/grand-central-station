@@ -19,7 +19,8 @@ node harness/selftest.js                           # invariants: rules, sim, che
 node harness/build.js                              # rebuild dist/grand-central-station.html (commit it)
 node harness/cardart.mjs                           # redraw the transport card headers in assets/cards/
 node harness/tileart.mjs                           # redraw the board tile art in assets/tiles/ and its manifest
-node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright)
+node harness/isoart.mjs                            # bake the tile art into isometric sheets in assets/iso/ (after tileart)
+node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --flat for the old look)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
 node harness/week1.mjs --runs 16                  # week 1 on every level x difficulty: cash, quota, tiles placed

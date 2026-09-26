@@ -18,3 +18,7 @@ past the board when the tile sits against its edge (the cruise ship, a train).
 
 The bottom of a transport's image is its working side (road, track, berth); the
 renderer turns it toward the edge the tile draws from. Design doc §13.3 has the rest.
+
+`harness/isoart.mjs` bakes these into the isometric sheets in `assets/iso/`
+(and their manifest, `src/ui/isosprites.js`), which the renderer draws by
+default; rerun it after `tileart.mjs`. Design doc §13.3 says how.
