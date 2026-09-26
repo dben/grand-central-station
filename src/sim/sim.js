@@ -17,6 +17,7 @@ export const DEFAULT_MODS = {
   extraSpawns: [], fareMult: 1, grandOpeningTileId: null, tierMatch: null,
   transportMultBonus: 0, amenityMultBonus: 0, capacityMult: 1, revenueMult: 1, flatMult: 1,
   ticks: null, spawnTicks: null, pickpocketRate: null, pickpocketsFromWeek: null, pickpocketRamp: null, amenityRadiusBonus: 0,
+  weather: [],
 };
 
 export function mergeMods(...list) {
@@ -28,7 +29,7 @@ export function mergeMods(...list) {
       if (k === 'batchMult' || k === 'dwellMult' || k === 'fareMult' || k === 'capacityMult' || k === 'revenueMult' || k === 'flatMult') out[k] *= v;
       else if (k === 'dwellAdd' || k === 'stopBudgetBonus' || k === 'transportMultBonus' || k === 'amenityMultBonus' || k === 'destTierShift' || k === 'vipCount' || k === 'vipBudgetBonus' || k === 'amenityRadiusBonus') out[k] += v;
       else if (k === 'cadenceDiv') out[k] *= v;
-      else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns') out[k] = out[k].concat(v);
+      else if (k === 'offlineTerrains' || k === 'offlineTags' || k === 'extraSpawns' || k === 'weather') out[k] = out[k].concat(v);
       else if (k === 'rateBonusTags') { out[k] = { ...out[k] }; for (const [t, b] of Object.entries(v)) out[k][t] = (out[k][t] || 0) + b; }
       else out[k] = v;
     }
@@ -56,14 +57,23 @@ export function effTransport(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) 
   const offline = mods.offlineTerrains.includes(def.terrain) || tags.some(t => mods.offlineTags.includes(t)) || mods.strikeTerrain === def.terrain;
   // struck, but it is the only terrain running: skeleton service, not a shutdown
   const skeleton = mods.strikeSkeleton === def.terrain;
+  // Weather: each front names the terrains and tags it hits ('surface' is
+  // everything but the underground). The service keeps running, but its whole
+  // timetable slips `late` ticks - every departure, the last call included -
+  // and it can thin the crowd that turns up.
+  let late = 0, wBatch = 1;
+  for (const w of mods.weather) {
+    if (!w.on.some(k => k === def.terrain || tags.includes(k) || (k === 'surface' && def.terrain !== 'underground'))) continue;
+    late = Math.max(late, w.late || 0); wBatch *= w.batch ?? 1;
+  }
   return {
-    def, tier: def.tier, skeleton,
-    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
+    def, tier: def.tier, skeleton, late, delayed: late > 0 || wBatch < 1,
+    batch: Math.max(1, Math.round(def.batch * (1 + up.batch * lvl) * mods.batchMult * wBatch * (skeleton ? cfg.sim.strikeSkeletonBatch : 1))),
     mult: scaleMult(def.mult + up.mult * lvl + mods.transportMultBonus + wifi * cfg.sim.wifi.exit, cfg),
     flat: def.flat * mods.flatMult,
     arr: Math.max(1, Math.ceil(arrBase / mods.cadenceDiv)),
     dep: Math.max(1, Math.ceil(def.dep / mods.cadenceDiv)),
-    dwell: Math.round(def.dwell * mods.dwellMult + mods.dwellAdd),
+    dwell: Math.round(def.dwell * mods.dwellMult + mods.dwellAdd) + late,
     offline,
   };
 }
@@ -227,7 +237,7 @@ export function simulateWeek(board, opts = {}) {
   const transports = [], amenities = [], waitingAreas = [], security = [];
   const tileStats = {};
   for (const t of board.tiles) {
-    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, lost: 0, occ: new Int16Array(TICKS + 1), fullTicks: 0, cap: 0 };
+    tileStats[t.id] = { id: t.id, name: t.name, key: t.key, kind: t.kind, serves: 0, balks: 0, revenue: 0, points: 0, spawned: 0, boarded: 0, stranded: 0, lost: 0, occ: null, fullTicks: 0, cap: 0 };
     if (t.kind === 'bridge') continue;
     const doors = doorCells(board, t, passOpen, blocked);
     if (t.kind === 'transport') {
@@ -248,6 +258,12 @@ export function simulateWeek(board, opts = {}) {
     }
   }
   const activeTransports = transports.filter(t => !t.e.offline && t.doors.length > 0);
+  // A traveller's clock is their platform's: a platform running late keeps
+  // its crowd in the concourse, and its last call waits, `late` ticks past the
+  // usual end. The week runs until the latest of them.
+  const deadline = a => TICKS + transports[a.dest].e.late;
+  const END = TICKS + Math.max(0, ...transports.filter(t => t.doors.length).map(t => t.e.late));
+  for (const id in tileStats) tileStats[id].occ = new Int16Array(END + 1);
 
   // ---- distance fields (memoized)
   const fields = new Map();
@@ -334,10 +350,10 @@ export function simulateWeek(board, opts = {}) {
   const heat = new Float32Array(N);
   let score = 0, fares = 0, revenue = 0, banked = 0, strandedPts = 0, stolen = 0;
   // score credited on each tick, so the UI can fill the week's stars during playback
-  const scoreByTick = new Array(TICKS + 1).fill(0);
+  const scoreByTick = new Array(END + 1).fill(0);
   // what the crowd still on the board is worth on each tick, so the top bar can
   // colour by the whole week in progress rather than by the turnstiles alone
-  const pendingByTick = new Array(TICKS + 1).fill(0);
+  const pendingByTick = new Array(END + 1).fill(0);
   let best = null;
   const counts = { spawned: 0, boarded: 0, stranded: 0, lost: 0, pickpockets: 0, removed: 0, looped: 0 };
   const dw = cfg.destinationWeights;
@@ -416,7 +432,7 @@ export function simulateWeek(board, opts = {}) {
   // Top up a lost traveller's wander so they keep circulating instead of
   // freezing on the spot. Returns false for anyone with a route to follow.
   function wanderOn(a, t) {
-    if (!a.lost || t > TICKS) return false;
+    if (!a.lost || t > deadline(a)) return false;
     const wps = makeWaypoints(a, a.x, a.y, a.origin, a.gateOpen, true, ++a.legs);
     for (const [wx, wy] of wps) a.targets.push({ kind: 'wp', x: wx, y: wy });
     return a.ti < a.targets.length;
@@ -550,7 +566,7 @@ export function simulateWeek(board, opts = {}) {
   function serviceRolls(a, t) {
     if (a.budget <= 0) return;
     const i = a.y * W + a.x;
-    const left = TICKS - t - hurry.slack;
+    const left = deadline(a) - t - hurry.slack;
     const inRange = [];
     for (const am of amenities) {
       if (am.e.closed || am.e.rate <= 0) continue;
@@ -665,7 +681,7 @@ export function simulateWeek(board, opts = {}) {
     // cannot make even this is stranded whatever their route says. One lookup
     // in a field that is already built, so it costs nothing per tick.
     const walk = transportField(a.dest, a.gateOpen)[a.y * W + a.x] + (a.state === 'serving' ? a.serveTicks : 0);
-    if (a.state !== 'waiting' && t + walk > TICKS) return a.value * cfg.economy.strandedMultiplier;
+    if (a.state !== 'waiting' && t + walk > deadline(a)) return a.value * cfg.economy.strandedMultiplier;
     const e = transports[a.dest].e;
     let v = a.value * e.mult + e.flat;
     if (a.tier === e.tier) v *= scaleMult(cfg.sim.tierMatchExitBonus, cfg);
@@ -681,7 +697,7 @@ export function simulateWeek(board, opts = {}) {
   const extraQueue = [];
   for (const ex of mods.extraSpawns) for (let i = 0; i < ex.count; i++) extraQueue.push({ tier: ex.tier, tick: 1 + (i % Math.min(8, SPAWN_TICKS)) });
 
-  for (let t = 1; t <= TICKS; t++) {
+  for (let t = 1; t <= END; t++) {
     currentTick = t;
     // ---- spawns
     if (t <= SPAWN_TICKS && activeTransports.length) {
@@ -725,7 +741,7 @@ export function simulateWeek(board, opts = {}) {
         if (a.serveTicks <= 0) endService(a);
       } else if (a.state === 'walking' || a.state === 'detour') {
         // Late in the week the wander no longer fits: head straight for the platform.
-        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > TICKS) {
+        if (hurry.enabled && a.state === 'walking' && !a.lost && a.targets[a.ti] && a.targets[a.ti].kind === 'wp' && t + routeLeft(a) + hurry.slack > deadline(a)) {
           a.ti = a.targets.length - 1; a.events.push({ t, type: 'hurry' });
         }
         const onWalkway = isWalkway(a.y * W + a.x);
@@ -779,9 +795,13 @@ export function simulateWeek(board, opts = {}) {
           }
         }
         const tr = transports[a.dest];
-        const lastCall = cfg.sim.lastCallDeparture && t === TICKS;
+        const lastCall = cfg.sim.lastCallDeparture && t === deadline(a);
         if ((t >= a.arrivedTick + tr.e.dwell && t % tr.e.dep === 0) || lastCall) board_(a, t);
       }
+      // A late platform's week ends after the others': anyone whose own clock
+      // has run out is settled now rather than walking on. Everyone else waits
+      // for the pass at the end, as they always have.
+      if (a.state !== 'done' && t === deadline(a) && t < END) strand(a, t);
     }
 
     // ---- frames + occupancy
@@ -827,36 +847,40 @@ export function simulateWeek(board, opts = {}) {
     }
   }
 
-  // ---- end of week: strand everyone still on the board
-  for (const a of agents) {
-    if (a.state === 'done') continue;
-    a.endTick = TICKS;
-    if (a.kind === 'pickpocket') { a.outcome = 'left'; a.state = 'done'; continue; }
+  function strand(a, t) {
+    a.endTick = t;
     const v = a.value * (a.lost ? cfg.economy.lostMultiplier : cfg.economy.strandedMultiplier);
-    score += v; strandedPts += v; scoreByTick[TICKS] += v;
+    score += v; strandedPts += v; scoreByTick[t] += v;
     if (a.lost) { counts.lost++; tileStats[transports[a.origin].tile.id].lost++; }
     else { counts.stranded++; tileStats[transports[a.dest].tile.id].stranded++; }
     if (a.waitSlot) { a.waitSlot.occ--; a.waitSlot = null; }
     if (a.serve) { a.serve.occ--; a.serve = null; }
     a.outcome = a.lost ? 'lost' : 'stranded'; a.state = 'done';
-    a.events.push({ t: TICKS, type: a.lost ? 'lost' : 'strand', value: v });
+    a.events.push({ t, type: a.lost ? 'lost' : 'strand', value: v });
+  }
+
+  // ---- end of week: strand everyone still on the board
+  for (const a of agents) {
+    if (a.state === 'done') continue;
+    if (a.kind === 'pickpocket') { a.endTick = END; a.outcome = 'left'; a.state = 'done'; continue; }
+    strand(a, END);
   }
 
   for (const id in tileStats) {
     const s = tileStats[id];
-    s.saturation = s.cap > 0 ? s.fullTicks / TICKS : 0;
+    s.saturation = s.cap > 0 ? s.fullTicks / END : 0;
   }
 
   // running total, so scoreByTick[t] is the score on the board at tick t
-  for (let t = 1; t <= TICKS; t++) scoreByTick[t] += scoreByTick[t - 1];
-  for (let t = 0; t <= TICKS; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
+  for (let t = 1; t <= END; t++) scoreByTick[t] += scoreByTick[t - 1];
+  for (let t = 0; t <= END; t++) scoreByTick[t] = Math.round(scoreByTick[t]);
   // the strand pass above settles everyone left, so nothing is in flight at the
-  // last tick: scoreByTick[TICKS] + pendingByTick[TICKS] is the final score
-  pendingByTick[TICKS] = 0;
-  for (let t = 0; t <= TICKS; t++) pendingByTick[t] = Math.round(pendingByTick[t]);
+  // last tick: scoreByTick[END] + pendingByTick[END] is the final score
+  pendingByTick[END] = 0;
+  for (let t = 0; t <= END; t++) pendingByTick[t] = Math.round(pendingByTick[t]);
 
   return {
-    seed, week, ticks: TICKS, spawnTicks: SPAWN_TICKS,
+    seed, week, ticks: END, spawnTicks: SPAWN_TICKS,
     score: Math.round(score),
     points: { banked: Math.round(banked), stranded: Math.round(strandedPts), stolen: Math.round(stolen) },
     scoreByTick, pendingByTick,

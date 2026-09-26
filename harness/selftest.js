@@ -1,6 +1,6 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
-import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength } from '../src/sim/sim.js';
+import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength, mergeMods } from '../src/sim/sim.js';
 import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement, buyExtraHours, extraHoursCost } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
@@ -113,6 +113,25 @@ ok(r3.score !== r1.score, 'different seed gives different score');
 ok(r1.counts.spawned > 0 && r1.score > 0, 'travellers spawn and score');
 ok(Object.values(r1.tileStats).some(s => s.serves > 0), 'amenities serve');
 for (const a of r1.agents) { if (a.frames.length !== a.endTick - a.spawnTick + 2) { ok(false, `frame count for agent ${a.id}: ${a.frames.length} vs ${a.endTick - a.spawnTick + 2}`); break; } }
+
+// weather: a front slips only the timetables it names
+{
+  const wx = mods => simulateWeek(b, { seed: 7, week: 3, mods });
+  const fog = wx(EVENTS.fog.mods);
+  ok(fog.score === r1.score && fog.ticks === r1.ticks && fog.agents.every((a, i) => a.key === r1.agents[i].key && a.value === r1.agents[i].value && a.outcome === r1.agents[i].outcome), 'fog on a board with nothing that flies or sails changes nothing');
+  const rain = mergeMods(EVENTS.heavy_rain.mods), snow = mergeMods(EVENTS.snowstorm.mods), late = EVENTS.heavy_rain.mods.weather[0].late;
+  const bus = b.tiles.find(t => t.key === 'bus_stop'), train = b.tiles.find(t => t.key === 'train_station');
+  ok(effTransport(bus, rain).late === late && effTransport(bus, rain).batch < effTransport(bus).batch && JSON.stringify(effTransport(train, rain)) === JSON.stringify({ ...effTransport(train), delayed: false }), 'heavy rain slows the road and leaves the rail alone');
+  const sub = { key: 'subway', level: 1 };
+  ok(!effTransport(sub, snow).delayed && effTransport(sub, snow).batch === effTransport(sub).batch && effTransport(train, snow).late > 0, 'a snowstorm stops at the underground');
+  const wet = wx(EVENTS.heavy_rain.mods), T = CONFIG.sim.ticks;
+  const to = (r, key) => r.agents.filter(a => a.kind === 'traveller' && a.dest === b.tiles.find(t => t.key === key).id);
+  ok(wet.ticks === T + late && to(wet, 'bus_stop').some(a => a.endTick > T) && to(wet, 'train_station').every(a => a.endTick <= T), 'the week runs on for the late platform alone');
+  ok(wet.agents.every(a => a.outcome !== 'stranded' || !a.events.some(e => e.type === 'arrive')), 'and everyone who reached a platform still boards');
+  // no crowd cut: the extra ticks on their own are time to shop
+  const serves = r => r.agents.reduce((n, a) => n + a.events.filter(e => e.type === 'serve').length, 0);
+  ok(serves(wx({ weather: [{ on: ['surface'], late: 3 }] })) > serves(r1), 'travellers linger and shop while their ride is late');
+}
 
 // security checkpoint: a two-cell booth whose fence runs edge to edge between cells
 b = createBoard(12, 12);

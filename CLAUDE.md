@@ -27,6 +27,7 @@ node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24   # placement landsc
 node harness/tierboard.mjs --weeks 4,9,13 --seeds 10          # rank tiles, cards and ordinances on fixed benches -> tier-list.md
 node harness/tierlist.mjs --weeks 5,9,13 --seeds 6            # the same ranking, on the bot's own boards
 node harness/badge.mjs --bots 1002,1003,1004,1005,1006 --weeks 9,12   # star badge vs the week actually run: miss, and badges that turn into a loss
+node harness/eventprice.mjs --events fog,snowstorm       # an event's score ratio and hardness on the bot's week 8/12/16 boards
 ```
 
 `autoplay.js`, `run.js` and `sensitivity.mjs` take `--set sim.hurry.enabled=false` (any `CONFIG`

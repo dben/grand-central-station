@@ -169,6 +169,7 @@ These rules shape every hand:
 - **Ticks 1–16:** transports spawn travellers on their cadence.
 - **Ticks 17–24:** no new spawns; travellers already on the board carry on.
 - **Last call:** every transport fires one final departure on tick 24, so only travellers still walking are stranded.
+- **Late platforms (weather, §9):** a transport whose timetable has slipped `late` ticks fires every departure that much later, its last call included, and its travellers' clock runs to tick 24 + `late`: the hurry rule, the strand check and the last call all read their own platform's deadline. The week runs to the latest deadline on the board; travellers bound for an on-time platform are settled at tick 24 as usual. With no weather every deadline is 24 and the week is exactly what it was.
 - **Stranded** travellers bank their chain value **×0.5**, with no exit bonus and no fare.
 - **Lost** travellers — those with no route to their chosen platform — wander for the rest of the week and bank **nothing**.
 - **Travellers mind the clock** (§6.3): nobody takes a detour they can't get back from before the last call, so stranding is mostly late arrivals with a long walk, not shoppers who lost track of time.
@@ -432,7 +433,7 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 
 **The four low-tier water and air tiles are the Bus Stop and the Parking Lot in other clothes**, and they carry those tiles' numbers to the digit. They exist because Waterfront and Sky Harbour had nothing cheap of their own: the water catalogue started at a $200 Ferry Terminal and the airfield at a $400 Jetway, so both levels opened by building the road they were not about. Each is sold on its own level and nowhere else, from week 1, and each reaches inland on a jetty or taxiway rather than needing the shore itself (§3.2). Hardstand and Pontoon Moorings are walk-through, like the car park they copy.
 
-Air tiles (helipad, balloon, jetways, private terminal, jetpack) are tagged `air` and go offline in a Weather Front. Underground tiles run their line on the tunnel layer (§3.5); Underground Parking has the Parking Lot's timing and pays for its freedom of placement. **Loop Terminal:** 30% of its departures during the spawn ticks re-enter as a new arrival with their chain value intact.
+Air tiles (helipad, balloon, jetways, private terminal, jetpack) are tagged `air`: they go offline in a Weather Front and run late in Fog. Underground tiles run their line on the tunnel layer (§3.5); Underground Parking has the Parking Lot's timing and pays for its freedom of placement. **Loop Terminal:** 30% of its departures during the spawn ticks re-enter as a new arrival with their chain value intact.
 
 ### 8.2 Amenity tiles
 
@@ -549,6 +550,12 @@ Every 4th week. The player sees the **next** event as soon as the current one re
 | Use It or Lose It | ×0.9 | Whatever cash is left when you run the week is swept up, the early-finish payment with it. The week's own takings are safe. |
 | Emergency Budget | ×1.0 | The till is set to a starting allowance for the week: $220 × 1.22^(week−1). A hoard is cut to it; a broke run is topped up to it. |
 | Double Week | ×2 | The same board runs two full weeks back to back and the two scores add. +1 AP to prepare. |
+| Fog | ×1.0 | Air and water transports run 4 ticks late; their batch ×0.6 |
+| Snowstorm | ×0.9 | Everything above ground runs 3 ticks late; batch ×0.6. The underground runs to time. |
+| Heavy Rain | ×0.9 | Road transports run 3 ticks late; batch ×0.6 |
+| Thunderstorm | ×1.3 (×1.09 softened) | Everything above ground runs 6 ticks late; batch ×0.6 |
+
+**Weather** (`weather` in the sim mods: `{ on, late, batch }`, where `on` lists terrains, tags or `surface` for everything not underground). A front keeps the service running but slips its whole timetable `late` ticks: every departure, and the last call, and so the clock its travellers read (§4.3). Those travellers linger in the concourse, shop longer and stack longer on a lounge, and can still be stranded if they wander too far. The linger is worth more than it costs: with no crowd cut, a Snowstorm scores 1.19–1.30× a quiet week on the bot's boards. So each front thins the crowd as well, and the batch cut is what makes it a hard week. `batch` rounds, so ×0.6 halves the cheap two-at-a-time transports and trims the big ones; ×0.8 rounds back to two and was measured as no cut at all.
 
 An event's real difficulty is its quota multiplier divided by how much it cuts the board's score; all of them should land between about 0.9× and 1.6× as hard as a normal week. Events double as tutorial pressure: Weather Front punishes a player who put everything on water, Inspection punishes one who never upgraded, and a Crime Spree punishes one who skipped the security tiles.
 
@@ -962,6 +969,7 @@ node harness/tierlist.mjs --weeks 5,9,13 --seeds 6                    # rank the
 node harness/tierboard.mjs --weeks 4,9,13 --seeds 10 --out tiers.json  # rank tiles, cards, ordinances on fixed benches
 node harness/sensitivity.mjs --bot 1000 --week 9 --seeds 24           # placement landscape of each probe tile on a bot board
 node harness/badge.mjs --bots 1002,1003,1004,1005,1006 --weeks 9,12   # the star badge against the week the player actually runs
+node harness/eventprice.mjs --events fog,snowstorm --seeds 16        # each event's score ratio and hardness on the bot's week 8/12/16 boards (§14.2)
 node harness/ui-smoke.mjs                                             # Playwright drive of the real page
 ```
 
@@ -1007,6 +1015,10 @@ Junction is the loose one at 16% over 3×, and most of that is survivorship: hal
 | VIP Delegation | 1.14 → 0.96 | 1.09 → 1.00 | 1.08 → 1.01 |
 | Holiday Rush | 1.15 → 1.08 | 1.14 → 1.09 | 1.15 → 1.08 |
 | Weather Front | 0.98 → 0.92 | 0.98 → 0.92 | 0.97 → 0.93 |
+| Fog | 1.00 → 1.00 | 0.98 → 1.02 | 0.99 → 1.01 |
+| Snowstorm | 0.83 → 1.08 | 0.85 → 1.06 | 0.88 → 1.02 |
+| Heavy Rain | 0.87 → 1.03 | 0.93 → 0.97 | 0.97 → 0.93 |
+| Thunderstorm | 0.96 → 1.14 | 1.07 → 1.02 | 1.14 → 0.96 |
 | Strike | 0.80 → 1.12 | 0.71 → 1.27 | 0.87 → 1.03 |
 | Inspection | 0.72 → 1.25 | 0.67 → 1.34 | 0.73 → 1.23 |
 | Festival | 1.06 → 1.08 | 1.07 → 1.08 | 1.05 → 1.09 |
@@ -1217,6 +1229,12 @@ Changes from the original design, with the reason for each. Original values are 
 - **The quota climbs faster after the win** (`quota.endless`, §5.2). The same playtest found the game eased off once week 16 was cleared. The settled 1.10 growth ran on unchanged, and a full board keeps pace with that for a long time: the bot's winning runs on Standard held 1.7–2.0× quota through week 21 and 1.4× at week 24, and 5 of 14 lasted to week 30. The two options were a steeper curve all run (easier middle, harder end) or a ramp that starts only after the win. The ramp was chosen, because it leaves weeks 1–16, which the playtest was happy with, exactly as they were. Each week past 16 now adds 0.015 more to the growth rate than the one before. To week 30, `--seed0 1000` and `2000`, runs that reached week 16, before → after: Standard ended in weeks 20–28 with 5 of 14 lasting to 30, and now ends in weeks 20–29 with 1 of 14 lasting; the mean week-24 ratio (seed set 1000) went 1.45× → 1.26×. Hard ended between weeks 16 and 30, and now between 16 and 27. 0.02 and 0.025 were priced but not run: they move week 28 from 493k to 675k and 914k, which would put the wall at week 24 or so for everyone. 0.015 keeps a strong run going into its late twenties.
 
 - **The side a transport attaches by is the player's** (§3.2). A corner berth used to claim both edges it touched, and a road tile, garage or lift always took the nearest edge, so there was no way to tuck a Parking Lot into a corner without claiming the side you wanted to keep. Each check now lists the edges it could use, and **⇄** or **E** cycles them. A corner berth attaches by one side and locks only that one. By default it prefers an edge that is already its terrain, so a corner no longer locks a second side unasked. The selftests that required a corner berth to fail were rewritten to require it to claim one edge.
+
+- **Weather: four fronts that slip the timetable** (§9, §4.3). The ask was weather weeks that make travellers sit around longer, with fewer of them if the numbers called for it. The first build added dwell per terrain (and a ground stop that held every departure until tick 12), and `eventprice.mjs` priced all four at 0.97–1.01 of a quiet week. On a real board almost nobody reaches a platform before tick 19: the hurry rule sends them there, and the last call boards whoever is waiting, so extra dwell only postpones a departure that was coming at tick 24 anyway. Even a 12-tick ground stop left the selftest board's score unchanged to the point. What bites is moving the end of the week, so a front now slips a platform's whole timetable, last call included, and its travellers' hurry and strand checks read that later deadline. The week runs until the latest deadline; everyone else settles at 24 as before, and with no weather the sim is identical (four fixed layouts at weeks 4, 9 and 14, 30 seeds, same output).
+
+  That linger turned out to be worth more than it cost. With the crowd at ×0.8, which the rounding leaves at two on the cheap transports, Snowstorm and Heavy Rain scored 1.17–1.28× a quiet week. At ×0.6 they score 0.83–0.97×, and with ×0.9 quotas that prices them at 0.93–1.08× as hard as a normal week. Thunderstorm's six-tick slip still comes out ahead late in the run (1.07× at week 12, 1.14× at week 16), so it carries a ×1.3 quota, softened to ×1.09. Fog barely moves the bot's boards (0.98–1.01×, and 1.01–1.05× on Sky Harbour and Waterfront, where the bot builds road too), so its quota is a flat ×1: it matters to a player who built on air or water, and rewards one who put a lounge beside the jetway. `harness/eventprice.mjs` is new and reproduces the table in §14.2 (Delays 0.61/0.57/0.58 against the recorded 0.60/0.59/0.58).
+
+  Autoplay, Terminal, `--runs 8 --weeks 16`, before → after as survived / band / over 3× / median: `--seed0 1000` 6/8 · 39% · 10% · 2.19× → 4/8 · 46% · 13% · 1.97×; `--seed0 2000` 8/8 · 41% · 13% · 2.23× → 8/8 · 46% · 17% · 2.11×. None of the four new deaths is a weather week: four more events reshuffle every run's plan, and the deaths landed on a Strike, a Crime Spree and quiet weeks after a Double Week and a budget week. All ten weather weeks the sixteen runs met passed, at 1.31× to 3.43× of quota.
 
 - **The touch confirmation moved into the card bar** (§12.6). On a phone the popup by the target and the card bar under the board both showed the card's name and price, and between them covered most of the board. The bar now carries the aim itself (the target, the refusal or warning, ⟳, ⇄, ✓ and ✕), and folds the card's text away while aimed.
 
