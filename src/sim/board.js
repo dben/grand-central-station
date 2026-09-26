@@ -143,6 +143,17 @@ function lineToEdge(b, cells, edge) {
   return { dist: best.dist, cells: line, edgeIndex: (edge === 'N' || edge === 'S') ? x : y };
 }
 
+// Most transports could attach more than one way: a road tile to any edge in
+// reach, a corner berth to either side, a garage to any road edge. Each check
+// lists those ways as `options` (best first) and takes the one the player asked
+// for, or the first. `res.sides` is what the player can cycle through.
+function pickSide(res, options, side) {
+  res.sides = options.map(o => o.e);
+  const pick = options.find(o => o.e === side) || options[0];
+  res.side = pick.e;
+  return pick;
+}
+
 function lineClear(occ, b, line, allowDriveway) {
   for (const [x, y] of line) {
     const o = occ[y * b.w + x];
@@ -158,7 +169,7 @@ function lineClear(occ, b, line, allowDriveway) {
 // a road tile uses, but aimed only at edges that are already its terrain (or
 // still open, which it then claims and locks). The run becomes a driveway,
 // tagged with the terrain so the renderer paints a jetty rather than tarmac.
-function reachInland(b, occ, res, def, cells, terrain) {
+function reachInland(b, occ, res, def, cells, terrain, side) {
   const options = [];
   for (const e of EDGES) {
     const line = lineToEdge(b, cells, e);
@@ -171,7 +182,7 @@ function reachInland(b, occ, res, def, cells, terrain) {
   }
   if (!options.length) { res.reason = `No way out to the ${terrain}: a ${def.name} needs a clear straight run of ${def.reach} squares or less to it`; return res; }
   options.sort((a, c) => a.line.dist - c.line.dist);
-  const pick = options[0];
+  const pick = pickSide(res, options, side);
   res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]).map(([lx, ly]) => [lx, ly, terrain]);
   if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain, lock: true });
   res.attachEdges = [pick.e];
@@ -181,9 +192,10 @@ function reachInland(b, occ, res, def, cells, terrain) {
 
 /**
  * Check whether a tile can be placed. Returns a result object:
- * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}] }
+ * { ok, reason, cells, claims:[{edge, terrain, lock}], lane:[], driveway:[], opens:[{edge, idx}], sides, side }
+ * `side` asks for the edge a transport attaches by, when it has a choice.
  */
-export function checkPlacement(b, key, x, y, rot, mode = null) {
+export function checkPlacement(b, key, x, y, rot, mode = null, side = null) {
   const def = tileDef(key);
   const cells = shapeCells(def.shape, rot).map(([cx, cy]) => [cx + x, cy + y]);
   const res = { ok: false, reason: '', cells, claims: [], lane: [], driveway: [], opens: [], def };
@@ -213,33 +225,36 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     // A small boat or a prop plane does not need a berth on the shore itself:
     // `reach` lets it sit that many squares inland, with a jetty or a taxiway
     // run out to the water or the apron, exactly the way a road tile does.
-    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain);
+    if (touched.length === 0 && def.reach) return reachInland(b, occ, res, def, cells, terrain, side);
     if (touched.length === 0) { res.reason = `A ${def.name} has to touch the edge of the board`; return res; }
-    if (def.attach === 'tip') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== 1) { res.reason = `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; return res; }
-    }
-    // Long vehicles berth alongside, not nose-in: every cell has to sit on the
-    // same edge, which pins a straight tile to the two orientations that lie flat.
-    if (def.attach === 'edgewise') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== cells.length) { res.reason = `A ${def.name} has to lie flat along one edge — rotate it`; return res; }
-    }
-    // Broadside is the mirror of tip: a hull ties up along its long side, so the
-    // whole long arm sits on the water and only the short foot points inland.
-    if (def.attach === 'broadside') {
-      if (touched.length !== 1 || edgeIndices(b, cells, touched[0]).length !== longestRun(cells)) { res.reason = `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; return res; }
-    }
+    // A berth attaches by one edge, even in a corner where it touches two: the
+    // player picks which, and the other side stays as it was.
     const surfacing = terrain === 'water' ? tunnelEnds(b) : null;
+    const options = [];
+    let why = '';
     for (const e of touched) {
+      const n = edgeIndices(b, cells, e).length;
+      if (def.attach === 'tip' && n !== 1) { why = why || `A ${def.name} has to touch the edge with the tip of its L and the foot pointing inland — rotate it`; continue; }
+      // Long vehicles berth alongside, not nose-in: every cell has to sit on the
+      // same edge, which pins a straight tile to the two orientations that lie flat.
+      if (def.attach === 'edgewise' && n !== cells.length) { why = why || `A ${def.name} has to lie flat along one edge — rotate it`; continue; }
+      // Broadside is the mirror of tip: a hull ties up along its long side, so the
+      // whole long arm sits on the water and only the short foot points inland.
+      if (def.attach === 'broadside' && n !== longestRun(cells)) { why = why || `A ${def.name} ties up side-on: its long side has to lie along the edge, with the short foot inland — rotate it`; continue; }
       const cur = b.edges[e];
-      const idx = edgeIndices(b, cells, e);
-      const allOpen = idx.every(i => spanOpen(b, e, i));
+      const allOpen = edgeIndices(b, cells, e).every(i => spanOpen(b, e, i));
       // a subway line surfaces at this edge, and a tunnel can't end in the sea
-      if (cur === 'green' && surfacing && surfacing.has(e)) { res.reason = `A subway comes up at the ${EDGE_NAME[e]} edge, so that edge can't become water`; return res; }
-      if (cur === 'green') res.claims.push({ edge: e, terrain, lock: true });
-      else if (cur === terrain || allOpen) { /* fine */ }
-      else { res.reason = `The ${EDGE_NAME[e]} edge is already ${cur}, so nothing on ${terrain} can attach there without a bridge`; return res; }
+      if (cur === 'green' && surfacing && surfacing.has(e)) { why = why || `A subway comes up at the ${EDGE_NAME[e]} edge, so that edge can't become water`; continue; }
+      if (cur === 'green') options.push({ e, claim: true });
+      else if (cur === terrain || allOpen) options.push({ e, claim: false });
+      else why = why || `The ${EDGE_NAME[e]} edge is already ${cur}, so nothing on ${terrain} can attach there without a bridge`;
     }
-    res.attachEdges = touched;
+    if (!options.length) { res.reason = why; return res; }
+    // an edge that is already this terrain first, so a corner does not lock a second side unasked
+    options.sort((a, c) => a.claim - c.claim);
+    const pick = pickSide(res, options, side);
+    if (pick.claim) res.claims.push({ edge: pick.e, terrain, lock: true });
+    res.attachEdges = [pick.e];
     res.ok = true; return res;
   }
 
@@ -257,7 +272,7 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     }
     if (options.length === 0) { res.reason = `No way in by road: needs a clear straight run of ${reach} squares or less to a road or an open edge`; return res; }
     options.sort((a, c) => a.line.dist - c.line.dist);
-    const pick = options[0];
+    const pick = pickSide(res, options, side);
     res.driveway = pick.line.cells.filter(([lx, ly]) => !occ[ly * b.w + lx]);
     if (pick.cur === 'green') res.claims.push({ edge: pick.e, terrain: 'road', lock: false });
     res.roadEdge = pick.e;
@@ -281,14 +296,11 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
       const wet = ends.find(e => b.edges[e] === 'water');
       if (wet) { res.reason = `A ${def.name} can't come up in the water at the ${EDGE_NAME[wet]} edge — rotate it`; return res; }
     } else {
-      // straight to the nearest edge of the wanted terrain, however far
-      let best = null;
-      for (const e of EDGES) {
-        if (b.edges[e] !== def.line) continue;
-        const line = lineToEdge(b, cells, e);
-        if (best === null || line.dist < best.line.dist) best = { e, line };
-      }
-      if (!best) { res.reason = `A ${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      // straight to an edge of the wanted terrain, however far: the nearest unless the player picks another
+      const options = EDGES.filter(e => b.edges[e] === def.line).map(e => ({ e, line: lineToEdge(b, cells, e) }));
+      if (!options.length) { res.reason = `A ${def.name} needs a ${def.line} edge to tunnel to`; return res; }
+      options.sort((a, c) => a.line.dist - c.line.dist);
+      const best = pickSide(res, options, side);
       res.tunnel = { line: def.line, axis: best.e === 'N' || best.e === 'S' ? 'v' : 'h', ends: [best.e], cells: best.line.cells };
       res.attachEdges = [best.e];
     }
@@ -303,12 +315,9 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
     const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
     const vertical = (Math.max(...ys) - Math.min(...ys)) > (Math.max(...xs) - Math.min(...xs));
     const allowed = vertical ? ['N', 'S'] : ['E', 'W'];
-    let best = null;
-    for (const e of allowed) {
-      const line = lineToEdge(b, cells, e);
-      if (!lineClear(occ, b, line.cells, false)) continue;
-      if (best === null || line.dist < best.line.dist) best = { e, line };
-    }
+    const options = allowed.map(e => ({ e, line: lineToEdge(b, cells, e) })).filter(o => lineClear(occ, b, o.line.cells, false));
+    options.sort((a, c) => a.line.dist - c.line.dist);
+    const best = options.length ? pickSide(res, options, side) : null;
     if (!best) { res.reason = `A ${def.name} needs a clear straight lane to the ${vertical ? 'north or south' : 'east or west'} edge — rotate it to aim at a different one`; return res; }
     res.lane = best.line.cells;
     res.laneEdge = best.e;
@@ -319,8 +328,8 @@ export function checkPlacement(b, key, x, y, rot, mode = null) {
   return res;
 }
 
-export function placeTile(b, key, x, y, rot, check = null, mode = null) {
-  const c = check || checkPlacement(b, key, x, y, rot, mode);
+export function placeTile(b, key, x, y, rot, check = null, mode = null, side = null) {
+  const c = check || checkPlacement(b, key, x, y, rot, mode, side);
   if (!c.ok) throw new Error('Illegal placement: ' + c.reason);
   const def = c.def;
   const tile = {
