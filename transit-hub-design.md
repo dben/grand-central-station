@@ -415,7 +415,7 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 | Helipad | O4 | free | $$$$ | 6 | 2 | 6 | 2 | 1.24 | 15 | 380 | 5 |
 | Hot Air Balloon | T4 | free | $$$ | 10 | 2 | 10 | 5 | 1.19 | 18 | 260 | 4 |
 | Jetway | L3 | apron, tip | $$$ | 8 | 11 | 8 | 4 | 1.18 | 27 | 400 | 6 |
-| Jumbo Jetway | L5 | apron, tip | $$$ | 12 | 21 | 12 | 6 | 1.21 | 42 | 680 | 9 |
+| Jumbo Jetway | L4 | apron, tip | $$$ | 12 | 21 | 12 | 6 | 1.21 | 42 | 680 | 9 |
 | Prop Plane Stand ᴬ | I2 | apron, reach 3 | $ | 4 | 5 | 4 | 1 | 1.04 | 12 | 60 | 1 |
 | Hardstand ᵂᴬ | O4 | apron, reach 2 | $ | 1 | 2 | 1 | 0 | 1.02 | 30 | 50 | 1 |
 | Ski Lift | I4 | corridor | $$ | 3 | 2 | 3 | 1 | 1.09 | 12 | 120 | 2 |
@@ -457,7 +457,7 @@ Air tiles (helipad, balloon, jetways, private terminal, jetpack) are tagged `air
 | Sports Bar | T4 | $$ | 3 | 0.50 | 2.93 | 140 | 16 | 4 | 12 | 77 | 4 |
 | Currency Exchange | I2 | $$$ | 3 | 0.45 | 2.75 | 88 | 6 | 2 | 15 | 67 | 4 |
 | Clothing Store | S4 | $$ | 3 | 0.45 | 2.75 | 120 | 12 | 3 | 14 | 74 | 4 |
-| Cafeteria | I6 | $ | 4 | 0.81 | 1.63 | 60 | 45 | 2 | 5 | 91 | 5 |
+| Cafeteria | I5 | $ | 4 | 0.81 | 1.63 | 60 | 45 | 2 | 5 | 91 | 5 |
 | Art Gallery | T4 | $$$ | 4 | 0.40 | 3.45 | 160 | 10 | 4 | 18 | 115 | 6 |
 | Travel Lounge | S5 | $$$ | 3 | 0.54 | 3.27 | 120 | 14 | 3 | 20 | 133 | 7 |
 | Designer Shop | L4 | $$$$ | 3 | 0.36 | 4.15 | 180 | 8 | 4 | 35 | 168 | 8 |
@@ -581,7 +581,7 @@ A mode sets the board, one standing rule, and its own run clock. It is chosen be
 |---|---|---|---|
 | **Terminal** | 12×12 | — | Baseline |
 | **Junction** | 9×9 | week 8 | `startAP: 3` — 3 AP every week instead of 2, so `quotaMult: 1.30` and `quotaGrowth: 1.06` on the whole curve: it builds twice the board of a one-action level, then runs out of squares to build it on, so its target starts higher and climbs slower than anywhere else. `startMoney: 290`, because three action points in week 1 need three tiles' worth of cash. Early milestones: ordinances at 4/9/15, crime wave week 5, rares week 8, Extra Shift week 12. Tunnels early (Subway 2, Garage 2, Express Subway 4, Limo 3), since they cost no floor. |
-| **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected), with `startMoney: 275` to match, so the opening hand buys the same two tiles it buys everywhere else. A slow clock: an event every 5th week, ordinances at 6/13/20, crime wave week 9, rares week 12, Extra Shift week 16. The six-cell tiles early, since the board has room (Express Train 3, Cafeteria 3, Cruise Dock 5, Jumbo Jetway 6, Flier Club 7). |
+| **Metroplex** | 16×16 | week 12 | `costMult: 1.25` — tile prices +25% (upgrades, cards and bridges are unaffected), with `startMoney: 275` to match, so the opening hand buys the same two tiles it buys everywhere else. A slow clock: an event every 5th week, ordinances at 6/13/20, crime wave week 9, rares week 12, Extra Shift week 16. The big tiles early, since the board has room (Express Train 3, Cafeteria 3, Cruise Dock 5, Jumbo Jetway 6, Flier Club 7). |
 | **Waterfront** | 12×12 | week 8 | `preLock: W, S water` — two edges start locked to water. `terrainCostMult: water 0.6` — water transports −40%. Boats early: Water Bus, Pontoon, Ferry and Water Taxi from week 1, Sub Dock 3, Marina 4, Cruise Dock 5. The Water Bus Stop and the Pontoon Moorings are sold here and nowhere else, and the opening hand deals a Pontoon in place of the Parking Lot. |
 | **Sky Harbour** | 8×16 | week 12 | `banTerrains: rail, water` — removed from the shop and rejected on placement. `terrainCostMult: free 0.7` — Free-terrain transports −30%. `preLock: N apron, S road` and a Security Checkpoint already built at (3,7)–(3,8): a long board with the airfield at one end, the road at the other and a fence across the waist, cutting it into an 8×8 airside and an 8×8 landside. Light aircraft from week 1 (Prop Plane Stand and Hardstand, sold here and nowhere else), the rest early (Jetway 2, Balloon 2, Helipad 3, Jetpack 4, Jumbo Jetway 6, Private Terminal 8), security early (Station and Guard 3), crime wave week 3 over a 6-week ramp, `quotaMult: 1.05`. The opening hand deals a Prop Plane Stand and a Parking Lot, one for each side of the fence. |
 | **Terminus** | 12×12 | week 16 | `fixedAP: 1` — one AP a week (cards and ordinances still add), so `quotaMult: 0.46` with `quotaGrowth: 1.145`, since a one-action board catches up as it fills. `shopSlots: 8`. One move a week, so the clock is slow (event every 5th week, ordinances at 4/10/18) and the things that buy more moves come early and cheap: rares week 8, Extra Shift week 8 at $320 instead of week 19 at $400. It never sells extra hours (§4.1). |
@@ -840,7 +840,7 @@ and drops the phrase:
 - A card's bottom line holds its tier in the left corner and its price in the right, so the price
   stays inside the short phone cards.
 - A tile card's shape preview is drawn in the first orientation that is at least as wide as it is
-  tall, since the preview box is landscape; an upright L5 would otherwise draw at half size.
+  tall, since the preview box is landscape; an upright L4 would otherwise draw at half size.
 
 ### 12.6 Controls
 
@@ -1349,6 +1349,8 @@ Changes from the original design, with the reason for each. Original values are 
   Autoplay, Terminal, `--runs 8 --weeks 16`, before → after as survived / band / over 3× / median: `--seed0 1000` 6/8 · 39% · 10% · 2.19× → 4/8 · 46% · 13% · 1.97×; `--seed0 2000` 8/8 · 41% · 13% · 2.23× → 8/8 · 46% · 17% · 2.11×. None of the four new deaths is a weather week: four more events reshuffle every run's plan, and the deaths landed on a Strike, a Crime Spree and quiet weeks after a Double Week and a budget week. All ten weather weeks the sixteen runs met passed, at 1.31× to 3.43× of quota.
 
 - **The touch confirmation moved into the card bar** (§12.6). On a phone the popup by the target and the card bar under the board both showed the card's name and price, and between them covered most of the board. The bar now carries the aim itself (the target, the refusal or warning, ⟳, ⇄, ✓ and ✕), and folds the card's text away while aimed.
+
+- **The Cafeteria and the Jumbo Jetway are one square shorter** (§8). Both read as too long on the board. The Cafeteria went from I6 to I5 and the Jumbo Jetway from L5 to L4, the Jetway's shape one cell longer in the stem. Prices and numbers stayed where they were. Both sheets were redrawn: the Cafeteria keeps its two trays at the ends with two skylights between, and the Jumbo Jetway's twin bridges run one cell shorter into the same terminal at the foot. It barely moves the balance. `autoplay.js --runs 8 --weeks 16` reads 4/8 on `--seed0 1000` (median 1.97× → 1.98×) and 8/8 on `--seed0 2000` (band 46% → 45%, median 2.11× → 2.15×), deaths in the same weeks. `marginal.mjs --week 9 --seeds 12`: Cafeteria 0.89 → 1.09 stars/$100, Jumbo Jetway 2.61 → 2.53. `tierboard.mjs --weeks 4,9,13 --seeds 10`: Cafeteria 2.47 → 2.76 per $100, Jumbo Jetway 2.95 → 2.67, both still C. `sensitivity.mjs --bot 1002 --week 12 --seeds 12`: the Cafeteria fits 93 spots rather than 71 (best 2.8★ either way, negative 18% → 22%) and the Jumbo Jetway 38 rather than 36 (median 8.6★ either way). `SAVE_VERSION` went to 12, since a saved board holds each tile's cells.
 
 ---
 

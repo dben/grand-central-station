@@ -24,7 +24,7 @@ import { simulateWeek, simulateWeeks, mergeMods } from '../sim/sim.js';
 // events in the plan, so an old plan names weeks that no longer line up.
 // 11: extra hours (`hoursBought`) and the endless quota ramp, which moves
 // every target past week 16.
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = null } = {}) {
   const mode = MODES[modeKey];
