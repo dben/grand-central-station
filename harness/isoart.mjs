@@ -53,7 +53,7 @@ function scene(key, layers, grey) {
   const floor = px(layers.floor), over = px(layers.over);
   const blocks = (layers.over ? layers.over.blocks : []).map(b => {
     const [x, y, w, h, z0, z1, round] = b;
-    return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack, sway: !!b.sway };
+    return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack, sway: !!b.sway, glow: !!b.glow };
   });
   // the flat part of the over layer: what no block stands up. A stack's cut
   // takes in the ink outline its top-down drawing has round it.
@@ -260,7 +260,7 @@ function cast(s, f, X, Y, layer) {
         // nothing over it (a car's bonnet in front of its cabin)
         const top = h + 1 > b.hi || (b.stack && !blockAt(s, b, bu, bv, h + 1));
         if (top && !b.stack) p = blockAt(s, b, bu, bv, h, true);
-        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null, Ub, Vb), U, V)) return hit();
+        if (add(p, top || b.glow ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null, Ub, Vb), U, V)) return hit();
       }
       if (!s.flush && foot && h >= 0 && h <= s.hz) {
         const top = h + 1 > s.hz;
@@ -347,6 +347,8 @@ const toHex2 = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padSt
 let written = 0;
 for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
+  // an animated tile's scene at frame k: its over layer as drawn for that frame
+  const at_k = (L, s0, grey, k) => k && L.overs ? scene(key, { ...L, over: L.overs[k] }, grey) : s0;
   const tint = colorForDef(sa.def), T = hex(tint);
   const frames = [];
   // the sheet's columns: floor, over, and the over layer's other animation frames
@@ -371,9 +373,10 @@ for (const key of Object.keys(A)) {
       // anim k is the over layer again at frame k of the loop: the wall art's
       // frame k, and any tree tops leant over to it
       const k = layer.startsWith('anim') ? +layer.slice(4) : 0, pass = layer === 'floor' ? 'floor' : 'over';
-      sa.k = sb.k = k;
-      sa.lean = sb.lean = sa.sways ? leanAt(k) : 0;
-      const ha = castFrame(sa, f, pass), hb = castFrame(sb, f, pass), list = [];
+      const ska = at_k(A[key], sa, TA, k), skb = at_k(B[key], sb, TB, k);
+      ska.k = skb.k = k;
+      ska.lean = skb.lean = sa.sways ? leanAt(k) : 0;
+      const ha = castFrame(ska, f, pass), hb = castFrame(skb, f, pass), list = [];
       for (const [xy, r] of ha) {
         // base + weight x colour; the weight is the same in every channel
         const rb = hb.get(xy), w = rb ? (r.c.reduce((a, v, i) => a + v - rb.c[i], 0) / 3) / (TA - TB) : 0;

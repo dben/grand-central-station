@@ -87,7 +87,8 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   const cellOn = (cx, cy) => set.has(cx + ',' + cy);
   // a raised part: it stands from z0 to z1, in units of tile height; a round one
   // bulges and narrows as it rises (a tree top, a balloon) instead of a drum.
-  // Returns the block, so a caller can mark it (`.sway`: it bends in the breeze).
+  // Returns the block, so a caller can mark it (`.sway`: it bends in the breeze;
+  // `.glow`: its sides aren't shaded, for steam catching the light).
   const block = (x, y, w, h, z1, z0 = 0, round = false) => { const b = [x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]; blocks.push(b); return b; };
   // A sprite stack: a vehicle drawn as slices from its wheels to its roof, so
   // its sides carry their own detail. `fn(along, across, t)` gives the colour
@@ -189,7 +190,8 @@ function parasol(c, cx, cy, r, a, b) {
 // (u, v) the art pixel at its foot, `a` the pixel along it as someone outside
 // facing it sees it (0 at their left), `h` the height in screen pixels (0 at
 // the foot) and `k` the animation frame (a tile with `anim: n` loops through n,
-// a frame every half beat of the music). The camera sees one N or S wall and
+// a frame every half beat of the music; its over layer is drawn once a frame,
+// with k as its fourth argument, so the roof or a block can move too). The camera sees one N or S wall and
 // one E or W wall of a building whichever way it turns, so a feature meant to
 // be seen goes on both of a pair.
 //
@@ -276,6 +278,181 @@ function ovenWindow(k) {
   // a pane divider and a glint on the glass
   p.R(17, 1, 1, 8, FRAME); p.P(47, 2, GLASS); p.P(48, 3, GLASS); p.P(3, 2, GLASS);
   p.lit(1, 1, W - 2, 10);
+  return p;
+}
+
+// The long outer walls of a building, N and S: where the shops show their main window.
+const outerNS = (c, side, v) => (side === 'N' && v === 0) || (side === 'S' && v === c.H - 1);
+// An awning's two striped rows under the top course, for a wall with a window panel right under it.
+const awningRows = (top, awn, alt) => (a, h) => h <= top - 2 && h >= top - 3 ? (Math.floor(a / 2) % 2 ? alt : awn) : null;
+// A straight line on a panel.
+function line(p, x0, y0, x1, y1, col) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) p.P(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, col); }
+
+// The vending machine's front, a cell wide and the wall's height: a lit case
+// of drinks, a keypad whose lit key runs round a frame at a time, and on the
+// beat a can drops into the tray. Its body is the tile's own colour.
+const CANS = [RED, '#2f6bff', YELLOW, '#5fc23a', '#ff9cec'];
+function vendFront(k, top, t) {
+  const p = panel(CELL, top + 1);
+  p.R(2, 2, 28, top - 1, t); p.R(2, 2, 28, 1, shade(t, 1.2)); p.R(2, top - 1, 28, 2, shade(t, 0.7));
+  p.R(3, 3, 17, 8, FRAME); p.R(4, 4, 15, 6, '#e8f4ff');
+  for (const y of [4, 7]) { for (let x = 4; x < 19; x += 3) { p.R(x, y, 2, 2, CANS[((x >> 1) + y) % CANS.length]); } p.R(4, y + 2, 15, 1, STEEL_D); }
+  p.lit(4, 4, 15, 6);
+  // the keypad: a green readout over six keys, one lit at a time
+  p.R(21, 3, 7, 2, FRAME); p.R(22, 3, 5, 1, '+#5fc23a');
+  for (let i = 0; i < 6; i++) p.R(22 + (i % 2) * 3, 6 + (i >> 1) * 2, 2, 1, i === k % 6 ? '+#ffd23f' : STEEL_D);
+  p.R(24, 12, 1, 1, FRAME);
+  // the tray, and the can that drops into it on the beat
+  p.R(5, 12, 12, 2, FRAME);
+  if (k <= 3) p.R(9, k === 0 ? 11 : 12, 2, k === 0 ? 2 : 1, CANS[0]);
+  return p.at(0, top);
+}
+// its sides: the brand's white wave down the tile's colour
+const vendSide = (top, t) => (a, h) => h > top - 2 || h < 2 ? null : Math.abs(h - (top / 2 + Math.round(2 * Math.sin(a / 4)))) <= 0 ? WHITE : t;
+
+// Steam off a spout at (x, y), for an 8-frame loop: two puffs half a loop
+// apart, each rising from the spout and swelling as it goes, round blocks so
+// they stand up out of the cart, unshaded so they read as steam, not stone.
+function steam(c, x, y, k, z0 = 0.3, rise = 0.5) {
+  for (const off of [0, 4]) {
+    const f = ((k + off) % 8) / 8, r = 2 + Math.round(f * 2), px = x - Math.round(f * 2), z = z0 + rise * f;
+    c.disc(px, y, r, f > 0.6 ? '#dcd8ea' : '#f8f6fc');
+    c.block(px - r, y - r, 2 * r + 1, 2 * r + 1, z + 0.05 + 0.04 * r, z, true).glow = true;
+  }
+}
+
+// The food stand's hatch, 36 x 9 under the awning: the cook behind a griddle
+// of hot dogs over a flickering flame, and on the beat one is flipped into the air.
+const COOK = ['.rrr.', 'rrrrr', '.sss.', '.ses.', '.sss.', 'bbbbb'];
+function hatch(k) {
+  const p = panel(36, 9);
+  // cream tiles behind, so the hot dogs and the flame stand off them
+  p.R(0, 0, 36, 8, FRAME); p.R(1, 1, 34, 6, '#e8d8b0'); for (let x = 2; x < 35; x += 4) p.R(x, 1, 1, 6, '#dccaa0'); p.R(1, 1, 34, 1, '+#fff1c8');
+  p.sprite(24, 1, COOK, { r: RED, b: '#2f6bff', s: SKIN, e: INK });
+  p.R(2, 6, 19, 1, '#2e374d');
+  for (let x = 2; x < 21; x++) if ((x + k) % 3) p.P(x, 6, (x + k) % 4 ? '+#ff8a1e' : '+#ffd23f');
+  // a hot dog in its bun on the griddle, or the sausage alone standing on end in the air
+  const dog = (x, y, up) => up ? p.R(x + 2, y - 2, 1, 4, '#b8402a') : (p.R(x, y, 5, 1, '#b8402a'), p.P(x + 2, y, YELLOW));
+  p.R(3, 5, 5, 1, '#f0c080'); p.R(14, 5, 5, 1, '#f0c080'); p.R(8, 5, 5, 1, '#f0c080');
+  dog(3, 4); dog(14, 4);
+  // the flip: up on the beat, over at the top, back down into its bun
+  dog(8, [1, 2, 4, 4, 4, 4, 4, 4][k], k === 1);
+  p.P(17 - (k % 2), 2, '#b8b4c6'); p.P(5 + (k % 2), 2, '#b8b4c6');
+  p.lit(1, 1, 34, 6);
+  p.R(0, 7, 36, 1, STEEL); p.R(1, 8, 34, 1, STEEL_D);
+  return p;
+}
+
+// The coffee shop's front window, 52 x 12: a chalkboard menu, the barista,
+// the espresso machine breathing steam, and on the beat a cup set on the counter.
+const BARISTA = ['.hhh.', '.sss.', '.ses.', '.sss.', 'bbbbb', 'bbwbb', 'bbwbb', 'bbbbb'];
+function coffeeWindow(k) {
+  const p = panel(52, 12), W = 52;
+  // warm wood panelling, so the steam and the cup show white against it
+  p.R(0, 0, W, 12, FRAME); p.R(1, 1, W - 2, 8, '#8a5a3a'); for (let x = 2; x < W - 1; x += 4) p.R(x, 1, 1, 8, '#7a4a2e');
+  p.R(2, 1, 13, 7, WOOD_L); p.R(3, 2, 11, 5, '#2e374d'); for (const [x, y] of [[5, 3], [8, 3], [5, 5], [10, 5], [11, 3]]) p.P(x, y, WHITE);
+  p.sprite(19, 1, BARISTA, { h: '#3a2418', s: SKIN, e: INK, b: '#2f9a3f', w: WHITE });
+  // the machine: chrome, two group heads, a lit gauge, and its steam
+  p.R(29, 4, 13, 5, '#c9c4d8'); p.R(29, 4, 13, 1, WHITE); p.R(31, 7, 2, 1, INK); p.R(37, 7, 2, 1, INK); p.P(35, 5, '+#ff4a1a');
+  for (const [x, o] of [[31, 0], [38, 4]]) { const f = (k + o) % 8; if (f < 5) p.P(x + (f % 2), 3 - (f >> 1), f < 3 ? '#fbf8ff' : '#e0dcea'); }
+  p.R(1, 9, W - 2, 2, WOOD); p.R(1, 9, W - 2, 1, WOOD_L);
+  // the cup on the counter from the beat for most of the bar, a wisp over it
+  if (k <= 5) { p.R(44, 7, 3, 2, WHITE); p.P(44, 7, '#6b3e24'); p.P(45, 7, '#6b3e24'); p.P(47, 8, WHITE); if (k % 2) p.P(45, 6, '#fbf8ff'); }
+  p.R(17, 1, 1, 8, FRAME); p.P(48, 2, GLASS); p.P(49, 3, GLASS);
+  p.lit(1, 1, W - 2, 10);
+  return p;
+}
+
+// The clothing store's display window, 52 x 12: three models on turntables,
+// each turning a quarter turn every half beat, a turn a bar, a little behind the last.
+const MODEL = {
+  F: ['..hhh..', '..sss..', '..sss..', '.ccccc.', 'c.ccc.c', 'c.ccc.c', '..ccc..', '..ppp..', '..p.p..', '.ooooo.'],
+  Q: ['..hhh..', '..hss..', '..sss..', '..cccc.', '.ccccc.', '.cccc.c', '..ccc..', '..ppp..', '..p.p..', '.ooooo.'],
+  S: ['...hh..', '...hs..', '...ss..', '...cc..', '...cc..', '...cc..', '...cc..', '...pp..', '...pp..', '.ooooo.'],
+  R: ['..hhh..', '..hhh..', '..hhs..', '..cccc.', '.ccccc.', '.cccc.c', '..ccc..', '..ppp..', '..p.p..', '.ooooo.'],
+  B: ['..hhh..', '..hhh..', '..hhh..', '.ccccc.', 'c.ccc.c', 'c.ccc.c', '..ccc..', '..ppp..', '..p.p..', '.ooooo.'],
+};
+const mirrorRows = rows => rows.map(r => [...r].reverse().join(''));
+const TURN = [MODEL.F, MODEL.Q, MODEL.S, MODEL.R, MODEL.B, mirrorRows(MODEL.R), mirrorRows(MODEL.S), mirrorRows(MODEL.Q)];
+const OUTFITS = [{ h: '#3a2418', c: '#ff4fd8', p: '#ff4fd8' }, { h: '#ffd23f', c: '#35d4ff', p: WHITE }, { h: '#c8543a', c: YELLOW, p: '#2f6bff' }];
+function displayWindow(k) {
+  const p = panel(52, 12), W = 52;
+  // a deep backdrop, each model under a spotlight's pool, so the outfits and faces stand off it
+  p.R(0, 0, W, 12, FRAME); p.R(1, 1, W - 2, 10, '#3b2a5a'); p.R(1, 10, W - 2, 1, '#6a5a8a');
+  for (const x of [11, 26, 41]) { p.R(x - 4, 1, 9, 10, '#4b3a70'); p.P(x, 1, YELLOW); }
+  OUTFITS.forEach((o, i) => p.sprite(8 + i * 15, 1, TURN[(k + 3 * i) % 8], { ...o, s: SKIN, o: WHITE }));
+  p.P(3, 2, GLASS); p.P(4, 3, GLASS); p.P(47, 7, GLASS); p.P(48, 8, GLASS);
+  p.lit(1, 1, W - 2, 10);
+  return p;
+}
+
+// The sports bar is glass all round: a cell of it, repeated along every wall.
+// A screen on the back wall shows the game, the ball crossing the pitch, and
+// on the first beat of the bar a goal: the screen flashes and the drinkers at
+// the bar throw their arms up.
+function barFront(k, top) {
+  const p = panel(CELL, top + 1);
+  p.R(0, 2, CELL, top - 2, FRAME); p.R(1, 3, CELL - 1, top - 5, '#2a1c30');
+  // the screen
+  p.R(6, 4, 20, 7, INK);
+  const goal = k === 0;
+  for (let y = 5; y < 10; y++) for (let x = 7; x < 25; x++) p.P(x, y, goal ? ((x + y) % 2 ? '#ffd23f' : WHITE) : x === 16 ? '#e8f4e8' : Math.floor(x / 3) % 2 ? '#2f9a3f' : '#3aa84a');
+  if (!goal) {
+    p.P(9 + ((k * 2) % 14), 7 + (k % 3 === 0 ? 0 : k % 3 === 1 ? -1 : 1), WHITE);
+    for (const [x, y, col] of [[11, 6, RED], [19, 8, RED], [14, 8, '#2f6bff'], [21, 6, '#2f6bff']]) p.P(x + (k % 2), y, col);
+  }
+  // the drinkers' heads over the bar, arms up for the goal
+  const cheer = k <= 1;
+  for (const [x, hair] of [[3, '#3a2418'], [9, YELLOW], [15, INK], [21, '#c8543a'], [27, '#3a2418']]) {
+    p.P(x, top - 7, hair); p.P(x + 1, top - 7, hair); p.P(x, top - 6, SKIN); p.P(x + 1, top - 6, SKIN);
+    if (cheer) { p.P(x - 1, top - 8, SKIN); p.P(x + 2, top - 8, SKIN); p.P(x - 1, top - 7, '#2f6bff'); p.P(x + 2, top - 7, '#2f6bff'); }
+  }
+  p.R(1, top - 5, CELL - 1, 2, WOOD); p.R(1, top - 5, CELL - 1, 1, WOOD_L);
+  p.lit(1, 3, CELL - 1, top - 5);
+  p.P(28, 4, GLASS); p.P(29, 5, GLASS);
+  return p.at(0, top);
+}
+
+// The cafeteria's serving line, the whole length of its long walls: staff in
+// white caps behind the hot counter and its pans, and trays sliding along the
+// rail two pixels a frame, a tray's length a bar.
+const PANS = ['#e8a040', '#5fc23a', '#c8543a', '#fff1c8'];
+const servingLine = (c, top) => (a, h, k) => {
+  if (a < 2 || a > c.W - 3 || h < 3 || h > top - 5) return null;
+  if (h === top - 5 || h === 3 || a % CELL === 0) return FRAME;
+  // a steel kitchen wall behind, so the caps, the pans and the trays stand off it
+  if (h === top - 6) return '+#fff1c8';
+  if (h >= top - 8) { const i = ((a % 24) + 24) % 24; return i >= 10 && i <= 12 ? (h === top - 7 ? '+' + WHITE : '+' + SKIN) : '+#4a5a70'; }
+  if (h === 5) return a % 5 === 0 ? '+#3b4050' : '+' + PANS[Math.floor(a / 5) % PANS.length];
+  if (h === 4) { const i = (((a - 2 * k) % 16) + 16) % 16; return i < 10 ? '+' + (i === 3 || i === 6 ? PANS[(Math.floor((a - 2 * k) / 16) + i) % 4] : STEEL) : '+#3b4050'; }
+  return null;
+};
+
+// The nanofab's lab window, 26 x 10: a robot arm at the bench welds a chip on
+// the beat, lifts it, swings it across and sets it down on the finished pad,
+// and goes back as the next one prints.
+const ARM_S = [10, 6];
+const ARM_T = [[17, 6], [17, 6], [15, 3], [10, 2], [5, 5], [4, 6], [9, 3], [15, 4]];
+function labWindow(k) {
+  const p = panel(26, 10), W = 26;
+  p.R(0, 0, W, 10, FRAME); p.R(1, 1, W - 2, 8, '#1a1033');
+  for (const [x, col] of [[21, '#5fc23a'], [23, '#ff4fd8'], [22, '#35d4ff']]) p.P(x, 2 + (x % 2), (x + k) % 3 ? col : '#2a1d55');
+  p.R(1, 8, W - 2, 1, '#4b2f8f'); p.R(1, 7, W - 2, 1, '#35d4ff');
+  p.R(2, 6, 4, 1, '#2a1d55'); p.R(15, 6, 4, 1, '#2a1d55');
+  const chip = (x, y, col = '#ff4fd8') => p.R(x, y, 3, 1, col);
+  if (k <= 1) chip(16, 6);
+  if (k === 7) chip(16, 6, '#ffb8f0');
+  if (k === 5 || k === 6) chip(3, 6);
+  // the arm: its base, then two links to the tool, the elbow above the line between
+  p.R(9, 6, 3, 2, '#8a8a9a');
+  const [sx, sy] = ARM_S, [tx, ty] = ARM_T[k], dx = tx - sx, dy = ty - sy, d = Math.max(0.1, Math.hypot(dx, dy)), L = 5;
+  const up = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2)), ex = sx + dx / 2 + (dy / d) * up, ey = sy + dy / 2 - Math.abs(dx / d) * up;
+  // links two pixels thick, so they hold together across the wall's slant
+  for (const d of [0, 1]) { line(p, sx + d, sy, ex + d, ey, '#ffa53a'); line(p, ex + d, ey, tx + d, ty, '#ffa53a'); }
+  p.R(ex, ey, 2, 1, YELLOW); p.R(sx, sy, 2, 1, INK); p.P(tx, ty - 1, WHITE);
+  if (k >= 2 && k <= 4) chip(tx - 1, ty + 1);
+  if (k <= 1) for (const [x, y] of k ? [[18, 5], [16, 4]] : [[18, 4], [15, 5], [19, 6], [17, 3]]) p.P(x, y, k ? '#35d4ff' : WHITE);
+  p.lit(1, 1, W - 2, 8);
   return p;
 }
 
@@ -877,15 +1054,34 @@ const TILES = {
   },
 
   // ---- shops and services
-  vending: { over(c, t) { roof(c, t); ICON.bottle(c, 16, 16); } },
+  // The machine's front on its N and S walls, its brand on the E and W.
+  vending: { anim: 8, over(c, t, def) {
+    roof(c, t); ICON.bottle(c, 16, 16);
+    const top = wallTop(def), fronts = Array.from({ length: 8 }, (_, k) => vendFront(k, top, t)), sides = vendSide(top, t);
+    c.facade = ({ side, a, h, k }) => side === 'N' || side === 'S' ? fronts[k](a, h) : sides(a, h);
+  } },
   kiosk: { over(c, t) { roof(c, t); ICON.info(c, 16, 16); } },
   atm: { over(c, t) { roof(c, t); awnings(c, '#5fc23a', WHITE); ICON.cash(c, 16, 14); } },
   // the carts are glass boxes too: the crowd round the cart shows under the parasol
-  coffee_cart: { floor(c, t) { platform(c, t); c.box(6, 18, 20, 10, WOOD_L); c.R(8, 20, 5, 3, '#2e374d'); frame(c, t); }, over(c, t) { parasol(c, 16, 14, 11, t, WHITE); } },
+  // steam off the urn at the cart's end, clear of the parasol
+  coffee_cart: { anim: 8, floor(c, t) { platform(c, t); c.box(6, 18, 20, 10, WOOD_L); c.R(8, 20, 5, 3, '#2e374d'); c.box(22, 22, 5, 5, STEEL); frame(c, t); },
+    over(c, t, def, k) { parasol(c, 16, 14, 11, t, WHITE); steam(c, 27, 26, k); } },
   souvenir_cart: { floor(c, t) { platform(c, t); c.box(5, 17, 22, 11, '#ff9cec'); ICON.gift(c, 22, 24); frame(c, t); }, over(c, t) { parasol(c, 14, 13, 10, t, YELLOW); } },
   newsstand: { over(c, t) { shop(c, t, ICON.news, { awn: '#2f6bff', at: [48, 15] }); for (let x = 6; x < 30; x += 7) c.box(x, 8, 5, 7, [WHITE, YELLOW, '#ff9cec', '#35d4ff'][(x - 6) / 7]); } },
-  food_stand: { over(c, t) { shop(c, t, ICON.hotdog, { at: [22, 14] }); } },
-  coffee: { over(c, t) { shop(c, t, ICON.cup, { awn: '#6b3e24', alt: '#fff1c8', at: [16, 15] }); ICON.cup(c, 48, 15); } },
+  // The hatch onto the griddle on its long walls.
+  food_stand: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.hotdog, { awn: null, at: [22, 14] });
+    const top = wallTop(def), hatches = Array.from({ length: 8 }, (_, k) => hatch(k).at(14, top - 5));
+    const front = shopfronts(top, RED, WHITE), awning = shopfronts(top, RED, WHITE, false);
+    c.facade = ({ side, v, a, h, k }) => outerNS(c, side, v) ? hatches[k](a, h) || awning(a, h) : front(a, h);
+  } },
+  // The window onto the counter on its long walls.
+  coffee: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.cup, { awn: null, at: [16, 15] }); ICON.cup(c, 48, 15);
+    const top = wallTop(def), win = Array.from({ length: 8 }, (_, k) => coffeeWindow(k).at(6, top - 4));
+    const front = shopfronts(top, '#6b3e24', '#fff1c8'), awning = awningRows(top, '#6b3e24', '#fff1c8');
+    c.facade = ({ side, v, a, h, k }) => outerNS(c, side, v) ? awning(a, h) || win[k](a, h) : front(a, h);
+  } },
   currency: { over(c, t) { shop(c, t, ICON.coins, { awn: '#5fc23a', at: [18, 14] }); } },
   restroom: { over(c, t) { roof(c, t); hvac(c, 6, 6); hvac(c, 52, 52); skylight(c, 40, 6, 16, 10); ICON.wc(c, 22, 44); } },
   // The long outer N and S walls carry the drive-through; the rest are shopfronts.
@@ -901,14 +1097,36 @@ const TILES = {
     const top = wallTop(def), oven = Array.from({ length: 8 }, (_, k) => ovenWindow(k).at(6, top - 4)), front = shopfronts(top, '#2f9a3f', WHITE);
     c.facade = ({ side, v, a, h, k }) => ((side === 'N' && v === 0) || (side === 'S' && v === c.H - 1)) && a < 64 ? (h <= top - 2 && h >= top - 3 ? (Math.floor(a / 2) % 2 ? WHITE : '#2f9a3f') : oven[k](a, h)) : front(a, h);
   } },
-  clothing: { over(c, t) { shop(c, t, ICON.shirt, { awn: '#ff4fd8', at: [48, 16] }); skylight(c, 8, 38, 18, 8); } },
-  sports_bar: { over(c, t) { shop(c, t, ICON.ball, { awn: '#2f6bff', at: [48, 44] }); c.box(8, 8, 18, 10, INK); c.R(10, 10, 14, 6, '#35d4ff'); c.box(70, 8, 18, 10, INK); c.R(72, 10, 14, 6, '#5fc23a'); } },
-  cafeteria: { over(c, t) { shop(c, t, ICON.tray, { awn: '#ffd23f', alt: RED, at: [20, 14] }); for (let x = 72; x < 180; x += 36) skylight(c, x, 6, 20, 10); ICON.tray(c, 160, 14); } },
+  // The display window on its long outer walls, as the pizza place has its oven.
+  clothing: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.shirt, { awn: null, at: [48, 16] }); skylight(c, 8, 38, 18, 8);
+    const top = wallTop(def), win = Array.from({ length: 8 }, (_, k) => displayWindow(k).at(6, top - 4));
+    const front = shopfronts(top, '#ff4fd8', WHITE), awning = awningRows(top, '#ff4fd8', WHITE);
+    c.facade = ({ side, v, a, h, k }) => outerNS(c, side, v) && a < 64 ? awning(a, h) || win[k](a, h) : front(a, h);
+  } },
+  // Glass all round, with the game on a screen in every cell of it.
+  sports_bar: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.ball, { awn: null, at: [48, 44] }); c.box(8, 8, 18, 10, INK); c.R(10, 10, 14, 6, '#35d4ff'); c.box(70, 8, 18, 10, INK); c.R(72, 10, 14, 6, '#5fc23a');
+    const top = wallTop(def), fronts = Array.from({ length: 8 }, (_, k) => barFront(k, top));
+    c.facade = ({ a, h, k }) => fronts[k](((a % CELL) + CELL) % CELL, h);
+  } },
+  // The serving line along its long walls.
+  cafeteria: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.tray, { awn: null, at: [20, 14] }); for (let x = 72; x < 180; x += 36) skylight(c, x, 6, 20, 10); ICON.tray(c, 160, 14);
+    const top = wallTop(def), line = servingLine(c, top), front = shopfronts(top, '#ffd23f', RED), awning = shopfronts(top, '#ffd23f', RED, false);
+    c.facade = ({ side, v, a, h, k }) => outerNS(c, side, v) ? line(a, h, k) || awning(a, h) : front(a, h);
+  } },
   art_gallery: { over(c, t) { roof(c, t); for (let x = 8; x < 92; x += 14) skylight(c, x, 6, 10, 20); skylight(c, 38, 36, 20, 20); ICON.frame(c, 48, 46); } },
   lounge: { over(c, t) { shop(c, t, ICON.cocktail, { awn: '#1a1033', alt: YELLOW, at: [48, 46] }); skylight(c, 6, 6, 20, 16); skylight(c, 70, 70, 20, 16); } },
   designer: { over(c, t) { shop(c, t, ICON.diamond, { awn: INK, alt: YELLOW, at: [16, 46] }); skylight(c, 6, 6, 20, 20); } },
   security: { over(c, t) { roof(c, t); hazard(c, 3, 3, 26, 3); ICON.shield(c, 16, 46); hvac(c, 44, 40); c.box(6, 12, 20, 10, '#2e374d'); c.R(8, 14, 16, 6, '#35d4ff'); } },
-  nanofab: { over(c, t) { roof(c, t); ICON.atom(c, 16, 46); for (const [x, y] of [[6, 6], [40, 38]]) { c.box(x, y, 18, 18, '#1a1033'); c.ring(x + 9, y + 9, 6, 1, '#ff4fd8'); c.disc(x + 9, y + 9, 2, '#35d4ff'); } } },
+  // The lab window on its long outer walls (as the burger joint's drive-through),
+  // and a glowing strip round the rest.
+  nanofab: { anim: 8, over(c, t, def) {
+    roof(c, t); ICON.atom(c, 16, 46); for (const [x, y] of [[6, 6], [40, 38]]) { c.box(x, y, 18, 18, '#1a1033'); c.ring(x + 9, y + 9, 6, 1, '#ff4fd8'); c.disc(x + 9, y + 9, 2, '#35d4ff'); }
+    const top = wallTop(def), labs = Array.from({ length: 8 }, (_, k) => labWindow(k).at(35, top - 3));
+    c.facade = ({ side, v, a, h, k }) => (outerNS(c, side, v) && a >= 32 && labs[k](a, h)) || (h === top - 2 ? '+#ff4fd8' : null);
+  } },
   drone_swarm: { over(c, t) { roof(c, t); hazard(c, 3, 3, 58, 2); for (const [x, y] of [[16, 16], [48, 16]]) { c.ring(x, y, 10, 1, YELLOW); ICON.drone(c, x, y); } } },
 
   // ---- walk-on tiles: art on the floor, the crowd over it
@@ -1056,8 +1274,9 @@ export function drawAll(tintFor = def => colorForDef(def)) {
     const def = tileDef(key), tint = tintFor(def);
     const draw = (a, shape) => {
       const out = {};
-      for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
-      if (a.anim) out.anim = a.anim;
+      for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def, 0); }
+      // an animated tile's over layer is drawn again for each frame (`k`, its fourth argument)
+      if (a.anim) { out.anim = a.anim; if (a.over) out.overs = Array.from({ length: a.anim }, (_, k) => { if (!k) return out.over; const c = sheet(shape, a.pad); a.over(c, tint, def, k); return c; }); }
       return out;
     };
     return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : []), ...(art.laneAlt ? [[key + '_lane_alt', draw(art.laneAlt, 'I1')]] : [])];

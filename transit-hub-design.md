@@ -1031,7 +1031,10 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     (anything else a vehicle reaches, such as a wing over the next square, always shown and
     painted at that square's depth).
   - *Animation:* an animated tile's sheet carries more columns, the over layer at each frame of
-    its loop (the `anim` list in `isosprites.js`; the floor never moves). The renderer steps a
+    its loop (the `anim` list in `isosprites.js`; the floor never moves). `anim: n` on a tile's
+    art sets the loop's length, and its over layer is drawn once a frame with the frame as its
+    fourth argument, so a block can move too (the coffee cart's steam); a block marked `.glow`
+    keeps its sides unshaded. The renderer steps a
     frame every half beat of the music, so a loop of eight takes a bar. Each music file in
     `TRACKS` carries its tempo and first beat, measured by `harness/tempo.mjs` (GCS1 98.39 BPM,
     GCS2 116.99), and `musicBeat()` reads the beat off the playing file's clock; with the music
@@ -1062,6 +1065,32 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
         The oven's fire flickers every frame; on the first beat of the bar it flares as the chef
         draws a pie out on the peel, sets it on the counter to steam for three frames, and sends
         the empty peel back in.
+      - *Food Stand* (8): a hatch on its long walls onto a griddle of hot dogs in buns over a
+        flickering flame, on cream tiles; on the beat the cook flips one into the air.
+      - *Coffee Shop* (8): a window onto wood panelling, a chalkboard menu, a barista in a green
+        apron and the espresso machine breathing steam; on the beat a cup is set on the counter
+        and stays most of the bar.
+      - *Clothing Store* (8): a display window on its long outer walls, three models on
+        turntables against a deep backdrop, each turning a quarter turn a frame (a turn a bar),
+        three frames behind the last.
+      - *Sports Bar* (8): glass all round, a cell at a time: a screen on the back wall with the
+        game on it, the ball crossing the pitch, and on the first beat a goal, the screen
+        flashing yellow and white and the drinkers at the bar throwing their arms up.
+      - *Cafeteria* (8): the serving line the length of its long walls, on a steel wall: staff
+        in white caps, the hot counter's pans, and trays sliding along the rail two pixels a
+        frame, a tray's spacing a bar.
+      - *Vending Machine* (8): its N and S walls are the machine's front, in the tile's colour: a
+        lit case of cans, a keypad whose lit key runs round a frame at a time, and a can dropping
+        into the tray on the beat. The E and W sides carry the brand's wave.
+      - *Nanofab Boutique* (8): a lab window on its long outer walls (where the burger has its
+        drive-through), a glowing strip round the rest. A two-link robot arm welds a chip on the
+        beat, lifts it, swings it across, sets it down and goes back as the next one prints; its
+        links are two pixels thick so they hold together across the wall's slant.
+      - *Coffee Cart* (8): a glass box, so no wall art: steam off the urn at the cart's end, two
+        puffs half a loop apart rising and swelling, round blocks marked `.glow` so they read as
+        steam rather than stone.
+    The first time each frame shows, it is cut from its sheet (up to about 20 ms for a board of
+    them, once); after that a board of 72 animated tiles draws in 2.5 ms in headless Chromium.
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
   pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 69
