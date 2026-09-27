@@ -27,8 +27,8 @@ export const KEEP_ROOM = 400;
 export const COLOURS = 80;
 
 // The solid shops: what each one is, for the prompt. The walk-through tiles
-// (carts, lounges, the checkpoint) stay drawn in code, since the crowd shows
-// inside them.
+// (lounges, the checkpoint, the parks) stay drawn in code, since the crowd shows
+// on them; the carts are solid, so they are painted too.
 export const SHOPS = {
   vending: 'a bank of two or three bright drinks and snack VENDING MACHINES standing back to back under a small canopy',
   kiosk: 'an INFORMATION KIOSK: a little booth with a big round "i" sign on a pole, a counter window, and a departures screen',
@@ -48,6 +48,8 @@ export const SHOPS = {
   designer: 'a DESIGNER SHOP: a luxury boutique with a black-and-gold facade, spotlit display windows of handbags, and a diamond sign on the roof',
   security: 'a SECURITY STATION: a police-style post with blue-tinted windows, a shield badge over the door, a hazard-striped roof edge, CCTV cameras and an antenna',
   drone_swarm: 'a DRONE VENDING SWARM: a futuristic launch hub with glowing landing pads on the roof and small quadcopter delivery drones hovering over it',
+  coffee_cart: 'a COFFEE CART: a little wooden espresso cart on big wheels, filling its square, with a gleaming coffee machine, stacked cups, a chalkboard-free menu of cup pictures, and a striped parasol over it',
+  souvenir_cart: 'a SOUVENIR CART: a little painted barrow cart on big wheels, filling its square, loaded with postcards, snow globes, toy trains and pennants, under a bright striped parasol',
   nanofab: 'a NANOFAB BOUTIQUE: a sleek sci-fi fabrication shop with glowing magenta and cyan panels, a holographic atom sign, and humming machinery on the roof',
 };
 

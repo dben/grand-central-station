@@ -1026,13 +1026,14 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   beneath it and is not relit; a missing map still draws. Rerunning `isoart.mjs` overwrites
   both, so after touching a sheet up, rerun it only for the tiles to redraw
   (`node harness/isoart.mjs bus_stop`).
-- **Painted shops (`harness/shopgen.mjs`, `harness/shopart.mjs`):** the 19 solid shops (every
-  amenity with walls, from the vending machines to the nanofab, the security station included) are
-  painted by an image model and baked from the paintings. The walk-through tiles (carts, lounges,
-  the checkpoint, the guard, the parks) stay drawn in code, since the crowd shows inside them.
+- **Painted shops (`harness/shopgen.mjs`, `harness/shopart.mjs`):** the 21 solid shops (every
+  amenity with walls, from the vending machines to the nanofab, the security station and the two
+  carts included) are painted by an image model and baked from the paintings. The walk-through
+  tiles (lounges, the waiting area, the checkpoint, the guard, the parks, WiFi, the walkway) stay
+  drawn in code, since the crowd walks on them and a painting is solid.
   - *Views:* a turn whose footprint is another turn's with x and y swapped is that turn flipped,
     so a shop needs one picture per footprint left over (`shopViews`): one for an I or O shape,
-    two for the S and T shapes, three for an L3 and four for the L4, 33 for the 19 shops. A
+    two for the S and T shapes, three for an L3 and four for the L4, 35 for the 21 shops. A
     flipped turn keeps its painted light, now from the left, and so does a turn the game mirrors
     (every painted pixel's map face is 0). Relighting a flip by the block's faces was tried and
     left a light or dark band wherever the painted corner missed the block's; asking for every
@@ -1107,7 +1108,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     decides. `--reuse` judges every painting a shop has had, from both models, and the script
     names any view still over a limit. The first set was chosen on fit alone, with a cut costing
     no more than a covered pixel earned: 20 of its 33 views had a cut piece over 1.5% (up to 8.5%),
-    and they showed in play as chopped walls. The 19 shops kept have no cut piece over 1.1%, no
+    and they showed in play as chopped walls. The shops kept have no cut piece over 1.3%, no
     block more than 12.7% bare, no notch more than 24% roofed and no view with more than 1.5%
     hanging. `assets/shops/log.json` keeps, for each view, the painting and model it came from and
     those four shares.
@@ -1128,7 +1129,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     far more often. It ignores the requested ratio and letterboxes the block-outs, which the fit
     allows for. Judged as above, Muse's painting was kept for 11 shops (art gallery, burger, clothing, coffee, currency, designer, drone swarm, lounge, nanofab, pizza, vending) and Flash's for
     7 (atm, cafeteria, food stand, kiosk, newsstand, restroom, security); the sports bar is a Flash bar and a Muse
-    patio. The whole set cost about $6.80, trials included.
+    patio, and both carts are Flash's. The whole set cost about $7, trials included.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.
@@ -1145,7 +1146,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
   pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 70
-  sheets and their maps come to about 1.65 MB, 1.2 MB of it the 19 painted shops; drawing the full catalogue board takes 4-7 ms a
+  sheets and their maps come to about 1.65 MB, 1.2 MB of it the painted shops; drawing the full catalogue board takes 4-7 ms a
   frame in headless Chromium.
 - **Ground:** the land round the board, the sea, the edge strips and the concourse are filled with
   pixel textures from the same bake, `assets/ground/<name>.png`: 128 x 64 pictures that tile the
