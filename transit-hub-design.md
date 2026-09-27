@@ -67,7 +67,7 @@ The four edges start as open ground: any transport type may claim them. Placing 
 Some tiles also have attachment rules:
 
 - **Reach** (Water Bus Stop, Pontoon Moorings, Prop Plane Stand, Hardstand): the road rule, for small craft. The tile may sit up to `reach` cells inland from an edge of its terrain, with a **jetty** or **taxiway** run out to it, exactly as a road tile runs a driveway. The run has to be a clear straight line, it becomes reserved ground, and it is torn up with the tile. If the edge is still open ground the run claims and locks it, the same as a berth on the shore would. A reach tile may also berth straight on the edge, with no run at all.
-- **Edgewise** (Train Station, Express Train, Water Taxi, Cruise Ship Dock): the whole tile must lie flat along one edge. A long vehicle berths alongside the edge, never nose-in.
+- **Edgewise** (Handcar, Train Station, Express Train, Water Taxi, Cruise Ship Dock): the whole tile must lie flat along one edge. A long vehicle berths alongside the edge, never nose-in.
 - **Tip** (Jetway, Jumbo Jetway): only the tip of the L (the top of its stem) may touch the apron edge, with the foot pointing inland. Both mirror images are legal.
 - **Broadside** (Ferry Terminal): the mirror of tip. The L's long arm — its three-cell side — has to lie along the water edge, with the short foot pointing inland, so a hull ties up side-on. Two of the L4's eight orientations reach any one edge, both mirror images.
 
@@ -403,6 +403,7 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 | Car Rental | O4 | road | $$ | 3 | 2 | 3 | 2 | 1.07 | 18 | 140 | 2 |
 | Limo Service | I3 | road | $$$$ | 5 | 2 | 5 | 1 | 1.21 | 12 | 240 | 4 |
 | Tram Stop | I3 | corridor | $$ | 4 | 4 | 4 | 1 | 1.09 | 15 | 130 | 2 |
+| Handcar | I1 | rail, edgewise | $ | 3 | 2 | 3 | 1 | 1.05 | 10 | 55 | 1 |
 | Train Station | I4 | rail, edgewise | $$ | 6 | 6 | 6 | 2 | 1.10 | 18 | 180 | 2 |
 | Express Train | I5 | rail, edgewise | $$$ | 8 | 9 | 8 | 3 | 1.16 | 24 | 320 | 5 |
 | Monorail | I4 | corridor | $$$ | 5 | 5 | 5 | 2 | 1.14 | 21 | 280 | 5 |
@@ -432,6 +433,8 @@ Four timing numbers define every transport: **arrival cadence** (ticks between b
 ᵂ = walk-through floor: the Parking Lot is a car park, so travellers cross it rather than walk round it. ᴬ = sold on one level only (§10.1).
 
 **The four low-tier water and air tiles are the Bus Stop and the Parking Lot in other clothes**, and they carry those tiles' numbers to the digit. They exist because Waterfront and Sky Harbour had nothing cheap of their own: the water catalogue started at a $200 Ferry Terminal and the airfield at a $400 Jetway, so both levels opened by building the road they were not about. Each is sold on its own level and nowhere else, from week 1, and each reaches inland on a jetty or taxiway rather than needing the shore itself (§3.2). Hardstand and Pontoon Moorings are walk-through, like the car park they copy.
+
+**The Handcar** is two people on a seesaw pump: the rail line's bike rental, and the only rail tile sold in week 1. One square on the edge is always flat along it, so the edgewise rule costs it nothing. It locks its edge to rail like any berth, which makes it a cheap way to claim the line for a Train Station later — and a way to lose a road edge by accident.
 
 Air tiles (helipad, balloon, jetways, private terminal, jetpack) are tagged `air`: they go offline in a Weather Front and run late in Fog. Underground tiles run their line on the tunnel layer (§3.5); Underground Parking has the Parking Lot's timing and pays for its freedom of placement. **Loop Terminal:** 30% of its departures during the spawn ticks re-enter as a new arrival with their chain value intact.
 
@@ -505,6 +508,7 @@ Upgrade level is the exponential axis of the game. Because the board is fixed an
 | Coffee Shop | Espresso Bar (+2 levels, +1 radius) | | Security Station | Extra Patrol (+1 radius) |
 | Security Guard | Radio Kit (+1 radius) | | Security Checkpoint | Fast Track Lane |
 | Bus Stop | Shelter & Timetable | | Train Station | Platform Extension |
+| Handcar | Stronger Arms | | | |
 | Ferry Terminal | Deeper Dock | | Tram Stop | Second Car |
 | Monorail | Third Car | | Express Train | Double-Decker Carriages |
 | Jetway | Wide-Body Bridge | | Newsstand | Corner Franchise |
@@ -1270,6 +1274,7 @@ Changes from the original design, with the reason for each. Original values are 
 - **Long vehicles berth edgewise; jetways attach by the tip; the ferry ties up broadside.** The Ferry Terminal was the last transport that could nose into the water with one cell of its L, which read as a jetty rather than a berth. It now takes the mirror of the jetway rule (`attach: 'broadside'`, §3.2): the L's three-cell side lies along the edge and the foot points inland, so two of the eight orientations reach any one edge. It costs the ferry six of its eight orientations and nothing else — autoplay over `--seed0 1000` and `2000` reads 5/8 and 7/8 survived, the same runs and the same death weeks (1, 16, 1 and 8) as the build before it.
 - **The underground layer** (§3.5) was added with four tiles. Priced from `marginal.mjs` on the standard boards: at week 6 Underground Parking is 14.2★/$100 (between the Bus Stop at 19.0 and the Coffee Shop at 13.5, and well under the Parking Lot's 32.9, which is the price of going anywhere with no driveway), the Subway Station 11.8 and the Express Subway 6.8 (the mid-game transport band); at week 10 they read 9.4, 9.3 and 4.7. The Submarine Dock, probed on a week-8 board with a ferry edge, is 2.65★/$100 at its best spot (median +8.6k, never negative), between the Helipad's 2.54 and the Marina's 1.99. Autoplay over `--seed0 1000` and `2000` survived 13 of 16 runs (10 of 16 before); the quota curve was left alone, since the bot's mean score/quota band (1.5–3.8×) did not move.
 - **One-square shops** (§8.2). Junction's 9x9 and Sky Harbour's 8x8 halves have room for the numbers but not for the footprints, so the catalogue got four I1 shops: Pocket Park (Green Space on one square), Coffee Cart, Souvenir Cart and Cash Machine. They were dealt at their first-draft values and measured on `tierboard.mjs`, where they came in at 6–11★ per $100 against a field of 13–21 — weak enough that four more of them in the shop pool cost Terminal three runs in sixteen, which is what a diluted shop looks like. Raised to 14–19 (radius +1 each, flat and mult up, prices down $2–4) and Terminal came back to 11 of 16, inside the noise of the 12 it started at; Junction, the level they were aimed at, read 10 of 16 before and 9 after. The target they are tuned to: clearly less per tile than the full-size version, and slightly less per dollar, so the big one is still the better buy wherever there is room. The Cash Machine is deliberately outside that rule — 10.9★ per $100 but $39 a week on one square, the best revenue per cell in the catalogue — which is why `tierboard.mjs` now reports cash beside points.
+- **Handcar** (I1, rail, tier 1, $55, week 1) was added as a joke tile priced to sit mid-table. `marginal.mjs --week 6 --seeds 12` puts it at 9.6★/$100, eleventh of the transports, between the Taxi Stand (10.5) and the Subway Station (8.8); `tierboard.mjs` has it at 6.1 on the transport bench (median 4.4★, best 6.8★, never negative), level with the Cash Machine and the Art Gallery in B. It is an opening tile: on board 1001 at week 9 (`sensitivity.mjs`, 24 seeds) all 12 of its rail-edge spots read slightly negative (median −0.7★), as a thirteenth tile on a full board does — the Bike Rental beside it has a median of −0.3★ there. Autoplay moved both ways, as any new shop entry does by re-dealing every shop: `--seed0 1000` 5/8 survived (was 4/8), band 66% (46%), over 3× 5% (13%); `--seed0 2000` 8/8 (8/8), band 46% (45%), over 3× 23% (17%). The quota was left alone.
 - **Bridge** is implemented but pulled from the shop.
 - **Information Kiosks** no longer reduce pickpocket spawns.
 

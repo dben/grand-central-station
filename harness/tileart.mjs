@@ -548,6 +548,20 @@ const TILES = {
   },
 
   // ---- rail and corridor: an edge station's train waits on the line past the edge
+  handcar: {
+    // a flatbed on the track with a seesaw pump in the middle and a rider at
+    // each end of the lever: one up, one down
+    pad: [0, 0, 1, 0],
+    floor(c, t) { platform(c, t); c.R(0, 29, c.W, 1, YELLOW); frame(c, t); },
+    over(c, t) {
+      c.box(3, 3, 6, 6, t); c.R(5, 5, 2, 2, WHITE);
+      for (const x of [6, 22]) for (const y of [39, 50]) { c.box(x, y, 4, 2, STEEL_D); c.block(x, y, 4, 2, 0.08); }
+      c.box(3, 40, 26, 11, WOOD); for (let x = 7; x < 29; x += 5) c.R(x, 41, 1, 9, WOOD_D); c.block(3, 40, 26, 11, 0.12, 0.06);
+      c.box(14, 43, 4, 5, STEEL_D); c.block(14, 43, 4, 5, 0.3, 0.12);
+      c.box(4, 44, 24, 3, RED); c.block(4, 44, 24, 3, 0.33, 0.3);
+      for (const [x, z] of [[4, 0.34], [23, 0.26]]) { c.box(x, 42, 5, 7, t); c.disc(x + 2, 45, 1, '#f0c090'); c.block(x, 42, 5, 7, z, 0.12, true); }
+    },
+  },
   train_station: {
     pad: [0, 0, 1, 0],
     floor(c, t) { platform(c, t); c.R(0, 29, c.W, 1, YELLOW); frame(c, t); },
