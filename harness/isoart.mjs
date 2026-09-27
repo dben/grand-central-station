@@ -15,13 +15,15 @@
 // from the map. Vehicles are sprite stacks (c.stack in tileart.mjs): drawn slice
 // by slice from the wheels up, so their sides carry their own detail, and free
 // to reach past the tile (an airliner's wings over the next squares).
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { drawAll, CELL, hex } from './tileart.mjs';
 import { tileDef } from '../src/data/tiles.js';
 import { tileHeight, H_UNIT, colorForDef, EDGE_MARGIN, TURN_R } from '../src/ui/render.js';
+import { SHOPS, DENSITY, KEEP_ROOM, shopViews, turnCells, wallHeight, viewBox, rayHit } from './shopart.mjs';
+import { decodePng, encodePng, quantize } from './png.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HZ = 2 * CELL * H_UNIT;          // screen pixels per unit of tile height
@@ -111,6 +113,8 @@ function png(c) {
   }
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
+
+const rgbaOf = (w, h, px) => { const data = new Uint8ClampedArray(w * h * 4); px.forEach((v, i) => { if (v) data.set([...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) : 255], i * 4); }); return { w, h, data }; };
 
 // ---- casting ---------------------------------------------------------------
 // Frame m is the base image turned m quarter turns (shapeTransform's convention:
@@ -298,13 +302,39 @@ mkdirSync(dir, { recursive: true });
 const manifest = {};
 const toHex2 = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
 let written = 0;
+// A shop painted by shopgen.mjs is baked from its pictures instead: each turn
+// is its view's picture, flipped where the turn is that footprint swapped, cut
+// to the footprint's columns, each pixel given the cell shopart.mjs's ray says.
+// The paintings carry their own light, so every pixel's face is 0 and nothing
+// is relit, here or when the game mirrors a turn.
+function shopFrames(key) {
+  const { views, turns } = shopViews(key), wall = wallHeight(key);
+  const pics = views.map((_, v) => resolve(root, `assets/shops/${key}_${v}.png`));
+  if (!pics.every(p => existsSync(p))) return null;
+  const imgs = pics.map(p => decodePng(readFileSync(p)));
+  return turns.map(({ view, flip }, m) => {
+    const cells = turnCells(key, m), img = imgs[view], [X0, Y0] = viewBox(views[view], wall), list = [];
+    for (let j = 0; j < img.h; j++) for (let i = 0; i < img.w; i++) {
+      const o = (j * img.w + i) * 4;
+      if (!img.data[o + 3]) continue;
+      // a flipped turn is the picture mirrored about the frame's X = 0
+      const X = flip ? -(X0 * DENSITY + i) - 1 : X0 * DENSITY + i, r = rayHit(cells, wall, (X + 0.5) / DENSITY, Y0 + (j + 0.5) / DENSITY, KEEP_ROOM);
+      if (!r) continue;
+      list.push({ X, Y: Y0 * DENSITY + j, c: [0, 1, 2].map(k => img.data[o + k]), a: img.data[o + 3] / 255, w: 0, face: 0, cell: cells.findIndex(c => c[0] === r.cell[0] && c[1] === r.cell[1]) });
+    }
+    const x0 = Math.min(...list.map(p => p.X)), y0 = Math.min(...list.map(p => p.Y));
+    return { cells: cells.map(([u, v]) => [u, v, 0]), over: { x0, y0, w: Math.max(...list.map(p => p.X)) - x0 + 1, h: Math.max(...list.map(p => p.Y)) - y0 + 1, list } };
+  });
+}
+
 for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
   const tint = colorForDef(sa.def), T = hex(tint);
-  const frames = [];
+  const shop = SHOPS[key] ? shopFrames(key) : null;
+  const frames = shop || [];
   // the band's sides: where the drawing is padded past the bounding box
   const padded = [sa.oy > 0, sa.IW - sa.ox > sa.W, sa.IH - sa.oy > sa.H, sa.ox > 0];
-  for (let m = 0; m < 4; m++) {
+  for (let m = 0; !shop && m < 4; m++) {
     const f = frameOf(sa, m), fr = { cells: [] }, cellIx = new Map();
     // a cell of this turn: 0 under the tile, 1 past a padded side (the band,
     // shown only past the edge it works from), 2 anywhere else it reaches (a wing)
@@ -349,10 +379,11 @@ for (const key of Object.keys(A)) {
     pic[i] = '#' + q.c.map(toHex2).join('') + toHex2(q.a * 255);
     map[i] = '#' + toHex2(q.face * 60) + toHex2(q.cell + 1) + toHex2(q.w * 100);
   }
-  manifest[key] = { tint, frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
+  manifest[key] = { tint, ...(shop ? { d: DENSITY } : {}), frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
   if (!want.length || want.includes(key)) {
-    writeFileSync(resolve(dir, key + '.png'), png({ IW: SW, IH: SH, px: pic }));
-    writeFileSync(resolve(dir, key + '_map.png'), png({ IW: SW, IH: SH, px: map }));
+    // a painted shop's sheet goes through png.mjs, which writes a palette where it can
+    const write = (name, px, q) => writeFileSync(resolve(dir, name), shop ? encodePng(q ? quantize(rgbaOf(SW, SH, px), 255) : rgbaOf(SW, SH, px)) : png({ IW: SW, IH: SH, px }));
+    write(key + '.png', pic, true); write(key + '_map.png', map);
     written++;
   }
 }

@@ -2,7 +2,8 @@
 
 Board art for every tile, baked by `harness/isoart.mjs` from the drawings in
 `harness/tileart.mjs`; it also writes the manifest, `src/ui/isosprites.js`,
-and the ground textures in `../ground/`.
+and the ground textures in `../ground/`. The solid shops are baked from the
+paintings in `../shops/` instead, at twice the density (`d: 2` in the manifest).
 
 - `<key>.png` is a plain picture of the tile in the 2:1 isometric projection
   (a cell is a 64 x 32 diamond): its four quarter turns, one row each, the

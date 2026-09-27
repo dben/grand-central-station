@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform } from '../sim/shapes.js';
-import { loadSprites, isoFrame, isoArt, hasIso, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
+import { loadSprites, isoFrame, isoArt, hasIso, isoDensity, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -866,7 +866,7 @@ export class BoardRenderer {
     }
     const f = isoFrame(t.key, shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])));
     const cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip);
-    return cells ? { flip: f.flip, cells } : null;
+    return cells ? { flip: f.flip, cells, d: isoDensity(t.key) } : null;
   }
 
   // The squares a corridor tile's track is drawn over: its lane out to the
@@ -932,7 +932,7 @@ export class BoardRenderer {
     const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
     const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), piece = here && here[layer];
     if (!piece) return;
-    const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
+    const ctx = this.ctx, s = this.k / ISO_CELL_PX / iso.d, [ax, ay] = this.project(info.bx0, info.by0);
     ctx.save();
     ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
     // crisp pixels once a sheet pixel covers a screen pixel; blend below that

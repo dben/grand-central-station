@@ -1000,7 +1000,8 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
 - **Baking (`harness/isoart.mjs`):** it ray-casts each tile's drawing once, for each of the four
   quarter turns, into the isometric projection. What a ray meets front to back makes the pixel:
   - a shop is a solid prism, walls lit and shaded with a lit top course, a dark footing and a
-    seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it;
+    seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it
+    (the solid shops are painted instead, and baked from the paintings: see *Painted shops*);
   - a transport, a cart or a low walk-through tile with floor art is a glass box: its floor with
     the crowd on it, panes that are a faint wash of the tile's colour in a frame, an open top with
     only what stands over the floor on it, so the crowd shows through;
@@ -1025,6 +1026,55 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   beneath it and is not relit; a missing map still draws. Rerunning `isoart.mjs` overwrites
   both, so after touching a sheet up, rerun it only for the tiles to redraw
   (`node harness/isoart.mjs bus_stop`).
+- **Painted shops (`harness/shopgen.mjs`, `harness/shopart.mjs`):** the 19 solid shops (every
+  amenity with walls, from the vending machines to the nanofab, the security station included) are
+  painted by an image model and baked from the paintings. The walk-through tiles (carts, lounges,
+  the checkpoint, the guard, the parks) stay drawn in code, since the crowd shows inside them.
+  - *Views:* a turn whose footprint is another turn's with x and y swapped is that turn flipped,
+    so a shop needs one picture per footprint left over (`shopViews`): one for an I or O shape,
+    two for the S and T shapes, three for an L3 and four for the L4, 33 for the 19 shops. A
+    flipped turn keeps its painted light, now from the left, and so does a turn the game mirrors
+    (every painted pixel's map face is 0). Relighting a flip by the block's faces was tried and
+    left a light or dark band wherever the painted corner missed the block's; asking for every
+    turn instead, so none is flipped, was tried too, and a model given four block-outs at once
+    followed their shapes far worse (towers on T footprints, a square cafeteria).
+  - *Painting:* `shopgen.mjs` draws a block-out of each view's footprint, the prism flat-lit in
+    the tile's colour and `ART_TALL` (1.7) times its `tileHeight` (at most 44 frame pixels), a
+    shop's views side by side in one image, and asks the model (OpenRouter's image API, the
+    block-out as a reference image) to paint the shop over every block at once: one call a shop,
+    so its views share one design. The prompt bans lettering, since a flipped turn would mirror
+    it, and asks for light from the right, pure white behind and nothing on the ground. A painting
+    whose border is not mostly white (a whole station drawn behind the shop) is skipped.
+  - *Fitting:* the white is flooded out from the border, the painting split into its buildings
+    and each given to the nearest block-out. Each is then placed (a scale and a shift) to cover
+    its block while spilling least past the footprint's columns, and an eighth as much for paint
+    above the roof, so a sign is allowed but blowing the picture up to fill the room over the roof
+    is not. The search starts from where the model left it and from the building's outline stood
+    on the block's front corner at a spread of scales, then refines. The best of `--tries` (by its
+    worst view) is resampled into `assets/shops/<key>_<view>.png` at 2 pixels to a frame pixel
+    and cut down to one palette of 80 colours per shop, which reads as pixel art and packs small.
+    `assets/shops/log.json` keeps which painting and model each shop came from and its fits
+    (0.74 to 0.94; the models' walls come out a little narrower than the block, so a strip of
+    floor shows round most shops).
+  - *Baking:* `isoart.mjs` makes each turn from its view's picture, mirrored for a flipped turn.
+    Every pixel is cast down its ray (`rayHit`, which steps from cell line to cell line): what
+    meets no column of the footprint is cut away (paint on the floor beside the walls); the rest
+    goes to the cell whose column it meets first, except that anything over the roof goes to the
+    cell whose roof is under it, so the back of an L's roof never paints over a traveller in its
+    notch. A sign over an L's back notch has no roof under it and goes to the column in front. The
+    sheet is written with a palette (at most 255 colours) and marked `d: 2` in the manifest.
+  - *Density:* `d: 2` sheets carry 128 sheet pixels a cell, twice the others, and the renderer
+    scales them by half again (`drawIsoCell`). They are drawn smoothed below 1:1 over a wider
+    range of zooms, where each piece's soft edge left a hairline down a cell line, so each cell's
+    piece of such a sheet also carries the pixels one step past its edge (`isoArt`).
+  - *Models:* Gemini 3.1 Flash Image paints the most detail and follows an L's notch best, at
+    about $0.07 a shop ($0.10 at 2K, which a shop with several views gets); Meta Muse Image is a
+    cent a shop and sits closer on the block, but paints coarser pixels, squares off notches and
+    stretches long shapes badly (a squat cafeteria). It ignores the requested ratio and letterboxes
+    the block-outs, which the fit allows for. Both were run on every shop and the better painting
+    kept by eye: Muse for the vending machines, the food stand, the coffee shop, the currency
+    exchange and the drone swarm, Flash for the other 14. The whole set cost about $4, trials
+    included.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.
@@ -1040,8 +1090,8 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     painted at that square's depth).
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
-  pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 69
-  sheets and their maps come to about 0.8 MB; drawing the full catalogue board takes 4-7 ms a
+  pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 70
+  sheets and their maps come to about 1.65 MB, 1.2 MB of it the 19 painted shops; drawing the full catalogue board takes 4-7 ms a
   frame in headless Chromium.
 - **Ground:** the land round the board, the sea, the edge strips and the concourse are filled with
   pixel textures from the same bake, `assets/ground/<name>.png`: 128 x 64 pictures that tile the

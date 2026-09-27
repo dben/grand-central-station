@@ -93,6 +93,8 @@ export function groundBend(key) { const img = get('ground:' + key), at = GROUND_
 export const ISO_CELL_PX = 64;
 // whether a key has a sheet at all (loaded or not)
 export const hasIso = key => !!ISO_FRAMES[key];
+// sheet pixels to a frame pixel: 2 for the painted shops, whose sheets carry twice the detail
+export const isoDensity = key => (ISO_FRAMES[key] && ISO_FRAMES[key].d) || 1;
 const FACE_SHADE = [1, 0.52, 0.70, 0.61];
 const DIM = [70, 74, 84];
 // The quarter turn m and flip that show a tile turned by `tf` (mirror first,
@@ -130,16 +132,22 @@ export function isoArt(key, m, tint, dim, swap) {
         const o = (j * w + i) * 4;
         if (!p[o + 3]) continue;
         let c = q && q[o + 3] ? q[o + 1] - 1 : -1;
-        if (c < 0) c = nearestCell(man.frames[m].cells, fx + i + 0.5, fy + j + 0.5);
+        if (c < 0) c = nearestCell(man.frames[m].cells, (fx + i + 0.5) / (man.d || 1), (fy + j + 0.5) / (man.d || 1));
         own[j * w + i] = c;
         const b = boxes.get(c) || [i, j, i, j];
         boxes.set(c, [Math.min(b[0], i), Math.min(b[1], j), Math.max(b[2], i), Math.max(b[3], j)]);
       }
-      for (const [c, [x0, y0, x1, y1]] of boxes) {
+      // A double-density sheet is drawn below 1:1 over a wide range of zooms,
+      // where each piece's edge is blended soft and two pieces meeting on a
+      // cell line leave a hairline between them: so each piece also carries
+      // the pixels a step past its edge, and the soft edges overlap instead.
+      const bleed = (man.d || 1) > 1, near = (i, j, c) => own[j * w + i] >= 0 && ((i > 0 && own[j * w + i - 1] === c) || (i < w - 1 && own[j * w + i + 1] === c) || (j > 0 && own[(j - 1) * w + i] === c) || (j < h - 1 && own[(j + 1) * w + i] === c));
+      for (let [c, [x0, y0, x1, y1]] of boxes) {
+        if (bleed) { x0 = Math.max(0, x0 - 1); y0 = Math.max(0, y0 - 1); x1 = Math.min(w - 1, x1 + 1); y1 = Math.min(h - 1, y1 + 1); }
         const cw = x1 - x0 + 1, ch = y1 - y0 + 1, cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
         const g = cv.getContext('2d'), data = g.createImageData(cw, ch), d = data.data;
         for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
-          if (own[j * w + i] !== c) continue;
+          if (own[j * w + i] !== c && !(bleed && near(i, j, c))) continue;
           const o = (j * w + i) * 4, e = ((j - y0) * cw + i - x0) * 4;
           const f = q && q[o + 3] ? Math.round(q[o] / 60) : 0, wt = q && q[o + 3] ? q[o + 2] / 100 : 0;
           const relit = shades[f] / FACE_SHADE[f];

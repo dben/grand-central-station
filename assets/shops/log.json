@@ -1,0 +1,149 @@
+{
+ "burger": {
+  "raw": "burger_1790522619146_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.879,
+   0.852,
+   0.873
+  ]
+ },
+ "vending": {
+  "raw": "vending_1790522092975_muse-image.png",
+  "model": "muse-image",
+  "fit": [
+   0.908
+  ]
+ },
+ "kiosk": {
+  "raw": "kiosk_1790522529815_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.924
+  ]
+ },
+ "atm": {
+  "raw": "atm_1790522541096_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.916
+  ]
+ },
+ "newsstand": {
+  "raw": "newsstand_1790522552680_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.826
+  ]
+ },
+ "food_stand": {
+  "raw": "food_stand_1790522180878_muse-image.png",
+  "model": "muse-image",
+  "fit": [
+   0.761
+  ]
+ },
+ "coffee": {
+  "raw": "coffee_1790522209713_muse-image.png",
+  "model": "muse-image",
+  "fit": [
+   0.9
+  ]
+ },
+ "currency": {
+  "raw": "currency_1790522226335_muse-image.png",
+  "model": "muse-image",
+  "fit": [
+   0.832
+  ]
+ },
+ "pizza": {
+  "raw": "pizza_1790522640512_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.773,
+   0.869
+  ]
+ },
+ "clothing": {
+  "raw": "clothing_1790522661947_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.816,
+   0.877
+  ]
+ },
+ "sports_bar": {
+  "raw": "sports_bar_1790522686563_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.904,
+   0.867
+  ]
+ },
+ "cafeteria": {
+  "raw": "cafeteria_1790522708099_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.863
+  ]
+ },
+ "art_gallery": {
+  "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.902,
+   0.9
+  ]
+ },
+ "lounge": {
+  "raw": "lounge_1790522742787_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.846,
+   0.812
+  ]
+ },
+ "designer": {
+  "raw": "designer_1790523612868_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.845,
+   0.84,
+   0.806,
+   0.806
+  ]
+ },
+ "security": {
+  "raw": "security_1790522788891_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.907,
+   0.878,
+   0.901
+  ]
+ },
+ "drone_swarm": {
+  "raw": "drone_swarm_1790522481833_muse-image.png",
+  "model": "muse-image",
+  "fit": [
+   0.938
+  ]
+ },
+ "nanofab": {
+  "raw": "nanofab_1790522821295_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.869,
+   0.798,
+   0.743
+  ]
+ },
+ "restroom": {
+  "raw": "restroom_1790522606337_gemini-3.1-flash-image.png",
+  "model": "gemini-3.1-flash-image",
+  "fit": [
+   0.932
+  ]
+ }
+}
