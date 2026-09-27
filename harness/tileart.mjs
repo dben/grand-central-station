@@ -1,26 +1,20 @@
-#!/usr/bin/env node
-// Draws the pixel-art board tiles and writes them as PNGs:
-//   node harness/tileart.mjs [key ...]   -> assets/tiles/<key>.png, <key>_floor.png
-// Each tile is drawn top-down in its shape's base orientation (src/sim/shapes.js)
-// at 32 art pixels per cell, covering the bounding box. The renderer lays the
-// image flat on the isometric grid and turns it to match the placed tile, so one
-// image per layer covers every rotation.
+// The board tiles' pixel art, drawn in code: a module for isoart.mjs, which
+// stands these drawings up into the isometric sheets the game draws.
 //
-// Two layers, with the crowd between them (see drawTileFloor in render.js):
-//   <key>_floor.png  the ground a traveller stands on: paving, carpet, seats
-//   <key>.png        what stands over them: roofs, canopies, vehicles, tree tops.
-//                    Clear pixels let the floor and the crowd show through.
-// A tile may have either or both. The main surfaces take the tile's own colour
+// Each tile is drawn top-down in its shape's base orientation (src/sim/shapes.js)
+// at 32 art pixels per cell, covering the bounding box, in two layers with the
+// crowd between them:
+//   floor  the ground a traveller stands on: paving, carpet, seats, water, track
+//   over   what stands over them: roofs, canopies, signs, tree tops. Clear pixels
+//          let the floor and the crowd show through.
+// A tile may have either or both. `block` marks parts of the over layer that
+// stand up off the floor, `stack` draws a vehicle in slices, and `sink` cuts
+// steps down into the floor. The main surfaces take the tile's own colour
 // (colorForDef), so the board keeps its colour code with the art on.
 //
 // Down in the base image is the tile's working side: the kerb a bus pulls up to,
-// the track, the berth. The renderer turns that side to face the edge the tile
+// the track, the berth. The game turns that side to face the edge the tile
 // draws from, so a bus stop's bus sits on the road side whichever way it lies.
-// No dependencies: the PNG is written with node's own zlib.
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { deflateSync } from 'node:zlib';
 import { tileDef } from '../src/data/tiles.js';
 import { SHAPES } from '../src/sim/shapes.js';
 import { colorForDef, H_UNIT } from '../src/ui/render.js';
@@ -30,7 +24,6 @@ import { colorForDef, H_UNIT } from '../src/ui/render.js';
 const PX = 1 / (2 * 32 * H_UNIT);
 
 const CELL = 32;
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // ---- colour -----------------------------------------------------------------
 const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
@@ -47,7 +40,6 @@ const GRASS = ['#3f8f2f', '#4aa244', '#5cb84a', '#78cf5a'];
 const WOOD = '#a86a3a', WOOD_L = '#d08a4a', WOOD_D = '#6b3e24';
 const STEEL = '#c9c4d8', STEEL_D = '#8a8a9a';
 const WATER = ['#1673c0', '#1ea0ea', '#6cc8ff'];
-const SHADE = '#0a052060';   // a shadow cast on nothing drawn: see-through
 
 // ---- canvas -----------------------------------------------------------------
 // One sheet per layer, clipped to the tile's footprint so nothing spills into
@@ -55,7 +47,7 @@ const SHADE = '#0a052060';   // a shadow cast on nothing drawn: see-through
 // adds a band round the bounding box for art that lies past the board's edge:
 // coordinates stay those of the bounding box, so the band is at negative x or y,
 // or past W or H. `block` marks a rectangle of the over layer that stands up off
-// the ground (see SPRITE_BLOCKS in sprites.js).
+// the ground, and `stack` a vehicle drawn in slices (both stood up by isoart.mjs).
 function sheet(shape, pad = [0, 0, 0, 0]) {
   const cells = SHAPES[shape][0];
   const cw = Math.max(...cells.map(c => c[0])) + 1, ch = Math.max(...cells.map(c => c[1])) + 1;
@@ -75,11 +67,6 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   }
   const P = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (c && (inside(x, y) || inBand(x, y))) px[(y + oy) * IW + x + ox] = c; };
   const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) P(x + i, y + j, c); };
-  const S = (x, y, rows, pal, { flip = false, rot = false } = {}) => rows.forEach((row, j) => [...row].forEach((ch, i) => {
-    if (ch === '.') return;
-    const a = flip ? row.length - 1 - i : i;
-    rot ? P(x + j, y + a, pal[ch]) : P(x + a, y + j, pal[ch]);
-  }));
   const fill = c => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) P(x, y, c); };
   // every footprint pixel within `w` of the outline
   const rim = (w, c, from = 0) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inside(x, y)) { const d = dist[y * W + x]; if (d >= from && d < from + w) P(x, y, c); } };
@@ -98,31 +85,24 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   // an inked box
   const box = (x, y, w, h, col, ink = INK) => blot(x, y, w, h, () => true, col, ink);
   const cellOn = (cx, cy) => set.has(cx + ',' + cy);
-  // darken what is already drawn: shadows on the floor. Where nothing is drawn
-  // (the band past the edge) the shadow is a see-through wash over the strip.
-  const darkAt = (i, j, f) => { const k = (j + oy) * IW + i + ox; if (inside(i, j) || inBand(i, j)) px[k] = px[k] ? shade(px[k], f) : SHADE; };
-  const dark = (x, y, w, h, f) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) darkAt(i, j, f); };
-  // every pixel of the band past the bounding box
-  const band = fn => { for (let y = -oy; y < IH - oy; y++) for (let x = -ox; x < IW - ox; x++) if (inBand(x, y)) fn(x, y); };
   // a raised part: it stands from z0 to z1, in units of tile height; a round one
   // bulges and narrows as it rises (a tree top, a balloon) instead of a drum
   const block = (x, y, w, h, z1, z0 = 0, round = false) => blocks.push([x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]);
-  // A sprite stack for the last block: the vehicle drawn as slices from its
-  // wheels to its roof, for isoart.mjs to stand up with detail on the sides.
-  // `fn(along, across, t)` gives the colour at a point of the vehicle's own
-  // plan (`L` long, `D` wide, nose at along = L - 1) and height t (0 at the
-  // bottom, 1 at the top): a colour, 'top' for the top-down art, or nothing.
-  // The flat renderer ignores it and stacks the top-down art as before.
-  // `z0`/`z1` give it its own height, where it stands taller than the block (a
-  // parked airliner's fin) or takes over several blocks; `hide` marks the last
-  // block as drawn by a stack elsewhere, and `cut` clears a rectangle of the
-  // flat over art that a stack now draws in the round (a helicopter's rotor).
-  const stack = (x, y, L, D, vertical, fn, { z0, z1 } = {}) => { blocks[blocks.length - 1].stack = { x: x + ox, y: y + oy, L, D, vertical, fn, z0, z1 }; };
-  const hide = () => { blocks[blocks.length - 1].hide = true; };
-  const cuts = [], cut = (x, y, w, h) => cuts.push([x + ox, y + oy, w, h]);
-  // a part of the floor that steps down into the ground (see SPRITE_SINKS)
+  // A sprite stack: a vehicle drawn as slices from its wheels to its roof, so
+  // its sides carry their own detail. `fn(along, across, t)` gives the colour
+  // at a point of the vehicle's plan (`L` long, `D` wide, nose at along = L - 1,
+  // lying along y if `vertical`) and height t (0 at z0, 1 at z1): a colour,
+  // 'top' for the top-down art under it, or nothing. Its plan may reach past
+  // the drawing (an airliner's wings over the next squares).
+  const stack = (x, y, L, D, vertical, fn, z0, z1) => {
+    const b = [x + ox, y + oy, vertical ? D : L, vertical ? L : D, z0, z1];
+    b.stack = { L, D, vertical, fn };
+    blocks.push(b);
+  };
+  // a part of the floor that steps down into the ground: `n` steps along `dir`
+  // (the way down) from depth d0 to d1
   const sinks = [], sink = (x, y, w, h, d0, d1, dir, n) => sinks.push([x + ox, y + oy, w, h, d0, d1, dir, n]);
-  return { W, H, IW, IH, ox, oy, cells, px, inside, dist, P, R, S, fill, rim, each, disc, ring, blot, box, cellOn, band, block, blocks, stack, hide, cut, cuts, dark, darkAt, sink, sinks };
+  return { W, H, IW, IH, ox, oy, cells, px, inside, P, R, fill, rim, each, disc, ring, blot, box, cellOn, block, blocks, stack, sink, sinks };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -147,12 +127,6 @@ function roadStrip(c, t, y0) {
   tarmac(c, t, 0, y0, c.W, c.H - y0);
   c.R(0, y0, c.W, 1, PAINT);
   for (let x = 3; x < c.W; x += 12) c.R(x, c.H - 4, 6, 1, YELLOW);
-}
-function trackStrip(c, y0, y1 = c.H) {
-  c.R(0, y0, c.W, y1 - y0, '#8d7a68');
-  for (let x = 0; x < c.W; x++) if ((x * 5) % 3 === 0) c.P(x, y0 + 1 + (x % (y1 - y0 - 2)), '#6f5e50');
-  for (let x = 1; x < c.W; x += 4) c.R(x, y0 + 2, 2, y1 - y0 - 4, WOOD_D);
-  c.R(0, y0 + 4, c.W, 1, STEEL); c.R(0, y1 - 5, c.W, 1, STEEL);
 }
 function seaStrip(c, y0) { sea(c, 0, y0, c.W, c.H - y0); c.R(0, y0, c.W, 2, WOOD_L); c.R(0, y0 + 2, c.W, 1, WOOD_D); for (let x = 4; x < c.W; x += 16) c.R(x, y0 + 3, 2, 2, WOOD_D); }
 function apronStrip(c, t, y0) {
@@ -191,8 +165,8 @@ function shop(c, t, icon, { awn = RED, alt = WHITE, at = null, plant = true } = 
   const [ix, iy] = at || [c.cells[0][0] * CELL + 16, c.cells[0][1] * CELL + 15];
   if (icon) icon(c, ix, iy);
 }
-// A trunk and its shadow on the floor, and a canopy over it: a park's trees.
-function treeShadow(c, x, y) { c.R(x, y, 2, 2, WOOD_D); }
+// A trunk on the floor, and a canopy over it: a park's trees.
+function trunk(c, x, y) { c.R(x, y, 2, 2, WOOD_D); }
 function tree(c, x, y, r) {
   c.disc(x, y, r + 1, INK); c.disc(x, y, r, GRASS[0]);
   c.disc(x - 1, y - 1, r - 2, GRASS[1]); c.disc(x - 2, y - 2, Math.max(1, r - 5), GRASS[3]);
@@ -205,8 +179,6 @@ function parasol(c, cx, cy, r, a, b) {
   for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.8) c.P(cx + x, cy + y, Math.floor((Math.atan2(y, x) + Math.PI) / (Math.PI / 4)) % 2 ? a : b);
   c.disc(cx, cy, 1, WHITE);
 }
-// The shadow a vehicle or a building casts on the floor under it.
-function shadow(c, x, y, w, h) { c.dark(x + 1, y + 2, w, h, 0.62); }
 
 // ---- vehicles (top-down, nose to the right) ---------------------------------------
 // Each registers its own block, so it stands up off the floor; `z` is its height.
@@ -215,8 +187,7 @@ function car(c, x, y, col, v = false, z = 0.2, z0 = 0) {
   const test = (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === D - 1));
   const paint = (i, j) => i === L - 1 && (j === 1 || j === D - 2) ? '#fff1a8' : i === 10 || i === 11 ? GLASS : i === 3 ? GLASS_D : i > 3 && i < 10 ? shade(col, 0.82) : col;
   v ? c.blot(x, y, D, L, (i, j) => test(j, i), (i, j) => paint(j, i)) : c.blot(x, y, L, D, test, paint);
-  v ? c.block(x - 1, y - 1, D + 2, L + 2, z0 + z, z0) : c.block(x - 1, y - 1, L + 2, D + 2, z0 + z, z0);
-  c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col, L, D));
+  c.stack(x, y, L, D, v, (a, w, t) => carSlice(a, w, t, col, L, D), z0, z0 + z);
 }
 // A car in slices, nose at a = 14: tyres under a sill set in from the sides,
 // the body with its lamps, door seams and a lit waistline, then a narrower
@@ -248,8 +219,7 @@ function bus(c, x, y, len, col, stripe = WHITE) {
   c.blot(x, y, len, 12, (i, j) => !((i === 0 || i === len - 1) && (j === 0 || j === 11)), (i, j) =>
     i >= len - 3 ? GLASS : (j === 1 || j === 10) ? ((i % 6) ? GLASS : shade(col, 0.7)) : (j === 5 || j === 6) ? stripe : col);
   for (let i = x + 8; i < x + len - 10; i += 14) c.box(i, y + 3, 5, 5, STEEL);
-  c.block(x - 1, y - 1, len + 2, 14, 0.36);
-  c.stack(x, y, len, 12, false, (a, w, t) => busSlice(a, w, t, len, col, stripe));
+  c.stack(x, y, len, 12, false, (a, w, t) => busSlice(a, w, t, len, col, stripe), 0, 0.36);
 }
 // A bus in slices, nose at a = len - 1 and its doors on the kerb side (w = 0):
 // two axles, the livery stripe, a long band of windows, a wide windscreen
@@ -285,8 +255,7 @@ function carriage(c, x, y, len, w, body, stripe, { nose = false, tail = false, z
     return true;
   }, (i, j) => (nose && i > len - r - 3 && Math.abs(j - (w - 1) / 2) < r - 1) ? GLASS : Math.abs(j - (w - 1) / 2) < 1 ? stripe : body);
   for (let i = x + 6; i < x + len - 8; i += 12) c.R(i, y + 2, 5, 2, shade(body, 0.8));
-  c.block(x - 1, y - 1, len + 2, w + 2, z, z0);
-  c.stack(x, y, len, w, false, (a, k, t) => carriageSlice(a, k, t, len, w, body, stripe, nose, tail));
+  c.stack(x, y, len, w, false, (a, k, t) => carriageSlice(a, k, t, len, w, body, stripe, nose, tail), z0, z);
 }
 // A carriage in slices: bogies and wheels under a sill, the body with the
 // line's stripe, a band of windows and doors, a rounded roof. The leading car
@@ -328,14 +297,12 @@ function boat(c, x, y, len, w, hull, deck, cabin = null, z = 0.1) {
   const test = (L, W0) => (i, j) => { const hw = W0 / 2 * (i > L - bow ? Math.max(0, (L - i) / bow) ** 0.7 : 1); return Math.abs(j - (W0 - 1) / 2) <= hw - 0.3; };
   c.blot(x, y, len, w, test(len, w), hull);
   c.blot(x + 2, y + 2, len - 5, w - 4, test(len - 5, w - 4), deck, null);
-  c.block(x - 1, y - 1, len + 2, w + 2, z);
-  // in the round: one stack for the hull and the cabin on it
+  // one stack for the hull and the cabin on it, the deck and the cabin roof from the drawing
   const hullPx = Math.max(4, Math.round(z / PX)), cabPx = cabin ? Math.max(4, Math.round(w / 2)) : 0;
-  c.stack(x, y, len, w, false, (a, k, t) => boatSlice(a, k, t * (hullPx + cabPx), len, w, bow, hullPx, cabPx, hull, cabin), { z0: 0, z1: (hullPx + cabPx) * PX });
+  c.stack(x, y, len, w, false, (a, k, t) => boatSlice(a, k, t * (hullPx + cabPx), len, w, bow, hullPx, cabPx, hull, cabin), 0, (hullPx + cabPx) * PX);
   if (cabin) {
     const [cx0, cw, col] = cabin, top = y + Math.round(cy) - Math.floor((w - 6) / 2);
     c.box(x + cx0, top, cw, w - 6, col); c.R(x + cx0 + cw - 2, top, 2, w - 6, GLASS);
-    c.block(x + cx0 - 1, top - 1, cw + 2, w - 4, z + 0.08, z); c.hide();
   }
 }
 // A boat in slices, h in pixels: a vee hull that widens to the gunwale, dark
@@ -357,28 +324,12 @@ function boatSlice(a, k, h, len, w, bow, hullPx, cabPx, hull, cabin) {
   if (a === cx0 + cw - 1) return ch > 0.8 ? GLASS : col;
   return ch > 1 && ch < cabPx - 1.5 && a % 3 ? '#2e5a8a' : col;
 }
-// An aircraft from above: fuselage, swept wings, tailplane. Box is len x span.
-// It flies, or sits high on its gear: the block floats a thin slab off the floor.
-function plane(c, x, y, len, span, body, trim, down = false, z = 0.16) {
-  const cy = (span - 1) / 2, fw = Math.max(2, Math.round(span / 12));
-  const test = (i, j) => {
-    const dy = Math.abs(j - cy);
-    const nose = i > len - 6 ? (len - i) / 6 : 1;
-    if (dy <= fw * Math.sqrt(nose) + 0.2) return true;
-    const le = len * 0.62 - dy * 0.45, te = len * 0.44 - dy * 0.3;
-    if (dy <= span / 2 && i <= le && i >= te) return true;
-    const tl = len * 0.14 - dy * 0.3, tt = 1;
-    return dy <= span * 0.2 && i <= tl && i >= tt;
-  };
-  const paint = (i, j) => Math.abs(j - cy) < 1 && i < len - 6 ? trim : i > len - 6 && i < len - 3 && Math.abs(j - cy) <= fw - 1 ? GLASS : body;
-  if (down) c.blot(x, y, span, len, (i, j) => test(j, i), (i, j) => paint(j, i));
-  else c.blot(x, y, len, span, test, paint);
-  for (const s of [-1, 1]) { const a = Math.round(len * 0.46), b = Math.round(cy + s * span * 0.24) - 1; down ? c.box(x + b, y + a, 3, 5, STEEL_D) : c.box(x + a, y + b, 5, 3, STEEL_D); }
-  down ? c.block(x - 1, y - 1, span + 2, len + 2, z, z - 0.06) : c.block(x - 1, y - 1, len + 2, span + 2, z, z - 0.06);
-  // In the round it is parked on its gear, at its full span: the flat art has
-  // to fit the tile, but the wings may reach over the squares either side.
+// An airliner parked on its gear, nose at +x (or +y if `down`), in a box len x
+// span on the tile. Its wings are drawn at 0.9 of its length in span, centred
+// on the box, and may reach over the squares either side.
+function plane(c, x, y, len, span, body, trim, down = false) {
   const S = Math.round(len * 0.9), off = Math.round((span - S) / 2), m = planeModel(len, S, body, trim);
-  down ? c.stack(x + off, y, len, S, true, m.fn, { z0: 0, z1: m.H * PX }) : c.stack(x, y + off, len, S, false, m.fn, { z0: 0, z1: m.H * PX });
+  down ? c.stack(x + off, y, len, S, true, m.fn, 0, m.H * PX) : c.stack(x, y + off, len, S, false, m.fn, 0, m.H * PX);
 }
 // An airliner in slices, nose at a = len - 1, h in pixels: a round fuselage
 // with a cheatline, a row of cabin windows and the flight deck glass at the
@@ -412,18 +363,8 @@ function planeModel(len, S, body, trim) {
   };
   return { fn, H };
 }
-// An oval cabin with its glass at the nose (-x), a tail boom and a fin.
-function heli(c, cx, cy, col) {
-  c.R(cx + 4, cy - 1, 16, 3, INK); c.R(cx + 5, cy, 14, 1, shade(col, 0.8)); c.R(cx + 18, cy - 4, 3, 9, INK);
-  c.blot(cx - 12, cy - 6, 20, 13, (i, j) => ((i - 9.5) / 10) ** 2 + ((j - 6) / 6.5) ** 2 <= 1, (i, j) => i < 7 && ((i - 6) / 6) ** 2 + ((j - 6) / 4.5) ** 2 <= 1 ? GLASS : col);
-  c.block(cx - 13, cy - 7, 35, 15, 0.18, 0.07);
-  // the rotor turns over the body, flat at the top of the pad's box
-  for (let i = -17; i <= 17; i++) { c.P(cx + i, cy + Math.round(i * 0.35), '#2e374d'); c.P(cx - Math.round(i * 0.35), cy + i, '#2e374d'); }
-  c.disc(cx, cy, 1, STEEL);
-  // in the round it stands on its skids, the rotor on a mast above it
-  c.stack(cx - 18, cy - 18, 37, 37, false, (a, k, t) => heliSlice(a - 18, k - 18, t * 15, col), { z0: 0, z1: 15 * PX });
-  c.cut(cx - 18, cy - 18, 37, 37);
-}
+// A helicopter standing on the pad, its rotor hub at (cx, cy).
+function heli(c, cx, cy, col) { c.stack(cx - 18, cy - 18, 37, 37, false, (a, k, t) => heliSlice(a - 18, k - 18, t * 15, col), 0, 15 * PX); }
 // A helicopter in slices about its rotor hub, h in pixels: skids and struts,
 // an egg of a cabin with its glass at the nose (-x), the tail boom, fin and
 // tail rotor, the mast, and two blades crossing over the top.
@@ -547,7 +488,7 @@ const TILES = {
   // plus the vehicles, raised as blocks.
   // ---- road
   bus_stop: {
-    floor(c, t) { platform(c, t); roadStrip(c, t, 18); shadow(c, 7, 19, 50, 12); frame(c, t); },
+    floor(c, t) { platform(c, t); roadStrip(c, t, 18); frame(c, t); },
     over(c, t) {
       c.box(8, 3, 26, 9, mix(GLASS, t, 0.35)); c.R(9, 4, 25, 2, shade(t, 1.1)); for (let x = 15; x < 34; x += 6) c.R(x, 6, 1, 6, mix(GLASS_D, t, 0.3));
       c.box(44, 4, 4, 4, YELLOW); bus(c, 7, 19, 50, t);
@@ -562,7 +503,7 @@ const TILES = {
     over(c, t) { c.box(3, 2, 58, 6, shade(t, 1.0)); c.R(4, 3, 57, 1, shade(t, 1.3)); },
   },
   taxi_stand: {
-    floor(c, t) { platform(c, t); roadStrip(c, t, 16); for (const x of [4, 24, 44]) shadow(c, x, 20, 15, 8); frame(c, t); },
+    floor(c, t) { platform(c, t); roadStrip(c, t, 16); frame(c, t); },
     over(c, t) {
       c.box(4, 3, 10, 8, t); c.R(6, 5, 6, 4, YELLOW); c.R(8, 6, 2, 2, INK);
       for (const x of [4, 24, 44]) { car(c, x, 20, YELLOW); c.box(x + 5, 22, 4, 3, '#fff1a8'); }
@@ -572,7 +513,6 @@ const TILES = {
     floor(c, t) {
       platform(c, t); tarmac(c, t, 3, 3, 26, 58); tarmac(c, t, 3, 35, 58, 26);
       for (let y = 8; y < 30; y += 12) c.R(3, y, 26, 1, PAINT);
-      for (const [x, y] of [[8, 10], [8, 22], [34, 44], [12, 44]]) shadow(c, x, y, 15, 8);
       frame(c, t);
     },
     over(c, t) { car(c, 8, 10, '#2e374d'); car(c, 8, 22, WHITE); car(c, 34, 44, t); car(c, 12, 44, '#9b5cff'); c.box(40, 38, 10, 4, '#ff4fd8'); },
@@ -581,8 +521,7 @@ const TILES = {
     floor(c, t) {
       platform(c, t); tarmac(c, t, 0, 30, 64, 34);
       for (let x = 4; x < 64; x += 15) c.R(x, 32, 1, 28, PAINT);
-      for (const x of [6, 21, 36, 51]) shadow(c, x, 36, 8, 15);
-      shadow(c, 3, 3, 58, 22); frame(c, t);
+      frame(c, t);
     },
     over(c, t) {
       hut(c, t, 3, 3, 58, 22); hvac(c, 50, 9); c.box(8, 10, 22, 8, WHITE); c.R(10, 12, 18, 1, t); c.R(10, 15, 12, 1, t);
@@ -590,12 +529,12 @@ const TILES = {
     },
   },
   limo: {
-    floor(c, t) { platform(c, t); roadStrip(c, t, 16); c.R(0, 12, c.W, 2, RED); shadow(c, 20, 18, 58, 10); frame(c, t); },
+    floor(c, t) { platform(c, t); roadStrip(c, t, 16); c.R(0, 12, c.W, 2, RED); frame(c, t); },
     over(c, t) {
       c.box(10, 3, 76, 8, shade(t, 0.95)); c.R(11, 4, 75, 2, shade(t, 1.25)); for (let x = 14; x < 84; x += 8) c.P(x, 8, YELLOW);
       const L = 58; c.blot(20, 18, L, 10, (i, j) => !((i === 0 || i === L - 1) && (j === 0 || j === 9)), (i, j) => i > L - 13 && i < L - 9 ? GLASS_D : i > 6 && i < L - 16 ? (j === 0 || j === 9 ? '#2e374d' : '#1a1a24') : '#22222e');
-      c.R(26, 19, 28, 1, '#6c6880'); c.block(19, 17, L + 2, 12, 0.2);
-      c.stack(20, 18, L, 10, false, (a, w, t) => carSlice(a, w, t, '#22222e', L, 10, '#14141c'));
+      c.R(26, 19, 28, 1, '#6c6880');
+      c.stack(20, 18, L, 10, false, (a, w, t) => carSlice(a, w, t, '#22222e', L, 10, '#14141c'), 0, 0.2);
     },
   },
   parking_lot: {
@@ -603,7 +542,6 @@ const TILES = {
       tarmac(c, t);
       for (let x = 1; x < 64; x += 15) { c.R(x, 3, 1, 22, PAINT); c.R(x, 39, 1, 22, PAINT); }
       for (let x = 6; x < 60; x += 8) c.R(x, 32, 4, 1, YELLOW);
-      for (const [x, y] of PARKED) shadow(c, x, y, 8, 15);
       kerb(c, t);
     },
     over(c) { PARKED.forEach(([x, y], i) => car(c, x, y, [RED, '#35d4ff', WHITE, YELLOW, '#9b5cff'][i], true)); },
@@ -622,7 +560,7 @@ const TILES = {
   },
   tram_stop: {
     lane: { floor(c) { rails(c, 17, 26); } },
-    floor(c, t) { platform(c, t); c.R(0, 14, c.W, 16, mix('#9a94b2', t, 0.25)); c.R(0, 17, c.W, 1, STEEL_D); c.R(0, 26, c.W, 1, STEEL_D); shadow(c, 6, 16, 84, 12); frame(c, t); },
+    floor(c, t) { platform(c, t); c.R(0, 14, c.W, 16, mix('#9a94b2', t, 0.25)); c.R(0, 17, c.W, 1, STEEL_D); c.R(0, 26, c.W, 1, STEEL_D); frame(c, t); },
     over(c, t) {
       c.box(4, 2, 40, 7, shade(t, 1.0)); c.R(5, 3, 39, 1, shade(t, 1.3)); c.box(52, 2, 40, 7, shade(t, 1.0)); c.R(53, 3, 39, 1, shade(t, 1.3));
       train(c, 6, 16, 84, 3, 12, t, WHITE, { both: true, z: 0.24 });
@@ -639,8 +577,7 @@ const TILES = {
       beam(c, 0, c.W);
       const w = 14; c.blot(8, 15, 112, w, (i, j) => { const d = Math.abs(j - (w - 1) / 2), r = w / 2; return i < r ? d <= Math.sqrt(r * r - (r - i) ** 2) : i > 112 - r ? d <= Math.sqrt(Math.max(0, r * r - (i - 112 + r) ** 2)) : true; },
         (i, j) => j === 1 || j === w - 2 ? ((i % 7) ? GLASS : WHITE) : Math.abs(j - (w - 1) / 2) < 1.5 ? t : WHITE);
-      c.block(7, 14, 114, w + 2, 0.36, 0.16);
-      c.stack(8, 15, 112, w, false, (a, k, s) => carriageSlice(a, k, s, 112, w, WHITE, t, true, true));
+      c.stack(8, 15, 112, w, false, (a, k, s) => carriageSlice(a, k, s, 112, w, WHITE, t, true, true), 0.16, 0.36);
     },
   },
   ski_lift: {
@@ -668,10 +605,10 @@ const TILES = {
     },
     over(c, t) {
       c.blot(5, 6, 22, 84, (i, j) => { const b = 12; const hw = 11 * (j < b ? Math.max(0, j / b) ** 0.7 : j > 84 - 6 ? (84 - j) / 6 : 1); return Math.abs(i - 10.5) <= hw; }, WHITE);
-      c.block(4, 5, 24, 86, 0.14); c.hide();
+
       c.box(9, 26, 14, 40, '#e6e6f0'); for (let y = 30; y < 64; y += 5) { c.P(9, y, GLASS_D); c.P(22, y, GLASS_D); }
-      c.box(11, 22, 10, 5, GLASS); c.box(13, 44, 6, 6, RED); c.block(8, 21, 16, 46, 0.3, 0.14);
-      c.stack(5, 6, 84, 22, true, ferrySlice, { z0: 0, z1: 17 * PX });
+      c.box(11, 22, 10, 5, GLASS); c.box(13, 44, 6, 6, RED);
+      c.stack(5, 6, 84, 22, true, ferrySlice, 0, 17 * PX);
       c.R(10, 72, 12, 2, RED);
       hut(c, t, 33, 65, 30, 30); hvac(c, 52, 72); for (let y = 72; y < 92; y += 6) c.R(36, y, 12, 3, GLASS);
     },
@@ -719,14 +656,12 @@ const TILES = {
       for (const x of [40, 130]) c.box(x, 14, 6, 20, STEEL);
       c.blot(4, 34, 184, 22, (i, j) => { const hw = 11 * (i > 150 ? Math.max(0, (184 - i) / 34) ** 0.6 : i < 4 ? 0.85 : 1); return Math.abs(j - 10.5) <= hw; }, WHITE);
       c.R(8, 44, 150, 2, '#35d4ff');
-      c.block(3, 33, 186, 24, 0.3); c.hide();
       c.box(20, 37, 120, 16, '#e6e6f0'); c.box(30, 39, 90, 12, WHITE);
       for (let x = 34; x < 118; x += 6) { c.P(x, 39, GLASS_D); c.P(x, 50, GLASS_D); }
       c.box(60, 41, 14, 8, '#35d4ff');
-      c.block(19, 36, 122, 18, 0.5, 0.3); c.hide();
-      c.box(96, 40, 9, 10, RED); c.R(98, 42, 5, 6, INK); c.block(95, 39, 11, 12, 0.66, 0.5); c.hide();
-      c.box(142, 38, 8, 14, GLASS); c.block(141, 37, 10, 16, 0.4, 0.3);
-      c.stack(4, 34, 184, 22, false, cruiseSlice, { z0: 0, z1: 31 * PX });
+      c.box(96, 40, 9, 10, RED); c.R(98, 42, 5, 6, INK);
+      c.box(142, 38, 8, 14, GLASS);
+      c.stack(4, 34, 184, 22, false, cruiseSlice, 0, 31 * PX);
     },
   },
 
@@ -747,8 +682,7 @@ const TILES = {
     },
     over(c, t) {
       // the envelope hangs high over its basket; the booth in the stem stands on the grass
-      parasol(c, 48, 18, 17, t, YELLOW); c.ring(48, 18, 4, 1, shade(t, 0.6)); c.block(30, 0, 37, 37, 1.0, 0.45, true);
-      c.stack(30, 0, 37, 37, false, (a, k, s) => balloonSlice(a - 18, k - 18, s * 40, t), { z0: 0, z1: 40 * PX });
+      c.stack(30, 0, 37, 37, false, (a, k, s) => balloonSlice(a - 18, k - 18, s * 40, t), 0, 40 * PX);
       hut(c, t, 38, 40, 20, 18, 0.3); c.R(42, 44, 12, 10, RED);
     },
   },
@@ -758,7 +692,7 @@ const TILES = {
     pad: [1, 0, 0, 0],
     floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 32, YELLOW); frame(c, t); },
     over(c, t) {
-      plane(c, 3, -30, 46, 26, WHITE, '#3f8cff', true, 0.18);
+      plane(c, 3, -30, 46, 26, WHITE, '#3f8cff', true);
       c.box(12, 20, 8, 30, '#d7cce8'); c.R(13, 21, 6, 28, STEEL); for (let y = 24; y < 48; y += 5) c.R(13, y, 6, 1, STEEL_D);
       c.box(12, 46, 22, 8, '#d7cce8'); c.R(13, 47, 20, 6, STEEL); c.block(11, 19, 24, 36, 0.22, 0.1);
       hut(c, t, 36, 36, 26, 26); for (let x = 40; x < 60; x += 6) c.R(x, 42, 3, 16, GLASS);
@@ -768,7 +702,7 @@ const TILES = {
     pad: [1, 0, 0, 0],
     floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 64, YELLOW); frame(c, t); },
     over(c, t) {
-      plane(c, 1, -30, 62, 30, WHITE, '#9b5cff', true, 0.24);
+      plane(c, 1, -30, 62, 30, WHITE, '#9b5cff', true);
       for (const x of [4, 20]) { c.box(x, 40, 7, 66, '#d7cce8'); c.R(x + 1, 41, 5, 64, STEEL); }
       c.box(4, 104, 32, 8, '#d7cce8'); c.R(5, 105, 30, 6, STEEL); c.block(3, 39, 34, 74, 0.26, 0.12);
       hut(c, t, 36, 98, 26, 28); for (let x = 40; x < 60; x += 6) c.R(x, 104, 3, 18, GLASS);
@@ -786,7 +720,7 @@ const TILES = {
     // the bar of the T meets the apron with a business jet at the stand; the
     // stem is the lounge
     floor(c, t) { apronStrip(c, t, 0); c.R(0, 30, 96, 2, RED); frame(c, t); },
-    over(c, t) { plane(c, 18, 1, 52, 28, WHITE, YELLOW, false, 0.16); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
+    over(c, t) { plane(c, 18, 1, 52, 28, WHITE, YELLOW); hut(c, t, 34, 32, 28, 30); skylight(c, 40, 40, 16, 8); c.box(38, 52, 20, 4, YELLOW); },
   },
   jetpack: {
     floor(c, t) { c.fill('#34216b'); for (const cx of [16, 48]) { c.disc(cx, 16, 12, INK); c.disc(cx, 16, 11, shade(t, 0.8)); c.ring(cx, 16, 9, 1, YELLOW); } frame(c, t); },
@@ -806,15 +740,15 @@ const TILES = {
     },
     over(c, t) {
       for (const [x, y] of [[20, 10], [44, 50], [10, 40]]) {
-        c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS); c.block(x - 5, y - 4, 14, 9, 0.16);
-        c.stack(x - 4, y - 3, 12, 7, false, podSlice);
+        c.box(x - 4, y - 3, 12, 7, WHITE); c.R(x + 4, y - 2, 3, 5, GLASS);
+        c.stack(x - 4, y - 3, 12, 7, false, podSlice, 0, 0.16);
       }
       c.disc(32, 32, 7, shade(t, 0.9)); c.ring(32, 32, 7, 1, INK); c.block(24, 24, 17, 17, 0.3);
     },
   },
 
   // ---- underground: stairs down. The concourse stays at ground level and the
-  // flight is cut into it, a step at a time (drawSinks in render.js).
+  // flight is cut into it, a step at a time (`sink`).
   subway: {
     floor(c, t) { platform(c, t); flight(c, t, 4, 7, 36, 18, 'E', 6); frame(c, t); },
     over(c, t) { totem(c, t, 50, 12); },
@@ -838,9 +772,8 @@ const TILES = {
     floor(c, t) { platform(c, t); sea(c, 4, 9, 56, 19); c.sink(4, 9, 56, 19, 0.3, 0.3, 'S', 1); hazard(c, 4, 6, 56, 2); frame(c, t); },
     over(c) {
       c.blot(10, 13, 42, 11, (i, j) => { const hw = 5.5 * (i < 6 ? Math.sqrt(i / 6) : i > 34 ? Math.sqrt(Math.max(0, (42 - i) / 8)) : 1); return Math.abs(j - 5) <= hw; }, '#2e374d');
-      c.block(9, 12, 44, 13, -0.2, -0.3); c.hide();
-      c.box(24, 15, 8, 7, '#3b4050'); c.R(26, 17, 4, 1, YELLOW); c.block(23, 14, 10, 9, 0.02, -0.2);
-      c.stack(10, 13, 42, 11, false, subSlice, { z0: -0.3, z1: 0.02 });
+      c.box(24, 15, 8, 7, '#3b4050'); c.R(26, 17, 4, 1, YELLOW);
+      c.stack(10, 13, 42, 11, false, subSlice, -0.3, 0.02);
     },
   },
 
@@ -917,14 +850,14 @@ const TILES = {
     floor(c, t) {
       grass(c); c.R(0, 29, 64, 6, '#d8c89a'); c.R(29, 0, 6, 64, '#d8c89a');
       c.disc(32, 32, 8, '#d8c89a'); c.disc(32, 32, 5, t); c.disc(32, 32, 2, '#ff4fd8');
-      for (const [x, y, r] of TREES_O4) treeShadow(c, x, y, r);
+      for (const [x, y] of TREES_O4) trunk(c, x, y);
       bench(c, 38, 22); bench(c, 16, 40);
       kerb(c, t);
     },
     over(c) { for (const [x, y, r] of TREES_O4) tree(c, x, y, r); },
   },
   pocket_park: {
-    floor(c, t) { grass(c); c.R(0, 13, 32, 6, '#d8c89a'); bench(c, 18, 22); c.disc(8, 25, 3, '#ff4fd8'); c.disc(8, 25, 1, YELLOW); treeShadow(c, 10, 8, 7); kerb(c, t); },
+    floor(c, t) { grass(c); c.R(0, 13, 32, 6, '#d8c89a'); bench(c, 18, 22); c.disc(8, 25, 3, '#ff4fd8'); c.disc(8, 25, 1, YELLOW); trunk(c, 10, 8); kerb(c, t); },
     over(c) { tree(c, 10, 8, 7); },
   },
   wifi: { floor(c, t) {
@@ -966,13 +899,13 @@ function lift(c, t, step, w, h, z) {
 function cables(c, x = 0, w = c.W) { for (const y of [9, 22]) { c.R(x, y, w, 1, INK); c.block(x, y - 1, w, 3, 0.2, 0.185); } }
 // A car hanging from the cable at row `cy`, going out on one and back on the other.
 function gondola(c, t, cx, cy, w, h, z) {
-  const y = cy - (h >> 1); c.box(cx, y, w, h, t); c.R(cx + 1, y + 1, w - 2, 1, GLASS); c.block(cx - 1, y - 1, w + 2, h + 2, 0.2, 0.2 - z);
+  const y = cy - (h >> 1); c.box(cx, y, w, h, t); c.R(cx + 1, y + 1, w - 2, 1, GLASS);
   // in the round: a floor, glass all round between corner posts, a roof
   c.stack(cx, y, w, h, false, (a, k, s) => {
     if (s > 0.85) return 'top';
     const corner = (a === 0 || a === w - 1) && (k === 0 || k === h - 1);
     return s < 0.18 || corner ? shade(t, s < 0.18 ? 0.7 : 1) : s > 0.72 ? t : s > 0.6 ? GLASS : '#2e5a8a';
-  });
+  }, 0.2 - z, 0.2);
 }
 // The monorail guideway: a beam up on posts, floating clear of the crowd.
 function beam(c, x, w) { c.R(x, 18, w, 8, '#8f86b0'); c.R(x, 18, w, 1, '#d7cce8'); c.R(x, 25, w, 1, '#6c6880'); c.block(x, 17, w, 10, 0.16, 0.1); }
@@ -1003,36 +936,7 @@ function ramp(c, t, x, y, w, h, dir, n) {
 }
 // A station sign on a post, standing up out of the pit past ground level.
 function totem(c, t, x, y, col = t) { c.box(x, y, 6, 6, col); c.R(x + 1, y + 1, 4, 4, WHITE); c.R(x + 2, y + 2, 2, 2, col); c.block(x - 1, y - 1, 8, 8, 0.3); }
-// Stairs down into a station: steps darkening as they go, rails either side,
-// and a glass canopy over the top of the flight.
-function stairs(c, t, x, y, w, h, flip = false) {
-  c.box(x, y, w, h, '#2e374d');
-  for (let i = 0; i < w - 2; i += 3) { const k = flip ? w - 3 - i : i; c.R(x + 1 + k, y + 1, 2, h - 2, mix(STEEL, INK, i / w * 0.9)); }
-  c.R(x, y + 2, w, 1, YELLOW); c.R(x, y + h - 3, w, 1, YELLOW);
-  c.R(x, y - 3, w, 2, shade(t, 1.1));
-}
-// ---- PNG --------------------------------------------------------------------
-const CRC = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc32 = buf => { let c = 0xffffffff; for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-function chunk(type, data) {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
-function png(c) {
-  const { IW: W, IH: H, px } = c;
-  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
-  const raw = Buffer.alloc(H * (1 + W * 4));
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const v = px[y * W + x];
-    if (v && v.startsWith('#')) raw.set([...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) : 255], y * (1 + W * 4) + 1 + x * 4);
-  }
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
-}
-
-// Draw every tile's layers; the manifest needs all their blocks, whichever are written.
-// A corridor tile's `lane` art is a one-square image of its track, drawn as
+// Draw every tile's layers. A corridor tile's `lane` art is a one-square image of its track, drawn as
 // `<key>_lane` along the lane it reserves (laneInfos in render.js), and one with
 // `laneAlt` art has it on every other square instead (`<key>_lane_alt`). `tintFor`
 // picks the colour each tile is drawn in: isoart.mjs draws the set twice in
@@ -1043,76 +947,9 @@ export function drawAll(tintFor = def => colorForDef(def)) {
     const draw = (a, shape) => {
       const out = {};
       for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
-      if (out.floor && out.over) castShadows(out.over, out.floor);
       return out;
     };
     return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : []), ...(art.laneAlt ? [[key + '_lane_alt', draw(art.laneAlt, 'I1')]] : [])];
   }));
 }
-export { CELL, INK, TILES, hex, toHex, shade, mix, png };
-// Anything floating (a plane, a tree top, a gondola) casts its own outline on
-// the floor, a little down and to the right, so it reads as off the ground.
-function castShadows(over, floor) {
-  for (const [bx, by, w, h, z0] of over.blocks) {
-    if (z0 <= 0) continue;
-    const d = Math.round(2 + z0 * 8);
-    for (let j = by; j < by + h; j++) for (let i = bx; i < bx + w; i++) if (over.px[j * over.IW + i]) floor.darkAt(i - over.ox + d, j - over.oy + d, 0.62);
-  }
-}
-
-// Run as a script: draw, write the PNGs and the manifest. Imported, it only draws.
-function main() {
-  const drawn = drawAll();
-  // --sheet <file>: also write every tile at 3x, floor under over, on one contact
-  // sheet, so the drawings can be looked over without the game.
-  function contact(file) {
-    const Z = 3, gap = 8, cols = 1200;
-    const items = Object.values(drawn).map(({ floor, over }) => {
-      const c = floor || over, px = c.px.slice();
-      if (floor && over) over.px.forEach((v, i) => { if (v) px[i] = v; });
-      return { W: c.IW, H: c.IH, px };
-    });
-    let x = gap, y = gap, rowH = 0; const at = [];
-    for (const c of items) { if (x + c.W * Z > cols) { x = gap; y += rowH + gap; rowH = 0; } at.push([x, y]); x += c.W * Z + gap; rowH = Math.max(rowH, c.H * Z); }
-    const out = { IW: cols, IH: y + rowH + gap, px: new Array(cols * (y + rowH + gap)).fill('#3f9b3f') };
-    items.forEach((c, k) => { for (let j = 0; j < c.H * Z; j++) for (let i = 0; i < c.W * Z; i++) { const v = c.px[Math.floor(j / Z) * c.W + Math.floor(i / Z)]; if (v) out.px[(at[k][1] + j) * cols + at[k][0] + i] = v; } });
-    writeFileSync(file, png(out));
-  }
-  const sheetAt = process.argv.indexOf('--sheet');
-  if (sheetAt > 0) { contact(process.argv[sheetAt + 1]); process.argv.splice(sheetAt, 2); }
-
-  const dir = resolve(root, 'assets/tiles');
-  mkdirSync(dir, { recursive: true });
-  const want = process.argv.slice(2);
-  let n = 0;
-  for (const [key, layers] of Object.entries(drawn)) {
-    if (want.length && !want.includes(key)) continue;
-    for (const [layer, c] of Object.entries(layers)) { writeFileSync(resolve(dir, key + (layer === 'floor' ? '_floor' : '') + '.png'), png(c)); n++; }
-  }
-  // The manifest lists every tile this file draws, whichever were asked for, so a
-  // partial run never drops the rest from the game. The paths stay literal
-  // strings: the bundler finds and inlines them by pattern.
-  const keys = Object.keys(drawn);
-  const list = layer => keys.filter(k => drawn[k][layer]).map(k => `  ${k}: 'assets/tiles/${k}${layer === 'floor' ? '_floor' : ''}.png',`).join('\n');
-  const table = rows => rows.map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
-  writeFileSync(resolve(root, 'src/ui/tilesprites.js'), `// Written by harness/tileart.mjs from its TILES table; rerun it rather than editing.
-// See src/ui/sprites.js for what the layers, the pad and the blocks are.
-export const SPRITES = {
-${list('over')}
-};
-export const SPRITES_FLOOR = {
-${list('floor')}
-};
-export const SPRITE_PAD = {
-${table(keys.filter(k => TILES[k] && TILES[k].pad).map(k => [k, TILES[k].pad]))}
-};
-export const SPRITE_SINKS = {
-${table(keys.filter(k => drawn[k].floor && drawn[k].floor.sinks.length).map(k => [k, drawn[k].floor.sinks]))}
-};
-export const SPRITE_BLOCKS = {
-${table(keys.filter(k => drawn[k].over && drawn[k].over.blocks.length).map(k => [k, drawn[k].over.blocks.map(b => b.map(v => Math.round(v * 100) / 100))]))}
-};
-`);
-  console.log(`wrote ${n} tile layers to assets/tiles/ and the manifest to src/ui/tilesprites.js`);
-}
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+export { CELL, hex };

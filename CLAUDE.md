@@ -18,9 +18,8 @@ python3 -m http.server 8080                        # play at http://localhost:80
 node harness/selftest.js                           # invariants: rules, sim, checkpoints, rezoning (run after any change)
 node harness/build.js                              # rebuild dist/grand-central-station.html (commit it)
 node harness/cardart.mjs                           # redraw the transport card headers in assets/cards/
-node harness/tileart.mjs                           # redraw the board tile art in assets/tiles/ and its manifest
-node harness/isoart.mjs                            # bake the tile art into isometric sheets in assets/iso/ and the ground textures in assets/ground/ (after tileart)
-node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --flat for the old look)
+node harness/isoart.mjs                            # bake the tile drawings (harness/tileart.mjs) into assets/iso/ and assets/ground/
+node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --blocks for plain blocks)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
 node harness/week1.mjs --runs 16                  # week 1 on every level x difficulty: cash, quota, tiles placed
@@ -38,7 +37,8 @@ path) to A/B a rule without editing the file. `sensitivity.mjs --dump board.json
 board as a layout so another build can probe the same one with `--layout`.
 
 `harness/ui-smoke.mjs` serves the repo itself on port 8791 and prints `ok`/`FAIL` lines. The
-404s it logs are missing sprite PNGs, which is expected.
+one 404 it logs is the browser's own favicon request, and a certificate error is the web fonts
+where the network blocks them; neither is a problem.
 
 ## Layout
 
@@ -50,6 +50,7 @@ src/sim/sim.js       headless deterministic week simulator (no DOM)
 src/game/run.js      run state, shop generation, actions, settlement, save format
 src/ui/main.js       DOM chrome, modals, playback, input wiring
 src/ui/render.js     isometric Canvas 2D renderer (cell-by-cell depth sort)
+src/ui/sprites.js    loads the card art, tile sheets and ground textures; lights and cuts the sheets
 harness/             selftest, balance tools, bundler, Playwright smoke test
 harness/bot.mjs      the greedy bot as a module (playRun); autoplay and sensitivity build boards with it
 ```

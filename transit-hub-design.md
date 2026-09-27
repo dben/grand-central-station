@@ -936,114 +936,22 @@ Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd re
 
 ### 13.3 Sprites and audio
 
-Every tile in the catalogue has board art in `assets/tiles/`. `harness/tileart.mjs` draws it in
-code, the way `cardart.mjs` draws the card headers, and writes the manifest `src/ui/tilesprites.js`
-that `src/ui/sprites.js` loads; edit a tile there and rerun it (`--sheet file.png` also writes a
-contact sheet of the lot).
+The board is pixel art in the classic 2:1 isometric projection: a cell is a 64 x 32 diamond and a
+unit of tile height is 64 x `H_UNIT` pixels. Every tile is drawn in code and baked once into a
+picture, and the renderer only copies pixels. `renderer.artMode = 'blocks'` draws every tile
+instead as a plain prism in its colour, the look before the art (`tileshow.mjs --blocks` shoots a
+scene that way); a tile whose sheet has not loaded yet draws as a block meanwhile.
 
-- **Geometry:** each sprite is drawn top-down in the shape's base orientation at 32 px per cell. The
-  renderer clips it to each cell and rotates or mirrors it to match the placed orientation, so one
-  image per layer covers every rotation and no turned copies are needed. Because the isometric map
-  is linear, the canvas transform lays the art flat on the tile's top face. Art pixels stay crisp
-  while each covers two screen pixels or more, and blend below that, where nearest-neighbour would
-  drop whole rows.
-- **Two layers:** `SPRITES` is the over layer (`<key>.png`: roofs, vehicles, canopies) and
-  `SPRITES_FLOOR` the under layer (`<key>_floor.png`), with the crowd drawn between them.
-  - A shop has an opaque over layer on its top face and solid walls, so a traveller who steps
-    inside vanishes into it.
-  - A transport, and a coffee or souvenir cart, is a glass box: its ground (platform, road,
-    track, water) is the floor, with the crowd on it, and its over layer holds only what stands
-    over that ground - a shelter, a sign - with clear pixels between, so the floor and the crowd
-    show through the top. Its walls are panes: a faint wash of the tile's colour inside a frame,
-    so the crowd shows through the front too. Any raised tile with floor art is drawn this way.
-  - A flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) keeps its
-    art on the floor, under the crowd, with a kerb in the tile's colour since it has no walls.
-    Anything in its over layer that is not a block hangs at `CANOPY_Z`.
-  - A low walk-through tile (guard, Flier Club, Chrono Lounge) has floor art only and draws as an
-    open-topped glass box. The checkpoint adds its scanner arch and bag scanner as blocks; its
-    lane runs the length of the booth, through the arch on the fence line, the way the fence
-    between its two cells makes travellers cross it.
-  - An underground tile (subway, express subway, underground parking, submarine dock) stands no
-    higher than the concourse (`tileHeight` 0) and has stairs cut into it. `SPRITE_SINKS` marks
-    rectangles of its floor art that step down into the ground, with a start and end depth, the
-    way down and a number of steps; `drawSinks` lowers each step's strip of the floor art to its
-    depth, clipped to the opening at ground level so the ground's edge hides what is under it,
-    and draws each step's walls on the two edges that face the camera. Steps paint deepest first,
-    so the step above covers the part of each wall it hides and what shows is the riser. The
-    subways have flights of six steps ending in a dark tunnel mouth, the car park a ten-step ramp
-    down to its garage, a sunken bay at the foot of the L 0.2 deep with the cars parked in it
-    (deeper, and a pit's near walls hide most of what is in it), and the submarine dock a
-    one-step pool; a block below ground (the submarine) is clipped to the
-    opening it sits in. A whole-footprint pit came first and read as a hole, not a station.
-  - No tile casts the old offset drop shadow: it showed as a dark sliver under every glass box.
-- **Blocks:** `SPRITE_BLOCKS` marks rectangles of the over layer that stand up off the floor, with
-  a base and top height: vehicles, tree tops, the balloon, a rental office. The renderer draws a
-  block as a stack of darkened copies of its own pixels, one per screen pixel (48 at most; a
-  dozen left a staircase down the sides of tall blocks when zoomed in, and zigzags at the ends of
-  train carriages), and skips blocks whose cell is off screen,
-  with the art on top, so the sides follow the outline of the car or the hull. The dark copy
-  paints the ink outline over in the colour just inside it, so a red car has dark red sides
-  rather than black ones. A block with a base above zero floats: aircraft, tree tops, gondolas
-  and the balloon. `tileart.mjs` casts each floating block's own outline onto the floor as its
-  shadow, and past the board's edge, where the floor is empty, the shadow is a see-through wash
-  over the strip (tile PNGs carry alpha, `#rrggbbaa` in the drawing code). A `round` block narrows at the top and bottom, so a tree top or a
-  balloon bulges instead of reading as a drum. Each cell draws the part of a block over its own
-  ground, clipped to its column, so the wall of a glass box in front still covers a bus behind
-  it. The flat over layer is drawn with the blocks cut out. `tileart.mjs` records blocks as it
-  draws: `car`, `bus`, `carriage`, `boat`, `plane`, `heli`, `hut` and `tree` each add their own.
-  Blocks about double the board's drawing time (5-7 ms a frame on a full 12x12 board in headless
-  Chromium without a GPU, against 2-4 ms flat).
-- **Past the edge:** `SPRITE_PAD` widens a tile's images by whole cells for art that lies beyond
-  the board. When the tile is placed against the edge it works from, the renderer shows that band
-  in the cells just past the edge: the floor art flat on the strip, and any blocks in it. The
-  cruise ship lies off its quay, the train stations' trains wait on the line past the edge, the
-  water taxi's boats sit in the water, and the jetways' airliners stand on the apron. Tiles that
-  do not touch the edge (a driveway stop, a `reach` tile) keep everything on the board.
-- **Corridor tracks:** a corridor tile's lane (§4) is drawn as its track rather than hatched. A
-  tile with `lane` art in `tileart.mjs` gets a one-square image, `<key>_lane`, that `laneInfos`
-  lays along every square of the lane and one past the edge, turned to run with it: the
-  monorail's beam on a post a square, the lifts' two cables with a gondola out on one and back
-  on the other, the tram's rails in the floor. A tile with `laneAlt` art has a second square,
-  `<key>_lane_alt`, laid on every other square: the lifts carry one car a square, out on one
-  cable and back on the other in turn, and have four cars on the tile itself (from a dozen). Beam, cables and gondolas are floating blocks at
-  the height they have on the tile, so the crowd walks across the lane under them. A lane whose
-  tile has no track art keeps its hatching.
-- **Colour:** the main surfaces take the tile's own colour (`colorForDef`), and the walls stay the
-  flat shaded colour, so the board keeps its colour code with the art on. Vehicles, water and grass
-  keep their own colours. The label still sits over the middle of every tile.
-- **Working side:** the bottom of a transport's image is the side it works from: the kerb a bus
-  pulls up to, the track, the berth. `shapeTransform` turns that side toward the edge the tile
-  depends on (`tile.edges`) when the orientation allows it, so an I-shaped stop always has its
-  vehicle on the road side. Shapes with one transform per orientation (L, S) can't be turned that
-  way, so their art does not depend on it: the ferry's slip is symmetric, and a jetway's nose sits
-  in its tip cell, which `attach: 'tip'` already places at the apron.
-- **Isometric sheets (experiment, on by default):** `harness/isoart.mjs` bakes the same drawings
-  into screen-space sprite sheets, the way a classic isometric game ships its tiles, and the
-  renderer copies pixels instead of laying art flat and stacking blocks. It ray-casts each tile
-  once in the 2:1 pixel projection (a cell is a 64x32 diamond, a unit of tile height 64 x `H_UNIT`
-  pixels): walls, roofs, glass panes, vehicles, the canopy and the stairs all stand up as solid
-  shapes, so their sides are real faces rather than stacked copies.
-  - *Editable images:* `assets/iso/<key>.png` is a plain picture: the four quarter turns, one row
-    each, floor layer then over layer, whole and in the tile's real colours and light, so it can
-    be touched up in any image editor. `<key>_map.png`, in the same layout, carries what a picture
-    can't: which cell owns each pixel (green, index + 1 into the turn's cell list in
-    `isosprites.js`), the face it is on (red, face x 60: top, left, right, or a middle shade
-    where a curve runs between them) and how much of it is the tile's colour (blue, weight x
-    100). At load the game cuts each turn into one canvas per cell and paints them in the same
-    cell-by-cell order as before (floor pieces under the crowd, the rest over it), so a long
-    building still interleaves with its neighbours. A pixel painted in later with no map under
-    it goes to the cell beneath it and is not relit; a missing map still draws. Rerunning
-    `isoart.mjs` overwrites both files.
-  - *Mirroring:* flipping a view left to right is the same as swapping the grid's x and y, so a
-    sheet holds only the four quarter turns and the mirrored four are those frames flipped
-    (`isoFrame` finds which turn to flip). The light stays on the right, so a flipped frame is
-    relit from the map: each face's shade divided out and the other side's put in.
-  - *Palette swaps:* a full or closed tile is the same frame in a grey palette rather than a wash
-    over it, and a tile shown in another colour than it was drawn in shifts each pixel by its
-    weight.
-  - *Sprite stacks for vehicles:* each vehicle is drawn as a pile of slices from its wheels to its
-    roof (`c.stack` in `tileart.mjs`, a function of the point on the vehicle's plan and its
-    height), and the baker stands it up slice by slice, so the sides carry their own detail. Cars
+- **Drawing (`harness/tileart.mjs`):** each tile is drawn top-down in its shape's base orientation
+  at 32 art pixels per cell, in two layers with the crowd between them: the floor a traveller
+  stands on (paving, carpet, water, track), and what stands over it (roofs, canopies, signs, tree
+  tops). The main surfaces take the tile's own colour (`colorForDef`), so the board keeps its
+  colour code with the art on; vehicles, water and grass keep their own colours.
+  - `block` marks a rectangle of the over layer that stands up off the floor, from a base to a top
+    height: a rental office, a tree top (`round`, so it bulges instead of reading as a drum), a
+    monorail beam, a lift's cables. A block with a base above zero floats.
+  - `stack` draws a vehicle as a sprite stack: a pile of slices from its wheels to its roof, a
+    function of the point on its plan and its height, so its sides carry their own detail. Cars
     have tyres under a sill, lamps, door seams and a narrower cabin with a raked windscreen; the
     limousine is the same car stretched. The bus has two axles, its livery stripe, a band of
     windows, doors on the kerb side and a lit destination board. Carriages have bogies, the line's
@@ -1055,44 +963,96 @@ contact sheet of the lot).
     their gear with a round fuselage, cheatline, cabin windows, flight deck glass, engines under
     the wings and a fin in the livery colour. The helicopter sits on skids under its rotor, the
     gondolas are glass boxes on their cables, the loop pods white capsules, the submarine a hull
-    in its pool under its tower, and the balloon a teardrop of gores over its basket. A top
-    slice of `'top'` shows the top-down art, so a taxi's roof sign still comes from the drawing.
-    `stack` may set its own heights (a parked airliner is taller than its old floating slab),
-    `hide` drops a block a stack has taken over, and `cut` clears flat over art a stack now
-    draws in the round (the helicopter's painted rotor). Cars stand 0.2 of a tile high, buses
-    0.36 and carriages 0.32 (from 0.14, 0.28 and 0.26) to give the sides room.
-  - *Overhang:* a stack may reach past its tile's drawing. Airliners are drawn at 0.9 of their
-    length in span, where the flat art squeezed their wings into the tile's width, and are a
-    little shorter than before (the jumbo 62 px from 70, the jetway's 46 from 50, the business
-    jet 52 from 58). Each turn's cells are tagged 0 (under the tile), 1 (past a padded side: the
-    band, shown only where it lies past the board's edge) or 2 (anything else a vehicle reaches,
-    such as a wing over the next square, always shown and painted at that square's depth). The
-    flat renderer still clips to the tile and keeps the old narrow aircraft.
-  - *Ground:* the land round the board, the sea, the edge strips and the concourse are filled
-    with pixel textures from the same bake, `assets/ground/<name>.png`, in the sheets' pixel
-    grid: 128 x 64 pictures that tile the plane from the grid's origin, so their pixels line up
-    with the tiles'. Each is drawn top-down over 2 x 2 squares and projected, except the sea,
-    drawn straight on the screen's pixels so its crests lie level. Road, rail and apron come
-    in two turns (`_x` along N and S, `_y` along E and W) and are laid centred across their
-    strip, so the runs past the corners carry on in step with the strip beside the board:
-    tarmac with white kerb lines and a dashed yellow centre, purple ballast with sleepers and
-    two rails, concrete slabs with a taxi line. The runway texture carries its kerb, side
-    stripes and centre line (the piano keys at its ends are still drawn), the concourse its
-    grey checker with a joint round each square in place of the grid lines, and the corner
-    junctions plain asphalt. Where a railway meets the sea, the 2 x 2 bend is a picture too,
-    `bend_<rail side><sea side>`, one for each corner and way round: the rail texture bent round
-    the ring, across it for across the strip and along it for the arc, anchored at a whole grid
-    point so its pixels stay in the grid (`GROUND_BENDS` in `isosprites.js`). The straight run
-    along the shore after it is centred on its own band, just inland of the waterline. The crests drift a pixel at a
-    time. Everything drawn over the ground (driveways, lanes, tunnels, portals, highlights)
-    is unchanged, and the flat look keeps the old vector ground.
-  The 69 sheets and their maps come to about 0.8 MB, the ground textures to 60 KB. Measured on the full catalogue board in
-  headless Chromium, drawing takes 4-7 ms a frame against 11-15 ms for the flat art with blocks.
-  The cost is the look at in-between zooms: nearest-neighbour at a scale that is not a whole
-  number doubles some pixel columns and not others, so fine top-down detail (a 1 px stripe in an
-  icon) turns into a zigzag, where the flat renderer's turned art blends. `renderer.artMode =
-  'flat'` switches back, and `tileshow.mjs --flat` shoots the same scene that way for comparison.
-- **Fallback:** a tile without art still draws as a flat coloured block.
+    in its pool under its tower, and the balloon a teardrop of gores over its basket. A slice of
+    `'top'` shows the top-down drawing under it, so a car's roof and a taxi's sign come from the
+    drawing. Cars stand 0.2 of a tile high, buses 0.36 and carriages 0.32.
+  - `sink` cuts steps down into the floor. An underground tile (subway, express subway,
+    underground parking, submarine dock) stands no higher than the concourse (`tileHeight` 0)
+    with its stairs cut into it: the subways have flights of six steps ending in a dark tunnel
+    mouth, the car park a ten-step ramp down to its garage, a sunken bay at the foot of the L 0.2
+    deep with the cars parked in it (deeper, and a pit's near walls hide most of what is in it),
+    and the submarine dock a one-step pool with the submarine in it.
+  - `pad` widens a tile's drawing by whole cells for art past the board's edge: the cruise ship
+    off its quay, the stations' trains on the line, the water taxi's boats, the jetways'
+    airliners on the apron. A stack may also reach past the drawing: airliners are drawn at 0.9
+    of their length in span, their wings over the squares either side.
+  - The bottom of a transport's drawing is the side it works from: the kerb a bus pulls up to, the
+    track, the berth. `shapeTransform` turns that side toward the edge the tile depends on
+    (`tile.edges`) when the orientation allows it, so an I-shaped stop always has its vehicle on
+    the road side. Shapes with one transform per orientation (L, S) can't be turned that way, so
+    their art does not depend on it: the ferry's slip is symmetric, and a jetway's nose sits in
+    its tip cell, which `attach: 'tip'` already places at the apron.
+  - A corridor tile's lane (§4) is drawn as its track: `lane` art is a one-square drawing laid
+    along every square of the lane and one past the edge, turned to run with it (the monorail's
+    beam on a post a square, the lifts' cables, the tram's rails in the floor), and `laneAlt` art
+    goes on every other square instead (the lifts carry one car a square, out on one cable and
+    back on the other in turn, and four on the tile itself). Beam, cables and gondolas float at
+    the height they have on the tile, so the crowd walks across the lane under them.
+- **Baking (`harness/isoart.mjs`):** it ray-casts each tile's drawing once, for each of the four
+  quarter turns, into the isometric projection. What a ray meets front to back makes the pixel:
+  - a shop is a solid prism, walls lit and shaded with a lit top course, a dark footing and a
+    seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it;
+  - a transport, a cart or a low walk-through tile with floor art is a glass box: its floor with
+    the crowd on it, panes that are a faint wash of the tile's colour in a frame, an open top with
+    only what stands over the floor on it, so the crowd shows through;
+  - a flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) is its
+    floor under the crowd, with a kerb in the tile's colour, and anything in its over layer that
+    is not a block hanging at a canopy height (the tree tops);
+  - blocks and stacks stand up as solid shapes whose sides are faces, the ink outline of a
+    block's drawing painted over in the colour inside it so a red car's side reads red;
+  - the stairs are cut down step by step, each riser the wall of the step above;
+  - everything standing up throws its shadow onto the floor along the light (0.45 art pixels
+    across per pixel of height), so a car's shadow is its own shape and a tree top's or an
+    airliner's falls clear of it; past the edge, where there is no floor, the shadow is a
+    see-through wash.
+  Each pixel is stored with the face it is on (top, left, right, or a middle shade where a curve
+  such as a bow runs between them) and the cell under what it shows.
+- **Sheets:** `assets/iso/<key>.png` is a plain picture, the four turns one row each, floor layer
+  then over layer, in the tile's real colours and light, so it can be touched up in any image
+  editor. `<key>_map.png`, in the same layout, carries what a picture can't: which cell owns each
+  pixel (green, index + 1 into the turn's cell list in `isosprites.js`), the face it is on (red,
+  face x 60) and how much of it is the tile's colour (blue, weight x 100: each tile is drawn
+  twice in greys to learn it). A pixel painted in later with no map under it goes to the cell
+  beneath it and is not relit; a missing map still draws. Rerunning `isoart.mjs` overwrites
+  both, so after touching a sheet up, rerun it only for the tiles to redraw
+  (`node harness/isoart.mjs bus_stop`).
+- **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
+  per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
+  the crowd and the rest over it, so a long building still interleaves with its neighbours.
+  - *Mirroring:* flipping a view left to right is the same as swapping the grid's x and y, so a
+    sheet holds only the four turns and the mirrored four are those frames flipped (`isoFrame`
+    finds which turn to flip). The light stays on the right, so a flipped frame is relit from the
+    map: each face's shade divided out and the other side's put in.
+  - *Palette swaps:* a full or closed tile is the same frame in a grey palette, and a tile shown
+    in another colour than it was drawn in shifts each pixel by its weight.
+  - *Reach:* each turn's cells are tagged 0 (under the tile), 1 (past a padded side: the band,
+    shown only where it lies past the board's edge, so only when the tile sits on that edge) or 2
+    (anything else a vehicle reaches, such as a wing over the next square, always shown and
+    painted at that square's depth).
+  Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
+  look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
+  pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 69
+  sheets and their maps come to about 0.8 MB; drawing the full catalogue board takes 4-7 ms a
+  frame in headless Chromium.
+- **Ground:** the land round the board, the sea, the edge strips and the concourse are filled with
+  pixel textures from the same bake, `assets/ground/<name>.png`: 128 x 64 pictures that tile the
+  plane from the grid's origin, so their pixels line up with the tiles'. Each is drawn top-down
+  over 2 x 2 squares and projected, except the sea, drawn straight on the screen's pixels so its
+  crests lie level, drifting a pixel at a time. Road, rail and apron come in two turns (`_x`
+  along N and S, `_y` along E and W), laid centred across their strip so the runs past the
+  corners carry on in step: tarmac with white kerb lines and a dashed yellow centre, purple
+  ballast with sleepers and two rails, concrete slabs with a taxi line. The runway texture
+  carries its kerb, side stripes and centre line (the piano keys at its ends are painted over
+  it), the concourse its grey checker with a joint round each square, and the corner junctions
+  plain asphalt or ballast, with a level crossing's rails (`crossing`) over the road. Where a
+  railway meets the sea the 2 x 2 bend is a picture too, `bend_<rail side><sea side>`, one per
+  corner and way round: the rail texture bent round the ring, anchored at a whole grid point so
+  its pixels stay in the grid (`GROUND_BENDS` in `isosprites.js`); the straight run along the
+  shore after it is centred on its own band, just inland of the waterline. Until the textures
+  load the ground is their plain colours. Everything drawn over it (driveways, lanes, tunnels,
+  portals, highlights) is vector.
+- **Labels:** the label sits over the middle of every tile; a tile whose art reaches past it labels
+  after that art, so a ship never covers its quay's name.
 - **Card headers:** `CARD_ART` holds a 56×21 scene per kind of card, in `assets/cards/`. A transport
   gets its terrain's: road, rail, water, airfield, lane (mountains and a monorail beam, for the trams,
   monorails and lifts), underground, and `free` split in two — `sky` for the tiles tagged `air`, and a
