@@ -49,7 +49,7 @@ for (const f of order) {
 
 // inline sprites and card headers as data URIs; drop entries whose file is missing
 const missing = [];
-out = out.replace(/'assets\/(tiles|cards|iso|ground)\/([a-z_]+)\.png'/g, (all, dir, key) => {
+out = out.replace(/'assets\/(cards|iso|ground)\/([a-z_]+)\.png'/g, (all, dir, key) => {
   const p = resolve(root, `assets/${dir}/${key}.png`);
   if (!existsSync(p)) { missing.push(`${dir}/${key}.png`); return 'null'; }
   return `'data:image/png;base64,${readFileSync(p).toString('base64')}'`;

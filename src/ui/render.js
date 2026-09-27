@@ -6,8 +6,8 @@
 import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
-import { shapeTransform, shapeBaseSize } from '../sim/shapes.js';
-import { loadSprites, sprite, spriteFloor, spriteBlockArt, spriteBlocks, spritePad, spriteSinks, isoFrame, isoArt, groundImg, groundBend, SPRITE_CELL_PX, ISO_CELL_PX } from './sprites.js';
+import { shapeTransform } from '../sim/shapes.js';
+import { loadSprites, isoFrame, isoArt, hasIso, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -26,7 +26,7 @@ const RUNS = new Set(['road', 'rail']);
 // airfield edge reads three deep. Dark tarmac, a painted kerb, white markings.
 // It stops at the board's corners, the way a real runway ends in a threshold,
 // rather than carrying on to the horizon across whatever the next side is.
-const RUNWAY = { depth: 2, fill: '#3b404d', border: '#79839a', paint: 'rgba(255,255,255,0.85)' };
+const RUNWAY = { depth: 2, fill: '#3b404d', paint: 'rgba(255,255,255,0.85)' };
 
 // Camera limits. `k` is the screen width of one cell's diamond in CSS pixels.
 const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
@@ -44,10 +44,7 @@ const FIT_ROOM = 0.30;
 const FENCE_H = 0.30;
 // Isometric angle of the grid's +x axis on screen (atan(hh/hw) = atan(1/2)).
 const AXIS_ANGLE = Math.atan2(1, 2);
-// A flush tile's over layer (the tree tops in a park) hangs this high above the
-// crowd, in units of tile height, with no walls under it.
-export const CANOPY_Z = 0.32;
-// The quarter turn that points a sprite's working side (the bottom of the image)
+// The quarter turn that points a tile's working side (the bottom of its drawing)
 // at each edge of the board: see shapeTransform.
 const FACE_TURN = { S: 0, W: 1, N: 2, E: 3 };
 
@@ -64,12 +61,11 @@ export function colorForDef(d) {
 export function tileHeight(d) {
   if (d.kind === 'bridge') return 0.16;
   // An underground station stands no higher than the concourse: its stairs go
-  // down into it instead (see drawSinks).
+  // down into it instead.
   if (d.terrain === 'underground') return 0;
   // Parks, waiting areas, hotspots, car parks and moving walkways
   // (`ground: true`) are paving, not buildings: no height at all, so the crowd
-  // walks across the top of them rather than round a lip. drawTileFloor paints
-  // them under the travellers.
+  // walks across the top of them rather than round a lip, painted under them.
   if (d.ground) return 0;
   // The rest of the walk-through tiles stand barely proud of the ground, so
   // travellers on them stay visible above the lip instead of vanishing inside.
@@ -98,8 +94,9 @@ export class BoardRenderer {
     this.boardKey = '';
     this.time = 0;
     this.inset = { top: 0, bottom: 0 };
-    // 'iso': the pre-drawn isometric sheets (isoart.mjs), where a tile has them;
-    // 'flat': the top-down art laid on the grid, as before them
+    // 'iso': the pre-drawn isometric sheets (isoart.mjs); 'blocks': every tile a
+    // plain prism in its colour, the look before the art. A tile whose sheet has
+    // not loaded yet draws as a block meanwhile.
     this.artMode = 'iso';
     loadSprites();
   }
@@ -238,9 +235,10 @@ export class BoardRenderer {
   cellPath(x, y, z = 0) { this.regionPath(x, y, 1, 1, z); }
   // A ground texture as a fill, pinned to the grid so its pixels line up with
   // the tile sheets': its origin at grid point (dx, dy), moved `drift` art
-  // pixels to the right (the sea's crests). Null in the flat look, or until it loads.
+  // pixels to the right (the sea's crests). Null until it loads, when the
+  // ground is its plain colours.
   groundFill(name, dx = 0, dy = 0, drift = 0) {
-    const img = this.artMode === 'iso' && groundImg(name);
+    const img = groundImg(name);
     if (!img) return null;
     this.patterns = this.patterns || new Map();
     if (!this.patterns.has(name)) this.patterns.set(name, this.ctx.createPattern(img, 'repeat'));
@@ -248,14 +246,15 @@ export class BoardRenderer {
     p.setTransform(new DOMMatrix([s, 0, 0, s, ox + drift * s, oy]));
     return p;
   }
-  // An edge strip's texture: its terrain turned to run along the edge and
-  // centred across the strip, so the runs past the corners carry on in step.
-  // `mid` centres it on another line across (the run along a shore).
-  stripFill(e, terrain, mid = null) {
+  // An edge strip's texture: road, rail, apron or a level crossing's rails,
+  // turned to run along the edge and centred across the strip, so the runs past
+  // the corners carry on in step. `mid` centres it on another line across (the
+  // run along a shore). A green strip is lawn; a water strip is the sea's.
+  stripFill(e, name, mid = null) {
     const [gx, gy, gw, gh] = this.edgeRegion(e);
-    if (terrain === 'green') return this.groundFill('lawn');
-    if (!['road', 'rail', 'apron'].includes(terrain)) return null;
-    return e === 'N' || e === 'S' ? this.groundFill(terrain + '_x', 0, (mid ?? gy + gh / 2) - 1) : this.groundFill(terrain + '_y', (mid ?? gx + gw / 2) - 1, 0);
+    if (name === 'green') return this.groundFill('lawn');
+    if (!['road', 'rail', 'apron', 'crossing'].includes(name)) return null;
+    return e === 'N' || e === 'S' ? this.groundFill(name + '_x', 0, (mid ?? gy + gh / 2) - 1) : this.groundFill(name + '_y', (mid ?? gx + gw / 2) - 1, 0);
   }
   fillRegion(gx, gy, gw, gh, color, z = 0) { this.regionPath(gx, gy, gw, gh, z); this.ctx.fillStyle = color; this.ctx.fill(); }
   fillCell(x, y, color, z = 0) { this.fillRegion(x, y, 1, 1, color, z); }
@@ -341,52 +340,32 @@ export class BoardRenderer {
     //
     // Each cell paints in two layers with the crowd sandwiched between them:
     // floor, then the travellers standing on it, then walls and roof. That is
-    // what makes a traveller who steps into a shop disappear inside it, and it
-    // is the seam per-tile floor art drops into later - see drawTileFloor.
-    // Depth is x + y; the fractional offsets below keep each sandwich intact
+    // what makes a traveller who steps into a shop disappear inside it, and
+    // why each sheet is cut into a floor and an over layer. Depth is x + y; the fractional offsets below keep each sandwich intact
     // without disturbing the ordering between cells.
     const occAt = view.result && view.T != null ? Math.min(view.result.ticks, Math.max(0, Math.ceil(view.T))) : null;
     const layers = [], groundLabels = [];
     for (const t of board.tiles) {
       const info = this.tileInfo(t, view, occAt);
-      if (info.iso) {
-        // a pre-drawn sheet: each cell's floor piece under the crowd, the rest over it
-        for (const [x, y] of t.cells) {
-          layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
-          layers.push({ k: x + y, fn: () => { this.drawIsoCell(x, y, info, 'over'); if (!info.flush && --info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
-        }
-        // and the squares it reaches beyond its own: the band past the edge it
-        // works from (only when it sits on that edge), and a vehicle's overhang
-        for (const e of info.iso.cells.values()) {
-          if (e.kind === 0 || (e.kind === 1 && !info.out.length)) continue;
-          const [x, y] = info.iso.flip ? [info.bx0 + e.v, info.by0 + e.u] : [info.bx0 + e.u, info.by0 + e.v];
-          if (e.kind === 1 && x >= 0 && y >= 0 && x < this.w && y < this.h) continue;
-          if (e.floor) layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
-          if (e.over) layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, info, 'over') });
-        }
-      }
-      // a pit is below everything that stands on the ground, so it goes down first
-      else for (const [x, y] of t.cells) {
+      for (const [x, y] of t.cells) {
         layers.push({ k: x + y - 0.75, fn: () => this.drawTileFloor(x, y, info) });
-        if (info.sinkCells && info.sinkCells.has(x + ',' + y)) layers.push({ k: x + y - 0.74, fn: () => this.drawSinks(x, y, info) });
-        if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
-        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0 && !info.out.length) this.drawTileLabel(info); } });
-        else if (info.img && !info.sinks) layers.push({ k: x + y, fn: () => this.drawCanopy(x, y, info) });
+        if (!info.flush) layers.push({ k: x + y, fn: () => { this.drawTileRoof(x, y, info); if (--info.left === 0 && !info.reach.length) this.drawTileLabel(info); } });
+        else if (info.iso) layers.push({ k: x + y, fn: () => this.drawIsoCell(x, y, info, 'over') });
       }
-      // the band past the edge: the floor art flat on the strip, blocks on it
-      if (!info.iso) for (const [x, y] of info.out) {
-        if (info.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, info, info.floorImg, 0) });
-        if (info.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, info) });
+      // the squares a sheet reaches past the tile: its band past the edge (a ship
+      // at the quay), or a vehicle's overhang (an airliner's wing)
+      for (const [x, y] of info.reach) {
+        layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, info, 'floor') });
+        layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, info, 'over') });
       }
       // a corridor tile's track, carried along its lane and one square past the edge
       for (const li of this.laneInfos(t, info)) {
         const [x, y] = [li.bx0, li.by0];
-        if (li.iso) { layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, li, 'floor') }); layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, li, 'over') }); continue; }
-        if (li.floorImg) layers.push({ k: x + y - 0.75, fn: () => this.drawCellSprite(x, y, li, li.floorImg, 0) });
-        if (li.blocks) layers.push({ k: x + y - 0.25, fn: () => this.drawCellBlocks(x, y, li) });
+        layers.push({ k: x + y - 0.75, fn: () => this.drawIsoCell(x, y, li, 'floor') });
+        layers.push({ k: x + y - 0.25, fn: () => this.drawIsoCell(x, y, li, 'over') });
       }
-      // a ship past the south edge draws after the tile, so its label waits for it
-      if (info.flush || info.out.length) groundLabels.push(info);
+      // what reaches past the tile draws after it, so its label waits for it
+      if (info.flush || info.reach.length) groundLabels.push(info);
     }
     // Checkpoint fences stand on the grid lines between cells. A panel sorts
     // just behind the cell south (or east) of it, so a traveller or building
@@ -454,9 +433,7 @@ export class BoardRenderer {
     const seas = water.map(e => this.seaRegion(e, vb)).filter(Boolean);
     if (seas.length) {
       ctx.beginPath(); for (const r of seas) this.rectPath(...r);
-      const sea = this.groundFill('sea', 0, 0, Math.floor(this.time * 3) % 128);
-      ctx.fillStyle = sea || TERRAIN_COLORS.water; ctx.fill();
-      if (!sea) this.drawWaves(seas);
+      ctx.fillStyle = this.groundFill('sea', 0, 0, Math.floor(this.time * 3) % 128) || TERRAIN_COLORS.water; ctx.fill();
       // surf along each shoreline
       ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.beginPath();
       for (const e of water) {
@@ -479,7 +456,7 @@ export class BoardRenderer {
       const cx = a === 'E' || b === 'E' ? this.w : -m, cy = a === 'S' || b === 'S' ? this.h : -m;
       const road = ta === 'road' || tb === 'road';
       this.fillRegion(cx, cy, m, m, this.groundFill(road ? 'asphalt' : 'ballast') || TERRAIN_COLORS[road ? 'road' : 'rail']);
-      for (const [e, t] of [[a, ta], [b, tb]]) if (t === 'rail') this.edgeTexture(e, t, cx, cy, m, m);
+      for (const [e, t] of [[a, ta], [b, tb]]) if (t === 'rail') { const rails = this.stripFill(e, 'crossing'); if (rails) this.fillRegion(cx, cy, m, m, rails); }
     }
   }
 
@@ -492,12 +469,10 @@ export class BoardRenderer {
   }
 
   // How far along its side an edge's run (road, rail or shoreline) reaches:
-  // out past the edge of the view, unless the neighbouring side is sea. The
-  // far end snaps to a multiple of 3 so road dashes and sleepers stay in step
-  // with the strip beside the board.
+  // out past the edge of the view, unless the neighbouring side is sea.
   runRange(e, board, vb) {
     const horiz = e === 'N' || e === 'S', len = horiz ? this.w : this.h;
-    const lo = board.edges[horiz ? 'W' : 'N'] === 'water' ? 0 : Math.floor((horiz ? vb.x0 : vb.y0) / 3) * 3;
+    const lo = board.edges[horiz ? 'W' : 'N'] === 'water' ? 0 : Math.floor(horiz ? vb.x0 : vb.y0);
     const hi = board.edges[horiz ? 'E' : 'S'] === 'water' ? len : Math.max(len, horiz ? vb.x1 : vb.y1);
     return [Math.min(lo, 0), hi];
   }
@@ -512,7 +487,6 @@ export class BoardRenderer {
       if (b <= a) continue;
       const r = horiz ? [a, sy, b - a, sh] : [sx, a, sw, b - a], fill = this.stripFill(e, terrain);
       this.fillRegion(...r, fill || TERRAIN_COLORS[terrain]);
-      if (!fill) this.edgeTexture(e, terrain, ...r);
     }
   }
 
@@ -528,21 +502,11 @@ export class BoardRenderer {
     // u runs the length of the runway, v across it
     const horiz = e === 'N' || e === 'S';
     const at = (u, v) => horiz ? [r[0] + u, r[1] + v * d] : [r[0] + v * d, r[1] + u];
-    // the texture carries the kerb, the side stripes and the centre line
-    const tex = horiz ? this.groundFill('runway_x', 0, r[1]) : this.groundFill('runway_y', r[0], 0);
-    this.fillRegion(...r, tex || RUNWAY.fill);
-    if (!tex) {
-      this.regionPath(...r); ctx.strokeStyle = RUNWAY.border; ctx.lineWidth = Math.max(1.5, this.k * 0.07); ctx.stroke();
-      ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
-      ctx.lineWidth = Math.max(1, this.k * 0.05); ctx.beginPath();
-      this.line(at(0, 0.06), at(along, 0.06)); this.line(at(0, 0.94), at(along, 0.94));
-      ctx.stroke();
-      ctx.lineWidth = Math.max(1, this.k * 0.07); ctx.beginPath();
-      for (let u = 1.6; u < along - 1.6; u += 2) this.line(at(u, 0.5), at(Math.min(along - 1.6, u + 1), 0.5));
-      ctx.stroke();
-    }
-    ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
+    // the texture carries the kerb, the side stripes and the centre line; the
+    // piano keys at the two ends are painted over it
+    this.fillRegion(...r, (horiz ? this.groundFill('runway_x', 0, r[1]) : this.groundFill('runway_y', r[0], 0)) || RUNWAY.fill);
     if (this.k < 12) return;   // the keys turn to mush below that
+    ctx.strokeStyle = RUNWAY.paint; ctx.lineCap = 'butt';
     ctx.lineWidth = Math.max(1, this.k * 0.055); ctx.beginPath();
     for (const [u0, u1] of [[0.2, 1.0], [along - 1.0, along - 0.2]])
       for (const v of [0.17, 0.29, 0.41, 0.59, 0.71, 0.83]) this.line(at(u0, v), at(u1, v));
@@ -560,8 +524,8 @@ export class BoardRenderer {
     for (const n of horiz ? ['W', 'E'] : ['N', 'S']) {
       if (board.edges[n] !== 'water') continue;
       // The bend's centre sits R back from the board along the strip and R back
-      // from the sea across the band, so the arc at radius R - v runs straight
-      // into the rail that edgeTexture lays across a strip at the same v.
+      // from the sea across the band, so the ring runs straight into the strip
+      // on one side and the run along the shore on the other.
       const eOut = e === 'N' ? -R : e === 'S' ? this.h + R : e === 'W' ? -R : this.w + R;
       const nOut = n === 'N' ? R : n === 'S' ? this.h - R : n === 'W' ? R : this.w - R;
       const [cx, cy] = horiz ? [nOut, eOut] : [eOut, nOut];
@@ -576,53 +540,17 @@ export class BoardRenderer {
       if (r[2] > 0 && r[3] > 0) {
         const fill = this.stripFill(n, 'rail', band + m / 2);   // the run follows n, so its sleepers do too
         this.fillRegion(...r, fill || TERRAIN_COLORS.rail);
-        if (!fill) this.edgeTexture(n, 'rail', ...r);
       }
-      // in the pixel look, the bend is a picture: the rail texture bent round the ring
-      const bend = this.artMode === 'iso' && groundBend('bend_' + (e + n).toLowerCase());
-      if (bend) {
-        const [lx, ly, hg] = bend.at, s = this.k / ISO_CELL_PX;
-        const [ax, ay] = this.project((e === 'E' || n === 'E' ? this.w : 0) + lx, (e === 'S' || n === 'S' ? this.h : 0) + ly);
-        ctx.drawImage(bend.img, ax - hg * 32 * s, ay, bend.img.width * s, bend.img.height * s);
-        continue;
-      }
-      this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail);
-      // the same two rails and sleepers edgeTexture lays, bent round the bend
-      ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045);
-      ctx.beginPath();
-      for (const v of [0.35, 0.65]) this.arcPath(cx, cy, R - v * m, aStrip, a1);
-      ctx.stroke();
-      ctx.lineWidth = Math.max(0.6, this.k * 0.03); ctx.beginPath();
-      for (const f of [1 / 8, 3 / 8, 5 / 8, 7 / 8]) {
-        const a = aStrip + (a1 - aStrip) * f, c = Math.cos(a), sn = Math.sin(a);
-        this.line([cx + c * (R - 0.78 * m), cy + sn * (R - 0.78 * m)], [cx + c * (R - 0.22 * m), cy + sn * (R - 0.22 * m)]);
-      }
-      ctx.stroke();
+      // the bend itself is a picture, the rail texture bent round the ring (a
+      // plain ring of ballast until it loads), anchored at a whole grid point
+      const bend = groundBend('bend_' + (e + n).toLowerCase());
+      if (!bend) { this.fillRing(cx, cy, R - m, R, aStrip, a1, TERRAIN_COLORS.rail); continue; }
+      const [lx, ly, hg] = bend.at, s = this.k / ISO_CELL_PX;
+      const [ax, ay] = this.project((e === 'E' || n === 'E' ? this.w : 0) + lx, (e === 'S' || n === 'S' ? this.h : 0) + ly);
+      ctx.drawImage(bend.img, ax - hg * 32 * s, ay, bend.img.width * s, bend.img.height * s);
     }
   }
 
-  // Little wave crests on a screen-space lattice pinned to the world: they pan
-  // with the camera but cost the same at every zoom level.
-  drawWaves(seas) {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.beginPath(); for (const r of seas) this.rectPath(...r); ctx.clip();
-    const sx = Math.max(56, this.k * 1.5), sy = sx * 0.5, len = sx * 0.3;
-    const [ox, oy] = this.project(0, 0);
-    const r0 = Math.floor(-oy / sy) - 1, r1 = Math.ceil((this.viewH - oy) / sy) + 1;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = Math.max(1.5, this.k * 0.05); ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let row = r0; row <= r1; row++) {
-      const y = oy + row * sy, off = (row & 1) ? sx / 2 : 0;
-      const c0 = Math.floor((-ox - off) / sx) - 1, c1 = Math.ceil((this.viewW - ox - off) / sx) + 1;
-      for (let col = c0; col <= c1; col++) {
-        const x = ox + off + col * sx;
-        const bob = Math.sin(this.time * 1.8 + col * 1.3 + row * 0.7) * sy * 0.12;
-        ctx.moveTo(x - len / 2, y + bob); ctx.quadraticCurveTo(x, y + bob - len * 0.4, x + len / 2, y + bob);
-      }
-    }
-    ctx.stroke(); ctx.restore();
-  }
 
   drawEdges(view, board) {
     const ctx = this.ctx, vb = this.visibleGrid();
@@ -633,7 +561,6 @@ export class BoardRenderer {
       if (terrain !== 'water') {
         const strip = this.edgeStripRegion(board, e), fill = this.stripFill(e, terrain);
         this.fillRegion(...strip, fill || TERRAIN_COLORS[terrain] || '#333');
-        if (!fill) this.edgeTexture(e, terrain, ...strip);
       }
       // Subway portals: where a line leaves the board it dives under the strip
       // and the track carries on out of the view, the way a railway does. A
@@ -672,7 +599,7 @@ export class BoardRenderer {
     }
     // a lane with its track drawn over it needs no hatching to say it's taken
     const tracked = new Set();
-    for (const t of board.tiles) if (t.lane && spriteFloor(t.key + '_lane')) for (const [x, y] of t.lane) tracked.add(x + ',' + y);
+    if (this.artMode === 'iso') for (const t of board.tiles) if (t.lane && hasIso(t.key + '_lane')) for (const [x, y] of t.lane) tracked.add(x + ',' + y);
     for (const [x, y] of board.lanes) if (!tracked.has(x + ',' + y)) this.hatchCell(x, y, '#1fcfb0');
     for (const t of board.tiles) if (t.tunnel) this.drawTunnel(t.tunnel.cells, t.tunnel.axis, TUNNEL_COLORS[t.tunnel.line], 0.55);
     // faint grid so the empty plane still reads as a grid at low zoom
@@ -829,36 +756,6 @@ export class BoardRenderer {
     ctx.restore();
   }
 
-  edgeTexture(e, terrain, gx, gy, gw, gh) {
-    const ctx = this.ctx;
-    const horiz = e === 'N' || e === 'S';
-    const along = horiz ? gw : gh;
-    // parametric helpers: u runs along the strip, v across it
-    const at = (u, v) => horiz ? [gx + u, gy + v * gh] : [gx + v * gw, gy + u];
-    if (terrain === 'rail') {
-      ctx.strokeStyle = '#efe8ff'; ctx.lineWidth = Math.max(1, this.k * 0.045); ctx.beginPath();
-      this.line(at(0, 0.35), at(along, 0.35)); this.line(at(0, 0.65), at(along, 0.65));
-      ctx.stroke();
-      ctx.lineWidth = Math.max(0.6, this.k * 0.03); ctx.beginPath();
-      for (let u = 0.25; u < along; u += 0.5) this.line(at(u, 0.22), at(u, 0.78));
-      ctx.stroke();
-    } else if (terrain === 'road') {
-      ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = Math.max(1, this.k * 0.06); ctx.beginPath();
-      for (let u = 0.15; u < along; u += 0.6) this.line(at(u, 0.5), at(Math.min(along, u + 0.3), 0.5));
-      ctx.stroke();
-    } else if (terrain === 'apron') {
-      ctx.strokeStyle = '#fff27a'; ctx.lineWidth = Math.max(1, this.k * 0.06); ctx.beginPath();
-      for (let u = 0.2; u < along; u += 0.45) this.line(at(u, 0.5), at(Math.min(along, u + 0.1), 0.5));
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = 'rgba(190,255,130,0.35)';
-      for (let u = 0.1; u < along; u += 0.28) {
-        const a = at(u, 0.34), b = at(u + 0.08, 0.66);
-        this.regionPath(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]) || 0.08, Math.abs(b[1] - a[1]) || 0.08);
-        ctx.fill();
-      }
-    }
-  }
 
   hatchCell(x, y, color) {
     const ctx = this.ctx;
@@ -936,308 +833,137 @@ export class BoardRenderer {
     const dim = full || (view.closedTiles && view.closedTiles.has(t.id));
     const bx0 = Math.min(...t.cells.map(c => c[0])), by0 = Math.min(...t.cells.map(c => c[1]));
     const bw0 = Math.max(...t.cells.map(c => c[0])) - bx0 + 1, bh0 = Math.max(...t.cells.map(c => c[1])) - by0 + 1;
-    const img = sprite(t.key), floorImg = spriteFloor(t.key);
-    const color = dim ? '#555a66' : colorForDef(d);
-    const isoArtFor = tf => { const f = this.artMode === 'iso' && isoFrame(t.key, tf), cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip); return cells ? { flip: f.flip, cells } : null; };
-    let tf = null, base = null;
-    if (img || floorImg || this.artMode === 'iso') {
-      let tipAt = null;
-      if (d.attach === 'tip') {
-        const edgeCell = t.cells.find(([x, y]) => y === 0 || y === this.h - 1 || x === 0 || x === this.w - 1);
-        if (edgeCell) tipAt = [edgeCell[0] - bx0, edgeCell[1] - by0];
-      }
-      tf = shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])); base = shapeBaseSize(d.shape);
-    }
-    const z = tileHeight(d), iso = tf && isoArtFor(tf);
-    // The image covers the bounding box plus any pad, in the sprite's own frame.
-    const pad = (tf && spritePad(t.key)) || [0, 0, 0, 0];
-    const rect = base ? [-base.w / 2 - pad[3], -base.h / 2 - pad[0], base.w + pad[1] + pad[3], base.h + pad[0] + pad[2]] : null;
-    // A padded tile on the edge it works from shows the band in the cells just
-    // past that edge: the ship at the berth, the airliner at the jetway.
-    const out = [];
-    if (pad.some(v => v)) for (const e of t.edges || []) for (const [x, y] of t.cells) {
-      if (e === 'N' && y === 0) out.push([x, -1]); else if (e === 'S' && y === this.h - 1) out.push([x, this.h]);
-      else if (e === 'W' && x === 0) out.push([-1, y]); else if (e === 'E' && x === this.w - 1) out.push([this.w, y]);
-    }
+    const z = tileHeight(d);
     const info = {
-      tile: t, def: d, z, flush: z <= 0, glass: z > 0 && !!floorImg, dim, img, floorImg, tf, base, rect, out, bx0, by0, bw0, bh0, iso,
-      color,
+      tile: t, def: d, z, flush: z <= 0, dim, bx0, by0, bw0, bh0,
+      color: dim ? '#555a66' : colorForDef(d),
       set: new Set(t.cells.map(([x, y]) => x + ',' + y)),
       stats: { occAt, occ, cap, full },
       left: t.cells.length, // cells still to draw; the label follows the last one
+      iso: this.artMode === 'iso' ? this.isoSheet(t, d, bx0, by0, dim) : null,
+      reach: [],
     };
-    // Blocks, sorted into the cells they stand on: each cell draws its share
-    // clipped to its own column, so a wall in front still covers a bus behind it.
-    const blocks = tf && spriteBlocks(t.key), blockArt = blocks && spriteBlockArt(t.key);
-    // Sunken floor, cut into steps: each step a strip of the floor art in grid
-    // space at its own depth, deepest first, which is the order they paint in.
-    const sinks = tf && floorImg && spriteSinks(t.key);
-    if (iso) return info;
-    if (sinks) {
-      info.sinks = []; info.sinkCells = new Set();
-      for (const [u, v, w, h, d0, d1, dir, n] of sinks) for (let i = 0; i < n; i++) {
-        const r = dir === 'E' ? [u + w * i / n, v, w / n, h] : dir === 'W' ? [u + w * (n - 1 - i) / n, v, w / n, h]
-          : dir === 'S' ? [u, v + h * i / n, w, h / n] : [u, v + h * (n - 1 - i) / n, w, h / n];
-        const a = this.spritePoint(info, r[0], r[1]), b = this.spritePoint(info, r[0] + r[2], r[1] + r[3]);
-        const s = { x0: Math.min(a[0], b[0]), y0: Math.min(a[1], b[1]), x1: Math.max(a[0], b[0]), y1: Math.max(a[1], b[1]), d: n > 1 ? d0 + (d1 - d0) * i / (n - 1) : d1 };
-        info.sinks.push(s);
-        for (let x = Math.floor(s.x0); x < s.x1; x++) for (let y = Math.floor(s.y0); y < s.y1; y++) info.sinkCells.add(x + ',' + y);
-      }
-      info.sinks.sort((p, q) => q.d - p.d);
-    }
-    if (blockArt) {
-      info.blockArt = blockArt; info.blockTop = Math.max(0, ...blocks.map(b => b[5])) + 0.05;
-      info.blocks = new Map();
-      for (const [x, y] of t.cells.concat(out)) {
-        const here = blocks.filter(([u, v, w, h]) => {
-          const a = this.spritePoint(info, u, v), b = this.spritePoint(info, u + w, v + h);
-          return Math.max(a[0], b[0]) > x && Math.min(a[0], b[0]) < x + 1 && Math.max(a[1], b[1]) > y && Math.min(a[1], b[1]) < y + 1;
-        });
-        if (here.length) info.blocks.set(x + ',' + y, here);
-      }
+    // A sheet's pieces beyond the tile's own cells: the band past a padded side
+    // shows only where it lies past the board's edge (so only when the tile sits
+    // on that edge), and anything else a vehicle reaches always shows.
+    if (info.iso) for (const e of info.iso.cells.values()) {
+      if (e.kind === 0) continue;
+      const [x, y] = info.iso.flip ? [bx0 + e.v, by0 + e.u] : [bx0 + e.u, by0 + e.v];
+      if (e.kind === 1 && x >= 0 && y >= 0 && x < this.w && y < this.h) continue;
+      info.reach.push([x, y]);
     }
     return info;
   }
 
+  // The frame of a tile's sheet that shows it as placed (see isoFrame), coloured
+  // and lit, or null until it has loaded. The drawing's working side is turned
+  // toward the edge the tile draws from, and a tip-attached tile's tip to the edge.
+  isoSheet(t, d, bx0, by0, dim) {
+    let tipAt = null;
+    if (d.attach === 'tip') {
+      const edgeCell = t.cells.find(([x, y]) => y === 0 || y === this.h - 1 || x === 0 || x === this.w - 1);
+      if (edgeCell) tipAt = [edgeCell[0] - bx0, edgeCell[1] - by0];
+    }
+    const f = isoFrame(t.key, shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])));
+    const cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip);
+    return cells ? { flip: f.flip, cells } : null;
+  }
+
   // The squares a corridor tile's track is drawn over: its lane out to the
-  // edge, and one square past it. Each gets a one-cell stand-in for the tile's
-  // info, with the lane art (`<key>_lane`) turned to run along the lane, so the
-  // same sprite and block drawing serves.
+  // edge, and one square past it, each with the one-square sheet of its track
+  // (`<key>_lane`, or on every other square `<key>_lane_alt` where there is one)
+  // turned to run along the lane. None in the blocks look, where lanes are hatched.
   laneInfos(t, info) {
-    const vertical = info.bh0 > info.bw0, lane = t.lane || [], tf = { rot: vertical ? 1 : 0, mirror: 0 };
-    // the art for a square: `<key>_lane`, or on every other square `<key>_lane_alt` where there is one
-    const art = key => {
-      const floorImg = spriteFloor(key), blocks = spriteBlocks(key), blockArt = blocks && spriteBlockArt(key);
-      const f = this.artMode === 'iso' && isoFrame(key, tf), iso = f && isoArt(key, f.m, colorForDef(info.def), false, false);
-      return floorImg || blockArt || iso ? { floorImg, blocks, blockArt, iso } : null;
-    };
+    if (this.artMode !== 'iso') return [];
+    const vertical = info.bh0 > info.bw0, lane = t.lane || [], m = vertical ? 1 : 0;
+    const art = key => isoArt(key, m, colorForDef(info.def), false, false);
     const main = art(t.key + '_lane'), alt = art(t.key + '_lane_alt') || main;
     if (!main) return [];
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
-    return lane.concat([out]).map(([x, y]) => {
-      const { floorImg, blocks, blockArt, iso } = (x + y) % 2 ? alt : main;
-      const li = { tile: t, def: info.def, color: info.color, dim: false, floorImg, tf, rect: [-0.5, -0.5, 1, 1], bx0: x, by0: y, bw0: 1, bh0: 1 };
-      if (iso) return Object.assign(li, { iso: { flip: false, cells: iso } });
-      if (blockArt) Object.assign(li, { blockArt, blockTop: Math.max(0, ...blocks.map(b => b[5])) + 0.05, blocks: new Map([[x + ',' + y, blocks]]) });
-      return li;
-    });
+    return lane.concat([out]).map(([x, y]) => ({ bx0: x, by0: y, iso: { flip: false, cells: (x + y) % 2 ? alt : main } }));
   }
 
-  // Grid position of pixel (u, v) of a tile's image: the same mirror, turn and
-  // offset drawCellSprite hands the canvas.
-  spritePoint(info, u, v) {
-    let lx = info.rect[0] + u / SPRITE_CELL_PX, ly = info.rect[1] + v / SPRITE_CELL_PX;
-    if (info.tf.mirror) lx = -lx;
-    for (let i = 0; i < info.tf.rot; i++) [lx, ly] = [-ly, lx];
-    return [info.bx0 + info.bw0 / 2 + lx, info.by0 + info.bh0 / 2 + ly];
-  }
-  // and back: the image pixel under grid point (gx, gy)
-  imagePoint(info, gx, gy) {
-    let lx = gx - info.bx0 - info.bw0 / 2, ly = gy - info.by0 - info.bh0 / 2;
-    for (let i = 0; i < info.tf.rot; i++) [lx, ly] = [ly, -lx];
-    if (info.tf.mirror) lx = -lx;
-    return [(lx - info.rect[0]) * SPRITE_CELL_PX, (ly - info.rect[1]) * SPRITE_CELL_PX];
-  }
 
-  // The south- and east-facing sides of one cell, drawn only where the
-  // footprint actually ends. The two faces of a cell meet at a corner and
+  // The south- and east-facing sides of one cell of a block, drawn only where
+  // the footprint actually ends. The two faces of a cell meet at a corner and
   // never overlap, so they need no ordering between them.
   cellWalls(x, y, info) {
     const ctx = this.ctx, dz = info.z * this.hz;
     if (dz <= 0.001) return;
-    // A glass box (a tile with floor art under an open top) has panes for
-    // walls: a wash of its colour with the frame drawn round it, so the floor
-    // and the crowd show through. A building's walls are solid.
     const face = (g0, g1, f) => {
       const a = this.project(g0[0], g0[1]), b = this.project(g1[0], g1[1]);
       ctx.beginPath();
       ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b[0], b[1] - dz); ctx.lineTo(a[0], a[1] - dz);
-      ctx.closePath();
-      if (!info.glass) { ctx.fillStyle = shade(info.color, f); ctx.fill(); return; }
-      ctx.save(); ctx.globalAlpha = 0.2; ctx.fillStyle = info.color; ctx.fill(); ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = shade(info.color, f + 0.2); ctx.lineWidth = Math.max(1, this.k * 0.02); ctx.stroke(); ctx.restore();
+      ctx.closePath(); ctx.fillStyle = shade(info.color, f); ctx.fill();
     };
     if (!info.set.has(x + ',' + (y + 1))) face([x, y + 1], [x + 1, y + 1], 0.52);
     if (!info.set.has((x + 1) + ',' + y)) face([x + 1, y], [x + 1, y + 1], 0.70);
   }
 
-  // One cell's column: the walls it exposes, its slice of the top face, and
-  // the outline of whichever footprint edges it owns.
-  // Under layer: the ground the tile stands on.
-  // Travellers paint on top of this and under drawTileRoof, so anyone who
-  // steps inside is covered by the building. Give a tile a `<key>_floor.png`
-  // and its interior art (seats, tiling) lands here with the crowd on top.
+  // Under layer: the ground the tile stands on. Travellers paint on top of this
+  // and under drawTileRoof, so anyone who steps inside is covered by the building.
   drawTileFloor(x, y, info) {
     const ctx = this.ctx;
-    if (info.floorImg) {
-      this.drawCellSprite(x, y, info, info.floorImg, 0);
-      if (info.flush) {
-        if (info.dim) { this.cellPath(x, y); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
-        this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
-      }
-    } else if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
-    // a flush tile with no floor art is painted flat, as a roof at ground level
-    else if (!info.img) this.drawTileRoof(x, y, info);
-    else { this.cellPath(x, y); ctx.fillStyle = info.color; ctx.fill(); }
-  }
-
-  // A tile's sunken floor, as seen through this cell: stairs down into a
-  // station, a pool below the quay. Everything is clipped to the opening at
-  // ground level, so the ground's edge hides whatever is under it. Steps paint
-  // deepest first, each its tread (the floor art, lowered) and then the walls on
-  // its north and west edges, the ones that face the camera, from the ground
-  // down to it; the next step up paints over the part of that wall it hides,
-  // and what shows is the riser.
-  drawSinks(x, y, info) {
-    const ctx = this.ctx, tf = info.tf, origin = this.project(0, 0);
-    ctx.save();
-    this.cellPath(x, y); ctx.clip();
-    ctx.beginPath(); for (const s of info.sinks) this.rectPath(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0); ctx.clip();
-    const wall = (g0, g1, d, f) => {
-      const a = this.project(...g0), b = this.project(...g1), dz = d * this.hz;
-      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b[0], b[1] + dz); ctx.lineTo(a[0], a[1] + dz); ctx.closePath();
-      ctx.fillStyle = shade(info.color, f); ctx.fill();
-    };
-    for (const s of info.sinks) {
-      ctx.save();
-      this.regionPath(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0, -s.d); ctx.clip();
-      ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1] + s.d * this.hz);
-      ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
-      ctx.rotate(tf.rot * Math.PI / 2);
-      if (tf.mirror) ctx.scale(-1, 1);
-      ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
-      ctx.drawImage(info.floorImg, ...info.rect);
-      ctx.restore();
-      wall([s.x0, s.y0], [s.x1, s.y0], s.d, 0.5);
-      wall([s.x0, s.y0], [s.x0, s.y1], s.d, 0.66);
+    if (info.iso) {
+      this.drawIsoCell(x, y, info, 'floor');
+      // a flush tile has no walls to set it off the concourse: an outline does
+      if (info.flush) this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
+      return;
     }
-    ctx.restore();
+    // a block: a contact shadow where it stands up, and a dark floor under its roof
+    if (!info.flush && (!info.set.has(x + ',' + (y + 1)) || !info.set.has((x + 1) + ',' + y))) {
+      ctx.save(); ctx.globalAlpha = 0.3; ctx.translate(0, this.k * 0.035);
+      this.cellPath(x, y); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+    }
+    if (!info.flush) { this.cellPath(x, y); ctx.fillStyle = shade(info.color, 0.45); ctx.fill(); }
+    // a flush block is only its own surface, under the crowd
+    else this.drawTileRoof(x, y, info);
   }
 
-  // A flush tile's over layer: the tree tops the crowd walks under,
-  // hung at CANOPY_Z with nothing holding them up but what the floor art draws.
-  drawCanopy(x, y, info) {
-    this.drawCellSprite(x, y, info, info.img, CANOPY_Z);
-  }
 
-  // One cell's pieces of a pre-drawn isometric sheet (see isoFrame in
-  // sprites.js). The frame is anchored at the ground point of the bounding box's
-  // top corner and scaled to the zoom; a flipped frame swaps the grid's x and y,
-  // which on screen is a mirror about that corner, and its cells swap with them.
+
+  // One cell's pieces of a pre-drawn isometric sheet (see isoArt in sprites.js).
+  // The frame is anchored at the ground point of the bounding box's top corner
+  // and scaled to the zoom; a flipped frame swaps the grid's x and y, which on
+  // screen is a mirror about that corner, and its cells swap with them.
   drawIsoCell(x, y, info, layer) {
     const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
     const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), piece = here && here[layer];
-    if (piece) {
-      const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
-      ctx.save();
-      ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
-      // crisp pixels once a sheet pixel covers a screen pixel; blend below that
-      ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
-      ctx.drawImage(piece.canvas, piece.x, piece.y);
-      ctx.restore();
-    }
-    if (layer === 'floor' && info.flush && info.set && info.set.has(x + ',' + y)) this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, 0, info.set);
-  }
-
-  // The grid -> screen map is linear, so feeding it to the context as a
-  // transform lets a top-down sprite lie flat on the isometric plane.
-  // Clipping to this one cell shows just this cell's slice of it.
-  drawCellSprite(x, y, info, img, z) {
-    const ctx = this.ctx, dz = z * this.hz;
-    const origin = this.project(0, 0), tf = info.tf, base = info.base;
+    if (!piece) return;
+    const ctx = this.ctx, s = this.k / ISO_CELL_PX, [ax, ay] = this.project(info.bx0, info.by0);
     ctx.save();
-    this.cellPath(x, y, z); ctx.clip();
-    ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1] - dz);
-    ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
-    ctx.rotate(tf.rot * Math.PI / 2);
-    if (tf.mirror) ctx.scale(-1, 1);
-    // Crisp pixels while an art pixel covers a couple of screen pixels; below
-    // that, nearest-neighbour drops whole rows and lines break up, so blend.
-    ctx.imageSmoothingEnabled = this.k * (this.dpr || 1) < 2 * SPRITE_CELL_PX;
-    ctx.drawImage(img, ...info.rect);
+    ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
+    // crisp pixels once a sheet pixel covers a screen pixel; blend below that
+    ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
+    ctx.drawImage(piece.canvas, piece.x, piece.y);
     ctx.restore();
   }
 
-  // One cell's share of a tile's blocks, clipped to the cell's column. A block
-  // is its darkened copy drawn once per screen pixel from z0 up to z1 (48
-  // copies at most: fewer leave a staircase down its sides when zoomed in),
-  // then its art on top: an extrusion that follows the outline
-  // of the car or the hull. Each cell draws only the part of the block over its
-  // own ground, since copies only move up the screen, and that part stays in
-  // its column.
-  drawCellBlocks(x, y, info) {
-    const list = info.blocks && info.blocks.get(x + ',' + y);
-    if (!list) return;
-    // off screen: skip it, since the stack is the costly part of the frame
-    const top = this.project(x, y)[1] - info.blockTop * this.hz, bottom = this.project(x + 1, y + 1)[1];
-    const left = this.project(x, y + 1)[0], right = this.project(x + 1, y)[0];
-    if (bottom < 0 || top > this.viewH || right < 0 || left > this.viewW) return;
-    const ctx = this.ctx, tf = info.tf, S = SPRITE_CELL_PX, dpr = this.dpr || 1, art = info.blockArt;
-    ctx.save();
-    const col = [[x, y, info.blockTop], [x + 1, y, info.blockTop], [x + 1, y, 0], [x + 1, y + 1, 0], [x, y + 1, 0], [x, y + 1, info.blockTop]];
-    ctx.beginPath();
-    col.forEach(([gx, gy, z], i) => { const [px, py] = this.project(gx, gy); ctx[i ? 'lineTo' : 'moveTo'](px, py - z * this.hz); });
-    ctx.closePath(); ctx.clip();
-    const origin = this.project(0, 0), base = ctx.getTransform();
-    ctx.transform(this.hw, this.hh, -this.hw, this.hh, origin[0], origin[1]);
-    ctx.translate(info.bx0 + info.bw0 / 2, info.by0 + info.bh0 / 2);
-    ctx.rotate(tf.rot * Math.PI / 2);
-    if (tf.mirror) ctx.scale(-1, 1);
-    ctx.imageSmoothingEnabled = this.k * dpr < 2 * S;
-    if (info.dim) ctx.globalAlpha = 0.5;
-    const m = ctx.getTransform(), [ix, iy] = info.rect;
-    const a = this.imagePoint(info, x, y), b = this.imagePoint(info, x + 1, y + 1);
-    const cu0 = Math.min(a[0], b[0]), cu1 = Math.max(a[0], b[0]), cv0 = Math.min(a[1], b[1]), cv1 = Math.max(a[1], b[1]);
-    for (const [u0, v0, w0, h0, z0, z1, round] of list) {
-      const u = Math.max(u0, cu0), v = Math.max(v0, cv0), w = Math.min(u0 + w0, cu1) - u, h = Math.min(v0 + h0, cv1) - v;
-      if (w <= 0 || h <= 0) continue;
-      const lo = z0 * this.hz, hi = z1 * this.hz, step = Math.max(1, (hi - lo) / 48);
-      // each copy scaled about the whole block's centre: 1 all the way up, or a bulge
-      const cx = ix + (u0 + w0 / 2) / S, cy = iy + (v0 + h0 / 2) / S;
-      const at = f => [cx + f * (ix + u / S - cx), cy + f * (iy + v / S - cy), f * w / S, f * h / S];
-      const size = dz => round ? 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (dz - lo) / (hi - lo))) : 1;
-      // below ground (a submarine in its pool): only what shows through the opening
-      const under = z0 < 0 && info.sinks;
-      if (under) { ctx.save(); ctx.setTransform(base); ctx.beginPath(); for (const q of info.sinks) this.rectPath(q.x0, q.y0, q.x1 - q.x0, q.y1 - q.y0); ctx.clip(); }
-      for (let dz = lo; dz < hi; dz += step) { ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - dz * dpr); ctx.drawImage(art.side, u, v, w, h, ...at(size(dz))); }
-      ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f - hi * dpr); ctx.drawImage(art.top, u, v, w, h, ...at(size(hi)));
-      if (under) ctx.restore();
-    }
-    ctx.restore();
-  }
 
-  // Over layer: everything from the floor up. Painted after the crowd, except
-  // on a flush tile, where there is nothing above the floor and drawTileFloor
-  // calls this itself so the crowd walks over the top of it.
+
+  // Over layer: everything from the floor up, painted after the crowd. A flush
+  // block has none: drawTileFloor paints its surface under the crowd instead.
   drawTileRoof(x, y, info) {
-    const ctx = this.ctx, z = info.z;
+    if (info.iso) { this.drawIsoCell(x, y, info, 'over'); return; }
+    const ctx = this.ctx, z = info.z, d = info.def;
     this.cellWalls(x, y, info);
-    if (info.img) {
-      this.drawCellSprite(x, y, info, info.img, z);
-      if (info.dim) { this.cellPath(x, y, z); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
-    } else if (info.floorImg && !info.flush) {
-      // floor art and no roof: an open-topped box, looking down on the floor
-      if (info.dim) { this.cellPath(x, y); ctx.fillStyle = 'rgba(70,74,84,0.7)'; ctx.fill(); }
-    } else {
-      const d = info.def;
-      this.cellPath(x, y, z); ctx.fillStyle = info.color; ctx.fill();
-      if (d.special === 'walkway') {
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const u = 0.15 + i * 0.28;
-          this.line([x + u, y + 0.3], [x + u + 0.14, y + 0.5], z);
-          this.line([x + u + 0.14, y + 0.5], [x + u, y + 0.7], z);
-        }
-        ctx.stroke();
+    this.cellPath(x, y, z); ctx.fillStyle = info.color; ctx.fill();
+    if (d.special === 'walkway') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const u = 0.15 + i * 0.28;
+        this.line([x + u, y + 0.3], [x + u + 0.14, y + 0.5], z);
+        this.line([x + u + 0.14, y + 0.5], [x + u, y + 0.7], z);
       }
-      // checkpoint booth: a scanner lane running across the fence
-      if (d.special === 'gate') {
-        const c = info.tile.cells, along = c.length > 1 && c[0][0] === c[1][0] ? 'y' : 'x';
-        if (along === 'y') this.fillRegion(x + 0.3, y, 0.4, 1, 'rgba(0,0,0,0.35)', z);
-        else this.fillRegion(x, y + 0.3, 1, 0.4, 'rgba(0,0,0,0.35)', z);
-      }
+      ctx.stroke();
+    }
+    // checkpoint booth: a scanner lane running across the fence
+    if (d.special === 'gate') {
+      const c = info.tile.cells, along = c.length > 1 && c[0][0] === c[1][0] ? 'y' : 'x';
+      if (along === 'y') this.fillRegion(x + 0.3, y, 0.4, 1, 'rgba(0,0,0,0.35)', z);
+      else this.fillRegion(x, y + 0.3, 1, 0.4, 'rgba(0,0,0,0.35)', z);
     }
     // crown line: brightens the top face edge so buildings separate visually
     this.outlineCells([[x, y]], 'rgba(0,0,0,0.55)', 1.5, z, info.set);

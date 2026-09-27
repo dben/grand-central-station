@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Bakes the board tiles into isometric sprite sheets, drawn in screen space:
-//   node harness/isoart.mjs [key ...]   -> assets/iso/<key>.png, <key>_map.png and src/ui/isosprites.js
+//   node harness/isoart.mjs [key ...]   -> assets/iso/<key>.png and <key>_map.png, assets/ground/*.png
+//                                          and the manifest, src/ui/isosprites.js
+// Naming keys rewrites only those sheets; the ground and the manifest are always rewritten.
 // The drawings are tileart.mjs's own top-down art. This ray-casts them once, here,
 // into the classic 2:1 pixel projection (a cell is a 64x32 diamond, and a tile
 // height unit is 64 * H_UNIT pixels), with the walls, the vehicles and the tree
@@ -16,14 +18,18 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { drawAll, CELL, hex, png } from './tileart.mjs';
+import { deflateSync } from 'node:zlib';
+import { drawAll, CELL, hex } from './tileart.mjs';
 import { tileDef } from '../src/data/tiles.js';
-import { tileHeight, H_UNIT, CANOPY_Z, colorForDef, EDGE_MARGIN, TURN_R } from '../src/ui/render.js';
+import { tileHeight, H_UNIT, colorForDef, EDGE_MARGIN, TURN_R } from '../src/ui/render.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HZ = 2 * CELL * H_UNIT;          // screen pixels per unit of tile height
 const TA = 48, TB = 176;               // the two greys each sheet is drawn in
-const GLASS_A = 0.2;                   // a glass box's panes, as the flat renderer washes them
+const GLASS_A = 0.2;                   // a glass box's panes: a faint wash of the tile's colour
+// A flush tile's over layer (the tree tops in a park) hangs this high above the
+// crowd, in units of tile height, with no walls under it.
+const CANOPY_Z = 0.32;
 
 // Hex strings to [r, g, b, a] once, so the ray loop does no parsing.
 const rgba = v => v ? [...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) / 255 : 1] : null;
@@ -37,15 +43,14 @@ function scene(key, layers, grey) {
   const z = lane ? 0 : tileHeight(def);
   const px = s => s ? s.px.map(rgba) : null;
   const floor = px(layers.floor), over = px(layers.over);
-  const all = (layers.over ? layers.over.blocks : []).map(b => {
-    const [x, y, w, h, z0, z1, round] = b, k = b.stack;
-    return { x, y, w, h, lo: (k && k.z0 != null ? k.z0 : z0) * HZ, hi: (k && k.z1 != null ? k.z1 : z1) * HZ, round: !!round && !k, cx: x + w / 2, cy: y + h / 2, stack: k, hide: b.hide };
+  const blocks = (layers.over ? layers.over.blocks : []).map(b => {
+    const [x, y, w, h, z0, z1, round] = b;
+    return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack };
   });
-  const blocks = all.filter(b => !b.hide);
-  // the flat part of the over layer: every block's rectangle is cut out of it,
-  // and whatever a stack now draws in the round
-  const cuts = (layers.over ? layers.over.cuts : []).map(([x, y, w, h]) => ({ x, y, w, h }));
-  const flat = over && over.map((p, i) => { const x = i % IW, y = (i / IW) | 0; return all.concat(cuts).some(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) ? null : p; });
+  // the flat part of the over layer: what no block stands up. A stack's cut
+  // takes in the ink outline its top-down drawing has round it.
+  const cut = blocks.map(b => b.stack ? { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 2 } : b);
+  const flat = over && over.map((p, i) => { const x = i % IW, y = (i / IW) | 0; return cut.some(b => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) ? null : p; });
   // a block's sides: its art with the ink outline painted over in the colour
   // just inside it, so a red car's side reads red rather than black
   let side = over && over.slice();
@@ -65,16 +70,50 @@ function scene(key, layers, grey) {
   // what the frame must cover: the drawing and its band, and any vehicle that
   // reaches past them (an airliner's wings over the next squares)
   const ext = [-ox, -oy, IW - ox, IH - oy];
-  for (const { stack: k } of blocks) if (k) {
-    const [w, h] = k.vertical ? [k.D, k.L] : [k.L, k.D];
-    ext[0] = Math.min(ext[0], k.x - ox); ext[1] = Math.min(ext[1], k.y - oy); ext[2] = Math.max(ext[2], k.x + w - ox); ext[3] = Math.max(ext[3], k.y + h - oy);
+  for (const b of blocks) if (b.stack) {
+    ext[0] = Math.min(ext[0], b.x - ox); ext[1] = Math.min(ext[1], b.y - oy); ext[2] = Math.max(ext[2], b.x + b.w - ox); ext[3] = Math.max(ext[3], b.y + b.h - oy);
   }
-  return { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
+  const s = { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
     glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
+  // The shadows on the floor: every point of a block above the ground, carried
+  // down along the light (SUN art pixels across per pixel of height, toward +x
+  // and +y) to where it meets the floor. A car's shadow is its own shape, and a
+  // tree top's or an airliner's falls clear of it by its height.
+  s.shadow = new Set();
+  for (const b of blocks) for (let h = Math.max(1, Math.ceil(b.lo)); h <= b.hi; h++) {
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) {
+      const u = x - ox, v = y - oy;
+      if (blockAt(s, b, u, v, h)) s.shadow.add(Math.floor(u + SUN * h) + ',' + Math.floor(v + SUN * h));
+    }
+  }
+  return s;
+}
+// the light's slope: a pixel of height throws its shadow this far across
+const SUN = 0.45;
+const SHADOW = [10, 5, 32, 0.38];   // a shadow on nothing drawn (the band past the edge): see-through
+
+// ---- PNG: written with node's own zlib, so the harness needs no dependencies ----
+const CRC = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+const crc32 = buf => { let c = 0xffffffff; for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function chunk(type, data) {
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+}
+function png(c) {
+  const { IW: W, IH: H, px } = c;
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
+  const raw = Buffer.alloc(H * (1 + W * 4));
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const v = px[y * W + x];
+    if (v && v.startsWith('#')) raw.set([...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) : 255], y * (1 + W * 4) + 1 + x * 4);
+  }
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
 // ---- casting ---------------------------------------------------------------
-// Frame m is the base image turned m quarter turns (the renderer's convention:
+// Frame m is the base image turned m quarter turns (shapeTransform's convention:
 // (x, y) -> (-y, x) about the bounding box's centre). A frame pixel (U, V) is an
 // art pixel of the turned bounding box; toBase takes it back to the drawing.
 function frameOf(s, m) {
@@ -109,19 +148,17 @@ function blockAt(s, b, u, v, h, top = false) {
   let x = u + s.ox + 0.5, y = v + s.oy + 0.5;
   if (b.round) { const f = 0.55 + 0.45 * Math.sin(Math.PI * (0.15 + 0.8 * (h - b.lo) / (b.hi - b.lo))); x = b.cx + (x - b.cx) / f; y = b.cy + (y - b.cy) / f; }
   x = Math.floor(x); y = Math.floor(y);
-  const i = y * s.IW + x, k = b.stack;
-  // a stack is bounded by its own plan, which may reach past the block and the drawing
-  if (!k && (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h)) return null;
+  if (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h) return null;
+  // a stack's plan may reach past the drawing (an airliner's wings)
+  const i = y * s.IW + x, k = b.stack, drawn = x >= 0 && y >= 0 && x < s.IW && y < s.IH;
   if (k) {
-    const along = k.vertical ? y - k.y : x - k.x, across = k.vertical ? x - k.x : y - k.y;
-    if (along < 0 || across < 0 || along >= k.L || across >= k.D) return null;
     // t runs over the block's pixel rows, so the top row is t = 1: the roof
-    const lo = Math.floor(b.lo), p = k.fn(along, across, Math.max(0, Math.min(1, (h - lo) / Math.max(1, Math.floor(b.hi) - lo))));
-    if (p === 'top') return x >= 0 && y >= 0 && x < s.IW && y < s.IH ? s.over[i] : null;
+    const lo = Math.floor(b.lo), p = k.fn(k.vertical ? y - b.y : x - b.x, k.vertical ? x - b.x : y - b.y, Math.max(0, Math.min(1, (h - lo) / Math.max(1, Math.floor(b.hi) - lo))));
+    if (p === 'top') return drawn ? s.over[i] : null;
     if (p && !stackPx.has(p)) stackPx.set(p, rgba(p));
     return p ? stackPx.get(p) : null;
   }
-  return s.over[i] ? (top ? s.over[i] : s.side[i]) : null;
+  return drawn && s.over[i] ? (top ? s.over[i] : s.side[i]) : null;
 }
 const scale = (p, f) => [p[0] * f, p[1] * f, p[2] * f, p[3]];
 const LEFT = 1, RIGHT = 2, MID = 3;
@@ -131,6 +168,7 @@ const LEFT = 1, RIGHT = 2, MID = 3;
 // (glass panes, washes) are composited and the ray carries on behind them.
 function cast(s, f, X, Y, layer) {
   let C = [0, 0, 0], A = 0, face = 0, best = 0, cell = null;
+  const hit = () => ({ c: C.map(v => v / A), a: A, face, cell });
   const add = (p, fc, U, V) => {
     if (!p || p[3] <= 0) return false;
     const w = (1 - A) * p[3];
@@ -164,7 +202,7 @@ function cast(s, f, X, Y, layer) {
         const p = b.stack && blockAt(s, b, u, v, h);
         if (!p) continue;
         const top = h + 1 > b.hi || !blockAt(s, b, u, v, h + 1);
-        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return hit();
       }
       if (h === 0) break;
       continue;
@@ -178,7 +216,7 @@ function cast(s, f, X, Y, layer) {
         // nothing over it (a car's bonnet in front of its cabin)
         const top = h + 1 > b.hi || (b.stack && !blockAt(s, b, u, v, h + 1));
         if (top && !b.stack) p = blockAt(s, b, u, v, h, true);
-        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return hit();
       }
       if (!s.flush && foot && h >= 0 && h <= s.hz) {
         const top = h + 1 > s.hz;
@@ -186,13 +224,13 @@ function cast(s, f, X, Y, layer) {
           if (top) {
             // the rim round the open top, then anything standing on it (a shelter, a sign)
             const rim = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([du, dv]) => !s.inside(u + du, v + dv));
-            if (add(at(s, s.flat, u, v) || (rim ? [...scale(t, 1.35).slice(0, 3), 0.9] : null), 0, U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+            if (add(at(s, s.flat, u, v) || (rim ? [...scale(t, 1.35).slice(0, 3), 0.9] : null), 0, U, V)) return hit();
           }
           else if (!wasIn) {
             // a pane: its frame round the top edge and down the corners
             const fc = faceOf((a, c) => s.inside(a, c)), [p, q] = f.toBase(U + (fc === LEFT ? 1 : 0), V + (fc === LEFT ? 0 : 1)), [p2, q2] = f.toBase(U - (fc === LEFT ? 1 : 0), V - (fc === LEFT ? 0 : 1));
             const edge = h + 2.5 > s.hz || h < 1 || !s.inside(p, q) || !s.inside(p2, q2);
-            if (add(edge ? [...scale(t, 1.35).slice(0, 3), 0.9] : [...t, GLASS_A], fc, U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+            if (add(edge ? [...scale(t, 1.35).slice(0, 3), 0.9] : [...t, GLASS_A], fc, U, V)) return hit();
           }
         } else {
           let p;
@@ -202,13 +240,13 @@ function cast(s, f, X, Y, layer) {
             const fc = faceOf((a, c) => s.inside(a, c)), along = fc === LEFT ? U : V;
             const k = h > s.hz - 2 ? 1.14 : h < 2 ? 0.78 : Math.floor(along) % CELL === 0 ? 0.88 : 1;
             p = [...scale(t, k).slice(0, 3), 1];
-            if (add(p, fc, U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+            if (add(p, fc, U, V)) return hit();
             continue;
           }
-          if (add(p, 0, U, V)) return { c: C.map(v => v / A), a: A, face, cell };
+          if (add(p, 0, U, V)) return hit();
         }
       }
-      if (s.canopy && foot && h <= CANOPY_Z * HZ && h + 1 > CANOPY_Z * HZ) { if (add(at(s, s.flat, u, v), 0, U, V)) return { c: C.map(v => v / A), a: A, face, cell }; }
+      if (s.canopy && foot && h <= CANOPY_Z * HZ && h + 1 > CANOPY_Z * HZ) { if (add(at(s, s.flat, u, v), 0, U, V)) return hit(); }
       wasIn = foot;
       // the ground: the floor layer has it. A sink's opening lets the ray on down.
       if (h <= 0) { const k = sinkAt(s, u, v); if (!k || h <= -k.d) break; }
@@ -216,14 +254,19 @@ function cast(s, f, X, Y, layer) {
       // the ground, or a step's tread: the floor art, lowered to its depth
       const depth = (p, q) => { const k = sinkAt(s, p, q); return k ? k.d : 0; }, d = depth(u, v);
       if (h > -d) continue;
-      if (h > -d - 1) { add(at(s, s.floor, u, v), 0, U, V); break; }
+      if (h > -d - 1) {
+        // on the ground, a shadow darkens the floor, or where there is none, is a wash
+        const p = at(s, s.floor, u, v), dark = h === 0 && s.shadow.has(u + ',' + v), band = u < 0 || v < 0 || u >= s.W || v >= s.H;
+        add(dark ? p ? [p[0] * 0.62, p[1] * 0.62, p[2] * 0.62, p[3]] : band ? SHADOW : null : p, 0, U, V);
+        break;
+      }
       // under it: the side of the pit, or the riser of the step above the one
       // the ray came down into, facing the camera across the opening
       add([...scale(t, 0.95).slice(0, 3), 1], faceOf((p, q) => depth(p, q) <= -h), U, V);
       break;
     }
   }
-  return A > 0 ? { c: C.map(v => v / A), a: A, face, cell } : null;
+  return A > 0 ? hit() : null;
 }
 
 // Cast one frame of one layer: a map of screen pixel -> hit, and its bounds.
@@ -362,6 +405,8 @@ const GROUND = {
     if (y >= 24 && y <= 40 && x % 16 < 4) return y === 24 || y === 40 ? '#3f2f70' : '#4a3a80';
     return GROUND.ballast(x, y);
   },
+  // a level crossing: the rails alone, laid over the road where a railway crosses it
+  crossing: (x, y) => y === 28 || y === 36 ? '#efe8ff' : y === 29 || y === 37 ? '#8f86b0' : null,
   // an apron: concrete slabs with a yellow taxi line down the middle
   apron: (x, y) => {
     if ((y === 31 || y === 32) && x % 16 < 5) return '#fff27a';
@@ -381,7 +426,7 @@ const GROUND = {
 // projected from the ground: things that lie level on the screen, like crests
 const SCREEN = new Set(['sea']);
 function shadeHex(c, f) { const [r, g, b] = hex(c); return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join(''); }
-const strips = new Set(['road', 'rail', 'apron', 'runway']);
+const strips = new Set(['road', 'rail', 'crossing', 'apron', 'runway']);
 const groundDir = resolve(root, 'assets/ground');
 mkdirSync(groundDir, { recursive: true });
 const groundKeys = [];
@@ -421,7 +466,7 @@ for (const e of ['N', 'S', 'W', 'E']) for (const n of e === 'N' || e === 'S' ? [
   groundKeys.push(key); bends[key] = [lo[0], lo[1], Hg];
 }
 
-// As with tilesprites.js: every key is listed whichever were written, and the
+// Every key is listed whichever were written, and the
 // paths stay literal strings for the bundler to inline.
 const keys = Object.keys(manifest);
 writeFileSync(resolve(root, 'src/ui/isosprites.js'), `// Written by harness/isoart.mjs from tileart.mjs's drawings; rerun it rather than editing.
