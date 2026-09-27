@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 // (or PW_CHROME=/path/to/chrome to use one that is already installed)
 // Usage: node harness/ui-smoke.mjs [screenshot-dir]
 import { mkdirSync } from 'node:fs';
-import { MODE_KEYS } from '../src/data/modes.js';
+import { MODES, MODE_KEYS } from '../src/data/modes.js';
 const SP = process.argv[2] || 'harness/screenshots';
 mkdirSync(SP, { recursive: true });
 const server = spawn('python3', ['-m', 'http.server', '8791'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' });
@@ -420,13 +420,13 @@ try {
   });
   check('Sky Harbour starts airside, roadside and gated', sky.mode === 'sky_harbour' && sky.edges.N === 'apron' && sky.edges.S === 'road' && sky.tiles === 1 && !!sky.gate, JSON.stringify(sky));
   await page.screenshot({ path: SP + '/shot15_sky_harbour.png' });
-  // Gateway: no roads, the sea and the airfield laid, both heavy hitters in hand
+  // Gateway: no roads, open edges, and a big transport in the opening hand
   await page.evaluate(() => window.gcs.showStart());
   await page.waitForTimeout(300);
   await pickMode('Gateway');
   await page.waitForTimeout(400);
   const gw = await page.evaluate(() => { const s = window.gcs.state; return { mode: s.modeKey, edges: s.board.edges, hand: s.shop.cards.map(c => c.key) }; });
-  check('Gateway starts at sea and airside with both heavy hitters dealt', gw.mode === 'gateway' && gw.edges.N === 'water' && gw.edges.E === 'apron' && gw.hand.includes('cruise_dock') && gw.hand.includes('jumbo_jetway'), JSON.stringify(gw));
+  check('Gateway starts open with a train, a burger and a big transport dealt', gw.mode === 'gateway' && Object.values(gw.edges).every(e => e === 'green') && gw.hand[0] === 'train_station' && gw.hand[1] === 'burger' && MODES.gateway.bigSlot.includes(gw.hand[2]), JSON.stringify(gw));
   await page.screenshot({ path: SP + '/shot15b_gateway.png' });
   // A phone, held both ways up. A finger's tap only aims: the card bar then
   // builds, upgrades or plays the card, or drops the aim.
