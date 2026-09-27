@@ -1,7 +1,7 @@
 // Basic invariants: determinism, placement rules, gate filtering.
 import { createBoard, startBoard, checkPlacement, placeTile, removeTile, buildWalkMap, checkpointLine, checkpointFences, fenceBlocked, undergroundCells, lineAvailable, cutOffTransports } from '../src/sim/board.js';
 import { simulateWeek, simulateWeeks, effAmenity, effTransport, wifiStrength, mergeMods } from '../src/sim/sim.js';
-import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement, buyExtraHours, extraHoursCost } from '../src/game/run.js';
+import { createRun, buyTile, playCard, rezoningVictims, deleteTile, quotaFor, tileCost, computeMods, difficultyOf, runRules, isEventWeek, milestoneForWeek, shopPool, generateShop, weekTouched, redoWeek, eventForWeek, eventMult, pickStrikeTerrain, apForRun, runWeek, settle, weekRepeat, cashBaseline, estimatePlacement, buyExtraHours, extraHoursCost } from '../src/game/run.js';
 import { MODES, MODE_KEYS, minWeekOf } from '../src/data/modes.js';
 import { EVENTS, EVENT_KEYS } from '../src/data/events.js';
 import { tileDef, TRANSPORTS, AMENITIES, NAMED_UPGRADES } from '../src/data/tiles.js';
@@ -451,12 +451,16 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   ok(keysOf(tm2).includes('pocket_park') && keysOf(wf).includes('pocket_park'), 'a tile with no level list is sold everywhere');
 }
 
-// Gateway: no roads, the sea and the airfield laid, the heavy hitters in hand
+// Gateway: no roads, and one big transport in every shop
 {
   const gw = createRun({ modeKey: 'gateway', seed: 3 });
-  ok(gw.board.edges.N === 'water' && gw.board.edges.E === 'apron', 'Gateway starts with the sea to the north and the airfield to the east');
-  ok(['cruise_dock', 'jumbo_jetway'].every(k => gw.shop.cards.some(c => c.key === k)), 'and deals the cruise dock and the jumbo jetway in week 1');
-  ok(gw.money > CONFIG.run.startMoney * 4, 'with a till that can buy one of them');
+  const big = new Set(MODES.gateway.bigSlot);
+  ok(Object.values(gw.board.edges).every(e => e === 'green'), 'Gateway starts with every edge open');
+  ok(gw.shop.cards[0].key === 'train_station' && big.has(gw.shop.cards[2].key), 'and deals a train, a burger and one big transport in week 1');
+  ok(gw.money >= Math.max(...[...big].map(k => tileDef(k)).filter(d => !d.rare).map(d => d.cost)), 'with a till that can buy any one of them');
+  let every = true;
+  for (let w = 2; w <= 12; w++) { gw.week = w; every = every && generateShop(gw).filter(c => big.has(c.key)).length >= 1; }
+  ok(every, 'and every later shop deals at least one as well');
   const pool = r => { r.week = 3; return shopPool(r); };
   ok(!pool(gw).some(d => d.terrain === 'road') && pool(gw).some(d => d.key === 'pontoon') && pool(gw).some(d => d.key === 'hardstand'), 'it sells no road tile, and the pontoon and hardstand stand in');
   ok(!checkPlacement(gw.board, 'parking_lot', 5, 11, 0, MODES.gateway).ok, 'and refuses a road tile on placement');

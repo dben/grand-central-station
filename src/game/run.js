@@ -266,8 +266,8 @@ function applyWeekCash(s) {
 }
 
 // ----------------------------------------------------------------------- shop
-function tileWeight(def, week, mult = 1) {
-  const target = CONFIG.shop.targetCostBase * Math.pow(CONFIG.shop.targetCostGrowth, week - 1) * mult;
+function tileWeight(def, week) {
+  const target = CONFIG.shop.targetCostBase * Math.pow(CONFIG.shop.targetCostGrowth, week - 1);
   const d = Math.log(def.cost / target);
   return Math.exp(-(d * d) / (2 * CONFIG.shop.targetCostSigma * CONFIG.shop.targetCostSigma)) + 0.02;
 }
@@ -302,12 +302,20 @@ export function generateShop(s) {
   const pickTile = (pool) => {
     const filtered = pool.filter(d => !used.has(d.key));
     const use = filtered.length ? filtered : pool;
-    return rng.weighted(use, d => tileWeight(d, s.week, m.shopCostMult || 1));
+    return rng.weighted(use, d => tileWeight(d, s.week));
   };
   const addTile = (pool, slot) => { if (!pool.length) return false; const d = pickTile(pool); used.add(d.key); cards.push(tileCard(d, slot)); return true; };
   const addTransport = slot => addTile(transportPool(s), slot);
   const addAmenity = slot => addTile(amenityPool(s), slot);
   const addRare = slot => addTile([...transportPool(s, true), ...amenityPool(s, true)], slot);
+  // A level's big-transport slot: one card a week from its `bigSlot` list,
+  // any of them equally likely, whatever they cost. Rares on the list wait for
+  // the rare week like any other; an empty list falls back to a transport.
+  const addBig = slot => {
+    const pool = [...transportPool(s), ...transportPool(s, true)].filter(d => m.bigSlot.includes(d.key) && !used.has(d.key));
+    if (!pool.length) return addTransport(slot);
+    const d = rng.pick(pool); used.add(d.key); cards.push(tileCard(d, slot)); return true;
+  };
   const addUpgrade = slot => {
     const keys = upgradableKeys(s).filter(k => !used.has('up:' + k));
     if (!keys.length) return false;
@@ -351,6 +359,7 @@ export function generateShop(s) {
       if (d.kind === 'transport' && (m.banTerrains || []).includes(d.terrain)) continue;
       used.add(key); cards.push(tileCard(d, slot)); slot++;
     }
+    if (m.bigSlot && slot < nSlots) addBig(slot++);
     for (let i = 0; i < transport && slot < nSlots; i++, slot++) addTransport(slot);
     for (let i = 0; i < amenity && slot < nSlots; i++, slot++) addAmenity(slot);
     while (slot < nSlots) { addAmenity(slot); slot++; }
@@ -359,7 +368,8 @@ export function generateShop(s) {
 
   // Every other week: each slot rolls independently, so the mix varies. Kinds
   // with nothing playable behind them are weighted out rather than substituted.
-  for (let i = 0; i < nSlots; i++) {
+  if (m.bigSlot) addBig(0);
+  for (let i = m.bigSlot ? 1 : 0; i < nSlots; i++) {
     const w = { ...CONFIG.shop.slotWeights };
     if (s.week < rules.rareTilesFromWeek) w.rare = 0;
     if (s.week < rules.apUpgradeFromWeek) w.apUpgrade = 0;
