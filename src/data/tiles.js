@@ -5,6 +5,8 @@
 // Amenity fields: shape, tier, radius, rate, mult, flat, cap, dur, revenue,
 //   cost, minWeek, tags, special, walkable (floor travellers cross, not a wall),
 //   ground (paving: drawn flat, with the crowd walking over the top of it).
+// Lounges (special 'waiting') also take stackValue (what each stack adds) and
+//   stackRate (stacks a guest gains a tick; the Chrono Lounge seats them on a full one).
 // Terrain: road | rail | water | apron | corridor | free | underground
 // Underground tiles sit on the ground like any other but run a tunnel on a
 // second layer that nothing else shares (see checkPlacement): `line` says where
@@ -42,26 +44,26 @@ export const TRANSPORTS = {
   // tier 1, and the thing you actually open a water map with.
   water_bus:       { name: 'Water Bus Stop',   shape: 'I2', terrain: 'water',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['waterfront', 'gateway'] },
   pontoon:         { name: 'Pontoon Moorings', shape: 'O4', terrain: 'water',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['waterfront', 'gateway'], walkable: true, ground: true },
-  marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
+  marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 4,  batch: 5,  dep: 4,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
-  helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
-  balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 10, batch: 2,  dep: 10, dwell: 5, mult: 1.19, flat: 18,  cost: 260, minWeek: 4, tags: ['air'] },
+  helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 3,  batch: 3,  dep: 3,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
+  balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 5,  batch: 4,  dep: 5,  dwell: 5, mult: 1.19, flat: 18,  cost: 260, minWeek: 4, tags: ['air'] },
   jetway:          { name: 'Jetway',           shape: 'L3', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 8,  batch: 11, dep: 8,  dwell: 4, mult: 1.18, flat: 27,  cost: 400, minWeek: 6, tags: ['air'] },
   jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L4', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
   // Sky Harbour's own light aircraft, the airside mirror of the bus stop and
   // the car park. Both taxi in from the apron rather than parking on it.
   prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour', 'gateway'], tags: ['air'] },
   hardstand:       { name: 'Hardstand',        shape: 'O4', terrain: 'apron',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['sky_harbour', 'gateway'], tags: ['air'], walkable: true, ground: true },
-  private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 10, batch: 2,  dep: 10, dwell: 4, mult: 1.35, flat: 24,  cost: 760, minWeek: 10, rare: true, tags: ['air'] },
+  private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 3,  batch: 4,  dep: 3,  dwell: 4, mult: 1.45, flat: 24,  cost: 700, minWeek: 10, rare: true, tags: ['air'] },
   ski_lift:        { name: 'Ski Lift',         shape: 'I4', terrain: 'corridor', tier: 2, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.09, flat: 12,  cost: 120,  minWeek: 2 },
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },
   jetpack:         { name: 'Jetpack Rental',   shape: 'I2', terrain: 'free',     tier: 4, arr: 2,  batch: 2,  dep: 2,  dwell: 0, mult: 1.19, flat: 9 ,  cost: 290, minWeek: 6, tags: ['air'] },
-  beam_pad:        { name: 'Beam-Em-Up Pad',   shape: 'O4', terrain: 'free',     tier: 5, arr: 3,  batch: 2,  dep: 3,  dwell: 0, mult: 1.39, flat: 18,  cost: 840, minWeek: 10, rare: true },
+  beam_pad:        { name: 'Beam-Em-Up Pad',   shape: 'O4', terrain: 'free',     tier: 5, arr: 3,  batch: 4,  dep: 3,  dwell: 0, mult: 1.39, flat: 18,  cost: 840, minWeek: 10, rare: true },
   subway:          { name: 'Subway Station',   shape: 'I2', terrain: 'underground', line: 'through', tier: 2, arr: 3,  batch: 4,  dep: 3,  dwell: 1, mult: 1.08, flat: 14,  cost: 150, minWeek: 3 },
   express_subway:  { name: 'Express Subway',   shape: 'I3', terrain: 'underground', line: 'through', tier: 3, arr: 5,  batch: 6,  dep: 5,  dwell: 2, mult: 1.15, flat: 22,  cost: 330, minWeek: 6 },
   under_parking:   { name: 'Underground Parking', shape: 'L3', terrain: 'underground', line: 'road', tier: 1, arr: 1, batch: 2, dep: 1, dwell: 0, mult: 1.02, flat: 30, cost: 110, minWeek: 3 },
   sub_dock:        { name: 'Submarine Dock',   shape: 'I2', terrain: 'underground', line: 'water', tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.22, flat: 16,  cost: 320, minWeek: 5 },
-  loop_terminal:   { name: 'Loop Terminal',    shape: 'O4', terrain: 'free',     tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 1, mult: 1.16, flat: 18,  cost: 600, minWeek: 12, rare: true, special: 'loop', loopChance: 0.30 },
+  loop_terminal:   { name: 'Loop Terminal',    shape: 'O4', terrain: 'free',     tier: 3, arr: 4,  batch: 8,  dep: 4,  dwell: 1, mult: 1.16, flat: 18,  cost: 450, minWeek: 12, rare: true, special: 'loop', loopChance: 0.50 },
 };
 
 export const AMENITIES = {
@@ -91,7 +93,7 @@ export const AMENITIES = {
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
   wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },
   waiting_area:   { name: 'Waiting Area',      shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 20, dur: 0, revenue: 0,  cost: 49,  minWeek: 2, special: 'waiting', walkable: true, ground: true },
-  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 35,  minWeek: 3, special: 'walkway', ground: true },
+  walkway:        { name: 'Moving Walkway',    shape: 'I4', tier: 0, radius: 0, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 28,  minWeek: 3, special: 'walkway', ground: true },
   art_gallery:    { name: 'Art Gallery',       shape: 'T4', tier: 3, radius: 4, rate: 0.4 , mult: 3.45, flat: 160, cap: 10, dur: 4, revenue: 18, cost: 115, minWeek: 6 },
   lounge:         { name: 'Travel Lounge',     shape: 'S5', tier: 3, radius: 3, rate: 0.54, mult: 3.27, flat: 120, cap: 14, dur: 3, revenue: 20, cost: 133, minWeek: 7 },
   designer:       { name: 'Designer Shop',     shape: 'L4', tier: 4, radius: 3, rate: 0.36, mult: 4.15, flat: 180, cap: 8,  dur: 4, revenue: 35, cost: 168, minWeek: 8 },
@@ -100,10 +102,10 @@ export const AMENITIES = {
   // A two-cell booth. Its fence runs edge to edge along the grid line between
   // its two cells (see checkpointLine in sim/board.js); the booth is the only way through.
   gate:           { name: 'Security Checkpoint', shape: 'I2', tier: 0, radius: 0, rate: 0,  mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 90,  minWeek: 6, special: 'gate', walkable: true },
-  flier_club:     { name: 'Frequent Flier Club', shape: 'O6', tier: 4, radius: 3, rate: 0,  mult: 1,    flat: 0,  cap: 10, dur: 0, revenue: 25, cost: 210, minWeek: 9, special: 'waiting', walkable: true },
+  flier_club:     { name: 'Frequent Flier Club', shape: 'O6', tier: 4, radius: 5, rate: 0,  mult: 1,    flat: 0,  cap: 16, dur: 0, revenue: 25, cost: 180, minWeek: 9, special: 'waiting', walkable: true },
   // Sci-fi rares (week 12+, wildcard slot only)
   drone_swarm:    { name: 'Drone Vending Swarm', shape: 'I2', tier: 0, radius: 7, rate: 0.54, mult: 2.05, flat: 80, cap: 6, dur: 1, revenue: 6, cost: 182, minWeek: 12, rare: true, special: 'anytier' },
-  chrono_lounge:  { name: 'Chrono Lounge',     shape: 'O4', tier: 0, radius: 3, rate: 0,    mult: 1,    flat: 0,  cap: 6,  dur: 0, revenue: 10, cost: 196, minWeek: 12, rare: true, special: 'waiting', stackValue: 0.43, walkable: true },
+  chrono_lounge:  { name: 'Chrono Lounge',     shape: 'O4', tier: 0, radius: 5, rate: 0,    mult: 1,    flat: 0,  cap: 12, dur: 0, revenue: 10, cost: 196, minWeek: 12, rare: true, special: 'waiting', stackValue: 0.43, stackRate: 6, walkable: true },
   nanofab:        { name: 'Nanofab Boutique',  shape: 'L3', tier: 0, radius: 3, rate: 0.5 , mult: 3.63, flat: 140, cap: 5,  dur: 3, revenue: 22, cost: 224, minWeek: 12, rare: true, special: 'anytier' },
 };
 

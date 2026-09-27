@@ -105,7 +105,8 @@ export const CONFIG = {
     ticks: 24,                  // 16 ticks of arrivals, then 8 to clear the board
     spawnTicks: 16,
     lastCallDeparture: true,   // every transport fires a final departure on the last tick; only walkers are stranded
-    walkwaySpeed: 2,            // cells per tick while on a moving walkway
+    walkwaySpeed: 3,            // cells per tick while on a moving walkway
+    walkwayPull: 1.5,           // shops draw this much harder on a traveller riding a walkway
     waypointCount: 2,
     waypointSigma: 1.5,         // gaussian spread (cells) around the straight line
     sameTileWanderSigma: 2.5,   // spread when destination == origin (a wander)
@@ -151,7 +152,7 @@ export const CONFIG = {
     // worth roughly what an amenity's chain bonus is worth; at 0.10 a lounge was
     // a dead 4-cell block that only ever caught a handful of travellers.
     waitingStackValue: 0.24,               // final_multiplier = 1 + stacks * this
-    frequentFlierStackValue: 0.38,
+    frequentFlierStackValue: 0.5,
     frequentFlierMinTier: 3,
     strikeSkeletonBatch: 0.25,   // batch left running when the struck terrain is the only one on the board
     // Bad actors

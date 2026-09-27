@@ -114,6 +114,18 @@ ok(r1.counts.spawned > 0 && r1.score > 0, 'travellers spawn and score');
 ok(Object.values(r1.tileStats).some(s => s.serves > 0), 'amenities serve');
 for (const a of r1.agents) { if (a.frames.length !== a.endTick - a.spawnTick + 2) { ok(false, `frame count for agent ${a.id}: ${a.frames.length} vs ${a.endTick - a.spawnTick + 2}`); break; } }
 
+// the Chrono Lounge seats a guest on their whole stack; a Waiting Area builds it a tick at a time
+{
+  const firstStacks = key => {
+    const cb = createBoard(12, 12);
+    for (const [k, x, y] of [['train_station', 4, 0], ['bus_stop', 3, 10], [key, 1, 8]]) placeTile(cb, k, x, y, 0);
+    return simulateWeek(cb, { seed: 7, week: 3 }).agents.flatMap(a => { const s = a.events.find(e => e.type === 'stack'); return s ? [[a.tier, s.stacks]] : []; });
+  };
+  const chrono = firstStacks('chrono_lounge'), wait = firstStacks('waiting_area');
+  ok(chrono.length > 0 && chrono.every(([tier, s]) => s === CONFIG.tiers[tier - 1].waitCap), 'a Chrono Lounge guest gets their full stack the tick they sit down');
+  ok(wait.length > 0 && wait.every(([, s]) => s === 1), 'a Waiting Area guest starts on one stack');
+}
+
 // weather: a front slips only the timetables it names
 {
   const wx = mods => simulateWeek(b, { seed: 7, week: 3, mods });

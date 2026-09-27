@@ -48,15 +48,15 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Cost | Median | Best | Per $100 | Cash | Why |
 |---|---|---|---|---|---|---|---|
-| Pontoon Moorings ᴬ | transport | 39 | 14.2 | 18.5 | **36.5** | 115 | The Parking Lot's numbers at 60% of the price, because Waterfront discounts water by 40%. |
-| Charter Bus | card | 50 | 18.0 | 18.0 | **35.9** | — | 40 extra travellers who walk the chain you already built. Pure upside. |
-| Coupon Book | card | 60 | 17.6 | 17.6 | **29.4** | — | Twice the crowd for one week, at half fares and half takings. Worth most on a board with room to serve them. |
-| Parking Lot | transport | 65 | 13.9 | 18.6 | **21.4** | 115 | Two travellers every single tick, and you can walk over it. The reason it is the week-1 card. |
-| Water Bus Stop ᴬ | transport | 47 | 9.9 | 13.9 | **21.1** | 84 | The Bus Stop, discounted the same way. |
-| Hardstand ᴬ | transport | 68 | 13.5 | 19.8 | **19.9** | 114 | The Parking Lot airside, at full price. Its best spot is half again its median — it wants to be on the walking line. |
-| Overtime | card | 40 | 6.3 | 6.3 | **15.8** | — | Two action points for $40. Time is the scarcest thing in the game. |
-| Bike Rental | transport | 52 | 7.4 | 10.0 | **14.3** | 64 | Cheap, small, constant. |
-| Rideshare Zone | transport | 104 | 14.7 | 19.7 | **14.1** | 134 | The best-paying road tile outright; the L3 is awkward, which is the price. |
+| Charter Bus | card | 50 | 18.6 | 18.6 | **37.1** | — | 40 extra travellers who walk the chain you already built. Pure upside. |
+| Pontoon Moorings ᴬ | transport | 39 | 13.7 | 18.4 | **35.2** | 112 | The Parking Lot's numbers at 60% of the price, because Waterfront discounts water by 40%. |
+| Coupon Book | card | 60 | 17.9 | 17.9 | **29.8** | — | Twice the crowd for one week, at half fares and half takings. Worth most on a board with room to serve them. |
+| Parking Lot | transport | 65 | 13.7 | 18.4 | **21.1** | 116 | Two travellers every single tick, and you can walk over it. The reason it is the week-1 card. |
+| Hardstand ᴬ | transport | 68 | 13.5 | 23.3 | **19.8** | 108 | The Parking Lot airside, at full price. Its best spot is half again its median — it wants to be on the walking line. |
+| Water Bus Stop ᴬ | transport | 47 | 8.8 | 13.2 | **18.6** | 77 | The Bus Stop, discounted the same way. |
+| Overtime | card | 40 | 6.5 | 6.5 | **16.2** | — | Two action points for $40. Time is the scarcest thing in the game. |
+| Bike Rental | transport | 52 | 7.5 | 9.9 | **14.4** | 65 | Cheap, small, constant. |
+| Rideshare Zone | transport | 104 | 14.5 | 19.6 | **13.9** | 140 | The best-paying road tile outright; the L3 is awkward, which is the price. |
 
 ᴬ = sold on one level only.
 
@@ -64,49 +64,49 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Cost | Median | Best | Per $100 | Cash | Why |
 |---|---|---|---|---|---|---|---|
-| Temp Staff | card | 70 | 9.5 | 9.5 | 13.5 | — | Two action points a week for three weeks. Worse per point than Overtime, but it keeps paying. |
-| Bus Stop | transport | 78 | 9.8 | 12.7 | 12.5 | 80 | Five at a time every four ticks. |
-| Information Kiosk | amenity | 17 | 2.1 | 3.0 | 12.5 | 10 | One cell, radius 4. The filler tile. |
-| Newsstand | amenity | 26 | 3.1 | 4.6 | 12.0 | 32 | Two cells, radius 3, never a mistake. |
-| Burger Joint | amenity | 52 | 6.0 | 7.8 | 11.6 | 65 | The best ordinary shop in the game and the other week-1 card. ×2.40 on three cells. |
-| Prop Plane Stand ᴬ | transport | 82 | 9.2 | 14.6 | 11.2 | 77 | The Bus Stop airside, at full price. |
-| Coffee Shop | amenity | 57 | 6.4 | 7.9 | 11.2 | 84 | Radius 4 and a 0.72 pull: it catches people the others miss. |
-| Green Space | amenity | 38 | 4.2 | 4.8 | 11.0 | -3 | Restores a stop budget instead of spending one, so it makes every shop behind it worth more. |
-| Pocket Park | amenity | 19 | 2.1 | 3.0 | 10.9 | -1 | Green Space on one square. Slightly worse per dollar, much better per cell. |
-| Coffee Cart | amenity | 30 | 3.2 | 4.3 | 10.5 | 40 | Half a Coffee Shop for half the price and a quarter of the floor. |
-| Food Stand | amenity | 35 | 3.4 | 4.9 | 9.8 | 40 | ×1.70 on two cells. |
-| Pizza Place | amenity | 66 | 6.4 | 8.2 | 9.6 | 60 | The `$$` Burger Joint. |
-| Underground Parking | transport | 143 | 13.2 | 18.3 | 9.2 | 110 | The Parking Lot that goes anywhere. Worth roughly double for the freedom. |
-| Souvenir Cart | amenity | 40 | 3.3 | 5.1 | 8.2 | 47 | One cell, ×2.30, and $47 a week. |
-| Restroom | amenity | 31 | 2.4 | 3.5 | 7.9 | -3 | The highest pull in the game at 0.81, and it pays nothing. It is a chain link, not a shop. |
+| Temp Staff | card | 70 | 9.7 | 9.7 | 13.9 | — | Two action points a week for three weeks. Worse per point than Overtime, but it keeps paying. |
+| Bus Stop | transport | 78 | 10.0 | 12.9 | 12.8 | 81 | Five at a time every four ticks. |
+| Burger Joint | amenity | 52 | 6.2 | 8.2 | 11.9 | 62 | The best ordinary shop in the game and the other week-1 card. ×2.40 on three cells. |
+| Newsstand | amenity | 26 | 3.0 | 4.5 | 11.7 | 31 | Two cells, radius 3, never a mistake. |
+| Information Kiosk | amenity | 17 | 1.9 | 3.1 | 11.4 | 10 | One cell, radius 4. The filler tile. |
+| Prop Plane Stand ᴬ | transport | 82 | 9.2 | 17.3 | 11.3 | 75 | The Bus Stop airside, at full price. |
+| Green Space | amenity | 38 | 4.2 | 5.1 | 11.0 | -2 | Restores a stop budget instead of spending one, so it makes every shop behind it worth more. |
+| Coffee Shop | amenity | 57 | 6.1 | 8.3 | 10.7 | 79 | Radius 4 and a 0.72 pull: it catches people the others miss. |
+| Pocket Park | amenity | 19 | 2.0 | 2.9 | 10.4 | -1 | Green Space on one square. Slightly worse per dollar, much better per cell. |
+| Coffee Cart | amenity | 30 | 3.0 | 4.3 | 10.2 | 38 | Half a Coffee Shop for half the price and a quarter of the floor. |
+| Food Stand | amenity | 35 | 3.3 | 5.1 | 9.6 | 38 | ×1.70 on two cells. |
+| Pizza Place | amenity | 66 | 6.2 | 8.6 | 9.4 | 76 | The `$$` Burger Joint. |
+| Underground Parking | transport | 143 | 12.9 | 18.1 | 9.0 | 113 | The Parking Lot that goes anywhere. Worth roughly double for the freedom. |
+| Restroom | amenity | 31 | 2.6 | 3.7 | 8.3 | -3 | The highest pull in the game at 0.81, and it pays nothing. It is a chain link, not a shop. |
+| Souvenir Cart | amenity | 40 | 3.2 | 5.1 | 8.0 | 47 | One cell, ×2.30, and $47 a week. |
 | Sports Bar | amenity | 95 | 7.0 | 9.1 | 7.3 | 79 | The dearest shop that still pays its way on the numbers alone. Up from B when the Handcar joined the list and moved the cut. |
 
 ## B — situational, or fine but not exciting
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
-| Taxi Stand | transport | transport | 117 | 8.3 | 10.5 | 7.1 | 70 |
-| Clothing Store | amenity | amenity | 92 | 6.3 | 8.3 | 6.9 | 96 |
-| Cash Machine | amenity | premium | 42 | 2.6 | 4.5 | 6.2 | 43 |
+| Taxi Stand | transport | transport | 117 | 8.2 | 10.7 | 7.1 | 74 |
+| Clothing Store | amenity | amenity | 92 | 6.3 | 8.7 | 6.8 | 123 |
+| Art Gallery | amenity | premium | 143 | 9.0 | 11.6 | 6.3 | 96 |
 | Handcar | transport | transport | 72 | 4.4 | 6.8 | 6.1 | 45 |
-| Art Gallery | amenity | premium | 143 | 8.6 | 12.2 | 6.0 | 100 |
-| Subway Station | transport | transport | 195 | 10.9 | 15.7 | 5.6 | 98 |
-| Tram Stop | transport | transport | 169 | 8.9 | 12.3 | 5.3 | 72 |
-| Travel Lounge | amenity | premium | 165 | 8.6 | 10.9 | 5.2 | 122 |
-| Currency Exchange | amenity | premium | 83 | 4.2 | 7.5 | 5.0 | 59 |
-| Vending Machine | amenity | amenity | 14 | 0.7 | 1.4 | 4.7 | 5 |
-| Train Station | transport | transport | 234 | 10.0 | 12.2 | 4.3 | 82 |
-| Ferry Terminal | transport | transport | 260 | 10.4 | 13.0 | 4.0 | 83 |
-| Jetpack Rental | transport | transport | 377 | 14.3 | 17.0 | 3.8 | 184 |
-| Water Taxi | transport | transport | 195 | 7.3 | 9.3 | 3.7 | 70 |
-| Ski Lift | transport | transport | 156 | 5.8 | 8.5 | 3.7 | 52 |
-| Monorail | transport | transport | 364 | 12.1 | 14.7 | 3.3 | 118 |
-| Express Subway | transport | transport | 429 | 14.1 | 16.9 | 3.3 | 140 |
-| Car Rental | transport | transport | 182 | 5.9 | 8.0 | 3.2 | 53 |
-| Drone Vending Swarm ★ | amenity | premium | 226 | 6.9 | 8.7 | 3.1 | 58 |
-| Cruise Ship Dock | transport | transport | 676 | 20.5 | 22.5 | 3.0 | 179 |
-| Nanofab Boutique ★ | amenity | premium | 278 | 8.3 | 11.9 | 3.0 | 128 |
-| Express Train | transport | transport | 416 | 12.4 | 14.1 | 3.0 | 113 |
+| Subway Station | transport | transport | 195 | 11.5 | 15.7 | 5.9 | 104 |
+| Cash Machine | amenity | premium | 42 | 2.3 | 4.7 | 5.4 | 41 |
+| Tram Stop | transport | transport | 169 | 8.9 | 11.8 | 5.3 | 77 |
+| Travel Lounge | amenity | premium | 165 | 8.5 | 10.6 | 5.1 | 118 |
+| Currency Exchange | amenity | premium | 83 | 3.7 | 7.5 | 4.5 | 54 |
+| Chrono Lounge ★ | amenity | premium | 243 | 10.8 | 12.2 | 4.4 | 122 |
+| Vending Machine | amenity | amenity | 14 | 0.6 | 1.4 | 4.4 | 5 |
+| Private Terminal ★ | transport | transport | 910 | 38.7 | 42.2 | 4.3 | 562 |
+| Loop Terminal ★ | transport | transport | 585 | 23.7 | 26.7 | 4.0 | 226 |
+| Marina | transport | transport | 455 | 18.4 | 21.8 | 4.0 | 234 |
+| Train Station | transport | transport | 234 | 9.5 | 12.3 | 4.0 | 84 |
+| Ski Lift | transport | transport | 156 | 6.1 | 8.9 | 3.9 | 54 |
+| Jetpack Rental | transport | transport | 377 | 14.6 | 16.5 | 3.9 | 183 |
+| Water Taxi | transport | transport | 195 | 7.2 | 9.5 | 3.7 | 69 |
+| Frequent Flier Club | amenity | premium | 223 | 8.1 | 8.1 | 3.6 | 132 |
+| Ferry Terminal | transport | transport | 260 | 9.4 | 12.7 | 3.6 | 82 |
+| Beam-Em-Up Pad ★ | transport | transport | 1092 | 38.7 | 41.6 | 3.5 | 562 |
+| Helipad | transport | transport | 494 | 17.1 | 18.7 | 3.5 | 209 |
 
 ★ = rare.
 
@@ -114,34 +114,34 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
+| Monorail | transport | transport | 364 | 11.8 | 14.1 | 3.3 | 116 |
+| Car Rental | transport | transport | 182 | 5.8 | 8.3 | 3.2 | 57 |
+| Express Subway | transport | transport | 429 | 13.7 | 16.6 | 3.2 | 140 |
+| Hot Air Balloon | transport | transport | 338 | 10.7 | 12.7 | 3.2 | 96 |
+| Drone Vending Swarm ★ | amenity | premium | 226 | 6.9 | 8.2 | 3.1 | 58 |
+| Cruise Ship Dock | transport | transport | 676 | 19.8 | 22.5 | 2.9 | 180 |
+| Nanofab Boutique ★ | amenity | premium | 278 | 8.1 | 11.6 | 2.9 | 127 |
+| Express Train | transport | transport | 416 | 12.1 | 14.2 | 2.9 | 112 |
 | Cafeteria | amenity | amenity | 113 | 3.1 | 5.0 | 2.8 | 72 |
-| Jetway | transport | transport | 520 | 14.1 | 18.0 | 2.7 | 135 |
 | Jumbo Jetway | transport | transport | 884 | 23.6 | 29.6 | 2.7 | 247 |
-| Alpine Lift | transport | transport | 286 | 7.5 | 9.5 | 2.6 | 70 |
-| Limo Service | transport | transport | 312 | 7.9 | 9.3 | 2.5 | 93 |
-| Grand Opening | card | amenity | 70 | 1.7 | 1.7 | 2.5 | — |
-| Double Shift | named upgrade | amenity | 220 | 5.2 | 5.2 | 2.4 | — |
-| Designer Shop | amenity | premium | 208 | 4.9 | 10.0 | 2.3 | 82 |
-| Security Guard | utility | amenity | 40 | 0.8 | 1.3 | 2.0 | 0 |
-| Security Station | utility | amenity | 87 | 1.7 | 2.0 | 1.9 | 0 |
-| Beam-Em-Up Pad ★ | transport | transport | 1092 | 20.7 | 22.7 | 1.9 | 285 |
-| Waiting Area | amenity | premium | 61 | 1.1 | 3.8 | 1.8 | 0 |
-| Security Checkpoint | utility | amenity | 112 | 1.5 | 3.5 | 1.3 | 0 |
-| Helipad | transport | transport | 494 | 5.7 | 6.6 | 1.2 | 68 |
-| Loop Terminal ★ | transport | transport | 780 | 9.0 | 11.4 | 1.2 | 83 |
-| Renovation | named upgrade | amenity | 240 | 2.5 | 2.5 | 1.1 | — |
+| Jetway | transport | transport | 520 | 13.5 | 18.0 | 2.6 | 134 |
+| Alpine Lift | transport | transport | 286 | 7.4 | 9.2 | 2.6 | 71 |
+| Limo Service | transport | transport | 312 | 7.8 | 9.5 | 2.5 | 91 |
+| Double Shift | named upgrade | amenity | 220 | 5.1 | 5.1 | 2.3 | — |
+| Grand Opening | card | premium | 70 | 1.6 | 1.6 | 2.2 | — |
+| Designer Shop | amenity | premium | 208 | 4.5 | 9.8 | 2.2 | 63 |
 
 ## D — hard to justify on the numbers
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
+| Security Guard | utility | amenity | 40 | 0.8 | 1.3 | 2.0 | 0 |
+| Waiting Area | amenity | premium | 61 | 1.0 | 4.4 | 1.7 | 0 |
+| Security Station | utility | amenity | 87 | 1.3 | 1.7 | 1.5 | 0 |
+| Security Checkpoint | utility | premium | 112 | 1.3 | 2.2 | 1.2 | 0 |
+| Renovation | named upgrade | amenity | 240 | 2.6 | 2.6 | 1.1 | — |
+| Moving Walkway | utility | amenity | 35 | 0.4 | 0.7 | 1.0 | 1 |
 | WiFi Hotspot | utility | amenity | 48 | 0.5 | 0.8 | 1.0 | 0 |
-| Hot Air Balloon | transport | transport | 338 | 2.9 | 4.4 | 0.9 | 25 |
-| Marina | transport | transport | 455 | 4.0 | 4.9 | 0.9 | 47 |
-| Chrono Lounge ★ | amenity | premium | 243 | 1.9 | 5.9 | 0.8 | 56 |
-| Private Terminal ★ | transport | transport | 988 | 6.9 | 8.1 | 0.7 | 96 |
-| Moving Walkway | utility | amenity | 43 | 0.2 | 0.5 | 0.6 | 0 |
-| Frequent Flier Club | amenity | premium | 260 | 0.4 | 5.1 | 0.2 | 40 |
 | Fast Pass | card | amenity | 60 | 0.0 | 0.0 | 0.0 | — |
 
 ---
@@ -154,14 +154,14 @@ quota the ordinance adds, on the bench it suited best.
 | Ordinance | Grade | Share of quota | Note |
 |---|---|---|---|
 | Staff Expansion | **S** | *not measured* | +1 action point every week for the rest of the run, at +15% prices. Overtime grades S for buying two points once; this buys one every week. Graded by hand. |
-| Night Service | **S** | +39.8% | Six more ticks and four more spawn ticks against a 15% quota rise. The longest lever in the game. |
-| Wayfinding Signs | **A** | +17.1% | +1 radius on every shop, −15% capacity. On a dense board the radius wins easily. |
-| Tourist Board | **A** | +9.2% | Two-tier gaps pull at 0.6 instead of 0.25. Worth nothing on a single-tier board and a lot on a mixed one — it measured 0% on the budget bench and +9% on the premium one. |
-| Express Charter | **A** | +7.4% | +0.25 on every exit multiplier, −0.10 on every shop's. Good on a transport-heavy board. |
+| Night Service | **S** | +39.9% | Six more ticks and four more spawn ticks against a 15% quota rise. The longest lever in the game. |
+| Wayfinding Signs | **A** | +16.1% | +1 radius on every shop, −15% capacity. On a dense board the radius wins easily. |
+| Tourist Board | **A** | +9.0% | Two-tier gaps pull at 0.6 instead of 0.25. Worth nothing on a single-tier board and a lot on a mixed one — it measured 0% on the budget bench and +9% on the premium one. |
+| Express Charter | **A** | +7.8% | +0.25 on every exit multiplier, −0.10 on every shop's. Good on a transport-heavy board. |
 | Zoning Variance | **B** | *not measured* | Half your money back on a demolition, and the action point is free. It changes what a mistake costs rather than what a week scores. Graded by hand. |
 | Loyalty Scheme | **C** | +0.0% | One more stop, half fares. The stop budget is almost never what binds — the week is (§6.3) — so this is the half-fare clause with nothing attached. |
 | Union Contract | **C** | −0.4% | +2 dwell, −20% capacity. Near enough free, and it does nothing for you. |
-| Retail Compact | **D** | −9.4% | Double revenue, half the flat bonus. You are selling score for cash at a poor rate. |
+| Retail Compact | **D** | −10.0% | Double revenue, half the flat bonus. You are selling score for cash at a poor rate. |
 
 ## Cards with nothing to measure
 
@@ -176,8 +176,8 @@ quota the ordinance adds, on the bench it suited best.
 ## What the list says
 
 - **Cheap tier-1 transport leads the field.** Parking Lot, Bike Rental, Bus Stop and the four
-  level-exclusive water and air tiles all sit at 11–37★ per $100, against 8–12 for good shops
-  and 3–4 for the big late transports. That is the intended shape: a platform is what feeds the
+  level-exclusive water and air tiles all sit at 11–35★ per $100, against 7–12 for good shops
+  and 2.5–4.3 for the big late transports. That is the intended shape: a platform is what feeds the
   chain, and the chain is where the points are, so a cheap feeder beats an expensive one. It
   survived the multiplier compression intact, which was the thing worth checking: pulling every
   multiplier toward 1 takes proportionally more off a shop than off a platform, so the shops did
@@ -186,30 +186,44 @@ quota the ordinance adds, on the bench it suited best.
 - **Coupon Book was the outlier and has been cut.** It read 160★ per $100 — five times the best
   tile — as two weeks of double crowd for $30, and half fares cost almost nothing because fares
   are a small share of the score (`economy.fareScale` is 0.35). It now runs one week at $60 and
-  halves shop takings as well as fares, which reads 29.4 and puts it under Charter Bus, the other
+  halves shop takings as well as fares, which reads 29.8 and puts it under Charter Bus, the other
   card that buys a crowd (§15).
 - **Action points are the real currency.** Overtime and Temp Staff grade S on nothing but the
   tiles they let you buy, and Staff Expansion is the best ordinance for the same reason.
 - **Utility tiles grade low and that is correct.** WiFi Hotspot, Moving Walkway, Waiting Area and
   the Security Checkpoint are bought for what they do to the tiles around them; a bench with four
   tiles on it has almost nothing for them to do. Read them on `sensitivity.mjs` against a real
-  board instead, where the Checkpoint's best spot is worth 19–47★ on the bot's week-9 boards. The
-  Checkpoint moved up a grade when its fence stopped shortening against a building's flank and its
+  board instead. On the bot's week-9 board 1001 (24 seeds) the WiFi Hotspot's median spot is worth
+  5.3★ against the Coffee Shop's 3.9★, and it costs less, so it was left alone when the rest
+  of the old D grade was reworked. The Moving Walkway was not: it read a median 1.1★ there and a
+  best of 7.1★, and now carries riders 3 squares a tick past shops that draw them 50% harder, for
+  $28 — median 1.7★, best 11.7★. Its median stays low because a belt nobody walks along does
+  nothing, and most of the squares on a board are that. The Checkpoint's best spot is worth
+  19–47★ on the bot's week-9 boards. The Checkpoint moved up a grade when its fence stopped shortening against a building's flank and its
   crossing went to ×1.5 (design doc §15); on a five-tile bench that reads as a median 1.5★ instead
   of 1.0★, which is still the wrong bench for it.
-- **Two D grades are placement, not power.** Frequent Flier Club reads 0.4★ at its median spot and
-  5.1★ at its best, and Chrono Lounge 1.9 against 5.9. Both are lounges: they are worth nothing
-  where nobody waits and a great deal on a platform's doorstep. A median is the wrong summary for
-  a tile with that shape, which is why `best` is in the table.
+- **The late tiles no longer sit at the bottom.** The D grade used to be mostly late transports
+  that brought two travellers every eight or ten ticks, four a week: the Hot Air Balloon (0.8),
+  the Marina (0.9) and the Private Terminal (0.7), with the Helipad, the Loop Terminal and the
+  Beam-Em-Up Pad just above them in C. Each now brings a real crowd (design doc §15), and the order
+  follows the week they go on sale: the week-4 Balloon at 3.2, the week-5 Helipad 3.5, the week-6
+  Marina 4.1, and the three rares 3.5–4.3. They still pay less per dollar than a Parking Lot,
+  which is the shape the list wants, but by the week they are sold money is the thing a run has
+  plenty of.
+- **The two late lounges reached further.** The Frequent Flier Club read 0.3★ at its median spot
+  and 5.9★ at its best, the Chrono Lounge 1.8 against 6.2: a lounge only works where people wait,
+  and with a radius of 3 most of the bench was out of reach of any platform. Both now reach 5
+  squares. The Club stacks at 0.50 and costs $180 (3.7); the Chrono Lounge seats a guest on their
+  whole stack at once, so it pays beside a car park where nobody waits more than a tick (4.4).
 - **Fast Pass measures at exactly zero**, and that is a genuine reading rather than a bench
   artifact: two more stops does nothing while the *week* is what binds, not the stop budget
   (§6.3). It would only matter on a board dense enough that a `$` traveller runs out of budget
   with time to spare.
-- **The one-square shops landed where they were aimed.** Pocket Park 10.9 against Green Space
-  11.0, Coffee Cart 10.5 against Coffee Shop 11.2: clearly less per tile, slightly less per
+- **The one-square shops landed where they were aimed.** Pocket Park 10.4 against Green Space
+  11.0, Coffee Cart 10.2 against Coffee Shop 10.7: clearly less per tile, slightly less per
   dollar, far better per cell. On a 12×12 board the big version is still the better buy; on
   Junction's 9×9 or a Sky Harbour half, floor is the currency that is short.
-- **Cash Machine is deliberately outside the ranking.** 6.2★ per $100 puts it in B, but $43 a
+- **Cash Machine is deliberately outside the ranking.** 5.4★ per $100 puts it in B, but $41 a
   week on one square is the best revenue per cell in the catalogue. It is bought for the till.
 
 ## Known limits of the method
