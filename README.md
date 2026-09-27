@@ -16,8 +16,9 @@ or airfield for good, so space and edges run out. Every fourth week brings an ev
 rules, and at set weeks you pick a permanent ordinance. Clear week 16 to win, then keep going for
 as long as you can; the quota climbs faster from then on.
 
-There are six levels, from the standard 12×12 Terminal to a cramped 9×9 junction, a waterfront and
-a long airport split by a security fence, and three difficulties. Standard lets you take a week
+There are seven levels, from the standard 12×12 Terminal to a cramped 9×9 junction, a waterfront,
+a long airport split by a security fence, and a road-free gateway built for cruise ships and jumbo
+jets, and three difficulties. Standard lets you take a week
 back before you run it; Hard and Extreme raise the quota and prices, cut income, and keep every
 move you make.
 
