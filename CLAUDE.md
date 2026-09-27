@@ -21,6 +21,7 @@ node harness/cardart.mjs                           # redraw the transport card h
 node harness/isoart.mjs                            # bake the tile drawings (harness/tileart.mjs) into assets/iso/ and assets/ground/
 node harness/shopgen.mjs burger --tries 2           # paint a shop's art with an image model (OpenRouter), fit it to the footprint -> assets/shops/
 node harness/floorgen.mjs waiting_area               # repaint a walk-through tile's art in more detail, guided by its code art -> assets/floors/
+node harness/upscale.mjs bus_stop                     # upscale a transport and its vehicles: colours from a painting, shapes kept -> assets/paint/
 node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --blocks for plain blocks)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)

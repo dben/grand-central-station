@@ -370,9 +370,10 @@ function floorFrames(key) {
 function upscaled(key, frames) {
   const logf = resolve(root, 'assets/paint/log.json'), log = existsSync(logf) ? JSON.parse(readFileSync(logf, 'utf8'))[key] : null;
   const pic = m => resolve(root, `assets/paint/${key}_${m}.png`);
-  if (!log || !log.code || ![0, 1, 2, 3].every(m => existsSync(pic(m)) && log.code[m])) return false;
+  // a turn with no painting (the painting fitted too badly to use) keeps its code colours, at the same density
+  if (!log || !log.code || ![0, 1, 2, 3].every(m => log.code[m]) || ![0, 1, 2, 3].some(m => existsSync(pic(m)))) return false;
   frames.forEach((fr, m) => {
-    const img = decodePng(readFileSync(pic(m))), [cx, cy] = log.code[m];
+    const img = existsSync(pic(m)) ? decodePng(readFileSync(pic(m))) : { w: 0, h: 0, data: [] }, [cx, cy] = log.code[m];
     const over = new Map((fr.over ? fr.over.list : []).map(q => [q.X + ',' + q.Y, q]));
     for (const l of ['floor', 'over']) {
       if (!fr[l]) continue;

@@ -1,0 +1,4527 @@
+{
+ "bus_stop": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_bus_stop_g0_1790543821389_muse-image.png",
+    "overlap": 0.838,
+    "drift": 43.5,
+    "cover": 0.927
+   },
+   {
+    "raw": "up_bus_stop_g0_1790543821389_muse-image.png",
+    "overlap": 0.78,
+    "drift": 44.8,
+    "cover": 0.925
+   },
+   {
+    "raw": "up_bus_stop_g0_1790543821389_muse-image.png",
+    "overlap": 0.819,
+    "drift": 44.2,
+    "cover": 0.965
+   },
+   {
+    "raw": "up_bus_stop_g0_1790543821389_muse-image.png",
+    "overlap": 0.849,
+    "drift": 41.9,
+    "cover": 0.959
+   }
+  ]
+ },
+ "bus_stop_veh0": {
+  "code": [
+   [
+    -23,
+    0
+   ],
+   [
+    -63,
+    -9
+   ],
+   [
+    -5,
+    -9
+   ],
+   [
+    -37,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
+    "overlap": 0.775,
+    "drift": 49.5,
+    "cover": 0.904
+   },
+   {
+    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
+    "overlap": 0.783,
+    "drift": 52.1,
+    "cover": 0.897
+   },
+   {
+    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
+    "overlap": 0.912,
+    "drift": 35,
+    "cover": 0.982
+   },
+   {
+    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
+    "overlap": 0.855,
+    "drift": 39.5,
+    "cover": 0.975
+   }
+  ]
+ },
+ "bike_rental": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_bike_rental_g0_1790547813339_muse-image.png",
+    "overlap": 0.908,
+    "drift": 56.4,
+    "cover": 0.937
+   },
+   {
+    "raw": "up_bike_rental_g0_1790542560985_muse-image.png",
+    "overlap": 0.83,
+    "drift": 47,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_bike_rental_g0_1790542560985_muse-image.png",
+    "overlap": 0.819,
+    "drift": 47.8,
+    "cover": 0.953
+   },
+   {
+    "raw": "up_bike_rental_g0_1790547813339_muse-image.png",
+    "overlap": 0.907,
+    "drift": 56.6,
+    "cover": 0.974
+   }
+  ]
+ },
+ "taxi_stand": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_taxi_stand_g0_1790542576967_muse-image.png",
+    "overlap": 0.903,
+    "drift": 49.9,
+    "cover": 0.965
+   },
+   {
+    "raw": "up_taxi_stand_g0_1790547838266_muse-image.png",
+    "overlap": 0.874,
+    "drift": 43.8,
+    "cover": 0.98
+   },
+   {
+    "raw": "up_taxi_stand_g0_1790547838266_muse-image.png",
+    "overlap": 0.873,
+    "drift": 43.1,
+    "cover": 0.977
+   },
+   {
+    "raw": "up_taxi_stand_g0_1790542576967_muse-image.png",
+    "overlap": 0.911,
+    "drift": 50.9,
+    "cover": 0.963
+   }
+  ]
+ },
+ "taxi_stand_veh0": {
+  "code": [
+   [
+    -23,
+    8
+   ],
+   [
+    -15,
+    0
+   ],
+   [
+    35,
+    21
+   ],
+   [
+    -39,
+    29
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
+    "overlap": 0.835,
+    "drift": 62.8,
+    "cover": 0.928
+   },
+   {
+    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
+    "overlap": 0.847,
+    "drift": 56.3,
+    "cover": 0.969
+   },
+   {
+    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
+    "overlap": 0.664,
+    "drift": 70,
+    "cover": 0.974
+   },
+   {
+    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
+    "overlap": 0.735,
+    "drift": 65.8,
+    "cover": 0.986
+   }
+  ]
+ },
+ "taxi_stand_veh1": {
+  "code": [
+   [
+    -3,
+    18
+   ],
+   [
+    -35,
+    10
+   ],
+   [
+    15,
+    11
+   ],
+   [
+    -19,
+    19
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_taxi_stand_veh_g0_1790549926310_muse-image.png",
+    "overlap": 0.671,
+    "drift": 85.5,
+    "cover": 0.991
+   },
+   {
+    "raw": null,
+    "overlap": 0.436,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.487,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.524,
+    "kept": "code"
+   }
+  ]
+ },
+ "taxi_stand_veh2": {
+  "code": [
+   [
+    17,
+    28
+   ],
+   [
+    -55,
+    20
+   ],
+   [
+    -5,
+    1
+   ],
+   [
+    1,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_taxi_stand_veh_g0_1790549926310_muse-image.png",
+    "overlap": 0.784,
+    "drift": 73.9,
+    "cover": 0.971
+   },
+   {
+    "raw": null,
+    "overlap": 0.522,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.501,
+    "kept": "code"
+   },
+   {
+    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
+    "overlap": 0.743,
+    "drift": 66.4,
+    "cover": 0.982
+   }
+  ]
+ },
+ "rideshare": {
+  "code": [
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_rideshare_g0_1790547886924_muse-image.png",
+    "overlap": 0.808,
+    "drift": 29.4,
+    "cover": 0.925
+   },
+   {
+    "raw": "up_rideshare_g0_1790542591218_muse-image.png",
+    "overlap": 0.819,
+    "drift": 36.6,
+    "cover": 0.931
+   },
+   {
+    "raw": "up_rideshare_g0_1790547886924_muse-image.png",
+    "overlap": 0.808,
+    "drift": 30.8,
+    "cover": 0.944
+   },
+   {
+    "raw": "up_rideshare_g0_1790547886924_muse-image.png",
+    "overlap": 0.811,
+    "drift": 29.2,
+    "cover": 0.967
+   }
+  ]
+ },
+ "rideshare_veh0": {
+  "code": [
+   [
+    -9,
+    5
+   ],
+   [
+    23,
+    23
+   ],
+   [
+    -11,
+    40
+   ],
+   [
+    -45,
+    22
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.77,
+    "drift": 32.2,
+    "cover": 0.981
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.837,
+    "drift": 35,
+    "cover": 0.953
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.631,
+    "drift": 34.9,
+    "cover": 0.992
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.859,
+    "drift": 31.2,
+    "cover": 0.945
+   }
+  ]
+ },
+ "rideshare_veh1": {
+  "code": [
+   [
+    -21,
+    11
+   ],
+   [
+    11,
+    17
+   ],
+   [
+    1,
+    34
+   ],
+   [
+    -33,
+    28
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.803,
+    "drift": 73.4,
+    "cover": 0.979
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.69,
+    "drift": 84.8,
+    "cover": 0.993
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.728,
+    "drift": 58.1,
+    "cover": 0.996
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.83,
+    "drift": 60.4,
+    "cover": 0.976
+   }
+  ]
+ },
+ "rideshare_veh2": {
+  "code": [
+   [
+    -17,
+    35
+   ],
+   [
+    -37,
+    19
+   ],
+   [
+    -3,
+    10
+   ],
+   [
+    15,
+    26
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.682,
+    "drift": 50.2,
+    "cover": 0.899
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.861,
+    "drift": 41.9,
+    "cover": 0.932
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.757,
+    "drift": 43.9,
+    "cover": 0.987
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.829,
+    "drift": 45.8,
+    "cover": 0.972
+   }
+  ]
+ },
+ "rideshare_veh3": {
+  "code": [
+   [
+    -39,
+    24
+   ],
+   [
+    -15,
+    8
+   ],
+   [
+    19,
+    21
+   ],
+   [
+    -7,
+    37
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.841,
+    "drift": 53.7,
+    "cover": 0.966
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.81,
+    "drift": 49.6,
+    "cover": 0.972
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.773,
+    "drift": 45.6,
+    "cover": 0.91
+   },
+   {
+    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
+    "overlap": 0.736,
+    "drift": 51.9,
+    "cover": 0.991
+   }
+  ]
+ },
+ "car_rental": {
+  "code": [
+   [
+    -63,
+    -11
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -11
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_car_rental_g0_1790547934728_muse-image.png",
+    "overlap": 0.871,
+    "drift": 31.7,
+    "cover": 0.933
+   },
+   {
+    "raw": "up_car_rental_g0_1790547934728_muse-image.png",
+    "overlap": 0.86,
+    "drift": 31.2,
+    "cover": 0.92
+   },
+   {
+    "raw": "up_car_rental_g0_1790547934728_muse-image.png",
+    "overlap": 0.852,
+    "drift": 30.7,
+    "cover": 0.907
+   },
+   {
+    "raw": "up_car_rental_g0_1790547934728_muse-image.png",
+    "overlap": 0.875,
+    "drift": 32.8,
+    "cover": 0.944
+   }
+  ]
+ },
+ "car_rental_veh0": {
+  "code": [
+   [
+    -43,
+    17
+   ],
+   [
+    -1,
+    6
+   ],
+   [
+    23,
+    28
+   ],
+   [
+    -21,
+    39
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.697,
+    "drift": 69.7,
+    "cover": 0.967
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.733,
+    "drift": 51,
+    "cover": 0.976
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549948901_muse-image.png",
+    "overlap": 0.669,
+    "drift": 55.7,
+    "cover": 0.985
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.874,
+    "drift": 40.3,
+    "cover": 0.977
+   }
+  ]
+ },
+ "car_rental_veh1": {
+  "code": [
+   [
+    -29,
+    24
+   ],
+   [
+    -17,
+    14
+   ],
+   [
+    9,
+    21
+   ],
+   [
+    -5,
+    31
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.608,
+    "drift": 71.9,
+    "cover": 0.981
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.776,
+    "drift": 62.6,
+    "cover": 0.948
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.831,
+    "drift": 58,
+    "cover": 0.927
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.669,
+    "drift": 88.7,
+    "cover": 0.997
+   }
+  ]
+ },
+ "car_rental_veh2": {
+  "code": [
+   [
+    -13,
+    32
+   ],
+   [
+    -31,
+    21
+   ],
+   [
+    -7,
+    13
+   ],
+   [
+    9,
+    24
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.601,
+    "drift": 56.8,
+    "cover": 0.971
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.755,
+    "drift": 61.4,
+    "cover": 0.99
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.892,
+    "drift": 44.4,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.85,
+    "drift": 54,
+    "cover": 0.954
+   }
+  ]
+ },
+ "car_rental_veh3": {
+  "code": [
+   [
+    1,
+    39
+   ],
+   [
+    -47,
+    29
+   ],
+   [
+    -21,
+    6
+   ],
+   [
+    25,
+    16
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.809,
+    "drift": 28.4,
+    "cover": 0.986
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.818,
+    "drift": 32.3,
+    "cover": 0.941
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.76,
+    "drift": 31.2,
+    "cover": 0.961
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.69,
+    "drift": 31.2,
+    "cover": 0.976
+   }
+  ]
+ },
+ "limo": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -95,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -95,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_limo_g0_1790547977313_muse-image.png",
+    "overlap": 0.784,
+    "drift": 44.8,
+    "cover": 0.894
+   },
+   {
+    "raw": "up_limo_g0_1790547977313_muse-image.png",
+    "overlap": 0.721,
+    "drift": 39.6,
+    "cover": 0.897
+   },
+   {
+    "raw": "up_limo_g0_1790547977313_muse-image.png",
+    "overlap": 0.734,
+    "drift": 41.5,
+    "cover": 0.853
+   },
+   {
+    "raw": "up_limo_g0_1790547977313_muse-image.png",
+    "overlap": 0.798,
+    "drift": 43.7,
+    "cover": 0.889
+   }
+  ]
+ },
+ "limo_veh0": {
+  "code": [
+   [
+    -7,
+    16
+   ],
+   [
+    -75,
+    9
+   ],
+   [
+    5,
+    8
+   ],
+   [
+    -57,
+    15
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
+    "overlap": 0.789,
+    "drift": 23.7,
+    "cover": 0.88
+   },
+   {
+    "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
+    "overlap": 0.745,
+    "drift": 25.8,
+    "cover": 0.92
+   },
+   {
+    "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
+    "overlap": 0.77,
+    "drift": 24.9,
+    "cover": 0.928
+   },
+   {
+    "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
+    "overlap": 0.768,
+    "drift": 24.7,
+    "cover": 0.947
+   }
+  ]
+ },
+ "parking_lot": {
+  "code": [
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_parking_lot_g0_1790548020572_muse-image.png",
+    "overlap": 0.883,
+    "drift": 25.5,
+    "cover": 0.95
+   },
+   {
+    "raw": "up_parking_lot_g0_1790542690780_muse-image.png",
+    "overlap": 0.917,
+    "drift": 36.3,
+    "cover": 0.931
+   },
+   {
+    "raw": "up_parking_lot_g0_1790548020572_muse-image.png",
+    "overlap": 0.851,
+    "drift": 26.6,
+    "cover": 0.93
+   },
+   {
+    "raw": "up_parking_lot_g0_1790542690780_muse-image.png",
+    "overlap": 0.941,
+    "drift": 38.4,
+    "cover": 0.977
+   }
+  ]
+ },
+ "parking_lot_veh0": {
+  "code": [
+   [
+    -13,
+    1
+   ],
+   [
+    31,
+    21
+   ],
+   [
+    -7,
+    44
+   ],
+   [
+    -53,
+    24
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.738,
+    "drift": 60.2,
+    "cover": 0.947
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
+    "overlap": 0.791,
+    "drift": 49.4,
+    "cover": 0.974
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
+    "overlap": 0.753,
+    "drift": 45.7,
+    "cover": 0.979
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.805,
+    "drift": 44.3,
+    "cover": 0.913
+   }
+  ]
+ },
+ "parking_lot_veh1": {
+  "code": [
+   [
+    17,
+    16
+   ],
+   [
+    1,
+    36
+   ],
+   [
+    -37,
+    29
+   ],
+   [
+    -23,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.725,
+    "drift": 69.8,
+    "cover": 0.995
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.709,
+    "drift": 58.5,
+    "cover": 0.907
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
+    "overlap": 0.718,
+    "drift": 49.7,
+    "cover": 0.995
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790550029253_muse-image.png",
+    "overlap": 0.746,
+    "drift": 55.4,
+    "cover": 0.874
+   }
+  ]
+ },
+ "parking_lot_veh2": {
+  "code": [
+   [
+    31,
+    23
+   ],
+   [
+    -15,
+    44
+   ],
+   [
+    -51,
+    22
+   ],
+   [
+    -7,
+    1
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.561,
+    "kept": "code"
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.66,
+    "drift": 83.2,
+    "cover": 0.906
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.713,
+    "drift": 69.6,
+    "cover": 0.965
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.761,
+    "drift": 70.3,
+    "cover": 0.935
+   }
+  ]
+ },
+ "parking_lot_veh3": {
+  "code": [
+   [
+    -35,
+    26
+   ],
+   [
+    -21,
+    11
+   ],
+   [
+    15,
+    19
+   ],
+   [
+    -1,
+    34
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.747,
+    "drift": 65.1,
+    "cover": 0.958
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.752,
+    "drift": 61.3,
+    "cover": 0.932
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.634,
+    "drift": 53.8,
+    "cover": 0.922
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.677,
+    "drift": 53.6,
+    "cover": 0.963
+   }
+  ]
+ },
+ "parking_lot_veh4": {
+  "code": [
+   [
+    -5,
+    41
+   ],
+   [
+    -51,
+    26
+   ],
+   [
+    -15,
+    4
+   ],
+   [
+    29,
+    19
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.818,
+    "drift": 51.5,
+    "cover": 0.96
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.757,
+    "drift": 51.3,
+    "cover": 0.921
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.652,
+    "drift": 47.1,
+    "cover": 0.946
+   }
+  ]
+ },
+ "handcar": {
+  "code": [
+   [
+    -47,
+    -7
+   ],
+   [
+    -53,
+    -18
+   ],
+   [
+    -31,
+    -18
+   ],
+   [
+    -31,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_handcar_g0_1790542739548_muse-image.png",
+    "overlap": 0.854,
+    "drift": 39.4,
+    "cover": 0.949
+   },
+   {
+    "raw": "up_handcar_g0_1790542739548_muse-image.png",
+    "overlap": 0.839,
+    "drift": 36.3,
+    "cover": 0.923
+   },
+   {
+    "raw": "up_handcar_g0_1790550057802_muse-image.png",
+    "overlap": 0.841,
+    "drift": 39.6,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_handcar_g0_1790550114367_muse-image.png",
+    "overlap": 0.835,
+    "drift": 42.3,
+    "cover": 0.941
+   }
+  ]
+ },
+ "train_station": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -127,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -127,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_train_station_g0_1790548130228_muse-image.png",
+    "overlap": 0.95,
+    "drift": 41.5,
+    "cover": 0.968
+   },
+   {
+    "raw": "up_train_station_g0_1790548130228_muse-image.png",
+    "overlap": 0.864,
+    "drift": 46.8,
+    "cover": 0.921
+   },
+   {
+    "raw": "up_train_station_g0_1790548130228_muse-image.png",
+    "overlap": 0.885,
+    "drift": 42.5,
+    "cover": 0.949
+   },
+   {
+    "raw": "up_train_station_g0_1790548130228_muse-image.png",
+    "overlap": 0.972,
+    "drift": 40.9,
+    "cover": 0.98
+   }
+  ]
+ },
+ "train_station_veh0": {
+  "code": [
+   [
+    -49,
+    9
+   ],
+   [
+    -149,
+    -20
+   ],
+   [
+    13,
+    -17
+   ],
+   [
+    -85,
+    12
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
+    "overlap": 0.735,
+    "drift": 65.2,
+    "cover": 0.913
+   },
+   {
+    "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
+    "overlap": 0.652,
+    "drift": 58.8,
+    "cover": 0.909
+   },
+   {
+    "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
+    "overlap": 0.728,
+    "drift": 54.5,
+    "cover": 0.893
+   },
+   {
+    "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
+    "overlap": 0.709,
+    "drift": 64.8,
+    "cover": 0.842
+   }
+  ]
+ },
+ "express_train": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -159,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -159,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_express_train_g0_1790548185456_muse-image.png",
+    "overlap": 0.951,
+    "drift": 40.5,
+    "cover": 0.968
+   },
+   {
+    "raw": "up_express_train_g0_1790548185456_muse-image.png",
+    "overlap": 0.815,
+    "drift": 61,
+    "cover": 0.922
+   },
+   {
+    "raw": "up_express_train_g0_1790548185456_muse-image.png",
+    "overlap": 0.81,
+    "drift": 62.7,
+    "cover": 0.932
+   },
+   {
+    "raw": "up_express_train_g0_1790548185456_muse-image.png",
+    "overlap": 0.932,
+    "drift": 44,
+    "cover": 0.942
+   }
+  ]
+ },
+ "express_train_veh0": {
+  "code": [
+   [
+    -49,
+    9
+   ],
+   [
+    -181,
+    -20
+   ],
+   [
+    13,
+    -17
+   ],
+   [
+    -117,
+    12
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
+    "overlap": 0.862,
+    "drift": 69.3,
+    "cover": 0.975
+   },
+   {
+    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
+    "overlap": 0.917,
+    "drift": 41,
+    "cover": 0.939
+   },
+   {
+    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
+    "overlap": 0.917,
+    "drift": 40,
+    "cover": 0.929
+   },
+   {
+    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
+    "overlap": 0.765,
+    "drift": 63.9,
+    "cover": 0.791
+   }
+  ]
+ },
+ "tram_stop": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -95,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -95,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_tram_stop_g0_1790548227822_muse-image.png",
+    "overlap": 0.814,
+    "drift": 39.3,
+    "cover": 0.911
+   },
+   {
+    "raw": "up_tram_stop_g0_1790548227822_muse-image.png",
+    "overlap": 0.746,
+    "drift": 42,
+    "cover": 0.87
+   },
+   {
+    "raw": "up_tram_stop_g0_1790548227822_muse-image.png",
+    "overlap": 0.738,
+    "drift": 41.3,
+    "cover": 0.883
+   },
+   {
+    "raw": "up_tram_stop_g0_1790548227822_muse-image.png",
+    "overlap": 0.818,
+    "drift": 40.1,
+    "cover": 0.916
+   }
+  ]
+ },
+ "tram_stop_veh0": {
+  "code": [
+   [
+    -19,
+    6
+   ],
+   [
+    -87,
+    0
+   ],
+   [
+    -7,
+    0
+   ],
+   [
+    -71,
+    6
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
+    "overlap": 0.862,
+    "drift": 48.5,
+    "cover": 0.919
+   },
+   {
+    "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
+    "overlap": 0.921,
+    "drift": 32.5,
+    "cover": 0.977
+   },
+   {
+    "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
+    "overlap": 0.913,
+    "drift": 30.5,
+    "cover": 0.957
+   },
+   {
+    "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
+    "overlap": 0.847,
+    "drift": 34.3,
+    "cover": 0.9
+   }
+  ]
+ },
+ "tram_stop_lane": {
+  "code": [
+   [
+    -27,
+    9
+   ],
+   [
+    -27,
+    3
+   ],
+   [
+    -15,
+    3
+   ],
+   [
+    -15,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.389,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.336,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.33,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.334,
+    "kept": "code"
+   }
+  ]
+ },
+ "monorail": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -127,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -127,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_monorail_g0_1790548307421_muse-image.png",
+    "overlap": 0.844,
+    "drift": 46.6,
+    "cover": 0.932
+   },
+   {
+    "raw": "up_monorail_g0_1790548307421_muse-image.png",
+    "overlap": 0.829,
+    "drift": 46.2,
+    "cover": 0.968
+   },
+   {
+    "raw": "up_monorail_g0_1790548307421_muse-image.png",
+    "overlap": 0.829,
+    "drift": 73.8,
+    "cover": 0.935
+   },
+   {
+    "raw": "up_monorail_g0_1790548307421_muse-image.png",
+    "overlap": 0.863,
+    "drift": 39.3,
+    "cover": 0.971
+   }
+  ]
+ },
+ "monorail_veh0": {
+  "code": [
+   [
+    -17,
+    2
+   ],
+   [
+    -121,
+    -4
+   ],
+   [
+    -5,
+    -4
+   ],
+   [
+    -101,
+    2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
+    "overlap": 0.799,
+    "drift": 68.9,
+    "cover": 0.919
+   },
+   {
+    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
+    "overlap": 0.683,
+    "drift": 67,
+    "cover": 0.91
+   },
+   {
+    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
+    "overlap": 0.698,
+    "drift": 66.5,
+    "cover": 0.898
+   },
+   {
+    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
+    "overlap": 0.798,
+    "drift": 66.9,
+    "cover": 0.904
+   }
+  ]
+ },
+ "monorail_lane": {
+  "code": [
+   [
+    -25,
+    3
+   ],
+   [
+    -25,
+    -3
+   ],
+   [
+    -13,
+    -3
+   ],
+   [
+    -13,
+    3
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_monorail_lane_g0_1790548346435_muse-image.png",
+    "overlap": 0.797,
+    "drift": 28.6,
+    "cover": 0.995
+   },
+   {
+    "raw": "up_monorail_lane_g0_1790542973312_muse-image.png",
+    "overlap": 0.833,
+    "drift": 24.7,
+    "cover": 0.969
+   },
+   {
+    "raw": "up_monorail_lane_g0_1790542973312_muse-image.png",
+    "overlap": 0.78,
+    "drift": 27.1,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_monorail_lane_g0_1790548346435_muse-image.png",
+    "overlap": 0.71,
+    "drift": 26.9,
+    "cover": 0.993
+   }
+  ]
+ },
+ "ski_lift": {
+  "code": [
+   [
+    -31,
+    -11
+   ],
+   [
+    -127,
+    -11
+   ],
+   [
+    -31,
+    -11
+   ],
+   [
+    -127,
+    -11
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
+    "overlap": 0.932,
+    "drift": 33.7,
+    "cover": 0.971
+   },
+   {
+    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
+    "overlap": 0.921,
+    "drift": 37,
+    "cover": 0.964
+   },
+   {
+    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
+    "overlap": 0.946,
+    "drift": 32.6,
+    "cover": 0.983
+   },
+   {
+    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
+    "overlap": 0.921,
+    "drift": 35.1,
+    "cover": 0.962
+   }
+  ]
+ },
+ "ski_lift_veh0": {
+  "code": [
+   [
+    5,
+    4
+   ],
+   [
+    -9,
+    11
+   ],
+   [
+    79,
+    55
+   ],
+   [
+    -105,
+    48
+   ]
+  ]
+ },
+ "ski_lift_veh1": {
+  "code": [
+   [
+    17,
+    23
+   ],
+   [
+    -47,
+    17
+   ],
+   [
+    67,
+    36
+   ],
+   [
+    -67,
+    42
+   ]
+  ]
+ },
+ "ski_lift_veh2": {
+  "code": [
+   [
+    55,
+    29
+   ],
+   [
+    -59,
+    36
+   ],
+   [
+    29,
+    30
+   ],
+   [
+    -55,
+    23
+   ]
+  ]
+ },
+ "ski_lift_veh3": {
+  "code": [
+   [
+    67,
+    48
+   ],
+   [
+    -97,
+    42
+   ],
+   [
+    17,
+    11
+   ],
+   [
+    -17,
+    17
+   ]
+  ]
+ },
+ "ski_lift_lane": {
+  "code": [
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.123,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.065,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.061,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.131,
+    "kept": "code"
+   }
+  ]
+ },
+ "ski_lift_lane_alt": {
+  "code": [
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.061,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.132,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.123,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.124,
+    "kept": "code"
+   }
+  ]
+ },
+ "ski_lift_lane_veh0": {
+  "code": [
+   [
+    1,
+    2
+   ],
+   [
+    -5,
+    9
+   ],
+   [
+    -13,
+    9
+   ],
+   [
+    -13,
+    2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.771,
+    "drift": 57.9,
+    "cover": 0.9
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.707,
+    "drift": 52,
+    "cover": 0.872
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.791,
+    "drift": 38.4,
+    "cover": 0.979
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.696,
+    "drift": 47,
+    "cover": 0.807
+   }
+  ]
+ },
+ "ski_lift_lane_alt_veh0": {
+  "code": [
+   [
+    -13,
+    9
+   ],
+   [
+    -19,
+    3
+   ],
+   [
+    -1,
+    3
+   ],
+   [
+    -1,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.727,
+    "drift": 58.2,
+    "cover": 0.871
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.753,
+    "drift": 41.5,
+    "cover": 0.907
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550388791_muse-image.png",
+    "overlap": 0.815,
+    "drift": 45.9,
+    "cover": 0.975
+   },
+   {
+    "raw": "up_ski_lift_lane veh_g0_1790550412357_muse-image.png",
+    "overlap": 0.716,
+    "drift": 48.9,
+    "cover": 0.913
+   }
+  ]
+ },
+ "alpine_lift": {
+  "code": [
+   [
+    -31,
+    -11
+   ],
+   [
+    -159,
+    -11
+   ],
+   [
+    -31,
+    -11
+   ],
+   [
+    -159,
+    -11
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
+    "overlap": 0.893,
+    "drift": 43.8,
+    "cover": 0.954
+   },
+   {
+    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
+    "overlap": 0.915,
+    "drift": 37.1,
+    "cover": 0.965
+   },
+   {
+    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
+    "overlap": 0.927,
+    "drift": 38.3,
+    "cover": 0.983
+   },
+   {
+    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
+    "overlap": 0.933,
+    "drift": 39.4,
+    "cover": 0.986
+   }
+  ]
+ },
+ "alpine_lift_veh0": {
+  "code": [
+   [
+    3,
+    4
+   ],
+   [
+    -15,
+    10
+   ],
+   [
+    105,
+    68
+   ],
+   [
+    -139,
+    62
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.426,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.405,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.435,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.406,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_veh1": {
+  "code": [
+   [
+    21,
+    26
+   ],
+   [
+    -61,
+    20
+   ],
+   [
+    87,
+    46
+   ],
+   [
+    -93,
+    52
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.454,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.309,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.402,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.482,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_veh2": {
+  "code": [
+   [
+    67,
+    36
+   ],
+   [
+    -79,
+    42
+   ],
+   [
+    41,
+    36
+   ],
+   [
+    -75,
+    30
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_alpine_lift_veh_g0_1790548525924_muse-image.png",
+    "overlap": 0.696,
+    "drift": 60.7,
+    "cover": 0.982
+   },
+   {
+    "raw": null,
+    "overlap": 0.383,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.424,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_veh3": {
+  "code": [
+   [
+    85,
+    58
+   ],
+   [
+    -125,
+    52
+   ],
+   [
+    23,
+    14
+   ],
+   [
+    -29,
+    20
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_lane": {
+  "code": [
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.134,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.219,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.235,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.136,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_lane_alt": {
+  "code": [
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ],
+   [
+    -23,
+    -2
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.227,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.145,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.136,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.111,
+    "kept": "code"
+   }
+  ]
+ },
+ "alpine_lift_lane_veh0": {
+  "code": [
+   [
+    -5,
+    1
+   ],
+   [
+    -11,
+    7
+   ],
+   [
+    -15,
+    7
+   ],
+   [
+    -15,
+    1
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.781,
+    "drift": 49.6,
+    "cover": 0.851
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.826,
+    "drift": 40.9,
+    "cover": 0.974
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.761,
+    "drift": 37.9,
+    "cover": 0.957
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.849,
+    "drift": 53.1,
+    "cover": 0.95
+   }
+  ]
+ },
+ "alpine_lift_lane_alt_veh0": {
+  "code": [
+   [
+    -15,
+    7
+   ],
+   [
+    -21,
+    1
+   ],
+   [
+    -5,
+    1
+   ],
+   [
+    -5,
+    7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.72,
+    "drift": 54.8,
+    "cover": 0.776
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.689,
+    "drift": 45.1,
+    "cover": 0.874
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.865,
+    "drift": 35.3,
+    "cover": 0.936
+   },
+   {
+    "raw": "up_alpine_lift_lane veh_g0_1790548648971_muse-image.png",
+    "overlap": 0.833,
+    "drift": 55.7,
+    "cover": 0.913
+   }
+  ]
+ },
+ "ferry": {
+  "code": [
+   [
+    -95,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -13
+   ],
+   [
+    -63,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_ferry_g0_1790548676070_muse-image.png",
+    "overlap": 0.806,
+    "drift": 31.2,
+    "cover": 0.888
+   },
+   {
+    "raw": "up_ferry_g0_1790548676070_muse-image.png",
+    "overlap": 0.763,
+    "drift": 34.2,
+    "cover": 0.933
+   },
+   {
+    "raw": "up_ferry_g0_1790548676070_muse-image.png",
+    "overlap": 0.805,
+    "drift": 34.6,
+    "cover": 0.873
+   },
+   {
+    "raw": "up_ferry_g0_1790548676070_muse-image.png",
+    "overlap": 0.799,
+    "drift": 35.8,
+    "cover": 0.936
+   }
+  ]
+ },
+ "ferry_veh0": {
+  "code": [
+   [
+    -79,
+    6
+   ],
+   [
+    -19,
+    3
+   ],
+   [
+    -43,
+    19
+   ],
+   [
+    -43,
+    22
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
+    "overlap": 0.881,
+    "drift": 63.2,
+    "cover": 0.966
+   },
+   {
+    "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
+    "overlap": 0.906,
+    "drift": 46.5,
+    "cover": 0.942
+   },
+   {
+    "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
+    "overlap": 0.927,
+    "drift": 35.3,
+    "cover": 0.979
+   },
+   {
+    "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
+    "overlap": 0.897,
+    "drift": 42.8,
+    "cover": 0.975
+   }
+  ]
+ },
+ "water_taxi": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_water_taxi_g0_1790548718818_muse-image.png",
+    "overlap": 0.784,
+    "drift": 55.8,
+    "cover": 0.948
+   },
+   {
+    "raw": "up_water_taxi_g0_1790548718818_muse-image.png",
+    "overlap": 0.749,
+    "drift": 62,
+    "cover": 0.956
+   },
+   {
+    "raw": "up_water_taxi_g0_1790548718818_muse-image.png",
+    "overlap": 0.754,
+    "drift": 53.9,
+    "cover": 0.955
+   },
+   {
+    "raw": "up_water_taxi_g0_1790548718818_muse-image.png",
+    "overlap": 0.782,
+    "drift": 56.9,
+    "cover": 0.951
+   }
+  ]
+ },
+ "water_taxi_veh0": {
+  "code": [
+   [
+    -37,
+    20
+   ],
+   [
+    -53,
+    -8
+   ],
+   [
+    35,
+    2
+   ],
+   [
+    -15,
+    29
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.865,
+    "drift": 71.5,
+    "cover": 0.956
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.778,
+    "drift": 77,
+    "cover": 0.934
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.85,
+    "drift": 67.3,
+    "cover": 0.941
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.778,
+    "drift": 73.8,
+    "cover": 0.969
+   }
+  ]
+ },
+ "water_taxi_veh1": {
+  "code": [
+   [
+    -3,
+    40
+   ],
+   [
+    -77,
+    11
+   ],
+   [
+    15,
+    -8
+   ],
+   [
+    21,
+    20
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.827,
+    "drift": 68,
+    "cover": 0.987
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.813,
+    "drift": 66.9,
+    "cover": 0.916
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.776,
+    "drift": 72.4,
+    "cover": 0.929
+   },
+   {
+    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
+    "overlap": 0.688,
+    "drift": 68.6,
+    "cover": 0.944
+   }
+  ]
+ },
+ "water_bus": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_water_bus_g0_1790548754925_muse-image.png",
+    "overlap": 0.787,
+    "drift": 44.5,
+    "cover": 0.895
+   },
+   {
+    "raw": "up_water_bus_g0_1790548754925_muse-image.png",
+    "overlap": 0.73,
+    "drift": 43.6,
+    "cover": 0.93
+   },
+   {
+    "raw": "up_water_bus_g0_1790548754925_muse-image.png",
+    "overlap": 0.773,
+    "drift": 50.7,
+    "cover": 0.874
+   },
+   {
+    "raw": "up_water_bus_g0_1790548754925_muse-image.png",
+    "overlap": 0.81,
+    "drift": 46.2,
+    "cover": 0.876
+   }
+  ]
+ },
+ "water_bus_veh0": {
+  "code": [
+   [
+    -23,
+    5
+   ],
+   [
+    -51,
+    -1
+   ],
+   [
+    -3,
+    0
+   ],
+   [
+    -41,
+    6
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
+    "overlap": 0.911,
+    "drift": 59.8,
+    "cover": 0.966
+   },
+   {
+    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
+    "overlap": 0.875,
+    "drift": 58.1,
+    "cover": 0.947
+   },
+   {
+    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
+    "overlap": 0.892,
+    "drift": 53.2,
+    "cover": 0.948
+   },
+   {
+    "raw": "up_water_bus_veh_g0_1790550626326_muse-image.png",
+    "overlap": 0.864,
+    "drift": 77.4,
+    "cover": 0.924
+   }
+  ]
+ },
+ "pontoon": {
+  "code": [
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_pontoon_g0_1790548800727_muse-image.png",
+    "overlap": 0.87,
+    "drift": 49.4,
+    "cover": 0.945
+   },
+   {
+    "raw": "up_pontoon_g0_1790548800727_muse-image.png",
+    "overlap": 0.855,
+    "drift": 51.1,
+    "cover": 0.946
+   },
+   {
+    "raw": "up_pontoon_g0_1790548800727_muse-image.png",
+    "overlap": 0.859,
+    "drift": 49,
+    "cover": 0.942
+   },
+   {
+    "raw": "up_pontoon_g0_1790548800727_muse-image.png",
+    "overlap": 0.891,
+    "drift": 50.3,
+    "cover": 0.942
+   }
+  ]
+ },
+ "pontoon_veh0": {
+  "code": [
+   [
+    -23,
+    10
+   ],
+   [
+    13,
+    18
+   ],
+   [
+    -1,
+    36
+   ],
+   [
+    -37,
+    29
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.449,
+    "kept": "code"
+   },
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.614,
+    "drift": 87.2,
+    "cover": 0.884
+   },
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.615,
+    "drift": 87.3,
+    "cover": 0.878
+   },
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.633,
+    "drift": 84.3,
+    "cover": 0.98
+   }
+  ]
+ },
+ "pontoon_veh1": {
+  "code": [
+   [
+    9,
+    27
+   ],
+   [
+    -23,
+    34
+   ],
+   [
+    -35,
+    18
+   ],
+   [
+    -3,
+    12
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.571,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.405,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.5,
+    "kept": "code"
+   },
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.633,
+    "drift": 79,
+    "cover": 0.921
+   }
+  ]
+ },
+ "pontoon_veh2": {
+  "code": [
+   [
+    -51,
+    25
+   ],
+   [
+    -15,
+    3
+   ],
+   [
+    31,
+    23
+   ],
+   [
+    -9,
+    44
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.671,
+    "drift": 71.1,
+    "cover": 0.882
+   },
+   {
+    "raw": null,
+    "overlap": 0.588,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.494,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   }
+  ]
+ },
+ "pontoon_veh3": {
+  "code": [
+   [
+    -17,
+    42
+   ],
+   [
+    -51,
+    20
+   ],
+   [
+    -5,
+    5
+   ],
+   [
+    25,
+    26
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
+    "overlap": 0.667,
+    "drift": 85.3,
+    "cover": 0.954
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.571,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.592,
+    "kept": "code"
+   }
+  ]
+ },
+ "marina": {
+  "code": [
+   [
+    -63,
+    9
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    9
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_g0_1790548855304_muse-image.png",
+    "overlap": 0.74,
+    "drift": 44,
+    "cover": 0.925
+   },
+   {
+    "raw": "up_marina_g0_1790550743515_muse-image.png",
+    "overlap": 0.764,
+    "drift": 43.9,
+    "cover": 0.903
+   },
+   {
+    "raw": "up_marina_g0_1790548855304_muse-image.png",
+    "overlap": 0.742,
+    "drift": 43.7,
+    "cover": 0.935
+   },
+   {
+    "raw": null,
+    "overlap": 0.502,
+    "kept": "code"
+   }
+  ]
+ },
+ "marina_veh0": {
+  "code": [
+   [
+    19,
+    22
+   ],
+   [
+    -15,
+    39
+   ],
+   [
+    -15,
+    39
+   ],
+   [
+    -47,
+    22
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.779,
+    "drift": 45.8,
+    "cover": 0.808
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.781,
+    "drift": 63.3,
+    "cover": 0.923
+   },
+   {
+    "raw": "up_marina_veh_g0_1790548883038_muse-image.png",
+    "overlap": 0.746,
+    "drift": 56.8,
+    "cover": 0.945
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.782,
+    "drift": 57.3,
+    "cover": 0.879
+   }
+  ]
+ },
+ "marina_veh1": {
+  "code": [
+   [
+    47,
+    30
+   ],
+   [
+    -35,
+    51
+   ],
+   [
+    -43,
+    27
+   ],
+   [
+    -29,
+    6
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
+    "overlap": 0.712,
+    "drift": 65.5,
+    "cover": 0.876
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.636,
+    "drift": 62.9,
+    "cover": 0.82
+   },
+   {
+    "raw": null,
+    "overlap": 0.571,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0.57,
+    "kept": "code"
+   }
+  ]
+ },
+ "marina_veh2": {
+  "code": [
+   [
+    35,
+    36
+   ],
+   [
+    -43,
+    47
+   ],
+   [
+    -31,
+    24
+   ],
+   [
+    -17,
+    14
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.777,
+    "drift": 74.9,
+    "cover": 0.861
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
+    "overlap": 0.673,
+    "drift": 76.6,
+    "cover": 0.929
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.672,
+    "drift": 79.7,
+    "cover": 0.903
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.714,
+    "drift": 82.9,
+    "cover": 0.8
+   }
+  ]
+ },
+ "marina_veh3": {
+  "code": [
+   [
+    -37,
+    21
+   ],
+   [
+    -21,
+    8
+   ],
+   [
+    39,
+    35
+   ],
+   [
+    -43,
+    48
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.753,
+    "drift": 74.8,
+    "cover": 0.912
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.722,
+    "drift": 67.6,
+    "cover": 0.916
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.712,
+    "drift": 70.7,
+    "cover": 0.896
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.724,
+    "drift": 79.1,
+    "cover": 0.826
+   }
+  ]
+ },
+ "marina_veh4": {
+  "code": [
+   [
+    -49,
+    29
+   ],
+   [
+    -29,
+    5
+   ],
+   [
+    53,
+    31
+   ],
+   [
+    -31,
+    56
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.755,
+    "drift": 77.6,
+    "cover": 0.928
+   },
+   {
+    "raw": null,
+    "overlap": 0.512,
+    "kept": "code"
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.634,
+    "drift": 86.3,
+    "cover": 0.874
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.625,
+    "drift": 81.8,
+    "cover": 0.786
+   }
+  ]
+ },
+ "marina_veh5": {
+  "code": [
+   [
+    5,
+    48
+   ],
+   [
+    -73,
+    30
+   ],
+   [
+    -3,
+    8
+   ],
+   [
+    9,
+    26
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_marina_veh_g0_1790548883038_muse-image.png",
+    "overlap": 0.686,
+    "drift": 86.8,
+    "cover": 0.838
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   },
+   {
+    "raw": null,
+    "overlap": 0,
+    "kept": "code"
+   }
+  ]
+ },
+ "cruise_dock": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -191,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -191,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_cruise_dock_g0_1790548913481_muse-image.png",
+    "overlap": 0.77,
+    "drift": 49.1,
+    "cover": 0.926
+   },
+   {
+    "raw": "up_cruise_dock_g0_1790548913481_muse-image.png",
+    "overlap": 0.786,
+    "drift": 55.4,
+    "cover": 0.929
+   },
+   {
+    "raw": "up_cruise_dock_g0_1790548913481_muse-image.png",
+    "overlap": 0.787,
+    "drift": 57.3,
+    "cover": 0.927
+   },
+   {
+    "raw": "up_cruise_dock_g0_1790548913481_muse-image.png",
+    "overlap": 0.799,
+    "drift": 49.5,
+    "cover": 0.912
+   }
+  ]
+ },
+ "cruise_dock_veh0": {
+  "code": [
+   [
+    -49,
+    9
+   ],
+   [
+    -209,
+    -20
+   ],
+   [
+    17,
+    -16
+   ],
+   [
+    -151,
+    13
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
+    "overlap": 0.865,
+    "drift": 63.3,
+    "cover": 0.931
+   },
+   {
+    "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
+    "overlap": 0.94,
+    "drift": 48,
+    "cover": 0.972
+   },
+   {
+    "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
+    "overlap": 0.918,
+    "drift": 50.1,
+    "cover": 0.95
+   },
+   {
+    "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
+    "overlap": 0.87,
+    "drift": 74.6,
+    "cover": 0.962
+   }
+  ]
+ },
+ "helipad": {
+  "code": [
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_helipad_g0_1790548963790_muse-image.png",
+    "overlap": 0.851,
+    "drift": 49.3,
+    "cover": 0.919
+   },
+   {
+    "raw": "up_helipad_g0_1790548963790_muse-image.png",
+    "overlap": 0.849,
+    "drift": 48.8,
+    "cover": 0.935
+   },
+   {
+    "raw": "up_helipad_g0_1790548963790_muse-image.png",
+    "overlap": 0.849,
+    "drift": 48.7,
+    "cover": 0.919
+   },
+   {
+    "raw": "up_helipad_g0_1790548963790_muse-image.png",
+    "overlap": 0.872,
+    "drift": 47,
+    "cover": 0.933
+   }
+  ]
+ },
+ "helipad_veh0": {
+  "code": [
+   [
+    -27,
+    18
+   ],
+   [
+    -57,
+    4
+   ],
+   [
+    -19,
+    -7
+   ],
+   [
+    3,
+    8
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.576,
+    "kept": "code"
+   },
+   {
+    "raw": "up_helipad_veh_g0_1790548987179_muse-image.png",
+    "overlap": 0.663,
+    "drift": 54.2,
+    "cover": 0.814
+   },
+   {
+    "raw": "up_helipad_veh_g0_1790548987179_muse-image.png",
+    "overlap": 0.637,
+    "drift": 56.3,
+    "cover": 0.844
+   },
+   {
+    "raw": null,
+    "overlap": 0.539,
+    "kept": "code"
+   }
+  ]
+ },
+ "balloon": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    9
+   ],
+   [
+    -63,
+    9
+   ],
+   [
+    -95,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_balloon_g0_1790550901448_muse-image.png",
+    "overlap": 0.783,
+    "drift": 49.6,
+    "cover": 0.902
+   },
+   {
+    "raw": "up_balloon_g0_1790550901448_muse-image.png",
+    "overlap": 0.804,
+    "drift": 48.9,
+    "cover": 0.917
+   },
+   {
+    "raw": "up_balloon_g0_1790550901448_muse-image.png",
+    "overlap": 0.806,
+    "drift": 49.2,
+    "cover": 0.911
+   },
+   {
+    "raw": "up_balloon_g0_1790550925913_muse-image.png",
+    "overlap": 0.608,
+    "drift": 56.1,
+    "cover": 0.94
+   }
+  ]
+ },
+ "balloon_veh0": {
+  "code": [
+   [
+    5,
+    -10
+   ],
+   [
+    -51,
+    3
+   ],
+   [
+    -23,
+    3
+   ],
+   [
+    -53,
+    -11
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
+    "overlap": 0.646,
+    "drift": 51.7,
+    "cover": 0.758
+   },
+   {
+    "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
+    "overlap": 0.655,
+    "drift": 68.4,
+    "cover": 0.813
+   },
+   {
+    "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
+    "overlap": 0.911,
+    "drift": 53.2,
+    "cover": 0.956
+   },
+   {
+    "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
+    "overlap": 0.646,
+    "drift": 68.6,
+    "cover": 0.787
+   }
+  ]
+ },
+ "jetway": {
+  "code": [
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -12
+   ],
+   [
+    -63,
+    5
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_jetway_g0_1790549068052_muse-image.png",
+    "overlap": 0.894,
+    "drift": 44.6,
+    "cover": 0.939
+   },
+   {
+    "raw": "up_jetway_g0_1790549068052_muse-image.png",
+    "overlap": 0.882,
+    "drift": 40.6,
+    "cover": 0.941
+   },
+   {
+    "raw": "up_jetway_g0_1790549068052_muse-image.png",
+    "overlap": 0.851,
+    "drift": 40.3,
+    "cover": 0.932
+   },
+   {
+    "raw": "up_jetway_g0_1790549068052_muse-image.png",
+    "overlap": 0.866,
+    "drift": 38.3,
+    "cover": 0.924
+   }
+  ]
+ },
+ "jetway_veh0": {
+  "code": [
+   [
+    -1,
+    -24
+   ],
+   [
+    25,
+    25
+   ],
+   [
+    -53,
+    41
+   ],
+   [
+    -85,
+    -9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": null,
+    "overlap": 0.594,
+    "kept": "code"
+   },
+   {
+    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
+    "overlap": 0.696,
+    "drift": 82.3,
+    "cover": 0.781
+   },
+   {
+    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
+    "overlap": 0.805,
+    "drift": 66.3,
+    "cover": 0.892
+   },
+   {
+    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
+    "overlap": 0.711,
+    "drift": 69.2,
+    "cover": 0.806
+   }
+  ]
+ },
+ "jumbo_jetway": {
+  "code": [
+   [
+    -95,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -12
+   ],
+   [
+    -63,
+    9
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_jumbo_jetway_g0_1790549114792_muse-image.png",
+    "overlap": 0.784,
+    "drift": 38.4,
+    "cover": 0.935
+   },
+   {
+    "raw": "up_jumbo_jetway_g0_1790549114792_muse-image.png",
+    "overlap": 0.776,
+    "drift": 44.2,
+    "cover": 0.915
+   },
+   {
+    "raw": "up_jumbo_jetway_g0_1790549114792_muse-image.png",
+    "overlap": 0.791,
+    "drift": 45.7,
+    "cover": 0.897
+   },
+   {
+    "raw": "up_jumbo_jetway_g0_1790549114792_muse-image.png",
+    "overlap": 0.796,
+    "drift": 42.3,
+    "cover": 0.928
+   }
+  ]
+ },
+ "jumbo_jetway_veh0": {
+  "code": [
+   [
+    -17,
+    -30
+   ],
+   [
+    39,
+    30
+   ],
+   [
+    -87,
+    46
+   ],
+   [
+    -87,
+    -14
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
+    "overlap": 0.634,
+    "drift": 69.2,
+    "cover": 0.739
+   },
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
+    "overlap": 0.734,
+    "drift": 76.7,
+    "cover": 0.828
+   },
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
+    "overlap": 0.809,
+    "drift": 63.8,
+    "cover": 0.922
+   },
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
+    "overlap": 0.747,
+    "drift": 54.3,
+    "cover": 0.801
+   }
+  ]
+ },
+ "prop_stand": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_prop_stand_g0_1790549146473_muse-image.png",
+    "overlap": 0.849,
+    "drift": 43.1,
+    "cover": 0.989
+   },
+   {
+    "raw": "up_prop_stand_g0_1790549146473_muse-image.png",
+    "overlap": 0.772,
+    "drift": 41.3,
+    "cover": 0.931
+   },
+   {
+    "raw": "up_prop_stand_g0_1790549146473_muse-image.png",
+    "overlap": 0.696,
+    "drift": 41.9,
+    "cover": 0.923
+   },
+   {
+    "raw": "up_prop_stand_g0_1790549146473_muse-image.png",
+    "overlap": 0.738,
+    "drift": 43,
+    "cover": 0.951
+   }
+  ]
+ },
+ "prop_stand_veh0": {
+  "code": [
+   [
+    -13,
+    3
+   ],
+   [
+    -33,
+    -1
+   ],
+   [
+    7,
+    12
+   ],
+   [
+    -41,
+    15
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
+    "overlap": 0.626,
+    "drift": 89.7,
+    "cover": 0.824
+   },
+   {
+    "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
+    "overlap": 0.719,
+    "drift": 84.2,
+    "cover": 0.842
+   },
+   {
+    "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
+    "overlap": 0.809,
+    "drift": 78.8,
+    "cover": 0.912
+   },
+   {
+    "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
+    "overlap": 0.731,
+    "drift": 75.5,
+    "cover": 0.811
+   }
+  ]
+ },
+ "hardstand": {
+  "code": [
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
+    "overlap": 0.903,
+    "drift": 22.7,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
+    "overlap": 0.897,
+    "drift": 23.4,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
+    "overlap": 0.9,
+    "drift": 22.6,
+    "cover": 0.95
+   },
+   {
+    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
+    "overlap": 0.903,
+    "drift": 23.5,
+    "cover": 0.948
+   }
+  ]
+ },
+ "hardstand_veh0": {
+  "code": [
+   [
+    -25,
+    7
+   ],
+   [
+    -21,
+    8
+   ],
+   [
+    -19,
+    17
+   ],
+   [
+    -27,
+    16
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_hardstand_veh_g0_1790551005234_muse-image.png",
+    "overlap": 0.623,
+    "drift": 89.9,
+    "cover": 0.722
+   },
+   {
+    "raw": "up_hardstand_veh_g0_1790551005234_muse-image.png",
+    "overlap": 0.735,
+    "drift": 75.7,
+    "cover": 0.84
+   },
+   {
+    "raw": "up_hardstand_veh_g0_1790550992352_muse-image.png",
+    "overlap": 0.825,
+    "drift": 72.5,
+    "cover": 0.888
+   },
+   {
+    "raw": "up_hardstand_veh_g0_1790551005234_muse-image.png",
+    "overlap": 0.742,
+    "drift": 82.6,
+    "cover": 0.819
+   }
+  ]
+ },
+ "private_terminal": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    4
+   ],
+   [
+    -63,
+    4
+   ],
+   [
+    -95,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_private_terminal_g0_1790549274528_muse-image.png",
+    "overlap": 0.8,
+    "drift": 37.7,
+    "cover": 0.893
+   },
+   {
+    "raw": "up_private_terminal_g0_1790551041293_muse-image.png",
+    "overlap": 0.778,
+    "drift": 34.3,
+    "cover": 0.882
+   },
+   {
+    "raw": "up_private_terminal_g0_1790549274528_muse-image.png",
+    "overlap": 0.785,
+    "drift": 31.8,
+    "cover": 0.889
+   },
+   {
+    "raw": "up_private_terminal_g0_1790551020503_muse-image.png",
+    "overlap": 0.791,
+    "drift": 34.8,
+    "cover": 0.902
+   }
+  ]
+ },
+ "private_terminal_veh0": {
+  "code": [
+   [
+    -5,
+    -4
+   ],
+   [
+    -29,
+    13
+   ],
+   [
+    -23,
+    28
+   ],
+   [
+    -71,
+    12
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
+    "overlap": 0.65,
+    "drift": 54.2,
+    "cover": 0.686
+   },
+   {
+    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
+    "overlap": 0.751,
+    "drift": 58.4,
+    "cover": 0.815
+   },
+   {
+    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
+    "overlap": 0.799,
+    "drift": 60.2,
+    "cover": 0.902
+   },
+   {
+    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
+    "overlap": 0.683,
+    "drift": 76.1,
+    "cover": 0.771
+   }
+  ]
+ },
+ "jetpack": {
+  "code": [
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -31,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_jetpack_g0_1790549313530_muse-image.png",
+    "overlap": 0.823,
+    "drift": 50.4,
+    "cover": 0.977
+   },
+   {
+    "raw": "up_jetpack_g0_1790549313530_muse-image.png",
+    "overlap": 0.748,
+    "drift": 63.9,
+    "cover": 0.913
+   },
+   {
+    "raw": "up_jetpack_g0_1790549313530_muse-image.png",
+    "overlap": 0.819,
+    "drift": 50.6,
+    "cover": 0.973
+   },
+   {
+    "raw": "up_jetpack_g0_1790549313530_muse-image.png",
+    "overlap": 0.821,
+    "drift": 52,
+    "cover": 0.975
+   }
+  ]
+ },
+ "beam_pad": {
+  "code": [
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_beam_pad_g0_1790551058802_muse-image.png",
+    "overlap": 0.714,
+    "drift": 72.2,
+    "cover": 0.924
+   },
+   {
+    "raw": null,
+    "overlap": 0.501,
+    "kept": "code"
+   },
+   {
+    "raw": "up_beam_pad_g0_1790551058802_muse-image.png",
+    "overlap": 0.776,
+    "drift": 74.8,
+    "cover": 0.889
+   },
+   {
+    "raw": "up_beam_pad_g0_1790551084089_muse-image.png",
+    "overlap": 0.814,
+    "drift": 77.3,
+    "cover": 0.893
+   }
+  ]
+ },
+ "loop_terminal": {
+  "code": [
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ],
+   [
+    -63,
+    -7
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
+    "overlap": 0.82,
+    "drift": 48.2,
+    "cover": 0.921
+   },
+   {
+    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
+    "overlap": 0.807,
+    "drift": 46.3,
+    "cover": 0.935
+   },
+   {
+    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
+    "overlap": 0.812,
+    "drift": 45.5,
+    "cover": 0.913
+   },
+   {
+    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
+    "overlap": 0.841,
+    "drift": 44.5,
+    "cover": 0.944
+   }
+  ]
+ },
+ "loop_terminal_veh0": {
+  "code": [
+   [
+    3,
+    7
+   ],
+   [
+    21,
+    28
+   ],
+   [
+    -19,
+    38
+   ],
+   [
+    -39,
+    17
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.81,
+    "drift": 57.1,
+    "cover": 0.974
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.657,
+    "drift": 67.6,
+    "cover": 0.747
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.819,
+    "drift": 49.3,
+    "cover": 0.986
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.776,
+    "drift": 49.6,
+    "cover": 0.955
+   }
+  ]
+ },
+ "loop_terminal_veh1": {
+  "code": [
+   [
+    -13,
+    39
+   ],
+   [
+    -43,
+    20
+   ],
+   [
+    -3,
+    6
+   ],
+   [
+    25,
+    25
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.824,
+    "drift": 55.9,
+    "cover": 0.993
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.658,
+    "drift": 66.5,
+    "cover": 0.75
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.959,
+    "drift": 47.9,
+    "cover": 0.985
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.901,
+    "drift": 50.1,
+    "cover": 0.904
+   }
+  ]
+ },
+ "loop_terminal_veh2": {
+  "code": [
+   [
+    -37,
+    17
+   ],
+   [
+    1,
+    8
+   ],
+   [
+    21,
+    28
+   ],
+   [
+    -19,
+    37
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.967,
+    "drift": 56.9,
+    "cover": 0.962
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.643,
+    "drift": 66.3,
+    "cover": 0.773
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.947,
+    "drift": 47,
+    "cover": 0.986
+   },
+   {
+    "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
+    "overlap": 0.773,
+    "drift": 50,
+    "cover": 0.963
+   }
+  ]
+ },
+ "subway": {
+  "code": [
+   [
+    -31,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -31,
+    0
+   ],
+   [
+    -63,
+    -1
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_subway_g0_1790549393154_muse-image.png",
+    "overlap": 0.9,
+    "drift": 48.2,
+    "cover": 0.959
+   },
+   {
+    "raw": "up_subway_g0_1790549393154_muse-image.png",
+    "overlap": 0.875,
+    "drift": 50.4,
+    "cover": 0.928
+   },
+   {
+    "raw": "up_subway_g0_1790549393154_muse-image.png",
+    "overlap": 0.776,
+    "drift": 52.3,
+    "cover": 0.99
+   },
+   {
+    "raw": "up_subway_g0_1790549393154_muse-image.png",
+    "overlap": 0.886,
+    "drift": 44.8,
+    "cover": 0.981
+   }
+  ]
+ },
+ "express_subway": {
+  "code": [
+   [
+    -31,
+    0
+   ],
+   [
+    -95,
+    0
+   ],
+   [
+    -31,
+    0
+   ],
+   [
+    -95,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
+    "overlap": 0.779,
+    "drift": 63.7,
+    "cover": 0.91
+   },
+   {
+    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
+    "overlap": 0.777,
+    "drift": 60.6,
+    "cover": 0.923
+   },
+   {
+    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
+    "overlap": 0.78,
+    "drift": 63.3,
+    "cover": 0.913
+   },
+   {
+    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
+    "overlap": 0.788,
+    "drift": 61.3,
+    "cover": 0.914
+   }
+  ]
+ },
+ "under_parking": {
+  "code": [
+   [
+    -63,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -31,
+    0
+   ],
+   [
+    -63,
+    16
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_under_parking_g0_1790549445708_muse-image.png",
+    "overlap": 0.938,
+    "drift": 45.6,
+    "cover": 0.966
+   },
+   {
+    "raw": "up_under_parking_g0_1790549445708_muse-image.png",
+    "overlap": 0.895,
+    "drift": 41,
+    "cover": 0.976
+   },
+   {
+    "raw": "up_under_parking_g0_1790549445708_muse-image.png",
+    "overlap": 0.919,
+    "drift": 40.9,
+    "cover": 0.961
+   },
+   {
+    "raw": "up_under_parking_g0_1790549445708_muse-image.png",
+    "overlap": 0.918,
+    "drift": 43.8,
+    "cover": 0.974
+   }
+  ]
+ },
+ "under_parking_veh0": {
+  "code": [
+   [
+    -17,
+    44
+   ],
+   [
+    -35,
+    28
+   ],
+   [
+    -3,
+    19
+   ],
+   [
+    17,
+    35
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.801,
+    "drift": 69.1,
+    "cover": 0.947
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.832,
+    "drift": 43.1,
+    "cover": 0.966
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.805,
+    "drift": 40.3,
+    "cover": 0.993
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790549471556_muse-image.png",
+    "overlap": 0.803,
+    "drift": 49.4,
+    "cover": 0.971
+   }
+  ]
+ },
+ "under_parking_veh1": {
+  "code": [
+   [
+    -5,
+    50
+   ],
+   [
+    -47,
+    35
+   ],
+   [
+    -15,
+    13
+   ],
+   [
+    29,
+    28
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.79,
+    "drift": 46.6,
+    "cover": 0.973
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.759,
+    "drift": 41.3,
+    "cover": 0.985
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790549471556_muse-image.png",
+    "overlap": 0.753,
+    "drift": 45.8,
+    "cover": 0.95
+   },
+   {
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.733,
+    "drift": 51.3,
+    "cover": 0.965
+   }
+  ]
+ },
+ "sub_dock": {
+  "code": [
+   [
+    -31,
+    0
+   ],
+   [
+    -63,
+    0
+   ],
+   [
+    -31,
+    0
+   ],
+   [
+    -63,
+    0
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_sub_dock_g0_1790549495511_muse-image.png",
+    "overlap": 0.895,
+    "drift": 63.1,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_sub_dock_g0_1790549495511_muse-image.png",
+    "overlap": 0.9,
+    "drift": 58.7,
+    "cover": 0.953
+   },
+   {
+    "raw": "up_sub_dock_g0_1790549495511_muse-image.png",
+    "overlap": 0.901,
+    "drift": 59.2,
+    "cover": 0.952
+   },
+   {
+    "raw": "up_sub_dock_g0_1790549495511_muse-image.png",
+    "overlap": 0.882,
+    "drift": 58.1,
+    "cover": 0.964
+   }
+  ]
+ },
+ "sub_dock_veh0": {
+  "code": [
+   [
+    -9,
+    20
+   ],
+   [
+    -39,
+    17
+   ],
+   [
+    -1,
+    21
+   ],
+   [
+    -35,
+    23
+   ]
+  ],
+  "turns": [
+   {
+    "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
+    "overlap": 0.616,
+    "drift": 32.1,
+    "cover": 0.977
+   },
+   {
+    "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
+    "overlap": 0.669,
+    "drift": 32.1,
+    "cover": 0.894
+   },
+   {
+    "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
+    "overlap": 0.601,
+    "drift": 31.7,
+    "cover": 0.992
+   },
+   {
+    "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
+    "overlap": 0.704,
+    "drift": 28.5,
+    "cover": 0.97
+   }
+  ]
+ }
+}

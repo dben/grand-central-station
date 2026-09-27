@@ -1147,6 +1147,25 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   floor is cut to the tile's diamond. `isoart.mjs` bakes them as `d: 2` sheets, a floor pixel
   to the cell under it and an over pixel to the cell under it at the canopy's height. All nine
   are Gemini 3.1 Flash Image, overlap 0.8 to 1.0, about $1.30 with the trials.
+- **Upscaled transports (`harness/upscale.mjs`):** the transports, their lanes and their vehicles
+  keep their code art's shapes exactly, since so much hangs on them (bands past the edge, glass
+  panes, stairs, vehicles apart from their tiles); only their colours are painted, at twice the
+  density. Each turn of each sheet's code art (floor under over, kept as
+  `assets/paint/<key>_<turn>_code.png`) is sent upscaled on a key colour (whichever of magenta,
+  green, cyan and yellow lies furthest from the sheet's own colours), a family to a call: a tile's
+  turns, its lane pieces', or all its vehicles'. The model is asked to redraw them with more detail
+  and nothing moved; each turn is fitted back onto its code art's outline (a scale and a shift, by
+  overlap), two pixels are peeled off the painting's outline and anything near the key colour
+  dropped (the key bleeds into soft edges), and it is resampled to twice the density. `isoart.mjs`
+  then bakes the sheet from the code art, every pixel becoming 2 x 2 with its layer, cell, face and
+  weight, coloured from the painting where it covers it; a translucent pane keeps its code colour,
+  and so does floor under something opaque, which the painting can't show. A turn whose painting
+  overlaps its outline less than 0.6 gets none and keeps its code colours (`--weak` paints those
+  families again; a retry replaces a turn only where it fits better). Meta Muse Image, a cent a
+  call: 102 sheets for about $1.05 with one round of retries. Most turns fit at 0.75 to 0.95; what
+  kept its code colours is tiny or thin (the gondolas, the lanes' cables and rails, a few small
+  boats and parked cars), where a model returns nothing usable. The upscaled sheets bring all the
+  sheets to about 3.8 MB, the paintings they are baked from are stored in 255 colours.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.
@@ -1173,7 +1192,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
   pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 70
-  sheets and their maps come to about 1.65 MB, 1.2 MB of it the painted shops; drawing the full catalogue board takes 4-7 ms a
+  sheets and their maps come to about 3.8 MB, all at twice the density now; drawing the full catalogue board takes 4-7 ms a
   frame in headless Chromium.
 - **Ground:** the land round the board, the sea, the edge strips and the concourse are filled with
   pixel textures from the same bake, `assets/ground/<name>.png`: 128 x 64 pictures that tile the
