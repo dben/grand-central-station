@@ -138,7 +138,8 @@ function describeTile(tile, def) {
       rows.push(['Range', `${range} squares`], ['Shops', `+${Math.round(w.rate * 100)}% visitors, +${(w.mult * ms).toFixed(2)}`], ['Lounges', `+${(w.stack * ms).toFixed(2)} a tick`], ['Transports', `+${(w.exit * ms).toFixed(2)} boarding`],
         ['Stacks', `up to ${w.cap}; +${Math.round(w.perLevel * 100)}% a level`], ...walk);
     }
-    else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick; they can still stop at shops`]);
+    else if (def.special === 'walkway') rows.push(['Effect', `Carries travellers ${CONFIG.sim.walkwaySpeed} squares a tick; they can still stop at shops`],
+      ...(CONFIG.sim.walkwayPull > 1 ? [['Shops', `Draw riders ${Math.round((CONFIG.sim.walkwayPull - 1) * 100)}% harder`]] : []));
     else if (def.special === 'security') rows.push(['Effect', 'Catches pickpockets nearby'], ['Range', `${range} squares`], ...walk);
     else if (def.special === 'gate') {
       const ck = CONFIG.sim.checkpoint;
@@ -147,7 +148,7 @@ function describeTile(tile, def) {
         ['Crossing', ck.filter ? 'Only travellers whose platform is on the far side' : 'Anyone heading for the far side'],
         ['Reward', `×${mult.toFixed(2)} and ${ck.budgetBonus} more stops, once each`], ['Security', 'Catches pickpockets who walk through']);
     }
-    else if (def.special === 'waiting') rows.push(['Waiting', `+${e.stackValue.toFixed(2)} a tick; richer travellers stay longer`], ['Range', `${e.radius} squares`], ['Seats', e.cap], ...(e.revenue >= 0.05 ? [['Earns', `${cash(e.revenue)} a guest`]] : []), ...(e.minTier > 1 ? [['For', CONFIG.tiers[e.minTier - 1].symbol + ' and up']] : []));
+    else if (def.special === 'waiting') rows.push(['Waiting', e.stackRate > 1 ? `+${e.stackValue.toFixed(2)} a stack, the whole stack at once` : `+${e.stackValue.toFixed(2)} a tick; richer travellers stay longer`], ['Range', `${e.radius} squares`], ['Seats', e.cap], ...(e.revenue >= 0.05 ? [['Earns', `${cash(e.revenue)} a guest`]] : []), ...(e.minTier > 1 ? [['For', CONFIG.tiers[e.minTier - 1].symbol + ' and up']] : []));
     else {
       rows.push(['For', def.special === 'anytier' ? 'Everyone' : CONFIG.tiers[def.tier - 1].symbol], ['Draws', `${(e.rate * 100).toFixed(0)}% within ${e.radius} squares`]);
       rows.push(['Visit', boost(e.mult, e.flat)], ['Serves', `${e.cap} at once, ${e.dur} tick${e.dur === 1 ? '' : 's'} each`]);

@@ -108,6 +108,7 @@ export function effAmenity(tile, mods = DEFAULT_MODS, cfg = CONFIG, wifi = 0) {
     walkable: !!def.walkable,
     stackValue: ((def.stackValue || (def.key === 'flier_club' ? cfg.sim.frequentFlierStackValue : cfg.sim.waitingStackValue)) + wifi * cfg.sim.wifi.stack) * cfg.sim.multScale,
     minTier: def.key === 'flier_club' ? cfg.sim.frequentFlierMinTier : 1,
+    stackRate: def.stackRate || 1,
   };
 }
 
@@ -581,13 +582,15 @@ export function simulateWeek(board, opts = {}) {
       inRange.push([d, am]);
     }
     if (!inRange.length) return;
+    const onBelt = isWalkway(i);
     inRange.sort((p, q) => p[0] - q[0] || p[1].idx - q[1].idx);
     for (const [d, am] of inRange) {
       const e = am.e;
       const gap = e.special === 'anytier' ? 0 : Math.abs(a.tier - e.tier);
       const tm = tierMatchTable[Math.min(gap, tierMatchTable.length - 1)];
       const fall = e.radius <= 1 || d <= 1 ? 1 : 1 - ((d - 1) / (e.radius - 1)) * (1 - cfg.sim.radiusFalloffMin);
-      const p = e.rate * tm * fall;
+      // a walkway rider passes the shop windows: `walkwayPull` on every shop's draw
+      const p = Math.min(1, e.rate * tm * fall * (onBelt ? cfg.sim.walkwayPull : 1));
       // One die per traveller and shop, thrown once: the pull accumulates cell
       // by cell (1 - the chance of having missed at every cell so far) and the
       // traveller stops at the first cell where it passes their throw. Cell by
@@ -791,7 +794,7 @@ export function simulateWeek(board, opts = {}) {
           }
           if (a.waitSlot === wa) {
             const cap = cfg.tiers[a.tier - 1].waitCap;
-            if (a.stacks < cap) { a.stacks++; a.events.push({ t, type: 'stack', tileId: wa.tile.id, stacks: a.stacks }); }
+            if (a.stacks < cap) { a.stacks = Math.min(cap, a.stacks + wa.e.stackRate); a.events.push({ t, type: 'stack', tileId: wa.tile.id, stacks: a.stacks }); }
           }
         }
         const tr = transports[a.dest];

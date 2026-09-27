@@ -9,6 +9,8 @@
 //   quotaMult  scales this level's whole quota curve. A level's target has to
 //              match what it can build in a week, and action points are most of
 //              that: three a week builds roughly twice the board one does.
+//   quotaGrowth  this level's settled weekly growth (CONFIG.quota.growth), for a
+//              level whose late stock is cheaper or earlier than the standard game's.
 //   run        overrides for any field of CONFIG.run: the event cadence
 //              (`eventEvery`), the ordinance weeks, the weeks the specials
 //              switch on (`pickpocketsFromWeek`, `rareTilesFromWeek`,
@@ -48,7 +50,7 @@ export const MODES = {
                 // cost 25% more: the wallet buys the same opening either way.
                 run: { startMoney: 275, eventEvery: 5, ordinanceWeeks: [6, 13, 20], pickpocketsFromWeek: 9, rareTilesFromWeek: 12, apUpgradeFromWeek: 16 },
                 minWeek: { express_train: 3, cruise_dock: 5, jumbo_jetway: 6, cafeteria: 3, flier_club: 7 } },
-  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides start as water. Boats cost 40% less and are sold from week 1, including two found nowhere else.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 },
+  waterfront: { name: 'Waterfront',  w: 12, h: 12, desc: 'Two sides start as water. Boats cost 40% less and are sold from week 1, including two found nowhere else.', unlockWeek: 8, preLock: { W: 'water', S: 'water' }, terrainCostMult: { water: 0.6 }, quotaGrowth: 1.12,
                 // Opened by water: the hand deals the pontoon in place of the
                 // car park, which is the same tile on a different terrain, and
                 // leaves the other three slots rolling as usual.
@@ -58,7 +60,7 @@ export const MODES = {
   // waist splits 8x16 into two 8x8 halves, airside and landside, each about the
   // size of a Junction board. That is the level's whole shape - build a station
   // twice, once either side of the fence, and walk every traveller through it.
-  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'Airfield at one end, road at the other, a checkpoint between. No trains or boats; light aircraft from week 1.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaMult: 1.05,
+  sky_harbour:{ name: 'Sky Harbour', w: 8,  h: 16, desc: 'Airfield at one end, road at the other, a checkpoint between. No trains or boats; light aircraft from week 1.', unlockWeek: 12, banTerrains: ['rail', 'water'], terrainCostMult: { free: 0.7 }, quotaGrowth: 1.13,quotaMult: 1.05,
                 preLock: { N: 'apron', S: 'road' },
                 // The booth straddles the line y=8 with its fence running the
                 // width of the board: everyone landing airside has to clear it
@@ -74,7 +76,7 @@ export const MODES = {
   // shop deals one of the big transports - the cruise ship, the jumbo jet and
   // their kind - in a slot of its own. The edges start open.
   gateway:    { name: 'Gateway',     w: 14, h: 14, desc: 'No roads. Every shop deals one big transport, from express trains to cruise ships and jumbo jets, and the till and the target both start big.', unlockWeek: 8,
-                banTerrains: ['road'], quotaMult: 1.4, quotaGrowth: 1.11, skipEvents: ['weather_front', 'heavy_rain'],
+                banTerrains: ['road'], quotaMult: 1.4, quotaGrowth: 1.13, skipEvents: ['weather_front', 'heavy_rain'],
                 // Tiles that bring a crowd. The Marina and the Helipad cost as
                 // much and bring a pair at a time, and the Ferry is too small:
                 // dealt one of those in week 1 the hand could not clear. The
