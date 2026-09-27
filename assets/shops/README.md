@@ -10,10 +10,15 @@ sheets in `../iso/`; the game never loads these files itself.
   shape, two for an S or T, three for an L3, four for the L4. Which turn uses
   which picture, flipped or not, is `shopViews` in `harness/shopart.mjs`; a
   flipped turn keeps the light as painted.
-- `log.json` says which painting each shop's pictures were cut from, the model
-  that painted it, and for each view the biggest piece the bake cuts away
-  (`chop`, as a share of its paint) and the share of its block left bare
-  (`bare`). Over 1.5% chop or 15% bare, the painting is the wrong shape.
+- `log.json` says, for each view, which painting it was cut from, the model
+  that painted it, the biggest piece the bake cuts away (`chop`, as a share of
+  its paint), the share of its block left bare (`bare`), how much of a notch
+  it roofs over (`roof`) and how much paint was left hanging over a carved
+  notch (`hang`). Over 1.5% chop, 15% bare, 50% roof or 2% hang, the painting
+  is the wrong shape.
+- A notch at the back of a footprint has been carved out of these pictures
+  already (the models nearly always roof it over), so what is there is the
+  shop as the bake will show it, bar the cut past the footprint's columns.
 
 They are plain pictures: touch them up in any image editor, then rebake the
 shop (`node harness/isoart.mjs burger`). Anything painted past the footprint's

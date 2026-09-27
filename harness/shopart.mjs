@@ -132,19 +132,122 @@ export function rayHit(cells, wall, X, Y, room = WALL_ROOM) {
 // wrong length), and it shows as a wall chopped off with floor behind it, so
 // the biggest piece is what a painting is judged by; a bare strip of the block
 // only shows as floor round the shop, which reads fine.
+//
+// The bake can't cut a box painted over an L's back notch: from the front, a
+// wall there sits where a sign on the roof would. Its roof gives it away, since
+// a roof has a rim round its edge that follows the footprint. So `roof` is, for
+// each cell missing from the footprint's bounding box, the painted share of the
+// back half of that cell's diamond raised to the painted roof (leaving out the
+// footprint's own walls up to that height, which cover some of it beside a
+// front notch): open
+// floor on a true L, solid roof on a box. Signs are too thin to fill it.
 export function cutStats(pic, cells, wall) {
   const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, cut = new Uint8Array(w * h);
+  const S = new Set(cells.map(c => c.join(','))), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
+  const holes = new Map();
+  for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) if (!S.has(u + ',' + v)) holes.set(u + ',' + v, [0, 0]);
   let paint = 0, ncut = 0, block = 0, bare = 0;
+  const roofAt = holes.size ? paintedRoof(pic, cells, wall) : wall;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const X = X0 + (i + 0.5) / DENSITY, Y = Y0 + (j + 0.5) / DENSITY, on = data[(j * w + i) * 4 + 3] > 0;
-    if (rayHit(cells, wall, X, Y, 0)) { block++; if (!on) bare++; }
+    const inBlock = rayHit(cells, wall, X, Y, 0);
+    if (inBlock) { block++; if (!on) bare++; }
     if (on) { paint++; if (!rayHit(cells, wall, X, Y, KEEP_ROOM)) { cut[j * w + i] = 1; ncut++; } }
+    // the point on the roof plane under this pixel, and whether it is the back half of a hole
+    const U = Y + roofAt + X / 2, V = Y + roofAt - X / 2, hole = holes.get(Math.floor(U / CELL) + ',' + Math.floor(V / CELL));
+    if (hole && (U % CELL) + (V % CELL) < CELL && !rayHit(cells, roofAt, X, Y, 0)) { hole[0]++; if (on) hole[1]++; }
   }
+  const roof = Math.max(0, ...[...holes.values()].filter(([n]) => n > 60).map(([n, p]) => p / n));
   let big = 0;
   for (let s = 0; s < w * h; s++) if (cut[s] === 1) {
     let n = 0; const st = [s]; cut[s] = 2;
     while (st.length) { const p = st.pop(), x = p % w; n++; for (const q of [x ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) if (q >= 0 && q < w * h && cut[q] === 1) { cut[q] = 2; st.push(q); } }
     big = Math.max(big, n);
   }
-  return { cut: ncut / Math.max(1, paint), big: big / Math.max(1, paint), bare: bare / Math.max(1, block) };
+  return { cut: ncut / Math.max(1, paint), big: big / Math.max(1, paint), bare: bare / Math.max(1, block), roof };
+}
+
+// A box painted over a notch at the back of the footprint is the only wrong
+// shape neither the fit nor the bake can fix, and the models paint one nearly
+// every time. But from the camera's side a back notch hides the two walls round
+// it (they face away), so a true L looks just like that box with its roof over
+// the missing cell taken off, showing floor. carveBackNotches does that: at the
+// height the model painted the roof (paintedRoof), it clears every pixel whose
+// ray meets a back notch's column before any of the footprint's, and inks the
+// new edge. A notch is at the back when no cell of the footprint lies behind it
+// (a notch with a cell behind it shows walls, and the bake cuts it anyway).
+export function carveBackNotches(pic, cells, wall) {
+  const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, D = DENSITY;
+  const S = new Set(cells.map(c => c.join(','))), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
+  const back = [];
+  for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) if (!S.has(u + ',' + v) && !cells.some(([a, b]) => a <= u && b <= v)) back.push([u, v]);
+  if (!back.length) return { pic, roofAt: null, hang: 0 };
+  const roofAt = paintedRoof(pic, cells, wall);
+  // clear what the ray meets in a back notch's column (up to the painted roof) before the footprint's
+  const out = new Uint8ClampedArray(data), cleared = new Uint8Array(w * h), both = [...cells, ...back];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const o = (j * w + i) * 4;
+    if (!data[o + 3]) continue;
+    const r = rayHit(both, roofAt, X0 + (i + 0.5) / D, Y0 + (j + 0.5) / D, 0);
+    if (r && back.some(([u, v]) => u === r.cell[0] && v === r.cell[1])) { out[o + 3] = 0; cleared[j * w + i] = 1; }
+  }
+  // what stood over the notch (a sign on a pole) is left hanging once its foot is
+  // cleared: drop any small piece the cut split off from the building
+  const lab = new Int32Array(w * h).fill(-1), sizes = [], touch = [];
+  for (let s0 = 0; s0 < w * h; s0++) {
+    if (!out[s0 * 4 + 3] || lab[s0] >= 0) continue;
+    const id = sizes.length, st = [s0]; let n = 0, t = false; lab[s0] = id;
+    while (st.length) {
+      const q = st.pop(), x = q % w; n++;
+      for (const r of [x ? q - 1 : -1, x < w - 1 ? q + 1 : -1, q - w, q + w]) {
+        if (r < 0 || r >= w * h) continue;
+        if (cleared[r]) t = true;
+        if (out[r * 4 + 3] && lab[r] < 0) { lab[r] = id; st.push(r); }
+      }
+    }
+    sizes.push(n); touch.push(t);
+  }
+  const main = sizes.indexOf(Math.max(...sizes)), total = sizes.reduce((a, b) => a + b, 0);
+  for (let q = 0; q < w * h; q++) if (lab[q] >= 0 && lab[q] !== main && touch[lab[q]] && sizes[lab[q]] < 0.2 * total) { out[q * 4 + 3] = 0; cleared[q] = 1; }
+  // What still hangs over the cut once the loose pieces are gone: kept paint with
+  // cleared paint below it in its column. A sign's stub is a few pixels; a storey
+  // the model stood over the notch is a slab, and no carving makes that right.
+  // Over a back notch there is only what stood on its roof (the footprint's own
+  // cells are beside it or below it on screen), so the rest of it goes too.
+  let hang = 0, kept = 0;
+  for (let i = 0; i < w; i++) { let below = false; for (let j = h - 1; j >= 0; j--) { const q = j * w + i; if (cleared[q]) below = true; else if (out[q * 4 + 3]) { kept++; if (below) { hang++; out[q * 4 + 3] = 0; cleared[q] = 1; } } } }
+  // ink the cut: kept pixels next to a cleared one
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const o = (j * w + i) * 4;
+    if (!out[o + 3]) continue;
+    if ((i > 0 && cleared[j * w + i - 1]) || (i < w - 1 && cleared[j * w + i + 1]) || (j > 0 && cleared[(j - 1) * w + i]) || (j < h - 1 && cleared[(j + 1) * w + i])) out.set([30, 20, 40], o);
+  }
+  return { pic: { w, h, data: out }, roofAt, hang: hang / Math.max(1, kept) };
+}
+
+// The height the model painted the roof at, in frame pixels: models paint walls
+// up to two and a half times the block's. Found by matching the painting's top
+// outline to the footprint's at each height, over the columns where no notch
+// changes the outline (a box painted over a notch would pull it off), taking the
+// median miss so signs and roof kit in some columns don't count.
+export function paintedRoof(pic, cells, wall) {
+  const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, D = DENSITY;
+  const uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
+  const box = []; for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) box.push([u, v]);
+  const topPaint = i => { for (let j = 0; j < h; j++) if (data[(j * w + i) * 4 + 3]) return Y0 + (j + 0.5) / D; return null; };
+  // a prism's top outline is its cells' raised diamonds' top edges: cell (u, v)'s
+  // top corner is at X = 32(u - v), Y = 16(u + v), and the edge falls half a pixel a pixel
+  const topBlock = (cs, hh, X) => { let t = null; for (const [u, v] of cs) { const dx = Math.abs(X - (u - v) * CELL); if (dx <= CELL) { const y = (u + v) * CELL / 2 + dx / 2 - hh; if (t == null || y < t) t = y; } } return t; };
+  const cols = [];
+  for (let i = 0; i < w; i += 2) {
+    const X = X0 + (i + 0.5) / D, t = topPaint(i), b = topBlock(cells, wall, X);
+    if (t != null && b != null && b === topBlock(box, wall, X)) cols.push([X, t]);
+  }
+  let roofAt = wall, bestErr = Infinity;
+  for (let hh = Math.round(wall * 0.6); hh <= wall * 4; hh++) {
+    const errs = cols.map(([X, t]) => { const b = topBlock(cells, hh, X); return b == null ? 99 : Math.abs(t - b); }).sort((a, b) => a - b);
+    const err = errs.length ? errs[errs.length >> 1] : Infinity;
+    if (err < bestErr) { bestErr = err; roofAt = hh; }
+  }
+  return roofAt;
 }

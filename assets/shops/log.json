@@ -1,220 +1,342 @@
 {
  "burger": {
-  "raw": "burger_1790521815523_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.001,
-   0.001,
-   0.001
-  ],
-  "bare": [
-   0.051,
-   0.044,
-   0.035
+  "views": [
+   {
+    "raw": "burger_1790521815523_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.051,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "burger_1790521815523_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.044,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "burger_1790521815523_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.035,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "vending": {
-  "raw": "vending_1790522092975_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0
-  ],
-  "bare": [
-   0.127
+  "views": [
+   {
+    "raw": "vending_1790522092975_muse-image.png",
+    "model": "muse-image",
+    "chop": 0,
+    "bare": 0.127,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "kiosk": {
-  "raw": "kiosk_1790522529815_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0
-  ],
-  "bare": [
-   0.041
+  "views": [
+   {
+    "raw": "kiosk_1790522529815_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.041,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "atm": {
-  "raw": "atm_1790522541096_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0.011
-  ],
-  "bare": [
-   0.085
+  "views": [
+   {
+    "raw": "atm_1790522541096_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0.011,
+    "bare": 0.085,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "newsstand": {
-  "raw": "newsstand_1790530797461_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0.001
-  ],
-  "bare": [
-   0.036
+  "views": [
+   {
+    "raw": "newsstand_1790530797461_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0.001,
+    "bare": 0.036,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "food_stand": {
-  "raw": "food_stand_1790522568260_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0
-  ],
-  "bare": [
-   0.123
+  "views": [
+   {
+    "raw": "food_stand_1790522568260_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.123,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "coffee": {
-  "raw": "coffee_1790522209713_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.002
-  ],
-  "bare": [
-   0.089
+  "views": [
+   {
+    "raw": "coffee_1790522209713_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.002,
+    "bare": 0.089,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "currency": {
-  "raw": "currency_1790530486924_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.008
-  ],
-  "bare": [
-   0.048
+  "views": [
+   {
+    "raw": "currency_1790530486924_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.008,
+    "bare": 0.048,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "pizza": {
-  "raw": "pizza_1790522308538_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.003,
-   0.006
-  ],
-  "bare": [
-   0.088,
-   0.08
+  "views": [
+   {
+    "raw": "pizza_1790522308538_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.003,
+    "bare": 0.088,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "pizza_1790522308538_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.006,
+    "bare": 0.08,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "clothing": {
-  "raw": "clothing_1790530582543_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0,
-   0.001
-  ],
-  "bare": [
-   0.067,
-   0.07
+  "views": [
+   {
+    "raw": "clothing_1790530605759_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.057,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "clothing_1790530605759_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.087,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "sports_bar": {
-  "raw": "sports_bar_1790522344155_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.001,
-   0.001
-  ],
-  "bare": [
-   0.052,
-   0.061
+  "views": [
+   {
+    "raw": "sports_bar_1790522344155_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.052,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "sports_bar_1790522344155_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.061,
+    "roof": 0,
+    "hang": 0.015
+   }
   ]
  },
  "cafeteria": {
-  "raw": "cafeteria_1790522708099_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0.004
-  ],
-  "bare": [
-   0.113
+  "views": [
+   {
+    "raw": "cafeteria_1790522708099_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0.004,
+    "bare": 0.113,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "art_gallery": {
-  "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0.002,
-   0.001
-  ],
-  "bare": [
-   0.117,
-   0.095
+  "views": [
+   {
+    "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0.002,
+    "bare": 0.117,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0.001,
+    "bare": 0.095,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "lounge": {
-  "raw": "lounge_1790522428033_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.002,
-   0.003
-  ],
-  "bare": [
-   0.049,
-   0.039
+  "views": [
+   {
+    "raw": "lounge_1790522428033_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.002,
+    "bare": 0.049,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "lounge_1790522428033_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.003,
+    "bare": 0.039,
+    "roof": 0,
+    "hang": 0.003
+   }
   ]
  },
  "designer": {
-  "raw": "designer_1790530318344_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.001,
-   0.001,
-   0.002,
-   0.001
-  ],
-  "bare": [
-   0.085,
-   0.101,
-   0.094,
-   0.078
+  "views": [
+   {
+    "raw": "designer_1790530318344_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.085,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "designer_1790530318344_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.101,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "designer_1790530318344_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.002,
+    "bare": 0.094,
+    "roof": 0.242,
+    "hang": 0
+   },
+   {
+    "raw": "designer_1790530318344_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.002,
+    "bare": 0.078,
+    "roof": 0,
+    "hang": 0.005
+   }
   ]
  },
  "security": {
-  "raw": "security_1790522788891_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0,
-   0,
-   0
-  ],
-  "bare": [
-   0.071,
-   0.061,
-   0.037
+  "views": [
+   {
+    "raw": "security_1790522788891_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.071,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "security_1790522788891_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.061,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "security_1790522788891_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.037,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "drone_swarm": {
-  "raw": "drone_swarm_1790522481833_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.003
-  ],
-  "bare": [
-   0.043
+  "views": [
+   {
+    "raw": "drone_swarm_1790522481833_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.003,
+    "bare": 0.043,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  },
  "nanofab": {
-  "raw": "nanofab_1790522498471_muse-image.png",
-  "model": "muse-image",
-  "chop": [
-   0.003,
-   0.001,
-   0
-  ],
-  "bare": [
-   0.048,
-   0.046,
-   0.038
+  "views": [
+   {
+    "raw": "nanofab_1790522498471_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.003,
+    "bare": 0.048,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "nanofab_1790522498471_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.001,
+    "bare": 0.046,
+    "roof": 0,
+    "hang": 0
+   },
+   {
+    "raw": "nanofab_1790522498471_muse-image.png",
+    "model": "muse-image",
+    "chop": 0,
+    "bare": 0.043,
+    "roof": 0,
+    "hang": 0.008
+   }
   ]
  },
  "restroom": {
-  "raw": "restroom_1790522606337_gemini-3.1-flash-image.png",
-  "model": "gemini-3.1-flash-image",
-  "chop": [
-   0
-  ],
-  "bare": [
-   0.011
+  "views": [
+   {
+    "raw": "restroom_1790522606337_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.011,
+    "roof": 0,
+    "hang": 0
+   }
   ]
  }
 }

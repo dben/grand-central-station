@@ -1054,18 +1054,37 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     corner at a spread of scales, then refines, looking 40 frame pixels past the view's box. The
     placement is resampled into `assets/shops/<key>_<view>.png` at 2 pixels to a frame pixel and
     cut down to one palette of 80 colours per shop, which reads as pixel art and packs small.
-  - *Judging (`cutStats`):* a painting of the wrong shape (a box on an L, a T's stem the wrong
-    length) shows one of two ways once placed: the bake cuts a piece off it, which reads as a wall
-    chopped off with floor behind it, or the fit shrinks it until nothing is cut and it leaves
-    floor bare on its own tile. So each view is judged by its biggest cut piece (as a share of its
-    paint, against 1.5%) and its bare block (against 15%), whichever is worse; a painting is sound
-    when every view is under both, and among sound paintings the fit decides. `--reuse` judges
-    every painting a shop has had, from both models, and the script names any view still over
-    a limit, to paint again. The first set was chosen on fit alone, with a cut costing no more
-    than a covered pixel earned: 20 of its 33 views had a cut piece over 1.5% (up to 8.5%), and
-    they showed in play as chopped walls. Judged this way, the 19 shops kept have no cut piece
-    over 1.1% and no block more than 12.7% bare. `assets/shops/log.json` keeps which painting and
-    model each shop came from, and each view's chop and bare share.
+  - *Back notches (`carveBackNotches`):* a notch with no footprint cell behind it (the back of an
+    L3 or L4, one corner of every S, the two behind a T's bar) is nearly always painted over: every
+    painting either model made of those views roofed it in, save the nanofab's and one lounge's.
+    The bake can't cut it, since from the front a wall there sits where a sign on the roof would.
+    But the two walls round a back notch face away from the camera, so a true L looks just like the
+    box with its roof over the missing cell taken off. So the fit carves it: at the height the model
+    painted the roof (`paintedRoof`: the painting's top outline against the block's at each height,
+    over the columns no notch changes, taking the median miss; models paint walls up to two and a
+    half times the block's), it clears every pixel whose ray meets the notch's column before any of
+    the footprint's, then any small piece that cut leaves loose and anything left above the cut (a
+    sign that stood on the missing roof: it can't be there), and inks the new edge. Asking the
+    model instead to turn a view it got right half way round, with or without the target block-out
+    beside it, got nothing: Nano Banana 2 and Pro each redrew the view unturned, or stood it on the
+    block-out as a plinth.
+  - *Judging (`cutStats`):* a painting of the wrong shape shows in one of four ways once placed
+    and carved: the bake cuts a piece off it, which reads as a wall chopped off with floor behind
+    it (its biggest cut piece, as a share of its paint, against 1.5%); the fit shrank it until
+    nothing is cut, so it leaves floor bare on its own tile (against 15% of the block); it roofs
+    over a notch the carve doesn't reach (the painted share of the back half of the notch cell's
+    diamond raised to the painted roof, leaving out the footprint's own walls up to that height,
+    against 50%: a roof has a rim that follows the footprint, so the notch shows as open floor on
+    a true L); or the carve left paint hanging over the notch, a storey the model stood there
+    rather than a roof (against 2% of the paint). A view's flaw is the worst of the four against
+    its limit; a painting is sound when every view is under 1, and among sound paintings the fit
+    decides. `--reuse` judges every painting a shop has had, from both models, and the script
+    names any view still over a limit. The first set was chosen on fit alone, with a cut costing
+    no more than a covered pixel earned: 20 of its 33 views had a cut piece over 1.5% (up to 8.5%),
+    and they showed in play as chopped walls. The 19 shops kept have no cut piece over 1.1%, no
+    block more than 12.7% bare, no notch more than 24% roofed and no view with more than 1.5%
+    hanging. `assets/shops/log.json` keeps, for each view, the painting and model it came from and
+    those four shares.
   - *Baking:* `isoart.mjs` makes each turn from its view's picture, mirrored for a flipped turn.
     Every pixel is cast down its ray (`rayHit`, which steps from cell line to cell line): what
     meets no column of the footprint is cut away (paint on the floor beside the walls); the rest
@@ -1084,7 +1103,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     allows for. Judged as above, Muse's painting was kept for 11 shops (burger, pizza, clothing,
     sports bar, lounge, designer, nanofab, vending, coffee, currency, drone swarm) and Flash's for
     8 (restroom, kiosk, cash machine, newsstand, food stand, cafeteria, art gallery, security
-    station). The whole set cost about $4.30, trials included.
+    station). The whole set cost about $4.80, trials included.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.
