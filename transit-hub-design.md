@@ -1044,7 +1044,33 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     block-out as a reference image) to paint the shop over every block at once: one call a shop,
     so its views share one design. The prompt bans lettering, since a flipped turn would mirror
     it, and asks for light from the right, pure white behind and nothing on the ground. A painting
-    whose border is not mostly white (a whole station drawn behind the shop) is skipped.
+    whose border is not mostly white (a whole station drawn behind the shop) is skipped. The
+    block-out carries a faint seam on every cell line, roof and walls, and the prompt names the
+    proportions ("three squares long, one square deep"): without them both models painted a bar
+    three cells long as a squat box, leaving a quarter of it bare; with them, 6 to 9%. (Muse took
+    the seams for walls between three units once, so the prompt says they only mark squares.)
+  - *Parts and low cells:* a cell can stand lower than the walls (`LOW`: a fraction of the wall
+    height, which `rayHit`, the fit and the bake all honour), and a shop can be painted in parts
+    (`PARTS`), each a small shop of its own with its own views, then composed into the shop's
+    views part by part, the one nearer the camera over the other (`composeViews`). The sports
+    bar's T is a bar three cells long plus a one-cell patio a quarter of the wall high: asked for
+    the T with a patio on its stem, Flash, Muse and Nano Banana Pro all painted a box with a patio
+    along its whole front, even with the patio slab drawn grey; painted apart, both parts fit.
+  - *Walls (`squashWalls`):* the models paint walls up to two and a half times the block's, which
+    towers over the tile and hides the roofline. Each view is brought down to at most 1.25 times
+    the block, and blank wall past that (the bare strip a model leaves over an awning) down to 0.7
+    of it: rows are taken out at the same heights above the painting's own ground line in every
+    column (the bottom of the paint, the lowest within six columns so it runs on under an awning's
+    end), so each wall is cut level and everything above drops as one, roof and signs whole. The
+    rows taken are the plainest, by the change from each pixel to the one above and the one beside
+    along the wall, over painted pairs only: blank wall is even both ways (50 to 65 a pixel with
+    Muse's texture), a window only downwards, and awnings and signs neither (100 to 250). Squashing
+    showed shortfalls the tall walls had hidden (a cafeteria a little short of its fifth cell, the
+    back of pizza's S), and those were painted again.
+  - *One view (`--view n`):* paints one view on its own block-out and keeps it if it is sounder
+    than that view now; a model follows one block-out best. The pizza's north-south view came this
+    way. A shop chosen by eye (`--pick`) or given a view this way is pinned, and `--reuse` leaves
+    its pictures alone.
   - *Fitting:* the white is flooded out from the border, the painting split into its buildings
     and each given to the nearest block-out. Each is then placed (a scale and a shift) to cover
     its block, less four times what the bake will cut away (paint over no column of the footprint,
@@ -1100,10 +1126,9 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     2K, which a shop with several views gets), but often paints a box where the footprint is an
     L, S or T; Meta Muse Image is a cent a shop, paints coarser pixels, and follows the footprint
     far more often. It ignores the requested ratio and letterboxes the block-outs, which the fit
-    allows for. Judged as above, Muse's painting was kept for 11 shops (burger, pizza, clothing,
-    sports bar, lounge, designer, nanofab, vending, coffee, currency, drone swarm) and Flash's for
-    8 (restroom, kiosk, cash machine, newsstand, food stand, cafeteria, art gallery, security
-    station). The whole set cost about $4.80, trials included.
+    allows for. Judged as above, Muse's painting was kept for 11 shops (art gallery, burger, clothing, coffee, currency, designer, drone swarm, lounge, nanofab, pizza, vending) and Flash's for
+    7 (atm, cafeteria, food stand, kiosk, newsstand, restroom, security); the sports bar is a Flash bar and a Muse
+    patio. The whole set cost about $6.80, trials included.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.

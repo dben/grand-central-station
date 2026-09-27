@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 // Paints the shops' board art with an image model, through OpenRouter:
 //   node harness/shopgen.mjs [key ...] [--tries 2] [--model google/gemini-3.1-flash-image] [--reuse | --pick <painting>]
+// A painting chosen with --pick, or a view painted with --view, pins the shop: --reuse leaves it as it is.
+//   node harness/shopgen.mjs <key> --view <n> [--tries 3] ...
+// paints that one view on its own (a model follows one block-out best) and
+// keeps it if it is sounder than the view it replaces.
 // A shop needs one picture per footprint its turns show (shopViews in
 // shopart.mjs: one for an I or O, up to four for an L4). This draws a block-out
 // of each footprint in the tile's colour, all side by side in one image, and
 // asks the model to paint the shop over every one of them at once, so all its
 // sides match. It keys out the white background and fits each painting back
 // onto its footprint: a search over scale and offset for the placement that
-// covers the block best while the bake cuts least, and a notch at the back of
-// the footprint, which the models nearly always roof over, is carved out
-// (carveBackNotches in shopart.mjs). A painting of the wrong shape then shows as
+// covers the block best while the bake cuts least; walls painted too tall come
+// down (squashWalls in shopart.mjs), and a notch at the back of the footprint,
+// which the models nearly always roof over, is carved out (carveBackNotches).
+// A shop listed in PARTS is painted part by part and its views composed. A painting of the wrong shape then shows as
 // a cut (a chopped wall), a shrink (bare floor on its tile), roof over a notch
 // or paint left hanging over a carved one (cutStats), and the one kept of
 // --tries is the one whose worst view does least of any; it goes to
@@ -25,7 +30,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { decodePng, encodePng, quantize } from './png.mjs';
-import { SHOPS, DENSITY, COLOURS, KEEP_ROOM, shopViews, wallHeight, viewBox, rayHit, cutStats, carveBackNotches } from './shopart.mjs';
+import { SHOPS, PARTS, CELL, DENSITY, COLOURS, KEEP_ROOM, shopViews, shopViewsOf, baseOf, partBase, composeViews, wallHeight, viewBox, rayHit, cutStats, carveBackNotches, squashWalls } from './shopart.mjs';
 import { tileDef } from '../src/data/tiles.js';
 import { colorForDef } from '../src/ui/render.js';
 
@@ -33,7 +38,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf('--' + n); return i < 0 ? d : args[i + 1]; };
 const model = flag('model', 'google/gemini-3.1-flash-image'), byModel = args.includes('--model'), tries = +flag('tries', 1);
-const reuse = args.includes('--reuse'), pick = flag('pick', null), valued = ['--model', '--tries', '--pick'];
+const reuse = args.includes('--reuse'), pick = flag('pick', null), onlyView = flag('view', null), valued = ['--model', '--tries', '--pick', '--view'];
 const keys = args.filter((a, i) => !a.startsWith('--') && !valued.includes(args[i - 1]));
 const rawDir = resolve(root, 'harness/.shopraw'), outDir = resolve(root, 'assets/shops');
 mkdirSync(rawDir, { recursive: true }); mkdirSync(outDir, { recursive: true });
@@ -45,10 +50,11 @@ const BARE = 0.15;                         // bare floor over more than this sha
 const ROOF = 0.5;                          // roof over more than this share of a notch: a box where the footprint has a corner cut out
 const HANG = 0.02;                         // paint left hanging over a carved notch: a storey stood over it, not just a roof
 const SHADE = [1, 0.52, 0.70];             // top, left and right faces, as the sheets light them
+const PAVING = [184, 188, 198];            // a low part's slab in the block-out
 const RATIOS = { '1:1': 1, '4:3': 4 / 3, '3:2': 1.5, '16:9': 16 / 9, '21:9': 21 / 9 };
 const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
 const pct = v => (100 * v).toFixed(1) + '%';
-const SHAPE_WORDS = { I1: 'a single square', I2: 'a 1 x 2 rectangle', I5: 'a long 1 x 5 rectangle', O4: 'a 2 x 2 square',
+const SHAPE_WORDS = { I1: 'a single square', I2: 'a 1 x 2 rectangle: two squares long, one square deep', I5: 'a long 1 x 5 rectangle: five squares long, one square deep', O4: 'a 2 x 2 square',
   L3: 'an L of three squares', L4: 'an L of four squares', S4: 'a zig-zag of four squares', S5: 'a zig-zag of five squares', T4: 'a T of four squares' };
 const NUM = ['', 'one', 'two', 'three', 'four'];
 
@@ -76,25 +82,34 @@ function drawGuide(L, views, wall, tint) {
     const [X0, Y0, X1, Y1] = s.box;
     for (let j = Math.floor(s.gy); j < s.gy + (Y1 - Y0) * L.G; j++) for (let i = Math.floor(s.gx); i < s.gx + (X1 - X0) * L.G; i++) {
       const r = rayHit(views[v], wall, X0 + (i + 0.5 - s.gx) / L.G, Y0 + (j + 0.5 - s.gy) / L.G, 0);
-      if (r && i >= 0 && j >= 0 && i < L.gw && j < L.gh) data.set(T.map(c => c * SHADE[r.face]), (j * L.gw + i) * 4);
+      if (!r || i < 0 || j < 0 || i >= L.gw || j >= L.gh) continue;
+      // a low part (a patio) is drawn as grey paving, so it doesn't read as more building
+      const cell = views[v].find(c => c[0] === r.cell[0] && c[1] === r.cell[1]), low = !!cell[2];
+      // a seam on every cell line, roof and walls, so the model can count the squares
+      const X = X0 + (i + 0.5 - s.gx) / L.G, Y = Y0 + (j + 0.5 - s.gy) / L.G, a = Y + X / 2, b = Y - X / 2, H = wall * (cell[2] ?? 1);
+      const h = r.face === 0 ? H : r.face === 1 ? (r.cell[1] + 1) * CELL - b : (r.cell[0] + 1) * CELL - a;
+      const U = a + h, V = b + h, near = t => Math.abs(t - Math.round(t / CELL) * CELL) < 0.6 / L.G * 1.6;
+      const seam = r.face === 0 ? near(U) || near(V) : r.face === 1 ? near(U) : near(V);
+      data.set((low ? PAVING : T).map(c => c * SHADE[r.face] * (seam ? 0.8 : 1)), (j * L.gw + i) * 4);
     }
   });
   return { w: L.gw, h: L.gh, data };
 }
 
-function prompt(key, n) {
-  const d = tileDef(key), shape = SHAPE_WORDS[d.shape] || 'its own shape';
+function prompt(job, n) {
+  const shape = job.shape;
   const what = n === 1 ? 'a flat-shaded 3D block-out of one building' : `${NUM[n]} flat-shaded 3D block-outs of buildings, side by side`;
   return [
-    `This image is ${what}, for an isometric pixel-art game about running a busy transit hub. Paint over ${n === 1 ? 'it' : 'every one of them'} to make the finished sprite${n === 1 ? '' : 's'} of ${SHOPS[key]}. ${n === 1 ? 'It stands' : 'They are branches of the same shop, standing'} inside a big indoor station concourse.`,
+    `This image is ${what}, for an isometric pixel-art game about running a busy transit hub. Paint over ${n === 1 ? 'it' : 'every one of them'} to make the finished sprite${n === 1 ? '' : 's'} of ${job.text}. ${n === 1 ? 'It stands' : 'They are branches of the same shop, standing'} inside a big indoor station concourse.`,
     n === 1 ? '' : `\nPaint all ${NUM[n]} in one matching design: the same colours, awning, signs, windows, doors and roof kit, each arranged to suit its own walls. Each block-out has its own footprint (${shape}, turned a different way); paint each one exactly on its own shape. Keep them apart, in the same places, with white space between them.`,
     '',
     `Keep ${n === 1 ? 'the block-out\'s' : 'each block-out\'s'} geometry exactly. The game engine cuts the sprite${n === 1 ? '' : 's'} up along ${n === 1 ? 'this shape' : 'these shapes'}, so:`,
     '- the same 2:1 isometric camera, the same position and the same size on the canvas;',
-    '- each building is exactly its block\'s mass: the same outline where it meets the ground, the same wall corners and inside corners, the walls the same height;',
+    `- ${job.paving ? 'it covers exactly the slab: the same outline where it meets the ground, nothing past its edges' : `each building is exactly its block's mass (${shape}): the same outline where it meets the ground, the same wall corners and inside corners, the walls the same height`};`,
     '- only signs, rooftop kit and small roof features may rise above the flat roof, into the empty space above it; nothing may stick out past the walls at ground level.',
+    '- the thin seams on the block-out only mark its squares: paint one continuous building over them, not a row of separate units, and leave the seams out.',
     '',
-    `Style: crisp hard-edged pixel art with dark outlines, like a cosy 16-bit management sim, rich in small details. Keep the block-out colour (${colorForDef(d)}) as the main colour of the walls and roof, so the building still reads as that colour. Light from the upper right: walls facing right lighter than walls facing left. Put the shopfront on the walls facing the viewer. No letters, words or numbers anywhere: signs show pictures only, since the sprite is also shown mirrored. Plain flat pure white background; no ground, no floor tiles, no shadows on the ground, no people.`,
+    `Style: crisp hard-edged pixel art with dark outlines, like a cosy 16-bit management sim, rich in small details. ${job.paving ? 'Pale grey paving, the rail and umbrellas in the shop\'s blue.' : `Keep the block-out colour (${job.tint}) as the main colour of the walls and roof, so the building still reads as that colour.`} Light from the upper right: walls facing right lighter than walls facing left. Put the shopfront on the walls facing the viewer. No letters, words or numbers anywhere: signs show pictures only, since the sprite is also shown mirrored. Plain flat pure white background; no ground, no floor tiles, no shadows on the ground, no people.`,
   ].join('\n');
 }
 
@@ -234,8 +249,10 @@ function register(img, fg, L, slot, cells, wall) {
     if (a * 2 < all) continue;
     out.set([r / a, g / a, b / a, 255], (j * W + i) * 4);
   }
-  // a box painted over a notch at the back loses its roof there, as the notch would show it
-  const { pic, roofAt, hang } = carveBackNotches({ w: W, h: H, data: out }, cells, wall);
+  // walls painted too tall come down, then a box painted over a notch at the
+  // back loses its roof there, as the notch would show it
+  const squashed = squashWalls({ w: W, h: H, data: out }, cells, wall);
+  const { pic, roofAt, hang } = carveBackNotches(squashed.pic, cells, wall);
   return { pic, fit: best, roofAt, hang, ...cutStats(pic, cells, wall) };
 }
 
@@ -272,28 +289,77 @@ const paint = (key, images, text, ratio, big, name) => {
 };
 const tag = model.split('/').pop();
 let spent = 0;
-for (const key of keys.length ? keys : Object.keys(SHOPS)) {
-  if (!SHOPS[key]) { console.log(`${key}: not a shop (see SHOPS in harness/shopart.mjs)`); continue; }
-  const def = tileDef(key), wall = wallHeight(key), { views } = shopViews(key);
-  const L = layout(views, wall), guide = encodePng(drawGuide(L, views, wall, colorForDef(def)));
-  writeFileSync(resolve(rawDir, `${key}_guide.png`), guide);
-  const mine = f => new RegExp(`^${key}_\\d{6,}_`).test(f) && (!byModel || f.endsWith(`_${tag}.png`));
-  const raws = pick ? [pick] : reuse ? readdirSync(rawDir).filter(mine) : [];
-  for (let t = 0; !reuse && !pick && t < tries; t++) { const n = paint(key, [guide], prompt(key, views.length), L.ratio, views.length > 1, `${key}_${Date.now()}_${tag}.png`); if (n) raws.push(n); }
+// What there is to paint for a shop: the whole of it, or each of its parts (PARTS).
+const SHAPE_OF = key => SHAPE_WORDS[tileDef(key).shape] || 'its own shape';
+const jobsOf = key => (PARTS[key] || [null]).map(part => part
+  ? { id: `${key}.${part.name}`, key, base: partBase(key, part), text: part.text, shape: part.shape, paving: !!part.paving, tint: colorForDef(tileDef(key)) }
+  : { id: key, key, base: baseOf(key), text: SHOPS[key], shape: SHAPE_OF(key), tint: colorForDef(tileDef(key)) });
+// Paint (or with --reuse, judge again) one job, write its pictures, return its fits or null.
+function runJob(job) {
+  if (onlyView != null) return runView(job, +onlyView);
+  const wall = wallHeight(job.key), { views } = shopViewsOf(job.base), id = job.id;
+  const L = layout(views, wall), guide = encodePng(drawGuide(L, views, wall, job.tint));
+  writeFileSync(resolve(rawDir, `${id}_guide.png`), guide);
+  const mine = f => f.startsWith(`${id}_`) && /^_\d{6,}_/.test(f.slice(id.length)) && (!byModel || f.endsWith(`_${tag}.png`));
+  // --pick names one painting; the shop's other parts are judged again from what they have
+  // a shop chosen by eye (--pick, or a view painted again with --view) is pinned:
+  // --reuse leaves its pictures as they are; --pick or a new painting moves it on
+  const picked = pick && mine(pick), again = reuse || (pick && !picked);
+  if (again && log[id] && log[id].pinned) { console.log(`${id}: pinned, left as it is (${log[id].views.map(x => x.raw).join(', ')})`); return null; }
+  const raws = picked ? [pick] : again ? readdirSync(rawDir).filter(mine) : [];
+  for (let t = 0; !again && !picked && t < tries; t++) { const n = paint(id, [guide], prompt(job, views.length), L.ratio, views.length > 1, `${id}_${Date.now()}_${tag}.png`); if (n) raws.push(n); }
   // The painting whose worst view is soundest; its views are kept together, so all sides match.
   let best = null;
   for (const name of raws) {
     const fits = judge(name, L, views, wall);
-    if (!fits) { console.log(`  ${key}: ${name} has no white background, skipped`); continue; }
-    console.log(`  ${key}: ${name} ${report(fits)}`);
+    if (!fits) { console.log(`  ${id}: ${name} has no white background, skipped`); continue; }
+    console.log(`  ${id}: ${name} ${report(fits)}`);
     const rank = rankOf(fits);
     if (better(rank, best && best.rank)) best = { fits, rank, name };
   }
-  if (!best) continue;
-  writePics(key, best.fits.map(f => f.pic));
-  log[key] = { views: best.fits.map(f => record(best.name, f)) };
+  if (!best) return null;
+  writePics(id, best.fits.map(f => f.pic));
+  log[id] = { ...(picked ? { pinned: true } : {}), views: best.fits.map(f => record(best.name, f)) };
   const bad = best.fits.map((f, v) => flawOf(f) > 1 ? v : -1).filter(v => v >= 0);
-  console.log(`${key}: kept ${best.name}, ${report(best.fits)}${bad.length ? `  <- view ${bad.join(', ')} the wrong shape: paint again` : ''}`);
+  console.log(`${id}: kept ${best.name}, ${report(best.fits)}${bad.length ? `  <- view ${bad.join(', ')} the wrong shape: paint again` : ''}`);
+  return best.fits;
+}
+// One view painted on its own, to replace that view of the shop's current pictures.
+function runView(job, v) {
+  const wall = wallHeight(job.key), { views } = shopViewsOf(job.base), id = job.id, cells = views[v];
+  if (!cells) { console.log(`${id}: no view ${v}`); return null; }
+  const L = layout([cells], wall), guide = encodePng(drawGuide(L, [cells], wall, job.tint));
+  const mine = f => f.startsWith(`${id}_v${v}_`) && (!byModel || f.endsWith(`_${tag}.png`));
+  const raws = pick && mine(pick) ? [pick] : reuse ? readdirSync(rawDir).filter(mine) : [];
+  for (let t = 0; !reuse && !pick && t < tries; t++) { const n = paint(id, [guide], prompt(job, 1), L.ratio, false, `${id}_v${v}_${Date.now()}_${tag}.png`); if (n) raws.push(n); }
+  const pics = views.map((_, u) => decodePng(readFileSync(resolve(outDir, `${id}_${u}.png`))));
+  const now = cutStats(pics[v], cells, wall);
+  let best = null;
+  for (const name of raws) {
+    const fits = judge(name, L, [cells], wall);
+    if (!fits) { console.log(`  ${id} view ${v}: ${name} has no white background, skipped`); continue; }
+    console.log(`  ${id} view ${v}: ${name} ${report(fits)}`);
+    if (better(rankOf(fits), best && best.rank)) best = { f: fits[0], rank: rankOf(fits), name };
+  }
+  if (!best || !(Math.max(1, flawOf(best.f)) < Math.max(1, flawOf({ ...now, hang: 0 })))) { console.log(`${id} view ${v}: kept as it was`); return null; }
+  pics[v] = best.f.pic;
+  writePics(id, pics);
+  log[id].views[v] = record(best.name, best.f);
+  log[id].pinned = true;
+  console.log(`${id} view ${v}: replaced with ${best.name}, ${report([best.f])}`);
+  return true;
+}
+for (const key of keys.length ? keys : Object.keys(SHOPS)) {
+  if (!SHOPS[key]) { console.log(`${key}: not a shop (see SHOPS in harness/shopart.mjs)`); continue; }
+  for (const job of jobsOf(key)) runJob(job);
+  if (!PARTS[key]) continue;
+  // a shop in parts: its views composed from the parts' pictures as they now stand
+  const wall = wallHeight(key), { views } = shopViews(key), pics = {};
+  for (const part of PARTS[key]) pics[part.name] = shopViewsOf(partBase(key, part)).views.map((_, v) => decodePng(readFileSync(resolve(outDir, `${key}.${part.name}_${v}.png`))));
+  const whole = composeViews(key, pics), stats = whole.map((p, v) => ({ fit: { v: 0 }, hang: 0, ...cutStats(p, views[v], wall) }));
+  writePics(key, whole);
+  log[key] = { parts: PARTS[key].map(p => `${key}.${p.name}`), views: stats.map(f => record('composed', f)) };
+  console.log(`${key}: composed from ${PARTS[key].map(p => p.name).join(' and ')}, ${report(stats)}`);
 }
 writeFileSync(logPath, JSON.stringify(log, null, 1) + '\n');
 if (spent) console.log(`spent $${spent.toFixed(3)}`);

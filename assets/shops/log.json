@@ -5,7 +5,7 @@
     "raw": "burger_1790521815523_muse-image.png",
     "model": "muse-image",
     "chop": 0.001,
-    "bare": 0.051,
+    "bare": 0.049,
     "roof": 0,
     "hang": 0
    },
@@ -13,15 +13,15 @@
     "raw": "burger_1790521815523_muse-image.png",
     "model": "muse-image",
     "chop": 0.001,
-    "bare": 0.044,
+    "bare": 0.043,
     "roof": 0,
     "hang": 0
    },
    {
     "raw": "burger_1790521815523_muse-image.png",
     "model": "muse-image",
-    "chop": 0.001,
-    "bare": 0.035,
+    "chop": 0.002,
+    "bare": 0.036,
     "roof": 0,
     "hang": 0
    }
@@ -45,7 +45,7 @@
     "raw": "kiosk_1790522529815_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
     "chop": 0,
-    "bare": 0.041,
+    "bare": 0.04,
     "roof": 0,
     "hang": 0
    }
@@ -56,8 +56,8 @@
    {
     "raw": "atm_1790522541096_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
-    "chop": 0.011,
-    "bare": 0.085,
+    "chop": 0.013,
+    "bare": 0.087,
     "roof": 0,
     "hang": 0
    }
@@ -69,7 +69,7 @@
     "raw": "newsstand_1790530797461_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
     "chop": 0.001,
-    "bare": 0.036,
+    "bare": 0.037,
     "roof": 0,
     "hang": 0
    }
@@ -78,10 +78,10 @@
  "food_stand": {
   "views": [
    {
-    "raw": "food_stand_1790522568260_gemini-3.1-flash-image.png",
+    "raw": "food_stand_1790539458367_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
-    "chop": 0,
-    "bare": 0.123,
+    "chop": 0.003,
+    "bare": 0.093,
     "roof": 0,
     "hang": 0
    }
@@ -93,7 +93,7 @@
     "raw": "coffee_1790522209713_muse-image.png",
     "model": "muse-image",
     "chop": 0.002,
-    "bare": 0.089,
+    "bare": 0.112,
     "roof": 0,
     "hang": 0
    }
@@ -104,34 +104,36 @@
    {
     "raw": "currency_1790530486924_muse-image.png",
     "model": "muse-image",
-    "chop": 0.008,
-    "bare": 0.048,
+    "chop": 0.011,
+    "bare": 0.051,
     "roof": 0,
     "hang": 0
    }
   ]
  },
  "pizza": {
+  "pinned": true,
   "views": [
    {
     "raw": "pizza_1790522308538_muse-image.png",
     "model": "muse-image",
-    "chop": 0.003,
-    "bare": 0.088,
+    "chop": 0.004,
+    "bare": 0.09,
     "roof": 0,
     "hang": 0
    },
    {
-    "raw": "pizza_1790522308538_muse-image.png",
+    "raw": "pizza_v1_1790540239075_muse-image.png",
     "model": "muse-image",
-    "chop": 0.006,
-    "bare": 0.08,
+    "chop": 0.002,
+    "bare": 0.072,
     "roof": 0,
     "hang": 0
    }
   ]
  },
  "clothing": {
+  "pinned": true,
   "views": [
    {
     "raw": "clothing_1790530605759_muse-image.png",
@@ -145,39 +147,43 @@
     "raw": "clothing_1790530605759_muse-image.png",
     "model": "muse-image",
     "chop": 0.001,
-    "bare": 0.087,
+    "bare": 0.085,
     "roof": 0,
     "hang": 0
    }
   ]
  },
  "sports_bar": {
+  "parts": [
+   "sports_bar.bar",
+   "sports_bar.patio"
+  ],
   "views": [
    {
-    "raw": "sports_bar_1790522344155_muse-image.png",
-    "model": "muse-image",
-    "chop": 0.001,
-    "bare": 0.052,
+    "raw": "composed",
+    "model": "composed",
+    "chop": 0,
+    "bare": 0.096,
     "roof": 0,
     "hang": 0
    },
    {
-    "raw": "sports_bar_1790522344155_muse-image.png",
-    "model": "muse-image",
-    "chop": 0.001,
-    "bare": 0.061,
-    "roof": 0,
-    "hang": 0.015
+    "raw": "composed",
+    "model": "composed",
+    "chop": 0,
+    "bare": 0.086,
+    "roof": 0.195,
+    "hang": 0
    }
   ]
  },
  "cafeteria": {
   "views": [
    {
-    "raw": "cafeteria_1790522708099_gemini-3.1-flash-image.png",
+    "raw": "cafeteria_1790539473784_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
-    "chop": 0.004,
-    "bare": 0.113,
+    "chop": 0.003,
+    "bare": 0.142,
     "roof": 0,
     "hang": 0
    }
@@ -186,20 +192,20 @@
  "art_gallery": {
   "views": [
    {
-    "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
-    "model": "gemini-3.1-flash-image",
-    "chop": 0.002,
-    "bare": 0.117,
+    "raw": "art_gallery_1790539920262_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.008,
+    "bare": 0.11,
     "roof": 0,
     "hang": 0
    },
    {
-    "raw": "art_gallery_1790522721071_gemini-3.1-flash-image.png",
-    "model": "gemini-3.1-flash-image",
-    "chop": 0.001,
-    "bare": 0.095,
+    "raw": "art_gallery_1790539920262_muse-image.png",
+    "model": "muse-image",
+    "chop": 0.004,
+    "bare": 0.083,
     "roof": 0,
-    "hang": 0
+    "hang": 0.01
    }
   ]
  },
@@ -208,8 +214,8 @@
    {
     "raw": "lounge_1790522428033_muse-image.png",
     "model": "muse-image",
-    "chop": 0.002,
-    "bare": 0.049,
+    "chop": 0.003,
+    "bare": 0.055,
     "roof": 0,
     "hang": 0
    },
@@ -217,9 +223,9 @@
     "raw": "lounge_1790522428033_muse-image.png",
     "model": "muse-image",
     "chop": 0.003,
-    "bare": 0.039,
+    "bare": 0.04,
     "roof": 0,
-    "hang": 0.003
+    "hang": 0.002
    }
   ]
  },
@@ -229,7 +235,7 @@
     "raw": "designer_1790530318344_muse-image.png",
     "model": "muse-image",
     "chop": 0.001,
-    "bare": 0.085,
+    "bare": 0.087,
     "roof": 0,
     "hang": 0
    },
@@ -245,17 +251,17 @@
     "raw": "designer_1790530318344_muse-image.png",
     "model": "muse-image",
     "chop": 0.002,
-    "bare": 0.094,
-    "roof": 0.242,
+    "bare": 0.096,
+    "roof": 0.132,
     "hang": 0
    },
    {
     "raw": "designer_1790530318344_muse-image.png",
     "model": "muse-image",
-    "chop": 0.002,
+    "chop": 0.001,
     "bare": 0.078,
     "roof": 0,
-    "hang": 0.005
+    "hang": 0.007
    }
   ]
  },
@@ -265,7 +271,7 @@
     "raw": "security_1790522788891_gemini-3.1-flash-image.png",
     "model": "gemini-3.1-flash-image",
     "chop": 0,
-    "bare": 0.071,
+    "bare": 0.081,
     "roof": 0,
     "hang": 0
    },
@@ -293,7 +299,7 @@
     "raw": "drone_swarm_1790522481833_muse-image.png",
     "model": "muse-image",
     "chop": 0.003,
-    "bare": 0.043,
+    "bare": 0.071,
     "roof": 0,
     "hang": 0
    }
@@ -305,7 +311,7 @@
     "raw": "nanofab_1790522498471_muse-image.png",
     "model": "muse-image",
     "chop": 0.003,
-    "bare": 0.048,
+    "bare": 0.051,
     "roof": 0,
     "hang": 0
    },
@@ -321,7 +327,7 @@
     "raw": "nanofab_1790522498471_muse-image.png",
     "model": "muse-image",
     "chop": 0,
-    "bare": 0.043,
+    "bare": 0.035,
     "roof": 0,
     "hang": 0.008
    }
@@ -334,6 +340,31 @@
     "model": "gemini-3.1-flash-image",
     "chop": 0,
     "bare": 0.011,
+    "roof": 0,
+    "hang": 0
+   }
+  ]
+ },
+ "sports_bar.bar": {
+  "pinned": true,
+  "views": [
+   {
+    "raw": "sports_bar.bar_1790538123948_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "chop": 0,
+    "bare": 0.113,
+    "roof": 0,
+    "hang": 0
+   }
+  ]
+ },
+ "sports_bar.patio": {
+  "views": [
+   {
+    "raw": "sports_bar.patio_1790538234669_muse-image.png",
+    "model": "muse-image",
+    "chop": 0,
+    "bare": 0.007,
     "roof": 0,
     "hang": 0
    }

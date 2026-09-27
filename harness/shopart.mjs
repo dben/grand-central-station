@@ -18,6 +18,8 @@ const HZ = 2 * CELL * H_UNIT;             // frame pixels per unit of tile heigh
 // The art stands taller than the block the game's other views use, so a shop
 // has room for a shopfront; signs and roof kit may rise a further WALL_ROOM.
 export const ART_TALL = 1.7, WALL_MAX = 44, WALL_ROOM = 64, MARGIN = 10;
+// Painted walls are brought down to at most this many times the block's.
+export const SQUASH_TO = 1.25, BLANK = 80;
 // How far up a pixel may be and still be kept, when the column it stands over
 // is in front (a sign over an L's back notch): anything that high is in the air.
 export const KEEP_ROOM = 400;
@@ -39,7 +41,7 @@ export const SHOPS = {
   burger: 'a BURGER JOINT: a little fast-food restaurant with big windows, a glass door, a red-and-white striped awning, and a giant burger sign on the roof',
   pizza: 'a PIZZA PLACE: a pizzeria with a green-white-red awning, a brick pizza oven glowing through the window, and a giant pizza slice sign on the roof',
   clothing: 'a CLOTHING STORE: a fashion boutique with mannequins in its display windows, a pink awning, and a shirt sign and skylight on the roof',
-  sports_bar: 'a SPORTS BAR: a pub with neon beer signs in its windows, a blue awning, big TV screens on the roof, and a football sign',
+  sports_bar: 'a SPORTS BAR: a pub with big glass windows through which you see TV screens showing matches inside, neon beer signs, a blue awning, and just a small football sign on the roof (no screens outside or on the roof)',
   cafeteria: 'a CAFETERIA: a long self-service canteen with a row of windows showing trays and tables, a yellow-and-red awning, and skylights along the roof',
   art_gallery: 'an ART GALLERY: an elegant modern gallery with tall framed paintings visible through its windows, a sawtooth skylight roof, and a picture-frame sign',
   lounge: 'a TRAVEL LOUNGE: a plush airport-style lounge with tinted glass, a dark awning with gold trim, armchairs glimpsed inside, and a cocktail-glass sign',
@@ -49,15 +51,36 @@ export const SHOPS = {
   nanofab: 'a NANOFAB BOUTIQUE: a sleek sci-fi fabrication shop with glowing magenta and cyan panels, a holographic atom sign, and humming machinery on the roof',
 };
 
+// Parts of a footprint that are not building: cells (in the shape's base
+// orientation) that stand only `f` of the wall high. The sports bar's stem is
+// a patio.
+export const LOW = { sports_bar: { cells: [[1, 1]], f: 0.25 } };
+
+// A shop painted in parts, each a small shop of its own (painted and fitted on
+// its own cells, in the shape's base orientation), then composed into the
+// shop's views, the part nearer the camera over the other. Asked for a T with a
+// patio on its stem, every model painted a box with a patio all along its front;
+// a bar three cells long and a one-cell patio each come out right.
+export const PARTS = {
+  sports_bar: [
+    { name: 'bar', cells: [[0, 0], [1, 0], [2, 0]], shape: 'a long 1 x 3 rectangle: three squares long, one square deep, marked by the seams on its roof', text: 'a SPORTS BAR: a pub with big glass windows through which you see TV screens showing matches inside, neon beer signs, a blue awning, and just a small football sign on the roof (no screens outside or on the roof)' },
+    { name: 'patio', cells: [[1, 1]], shape: 'a single square', paving: true, text: "a sports bar's open-air PATIO: one small square of paving at ground level with a table, chairs and a blue-and-white umbrella, fenced by a low blue rail on its open sides; no building" },
+  ],
+};
+
 // The turn m frame's footprint: the base cells turned m quarter turns
 // ((x, y) -> (-y, x), as isoart's frames are) and moved to start at 0.
-const norm = cells => { const x0 = Math.min(...cells.map(c => c[0])), y0 = Math.min(...cells.map(c => c[1])); return cells.map(([x, y]) => [x - x0, y - y0]).sort((a, b) => a[1] - b[1] || a[0] - b[0]); };
+// A cell is [u, v] or, for a low part, [u, v, f]: f of the wall high.
+const norm = cells => { const x0 = Math.min(...cells.map(c => c[0])), y0 = Math.min(...cells.map(c => c[1])); return cells.map(([x, y, ...f]) => [x - x0, y - y0, ...f]).sort((a, b) => a[1] - b[1] || a[0] - b[0]); };
 const cellKey = cells => cells.map(c => c.join(',')).join(';');
-export function turnCells(key, m) {
-  let c = SHAPES[tileDef(key).shape][0];
-  for (let i = 0; i < m; i++) c = c.map(([x, y]) => [-y, x]);
-  return norm(c);
+const turnBy = (c, m) => { for (let i = 0; i < m; i++) c = c.map(([x, y, ...f]) => [-y, x, ...f]); return c; };
+export function baseOf(key) {
+  const low = LOW[key];
+  return SHAPES[tileDef(key).shape][0].map(([x, y]) => low && low.cells.some(([a, b]) => a === x && b === y) ? [x, y, low.f] : [x, y]);
 }
+export const partBase = (key, part) => baseOf(key).filter(([x, y]) => part.cells.some(([a, b]) => a === x && b === y));
+export const turnCellsOf = (base, m) => norm(turnBy(base, m));
+export const turnCells = (key, m) => turnCellsOf(baseOf(key), m);
 // The pictures a shop needs. Flipping a frame left to right swaps the grid's x
 // and y, so a turn whose footprint is another's swapped reuses that picture
 // flipped: an I or O shape needs one picture, an S or T two, an L3 three and
@@ -67,10 +90,11 @@ export function turnCells(key, m) {
 // now from the left; relighting it by the block's faces left a band wherever
 // the painted corner missed the block's, and the paintings' light is soft.
 // Returns { views: [cells], turns: [{ view, flip }] x 4 }.
-export function shopViews(key) {
+export const shopViews = key => shopViewsOf(baseOf(key));
+export function shopViewsOf(base) {
   const views = [], turns = [];
   for (let m = 0; m < 4; m++) {
-    const c = turnCells(key, m), k = cellKey(c), kf = cellKey(norm(c.map(([x, y]) => [y, x])));
+    const c = turnCellsOf(base, m), k = cellKey(c), kf = cellKey(norm(c.map(([x, y, ...f]) => [y, x, ...f])));
     let v = views.findIndex(w => cellKey(w) === k);
     if (v >= 0) { turns.push({ view: v, flip: false }); continue; }
     v = views.findIndex(w => cellKey(w) === kf);
@@ -92,7 +116,8 @@ export function viewBox(cells, wall) {
 
 // What the ray through frame point (X, Y) meets first, coming down from the
 // top of the room over the roof: { cell: [u, v], face } or null where it meets
-// no column of the footprint (the picture is cut away there). face is 0 on the
+// no column of the footprint (the picture is cut away there). A low part's
+// column is solid only to its own height. face is 0 on the
 // roof or above it, 1 on a left (south) wall, 2 on a right (east) wall, as in
 // the sheets' maps. The walls are the block the model painted over (the block-out
 // is shaded by these faces; the bake keeps only the cell).
@@ -101,8 +126,9 @@ export function viewBox(cells, wall) {
 // only what stands up past the roof's front edge goes to the column in front.
 // room = 0 gives the block itself.
 export function rayHit(cells, wall, X, Y, room = WALL_ROOM) {
-  const S = new Set(cells.map(c => c.join(','))), inS = (u, v) => S.has(u + ',' + v);
-  const a = Y + X / 2, b = Y - X / 2, top = wall + room;          // U = a + h, V = b + h
+  // each column's height: the wall, or f of it for a low part
+  const H = new Map(cells.map(c => [c[0] + ',' + c[1], wall * (c[2] ?? 1)]));
+  const a = Y + X / 2, b = Y - X / 2, top = Math.max(...H.values()) + room;   // U = a + h, V = b + h
   const at = h => [Math.floor((a + h) / CELL), Math.floor((b + h) / CELL)];
   // the heights where the ray crosses into another cell: U or V on a cell line
   const cuts = [];
@@ -110,19 +136,23 @@ export function rayHit(cells, wall, X, Y, room = WALL_ROOM) {
   cuts.sort((p, q) => q[0] - p[0]);
   // a corner crosses both lines at once: one cut, of kind 3
   for (let i = cuts.length - 1; i > 0; i--) if (cuts[i][0] === cuts[i - 1][0]) { cuts[i - 1][1] = 3; cuts.splice(i, 1); }
-  // walk down: the stretch above each cut, then the last one to the ground
-  let hi = top, came = 0;
+  // walk down: the stretch above each cut, then the last one to the ground,
+  // until the ray reaches a column's solid part: its roof, or a wall it came in through
+  let hi = top, came = 0, first = null;
   for (let i = 0; i <= cuts.length; i++) {
-    const lo = i < cuts.length ? cuts[i][0] : 0, [u, v] = at((hi + lo) / 2);
-    if (inS(u, v)) {
-      if (hi > wall - 1 || hi === top) { const r = at(wall - 0.5); return { cell: inS(...r) ? r : [u, v], face: 0 }; }
-      // the wall it came in through: V's cell line is a left (south) wall, U's a right (east) one;
-      // at a corner, the one with open floor beyond it
-      return { cell: [u, v], face: came === 3 ? (!inS(u, v + 1) ? 1 : 2) : came };
+    const lo = i < cuts.length ? cuts[i][0] : 0, [u, v] = at((hi + lo) / 2), Hc = H.get(u + ',' + v);
+    if (Hc !== undefined) {
+      first = first || [u, v];
+      if (lo < Hc) {
+        if (hi > Hc - 1 || hi === top) return { cell: [u, v], face: 0 };
+        // V's cell line is a left (south) wall, U's a right (east) one; at a corner, the one with open floor beyond it
+        return { cell: [u, v], face: came === 3 ? (!H.has(u + ',' + (v + 1)) ? 1 : 2) : came };
+      }
     }
     if (i < cuts.length) { hi = lo; came = cuts[i][1]; }
   }
-  return null;
+  // over the footprint but on nothing solid (a sign over an L's back notch): the column in front
+  return room > 0 && first ? { cell: first, face: 0 } : null;
 }
 
 // What the bake will do to a view's picture: the share of its paint cut away
@@ -143,14 +173,16 @@ export function rayHit(cells, wall, X, Y, room = WALL_ROOM) {
 // floor on a true L, solid roof on a box. Signs are too thin to fill it.
 export function cutStats(pic, cells, wall) {
   const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, cut = new Uint8Array(w * h);
-  const S = new Set(cells.map(c => c.join(','))), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
+  const S = new Set(cells.map(c => c[0] + ',' + c[1])), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
   const holes = new Map();
   for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) if (!S.has(u + ',' + v)) holes.set(u + ',' + v, [0, 0]);
   let paint = 0, ncut = 0, block = 0, bare = 0;
-  const roofAt = holes.size ? paintedRoof(pic, cells, wall) : wall;
+  // the block bare floor is judged against: as tall as the walls were painted, if
+  // lower than the block (squashWalls may bring them under it)
+  const roofAt = paintedRoof(pic, cells, wall), low = Math.min(wall, roofAt);
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const X = X0 + (i + 0.5) / DENSITY, Y = Y0 + (j + 0.5) / DENSITY, on = data[(j * w + i) * 4 + 3] > 0;
-    const inBlock = rayHit(cells, wall, X, Y, 0);
+    const inBlock = rayHit(cells, low, X, Y, 0);
     if (inBlock) { block++; if (!on) bare++; }
     if (on) { paint++; if (!rayHit(cells, wall, X, Y, KEEP_ROOM)) { cut[j * w + i] = 1; ncut++; } }
     // the point on the roof plane under this pixel, and whether it is the back half of a hole
@@ -178,7 +210,7 @@ export function cutStats(pic, cells, wall) {
 // (a notch with a cell behind it shows walls, and the bake cuts it anyway).
 export function carveBackNotches(pic, cells, wall) {
   const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, D = DENSITY;
-  const S = new Set(cells.map(c => c.join(','))), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
+  const S = new Set(cells.map(c => c[0] + ',' + c[1])), uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
   const back = [];
   for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) if (!S.has(u + ',' + v) && !cells.some(([a, b]) => a <= u && b <= v)) back.push([u, v]);
   if (!back.length) return { pic, roofAt: null, hang: 0 };
@@ -233,11 +265,11 @@ export function carveBackNotches(pic, cells, wall) {
 export function paintedRoof(pic, cells, wall) {
   const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, D = DENSITY;
   const uw = Math.max(...cells.map(c => c[0])) + 1, vh = Math.max(...cells.map(c => c[1])) + 1;
-  const box = []; for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) box.push([u, v]);
+  const box = []; for (let u = 0; u < uw; u++) for (let v = 0; v < vh; v++) box.push(cells.find(c => c[0] === u && c[1] === v) || [u, v]);
   const topPaint = i => { for (let j = 0; j < h; j++) if (data[(j * w + i) * 4 + 3]) return Y0 + (j + 0.5) / D; return null; };
   // a prism's top outline is its cells' raised diamonds' top edges: cell (u, v)'s
   // top corner is at X = 32(u - v), Y = 16(u + v), and the edge falls half a pixel a pixel
-  const topBlock = (cs, hh, X) => { let t = null; for (const [u, v] of cs) { const dx = Math.abs(X - (u - v) * CELL); if (dx <= CELL) { const y = (u + v) * CELL / 2 + dx / 2 - hh; if (t == null || y < t) t = y; } } return t; };
+  const topBlock = (cs, hh, X) => { let t = null; for (const [u, v, f = 1] of cs) { const dx = Math.abs(X - (u - v) * CELL); if (dx <= CELL) { const y = (u + v) * CELL / 2 + dx / 2 - hh * f; if (t == null || y < t) t = y; } } return t; };
   const cols = [];
   for (let i = 0; i < w; i += 2) {
     const X = X0 + (i + 0.5) / D, t = topPaint(i), b = topBlock(cells, wall, X);
@@ -250,4 +282,92 @@ export function paintedRoof(pic, cells, wall) {
     if (err < bestErr) { bestErr = err; roofAt = hh; }
   }
   return roofAt;
+}
+
+// A shop painted in parts: each of its views made from its parts' pictures
+// (pics[part name][part view]), each laid where its cells sit in that view's
+// turn, mirrored if the part's turn is its view flipped, back part first.
+export function composeViews(key, pics) {
+  const wall = wallHeight(key), { views, turns } = shopViews(key), D = DENSITY;
+  return views.map((cells, v) => {
+    const m = turns.findIndex(t => t.view === v && !t.flip), [WX0, WY0, WX1, WY1] = viewBox(cells, wall);
+    const W = Math.round((WX1 - WX0) * D), H = Math.round((WY1 - WY0) * D), data = new Uint8ClampedArray(W * H * 4);
+    // the whole footprint turned, still in the same coordinates as each part turned
+    const all = turnBy(baseOf(key), m), x0 = Math.min(...all.map(c => c[0])), y0 = Math.min(...all.map(c => c[1]));
+    const placed = PARTS[key].map(part => {
+      const mine = turnBy(partBase(key, part), m).map(([x, y]) => [x - x0, y - y0]);
+      return { part, du: Math.min(...mine.map(c => c[0])), dv: Math.min(...mine.map(c => c[1])), depth: Math.max(...mine.map(([x, y]) => x + y)) };
+    }).sort((a, b) => a.depth - b.depth);
+    for (const { part, du, dv } of placed) {
+      const pv = shopViewsOf(partBase(key, part)), { view, flip } = pv.turns[m], img = pics[part.name][view];
+      const [PX0, PY0] = viewBox(pv.views[view], wall), ox = (du - dv) * CELL, oy = (du + dv) * CELL / 2;
+      for (let j = 0; j < img.h; j++) for (let i = 0; i < img.w; i++) {
+        const o = (j * img.w + i) * 4;
+        if (!img.data[o + 3]) continue;
+        // the pixel's left edge in the part's frame, mirrored about X = 0 for a flip
+        const xl = flip ? -(PX0 * D + i) - 1 : PX0 * D + i, x = xl + ox * D - WX0 * D, y = PY0 * D + j + oy * D - WY0 * D;
+        if (x >= 0 && y >= 0 && x < W && y < H) data.set(img.data.subarray(o, o + 4), (y * W + x) * 4);
+      }
+    }
+    return { w: W, h: H, data };
+  });
+}
+
+// The models paint walls up to two and a half times the block's, which makes a
+// shop tower over its tile and hides the shape of its roof. squashWalls takes
+// rows out of the walls: for each column, the pixels at the same few heights
+// above the footprint's ground line go, so each wall is cut at the same heights
+// all along, and above the highest of them every column has dropped by the
+// same amount, so the roof and all that stands on it move as one.
+// The heights taken out are the plainest ones, between a strip kept at the foot
+// and the roof's rim: all it takes to bring the walls down to SQUASH_TO times the
+// block's, and then any blank strip left (the bare wall a model leaves over an
+// awning), down to 0.7 of the block's height.
+export function squashWalls(pic, cells, wall) {
+  const roofAt = paintedRoof(pic, cells, wall), D = DENSITY;
+  const need = Math.max(0, Math.round((roofAt - wall * SQUASH_TO) * D)), most = Math.round((roofAt - wall * 0.7) * D);
+  if (most < 2 * D) return { pic, cut: 0 };
+  const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic;
+  // The ground line under each column: where the painted walls stand, which is
+  // the bottom of the paint, the lowest within a few columns so it runs on under
+  // an awning's end or a sign that sticks out past the walls (the footprint's own
+  // line zigzags where the model painted a plain box).
+  const bottom = Array.from({ length: w }, (_, i) => { for (let j = h - 1; j >= 0; j--) if (data[(j * w + i) * 4 + 3]) return j; return null; });
+  const ground = i => { let g = null; for (let d = -6; d <= 6; d++) if (bottom[i + d] != null && (g == null || bottom[i + d] > g)) g = bottom[i + d]; return g; };
+  const G0 = Array.from({ length: w }, (_, i) => ground(i)), first = G0.find(g => g != null) ?? h - 1;
+  const G = G0.map((g, i) => g ?? G0.slice(0, i).reverse().find(x => x != null) ?? first);
+  const px = (i, r) => i < 0 || i >= w || r < 0 || r >= h ? [0, 0, 0, 0] : data.subarray((r * w + i) * 4, (r * w + i) * 4 + 4);
+  const diff = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) + Math.abs(a[3] - b[3]);
+  // How busy a height is: the change from each pixel to the one above it and to
+  // the one beside it along the wall, over all the columns. Blank wall is even
+  // both ways; a window is even downwards but not along (its frames).
+  const tMin = 4 * D, tMax = Math.round((roofAt * 0.9 - 2) * D);
+  if (tMax - tMin < need) return { pic, cut: 0 };
+  const busy = [];
+  for (let t = tMin; t < tMax; t++) {
+    // over pairs of painted pixels only: the edge of the building against the clear is no measure of the wall
+    let e = 0, n = 0;
+    for (let i = 0; i < w; i++) {
+      const p = px(i, G[i] - t), up = px(i, G[i] - t - 1), next = px(i + 1, G[i + 1] - t);
+      if (!p[3]) continue;
+      if (up[3]) { e += diff(p, up); n++; }
+      if (next[3]) { e += diff(p, next); n++; }
+    }
+    busy.push([n ? 2 * e / n : 0, t]);
+  }
+  busy.sort((a, b) => a[0] - b[0]);
+  // all it takes to bring the walls down to SQUASH_TO, and any blank strip past that, down to the block's own height
+  // Blank: within a third of the plainest height's change, and under BLANK (a
+  // painted wall's texture alone is 50 to 65 a pixel, windows and awnings 100 to 250).
+  const plain = Math.min(BLANK, busy[0][0] * 1.3), k = Math.min(most, busy.length, Math.max(need, busy.filter(b => b[0] <= plain).length));
+  if (k < D) return { pic, cut: 0 };
+  const gone = new Set(busy.slice(0, k).map(b => b[1]));
+  // each column rebuilt from the ground up without those heights; above the highest,
+  // every column has dropped by k
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w; i++) {
+    let r = h - 1;
+    for (let from = h - 1; from >= 0 && r >= 0; from--) { if (gone.has(G[i] - from)) continue; out.set(px(i, from), (r * w + i) * 4); r--; }
+  }
+  return { pic: { w, h, data: out }, cut: k / D };
 }
