@@ -114,12 +114,12 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
-| Jumbo Jetway | transport | transport | 884 | 25.3 | 30.8 | 2.9 | 248 |
+| Cafeteria | amenity | amenity | 113 | 3.1 | 5.0 | 2.8 | 72 |
 | Jetway | transport | transport | 520 | 14.1 | 18.0 | 2.7 | 135 |
+| Jumbo Jetway | transport | transport | 884 | 23.6 | 29.6 | 2.7 | 247 |
 | Alpine Lift | transport | transport | 286 | 7.5 | 9.5 | 2.6 | 70 |
 | Limo Service | transport | transport | 312 | 7.9 | 9.3 | 2.5 | 93 |
 | Grand Opening | card | amenity | 70 | 1.7 | 1.7 | 2.5 | — |
-| Cafeteria | amenity | premium | 113 | 2.7 | 4.1 | 2.4 | 46 |
 | Double Shift | named upgrade | amenity | 220 | 5.2 | 5.2 | 2.4 | — |
 | Designer Shop | amenity | premium | 208 | 4.9 | 10.0 | 2.3 | 82 |
 | Security Station | utility | amenity | 87 | 1.7 | 2.0 | 1.9 | 0 |

@@ -700,12 +700,12 @@ const TILES = {
   },
   jumbo_jetway: {
     pad: [1, 0, 0, 0],
-    floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 64, YELLOW); frame(c, t); },
+    floor(c, t) { apronStrip(c, t, 0); c.R(15, 0, 2, 48, YELLOW); frame(c, t); },
     over(c, t) {
       plane(c, 1, -30, 62, 30, WHITE, '#9b5cff', true);
-      for (const x of [4, 20]) { c.box(x, 40, 7, 66, '#d7cce8'); c.R(x + 1, 41, 5, 64, STEEL); }
-      c.box(4, 104, 32, 8, '#d7cce8'); c.R(5, 105, 30, 6, STEEL); c.block(3, 39, 34, 74, 0.26, 0.12);
-      hut(c, t, 36, 98, 26, 28); for (let x = 40; x < 60; x += 6) c.R(x, 104, 3, 18, GLASS);
+      for (const x of [4, 20]) { c.box(x, 40, 7, 34, '#d7cce8'); c.R(x + 1, 41, 5, 32, STEEL); }
+      c.box(4, 72, 32, 8, '#d7cce8'); c.R(5, 73, 30, 6, STEEL); c.block(3, 39, 34, 42, 0.26, 0.12);
+      hut(c, t, 36, 66, 26, 28); for (let x = 40; x < 60; x += 6) c.R(x, 72, 3, 18, GLASS);
     },
   },
   prop_stand: {
@@ -793,7 +793,7 @@ const TILES = {
   pizza: { over(c, t) { shop(c, t, ICON.pizza, { awn: '#2f9a3f', at: [48, 16] }); } },
   clothing: { over(c, t) { shop(c, t, ICON.shirt, { awn: '#ff4fd8', at: [48, 16] }); skylight(c, 8, 38, 18, 8); } },
   sports_bar: { over(c, t) { shop(c, t, ICON.ball, { awn: '#2f6bff', at: [48, 44] }); c.box(8, 8, 18, 10, INK); c.R(10, 10, 14, 6, '#35d4ff'); c.box(70, 8, 18, 10, INK); c.R(72, 10, 14, 6, '#5fc23a'); } },
-  cafeteria: { over(c, t) { shop(c, t, ICON.tray, { awn: '#ffd23f', alt: RED, at: [20, 14] }); for (let x = 72; x < 180; x += 36) skylight(c, x, 6, 20, 10); ICON.tray(c, 160, 14); } },
+  cafeteria: { over(c, t) { shop(c, t, ICON.tray, { awn: '#ffd23f', alt: RED, at: [20, 14] }); for (let x = 52; x < 130; x += 40) skylight(c, x, 6, 20, 10); ICON.tray(c, 139, 14); } },
   art_gallery: { over(c, t) { roof(c, t); for (let x = 8; x < 92; x += 14) skylight(c, x, 6, 10, 20); skylight(c, 38, 36, 20, 20); ICON.frame(c, 48, 46); } },
   lounge: { over(c, t) { shop(c, t, ICON.cocktail, { awn: '#1a1033', alt: YELLOW, at: [48, 46] }); skylight(c, 6, 6, 20, 16); skylight(c, 70, 70, 20, 16); } },
   designer: { over(c, t) { shop(c, t, ICON.diamond, { awn: INK, alt: YELLOW, at: [16, 46] }); skylight(c, 6, 6, 20, 20); } },

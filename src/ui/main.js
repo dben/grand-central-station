@@ -281,7 +281,7 @@ function shapeCanvas(def, w = 84, h = 84) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   // the preview area is wider than tall, so show the shape lying on its side: an
-  // upright L5 would be drawn at half the cell size of the same tile turned over
+  // upright L4 would be drawn at half the cell size of the same tile turned over
   const box = cs => [Math.max(...cs.map(x => x[0])) + 1, Math.max(...cs.map(x => x[1])) + 1];
   const turns = Array.from({ length: orientationCount(def.shape) }, (_, r) => shapeCells(def.shape, r));
   const cells = turns.find(cs => { const [bw, bh] = box(cs); return bw >= bh; }) || turns[0];

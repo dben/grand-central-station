@@ -43,7 +43,7 @@ export const TRANSPORTS = {
   helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
   balloon:         { name: 'Hot Air Balloon',  shape: 'T4', terrain: 'free',     tier: 3, arr: 10, batch: 2,  dep: 10, dwell: 5, mult: 1.19, flat: 18,  cost: 260, minWeek: 4, tags: ['air'] },
   jetway:          { name: 'Jetway',           shape: 'L3', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 8,  batch: 11, dep: 8,  dwell: 4, mult: 1.18, flat: 27,  cost: 400, minWeek: 6, tags: ['air'] },
-  jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L5', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
+  jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L4', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
   // Sky Harbour's own light aircraft, the airside mirror of the bus stop and
   // the car park. Both taxi in from the apron rather than parking on it.
   prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'] },
@@ -82,7 +82,7 @@ export const AMENITIES = {
   pocket_park:    { name: 'Pocket Park',       shape: 'I1', tier: 1, radius: 3, rate: 0.45, mult: 1.62, flat: 32, cap: 14, dur: 1, revenue: 0,  cost: 15,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   green_space:    { name: 'Green Space',       shape: 'O4', tier: 1, radius: 4, rate: 0.45, mult: 1.88, flat: 44, cap: 30, dur: 2, revenue: 0,  cost: 31,  minWeek: 2, tags: ['green'], special: 'green', walkable: true, ground: true },
   sports_bar:     { name: 'Sports Bar',        shape: 'T4', tier: 2, radius: 3, rate: 0.5 , mult: 2.93, flat: 140, cap: 16, dur: 4, revenue: 12, cost: 77 , minWeek: 4, tags: ['food'] },
-  cafeteria:      { name: 'Cafeteria',         shape: 'I6', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
+  cafeteria:      { name: 'Cafeteria',         shape: 'I5', tier: 1, radius: 4, rate: 0.81, mult: 1.63, flat: 60, cap: 45, dur: 2, revenue: 5,  cost: 91 , minWeek: 5, tags: ['food'] },
   currency:       { name: 'Currency Exchange', shape: 'I2', tier: 3, radius: 3, rate: 0.45, mult: 2.75, flat: 88, cap: 6,  dur: 2, revenue: 15, cost: 67,  minWeek: 4 },
   clothing:       { name: 'Clothing Store',    shape: 'S4', tier: 2, radius: 3, rate: 0.45, mult: 2.75, flat: 120, cap: 12, dur: 3, revenue: 14, cost: 74 , minWeek: 4 },
   wifi:           { name: 'WiFi Hotspot',      shape: 'I1', tier: 0, radius: 4, rate: 0,    mult: 1,    flat: 0,  cap: 0,  dur: 0, revenue: 0,  cost: 39,  minWeek: 3, special: 'wifi', walkable: true, ground: true },

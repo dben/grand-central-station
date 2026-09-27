@@ -38,7 +38,7 @@ export const MODES = {
                 run: { startMoney: 290, ordinanceWeeks: [4, 9, 15], pickpocketsFromWeek: 5, rareTilesFromWeek: 8, apUpgradeFromWeek: 12 },
                 minWeek: { subway: 2, express_subway: 4, under_parking: 2, limo: 3 } },
   metroplex:  { name: 'Metroplex',   w: 16, h: 16, desc: 'The long game: room for big tiles, sold early, but tiles cost 25% more. Events and pickpockets come later.', unlockWeek: 12, costMult: 1.25,
-                // Room for the six-cell tiles, so they come on sale early; in
+                // Room for the big tiles, so they come on sale early; in
                 // exchange the run's own milestones are pushed back.
                 // ...and $275 rather than $220, because the level's own tiles
                 // cost 25% more: the wallet buys the same opening either way.
