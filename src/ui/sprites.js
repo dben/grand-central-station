@@ -93,8 +93,10 @@ export function groundBend(key) { const img = get('ground:' + key), at = GROUND_
 export const ISO_CELL_PX = 64;
 // whether a key has a sheet at all (loaded or not)
 export const hasIso = key => !!ISO_FRAMES[key];
-// how many frames a tile's tree tops sway through (0: it holds still)
-export const isoSway = key => { const f = ISO_FRAMES[key]; return f && f.frames[0].sway ? f.frames[0].sway.length : 0; };
+// how many frames a tile's animation loops through (0: it holds still), and
+// whether that is tree tops swaying
+export const isoAnim = key => { const f = ISO_FRAMES[key]; return f && f.frames[0].anim ? f.frames[0].anim.length : 0; };
+export const isoSways = key => !!(ISO_FRAMES[key] || {}).sway;
 const FACE_SHADE = [1, 0.52, 0.70, 0.61];
 const DIM = [70, 74, 84];
 // The quarter turn m and flip that show a tile turned by `tf` (mirror first,
@@ -110,24 +112,24 @@ export function isoFrame(key, tf) {
 const variants = new Map();
 // Frame m of the sheet as shown: "u,v" -> { kind, floor, over }, each layer a
 // { canvas, x, y } in frame coordinates. Null until both images have loaded, or
-// if the browser won't let them be read back. `sway` picks the over layer's
-// frame of a tile whose tree tops sway; the floor is shared with frame 0.
-export function isoArt(key, m, tint, dim, swap, sway = 0) {
-  const id = [key, m, tint, dim ? 1 : 0, swap ? 1 : 0, sway].join('|');
+// if the browser won't let them be read back. `anim` picks the over layer's
+// frame of an animated tile; the floor is shared with frame 0.
+export function isoArt(key, m, tint, dim, swap, anim = 0) {
+  const id = [key, m, tint, dim ? 1 : 0, swap ? 1 : 0, anim].join('|');
   if (variants.has(id)) return variants.get(id);
   const man = ISO_FRAMES[key], img = get('iso:' + key), mapImg = get('isomap:' + key);
   // wait for the map too, unless it is missing: the picture alone still draws, unlit
   if (!man || !img || (!mapImg && !(cache.get('isomap:' + key) || {}).err)) return null;
-  const still = sway ? isoArt(key, m, tint, dim, swap) : null;
-  if (sway && !still) return null;
+  const still = anim ? isoArt(key, m, tint, dim, swap) : null;
+  if (anim && !still) return null;
   const read = (im, x, y, w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(im, -x, -y); return g.getImageData(0, 0, w, h).data; };
   const t = hex3(tint), t0 = hex3(man.tint), shift = t.some((v, k) => v !== t0[k]);
   const shades = swap ? [FACE_SHADE[0], FACE_SHADE[2], FACE_SHADE[1], FACE_SHADE[3]] : FACE_SHADE;
   const out = new Map();
   if (still) for (const [ck, e] of still) out.set(ck, { ...e, over: null });
   try {
-    for (const layer of sway ? ['over'] : ['floor', 'over']) {
-      const r = sway ? man.frames[m].sway[sway] : man.frames[m][layer];
+    for (const layer of anim ? ['over'] : ['floor', 'over']) {
+      const r = anim ? man.frames[m].anim[anim] : man.frames[m][layer];
       if (!r) continue;
       const [sx, sy, w, h, fx, fy] = r, p = read(img, sx, sy, w, h), q = mapImg ? read(mapImg, sx, sy, w, h) : null;
       // sort the pixels into their cells; one painted in with no map goes to the cell under it

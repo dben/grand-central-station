@@ -17,7 +17,7 @@
 // draws from, so a bus stop's bus sits on the road side whichever way it lies.
 import { tileDef } from '../src/data/tiles.js';
 import { SHAPES } from '../src/sim/shapes.js';
-import { colorForDef, H_UNIT } from '../src/ui/render.js';
+import { colorForDef, tileHeight, H_UNIT } from '../src/ui/render.js';
 
 // One screen pixel of height in the isometric sheets, in units of tile height:
 // sprite stacks give heights in pixels, the way they are drawn.
@@ -179,6 +179,104 @@ function parasol(c, cx, cy, r, a, b) {
   c.disc(cx, cy, r + 1, INK);
   for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.8) c.P(cx + x, cy + y, Math.floor((Math.atan2(y, x) + Math.PI) / (Math.PI / 4)) % 2 ? a : b);
   c.disc(cx, cy, 1, WHITE);
+}
+
+// ---- wall art -----------------------------------------------------------------------
+// A building's walls are plain unless its over layer sets `c.facade`, which
+// isoart.mjs asks for each wall pixel: ({ side, u, v, a, h, k }) -> a colour,
+// '+colour' to glow (unshaded by the face, for a fire or a lamp), or null for
+// the plain wall. `side` is the way the wall faces in the drawing (N, E, S, W),
+// (u, v) the art pixel at its foot, `a` the pixel along it as someone outside
+// facing it sees it (0 at their left), `h` the height in screen pixels (0 at
+// the foot) and `k` the animation frame (a tile with `anim: n` loops through n,
+// a frame every half beat of the music). The camera sees one N or S wall and
+// one E or W wall of a building whichever way it turns, so a feature meant to
+// be seen goes on both of a pair.
+//
+// Wall pictures are drawn on a panel in screen pixels, row 0 at the top.
+function panel(w, h) {
+  const px = Array.from({ length: h }, () => new Array(w).fill(null));
+  const P = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (c && x >= 0 && y >= 0 && x < w && y < h) px[y][x] = c; };
+  const R = (x, y, rw, rh, c) => { for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) P(x + i, y + j, c); };
+  // a picture in characters, one a pixel, looked up in `pal`; anything not in it is clear
+  const sprite = (x, y, rows, pal) => rows.forEach((r, j) => [...r].forEach((ch, i) => P(x + i, y + j, pal[ch])));
+  // a lit room seen through glass: the pixels in the box glow, so the wall's shade doesn't dim them
+  const lit = (x, y, rw, rh) => { for (let j = y; j < y + rh; j++) for (let i = x; i < x + rw; i++) if (px[j] && px[j][i] && px[j][i][0] !== '+') px[j][i] = '+' + px[j][i]; };
+  // the panel on a wall, its left edge a0 along it and its top row at height `top`
+  const at = (a0, top) => (a, hh) => { const x = a - a0, y = top - hh; return x >= 0 && y >= 0 && x < w && y < h ? px[y][x] : null; };
+  return { w, h, P, R, sprite, lit, at };
+}
+// the highest row of a building's wall, in screen pixels: its top course is this row and the one under it
+const wallTop = def => Math.floor(tileHeight(def) / PX);
+const DARK_GLASS = '#2e5a8a', FRAME = '#1a1033', SKIN = '#f2c79a', SKIN_D = '#c98f62';
+// A shopfront a cell long, to repeat along a wall: an awning under the top
+// course with a scalloped hem, a window, a glass door with its handle, and a
+// narrow window (or only the awning). `top` is the wall's top row.
+function shopfront(top, awn, alt, windows = true) {
+  const p = panel(CELL, top + 1);
+  p.R(0, 2, CELL, 2, null);
+  for (let x = 0; x < CELL; x++) { p.P(x, 2, Math.floor(x / 2) % 2 ? alt : awn); p.P(x, 3, Math.floor(x / 2) % 2 ? alt : awn); if (x % 2) p.P(x, 4, Math.floor(x / 2) % 2 ? alt : awn); }
+  const glass = (x, y, w, h) => { p.R(x, y, w, h, FRAME); p.R(x + 1, y + 1, w - 2, h - 2, DARK_GLASS); for (let j = 1; j < h - 1; j++) p.P(x + 1 + ((j + 2) % (w - 2)), y + j, GLASS); };
+  if (windows) { glass(2, 6, 12, top - 8); glass(16, 6, 8, top - 5); p.P(22, top - 3, YELLOW); glass(26, 6, 4, top - 8); }
+  return p.at(0, top);
+}
+// the wall pixel's shopfront, repeating a cell at a time along any wall
+const shopfronts = (...args) => { const f = shopfront(...args); return (a, h) => f(((a % CELL) + CELL) % CELL, h); };
+
+// The burger joint's drive-through window, over a two-bar loop (16 frames): shut
+// for a bar, then it slides open, the server leans out on the next downbeat and
+// holds a bag out, the bag is taken, and the window slides shut again.
+const DRIVE_PAL = { k: FRAME, g: GLASS, G: GLASS_D, r: RED, w: WHITE, s: SKIN, S: SKIN_D, e: INK, b: '#fff1d8', B: '#c9b8a0', y: RED, i: '#6a3a26', l: '+#ffd9a0', c: '#c9c4d8' };
+const SERVER = ['.rrrr.', 'rrrrrr', '.ssss.', '.sese.', '.ssss.', '..SS..', '.wrrw.'];
+const BAG = ['.ss.', 'bBBb', 'bbyb', 'BBBB'];
+// 16 x 10, its top row just under the awning's hem: the frame, a six-row
+// opening, the sill, and the wall under it, where the bag hangs
+function driveThru(k) {
+  const p = panel(16, 10);
+  p.R(1, 0, 14, 7, FRAME); p.R(0, 7, 16, 1, STEEL);
+  // what shows through the opening: the lit kitchen, then as much glass as has slid across it
+  const shut = k < 6 || k === 15 ? 12 : k === 6 || k === 14 ? 6 : 0;
+  p.R(2, 1, 12, 6, '#6a3a26'); p.R(2, 1, 12, 1, '+#ffd9a0'); p.R(2, 5, 12, 2, '#8a5a30');
+  if (k >= 8 && k <= 12) p.sprite(7, 1, SERVER, DRIVE_PAL);
+  if (k >= 9 && k <= 11) p.sprite(3, k === 9 ? 5 : 6, BAG, DRIVE_PAL);
+  for (let j = 1; j < 7; j++) for (let x = 2; x < 2 + shut; x++) p.P(x, j, (x + j) % 6 === 0 ? GLASS : GLASS_D);
+  if (shut === 12) p.R(8, 1, 1, 6, FRAME);
+  p.lit(2, 1, 12, 6);
+  return p;
+}
+
+// The pizza place's front window, over a bar (8 frames): the oven's fire flickers
+// a frame at a time, and on the first beat of the bar the pizzaiolo draws a pie
+// out of it on the peel, sets it on the counter to steam, and it goes; the
+// empty peel goes back in for the next.
+const OVEN_PAL = { k: FRAME, w: WHITE, W: '#d8d0c8', s: SKIN, e: INK, m: '#7a3018', o: '#b5532e', O: '#d06a3a', n: '#8a8a9a', x: '#1a1033' };
+const CHEF = ['.www.', 'wwwww', '.sss.', '.ses.', '.sss.', 'wwWww', 'wwWwws', 'wwWww'];
+const DOME = ['.......mm..........', '......momo.........', '....mmoOoOmm.......', '..mmoOooooOomm.....', '.mooOooooooooOm....', 'moOoxxxxxxxoooOm...', 'mooxxxxxxxxxooom...', 'moxxxxxxxxxxxoom...'];
+function ovenWindow(k) {
+  const p = panel(52, 12), W = 52;
+  p.R(0, 0, W, 12, FRAME);
+  // green tiles behind, so the white chef, the brick dome and the pies stand off them
+  p.R(1, 1, W - 2, 8, '#2f6a4a'); for (let y = 1; y < 9; y++) for (let x = 1; x < W - 1; x++) if (y % 3 === 0 || x % 3 === 0) p.P(x, y, '#3a7d58');
+  // the chef behind the counter, the counter along the bottom, the oven's dome on it
+  p.sprite(10, 1, CHEF, OVEN_PAL);
+  p.R(1, 9, W - 2, 2, WOOD); p.R(1, 9, W - 2, 1, WOOD_L);
+  // the fire in its mouth: two flickers, and a flare as a pie comes out
+  const fire = k === 0 ? ['+#ffd23f', '+#fff1a8'] : k % 2 ? ['+#ff8a1e', '+#ffd23f'] : ['+#ff4a1a', '+#ff8a1e'];
+  p.sprite(28, 1, DOME, OVEN_PAL);
+  DOME.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === 'x') p.P(28 + i, 1 + j, (i + j + k) % 3 ? fire[0] : fire[1]); }));
+  if (k === 0) { p.P(34, 5, '+#fff1a8'); p.P(37, 5, '+#ffd23f'); }
+  // the peel: its handle from the chef's hands toward the oven, its blade at `end`
+  const end = [34, 27, 21, 21, 21, 21, 27, 34][k];
+  p.R(16, 7, end - 16, 1, WOOD_L); p.R(end, 7, 6, 1, '#f0c080');
+  // a pie: a crust round a cheese top with a pepperoni or two
+  const pie = (x, y) => { p.R(x, y, 6, 2, '#e8a040'); p.R(x + 1, y, 4, 1, YELLOW); p.P(x + 2, y, RED); p.P(x + 4, y + 1, RED); };
+  if (k <= 2) pie(end, 5);
+  // the pie set on the counter, steaming
+  if (k >= 3 && k <= 5) { pie(3, 7); p.P(4 + (k % 2), 5 - (k === 4 ? 1 : 0), '#f0ecf8'); p.P(7 - (k % 2), 4, '#f0ecf8'); }
+  // a pane divider and a glint on the glass
+  p.R(17, 1, 1, 8, FRAME); p.P(47, 2, GLASS); p.P(48, 3, GLASS); p.P(3, 2, GLASS);
+  p.lit(1, 1, W - 2, 10);
+  return p;
 }
 
 // ---- vehicles (top-down, nose to the right) ---------------------------------------
@@ -790,8 +888,19 @@ const TILES = {
   coffee: { over(c, t) { shop(c, t, ICON.cup, { awn: '#6b3e24', alt: '#fff1c8', at: [16, 15] }); ICON.cup(c, 48, 15); } },
   currency: { over(c, t) { shop(c, t, ICON.coins, { awn: '#5fc23a', at: [18, 14] }); } },
   restroom: { over(c, t) { roof(c, t); hvac(c, 6, 6); hvac(c, 52, 52); skylight(c, 40, 6, 16, 10); ICON.wc(c, 22, 44); } },
-  burger: { over(c, t) { shop(c, t, ICON.burger, { at: [16, 46] }); hvac(c, 6, 6); } },
-  pizza: { over(c, t) { shop(c, t, ICON.pizza, { awn: '#2f9a3f', at: [48, 16] }); } },
+  // The long outer N and S walls carry the drive-through; the rest are shopfronts.
+  burger: { anim: 16, over(c, t, def) {
+    shop(c, t, ICON.burger, { awn: null, at: [16, 46] }); hvac(c, 6, 6);
+    const top = wallTop(def), drive = Array.from({ length: 16 }, (_, k) => driveThru(k).at(40, top - 5));
+    const front = shopfronts(top, RED, WHITE), awning = shopfronts(top, RED, WHITE, false);
+    c.facade = ({ side, v, a, h, k }) => ((side === 'N' && v === 0) || (side === 'S' && v === c.H - 1)) && a >= 32 ? drive[k](a, h) || awning(a, h) : front(a, h);
+  } },
+  // The long outer N and S walls are the front window onto the oven.
+  pizza: { anim: 8, over(c, t, def) {
+    shop(c, t, ICON.pizza, { awn: null, at: [48, 16] });
+    const top = wallTop(def), oven = Array.from({ length: 8 }, (_, k) => ovenWindow(k).at(6, top - 4)), front = shopfronts(top, '#2f9a3f', WHITE);
+    c.facade = ({ side, v, a, h, k }) => ((side === 'N' && v === 0) || (side === 'S' && v === c.H - 1)) && a < 64 ? (h <= top - 2 && h >= top - 3 ? (Math.floor(a / 2) % 2 ? WHITE : '#2f9a3f') : oven[k](a, h)) : front(a, h);
+  } },
   clothing: { over(c, t) { shop(c, t, ICON.shirt, { awn: '#ff4fd8', at: [48, 16] }); skylight(c, 8, 38, 18, 8); } },
   sports_bar: { over(c, t) { shop(c, t, ICON.ball, { awn: '#2f6bff', at: [48, 44] }); c.box(8, 8, 18, 10, INK); c.R(10, 10, 14, 6, '#35d4ff'); c.box(70, 8, 18, 10, INK); c.R(72, 10, 14, 6, '#5fc23a'); } },
   cafeteria: { over(c, t) { shop(c, t, ICON.tray, { awn: '#ffd23f', alt: RED, at: [20, 14] }); for (let x = 72; x < 180; x += 36) skylight(c, x, 6, 20, 10); ICON.tray(c, 160, 14); } },
@@ -948,6 +1057,7 @@ export function drawAll(tintFor = def => colorForDef(def)) {
     const draw = (a, shape) => {
       const out = {};
       for (const layer of ['floor', 'over']) if (a[layer]) { out[layer] = sheet(shape, a.pad); a[layer](out[layer], tint, def); }
+      if (a.anim) out.anim = a.anim;
       return out;
     };
     return [[key, draw(art, def.shape)], ...(art.lane ? [[key + '_lane', draw(art.lane, 'I1')]] : []), ...(art.laneAlt ? [[key + '_lane_alt', draw(art.laneAlt, 'I1')]] : [])];

@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform } from '../sim/shapes.js';
-import { loadSprites, isoFrame, isoArt, isoSway, hasIso, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
+import { loadSprites, isoFrame, isoArt, isoAnim, isoSways, hasIso, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -40,9 +40,9 @@ export const EDGE_MARGIN = 0.85;
 export const TURN_R = 2 * EDGE_MARGIN;
 // Room left under the board when framing it, in units of tile height.
 const FIT_ROOM = 0.30;
-// The park trees sway a frame every half beat of the music, so a loop of eight
-// takes a bar, leaning out on the beats. With the music off they keep this tempo.
-const SWAY_PER_BEAT = 2, IDLE_BPM = 100;
+// Animated tiles (the park trees, the food shops) step a frame every half beat
+// of the music, so a loop of eight takes a bar. With the music off they keep this tempo.
+const ANIM_PER_BEAT = 2, IDLE_BPM = 100;
 // Height of a checkpoint fence panel, in grid units.
 const FENCE_H = 0.30;
 // Isometric angle of the grid's +x axis on screen (atan(hh/hw) = atan(1/2)).
@@ -96,7 +96,7 @@ export class BoardRenderer {
     this.userAdjusted = false;
     this.boardKey = '';
     this.time = 0;
-    this.swayStep = 0;
+    this.animStep = 0;
     this.inset = { top: 0, bottom: 0 };
     // 'iso': the pre-drawn isometric sheets (isoart.mjs); 'blocks': every tile a
     // plain prism in its colour, the look before the art. A tile whose sheet has
@@ -315,8 +315,8 @@ export class BoardRenderer {
     const { board } = view;
     const ctx = this.ctx;
     this.time = performance.now() / 1000;
-    // a still (the start screen's thumbnails) holds its trees upright
-    this.swayStep = view.still ? 0 : Math.floor((view.beat != null ? view.beat : this.time * IDLE_BPM / 60) * SWAY_PER_BEAT);
+    // a still (the start screen's thumbnails) holds every animation at its first frame
+    this.animStep = view.still ? 0 : Math.floor((view.beat != null ? view.beat : this.time * IDLE_BPM / 60) * ANIM_PER_BEAT);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
 
     this.drawWorld(board);
@@ -864,8 +864,8 @@ export class BoardRenderer {
   // The frame of a tile's sheet that shows it as placed (see isoFrame), coloured
   // and lit, or null until it has loaded. The drawing's working side is turned
   // toward the edge the tile draws from, and a tip-attached tile's tip to the edge.
-  // A tile whose tree tops sway shows its frame of the loop; a mirrored one runs
-  // half a loop behind, since mirroring turns a lean to the right into one to the left.
+  // An animated tile shows its frame of the loop. A mirrored tree top runs half a
+  // loop behind, since mirroring turns a lean to the right into one to the left.
   isoSheet(t, d, bx0, by0, dim) {
     let tipAt = null;
     if (d.attach === 'tip') {
@@ -873,8 +873,8 @@ export class BoardRenderer {
       if (edgeCell) tipAt = [edgeCell[0] - bx0, edgeCell[1] - by0];
     }
     const f = isoFrame(t.key, shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])));
-    const n = f ? isoSway(t.key) : 0, sway = n ? (((this.swayStep + (f.flip ? n / 2 : 0)) % n) + n) % n : 0;
-    const cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip, sway);
+    const n = f ? isoAnim(t.key) : 0, anim = n ? (((this.animStep + (f.flip && isoSways(t.key) ? n / 2 : 0)) % n) + n) % n : 0;
+    const cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip, anim);
     return cells ? { flip: f.flip, cells } : null;
   }
 

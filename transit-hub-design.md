@@ -991,7 +991,8 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
 - **Baking (`harness/isoart.mjs`):** it ray-casts each tile's drawing once, for each of the four
   quarter turns, into the isometric projection. What a ray meets front to back makes the pixel:
   - a shop is a solid prism, walls lit and shaded with a lit top course, a dark footing and a
-    seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it;
+    seam per cell (or its wall art, below), and its over layer for a roof, so a traveller who
+    steps inside vanishes into it;
   - a transport, a cart or a low walk-through tile with floor art is a glass box: its floor with
     the crowd on it, panes that are a faint wash of the tile's colour in a frame, an open top with
     only what stands over the floor on it, so the crowd shows through;
@@ -1029,19 +1030,38 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     shown only where it lies past the board's edge, so only when the tile sits on that edge) or 2
     (anything else a vehicle reaches, such as a wing over the next square, always shown and
     painted at that square's depth).
-  - *Swaying trees:* a park's tree tops (`.sway` on their block in `tileart.mjs`: the green space
-    and the pocket park) bend in the breeze. The bake adds eight more columns to the sheet, the
-    over layer at each frame of one loop: upright, a lean to the right, upright, a lean to the
-    left. Each screen row of a canopy slides across by up to 3 px at its top and none at its
-    foot, in whole pixels, so every row is the still one moved over and the edge steps cleanly
-    (a shear by height instead leaves teeth down the canopy's side). The shadows and the floor
-    stay still. The renderer steps a frame every half beat of the music, so a loop takes a bar
-    and the tree tops lean out on beats 2 and 4. Each music file in `TRACKS` carries its tempo
-    and first beat, measured by `harness/tempo.mjs` (GCS1 98.39 BPM, GCS2 116.99), and
-    `musicBeat()` reads the beat off the playing file's clock; with the music muted or not yet
-    started the trees keep 100 BPM on the wall clock. Every park sways in step. A mirrored
-    frame would run half a loop behind, since mirroring turns a lean to the right into one to
-    the left, but square tiles never mirror. The start screen's thumbnails hold them upright.
+  - *Animation:* an animated tile's sheet carries more columns, the over layer at each frame of
+    its loop (the `anim` list in `isosprites.js`; the floor never moves). The renderer steps a
+    frame every half beat of the music, so a loop of eight takes a bar. Each music file in
+    `TRACKS` carries its tempo and first beat, measured by `harness/tempo.mjs` (GCS1 98.39 BPM,
+    GCS2 116.99), and `musicBeat()` reads the beat off the playing file's clock; with the music
+    muted or not yet started, animations keep 100 BPM on the wall clock. Every copy of a tile
+    runs in step. The start screen's thumbnails hold the first frame.
+    - *Swaying trees:* a park's tree tops (`.sway` on their block in `tileart.mjs`: the green
+      space and the pocket park) bend in the breeze over eight frames: upright, a lean to the
+      right, upright, a lean to the left, so they lean out on beats 2 and 4. Each screen row of a
+      canopy slides across by up to 3 px at its top and none at its foot, in whole pixels, so
+      every row is the still one moved over and the edge steps cleanly (a shear by height
+      instead leaves teeth down the canopy's side). The shadows stay still. A mirrored frame runs
+      half a loop behind, since mirroring turns a lean to the right into one to the left; square
+      tiles never mirror anyway.
+    - *Wall art:* a shop's walls are plain unless its over layer sets `c.facade`, which the bake
+      asks for each wall pixel: the side the wall faces in the drawing, the pixel along it as
+      someone outside facing it sees it, its height in screen pixels (14 rows on a tier-1 shop,
+      18 on tier 2) and the frame (`anim: n` on the art sets the loop's length). A colour with a
+      leading `+` glows, unshaded by its face: a lit room seen through glass, a fire. Pictures
+      are drawn on a `panel` in screen pixels, often as rows of characters. The camera sees one
+      N or S wall and one E or W wall whichever way a building turns, so a feature meant to be
+      seen goes on both walls of a pair. Awnings hang on the walls over the shopfronts: windows,
+      a glass door and a narrow window, repeated a cell at a time.
+      - *Burger Joint* (16 frames, two bars): the long outer N and S walls carry a drive-through
+        window. It is shut for a bar, slides open, the server in a red cap leans out on the next
+        downbeat and holds out a white bag, the bag is taken, and the window slides shut.
+      - *Pizza Place* (8 frames, a bar): the long outer N and S walls are a window onto the
+        kitchen, on green tiles so the white chef, the brick dome and the pies stand off them.
+        The oven's fire flickers every frame; on the first beat of the bar it flares as the chef
+        draws a pie out on the peel, sets it on the counter to steam for three frames, and sends
+        the empty peel back in.
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
   pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 69
@@ -1076,7 +1096,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   no header and keeps its label.
   `harness/cardart.mjs` draws them in code and writes the PNGs; edit a scene there and rerun it. They
   show at 2x, cropped from the top on phone cards and scaled to fit on the smallest.
-- **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`. Each file's entry carries its tempo and first beat for the swaying trees (§13.3, *Swaying trees*); a new file needs them measured with `node harness/tempo.mjs`.
+- **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`. Each file's entry carries its tempo and first beat for the tile animations (§13.3, *Animation*); a new file needs them measured with `node harness/tempo.mjs`.
 
 ---
 

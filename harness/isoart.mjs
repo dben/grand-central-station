@@ -30,10 +30,12 @@ const GLASS_A = 0.2;                   // a glass box's panes: a faint wash of t
 // A flush tile's over layer (the tree tops in a park) hangs this high above the
 // crowd, in units of tile height, with no walls under it.
 const CANOPY_Z = 0.32;
-// A swaying block (a tree top) gets SWAY frames of its over layer, one loop of
-// a lean to the right and back through upright to the left: each screen row of
-// it slides across by up to SWAY_PX at the top, less the lower it is, so the
-// canopy bends from its foot. The game steps through them in time with the music.
+// An animated tile gets more frames of its over layer, which the game steps
+// through in time with the music (a frame every half beat). A shop's are its
+// wall art's (`anim: n` and `c.facade` in tileart.mjs). A swaying block (a tree
+// top) gets SWAY, one loop of a lean to the right and back through upright to
+// the left: each screen row of it slides across by up to SWAY_PX at the top,
+// less the lower it is, so the canopy bends from its foot.
 const SWAY = 8, SWAY_PX = 3;
 const leanAt = k => SWAY_PX * Math.sin(2 * Math.PI * k / SWAY);
 
@@ -79,9 +81,10 @@ function scene(key, layers, grey) {
   for (const b of blocks) if (b.stack) {
     ext[0] = Math.min(ext[0], b.x - ox); ext[1] = Math.min(ext[1], b.y - oy); ext[2] = Math.max(ext[2], b.x + b.w - ox); ext[3] = Math.max(ext[3], b.y + b.h - oy);
   }
+  const sways = blocks.some(b => b.sway);
   const s = { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
     glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length,
-    sways: blocks.some(b => b.sway), lean: 0 };
+    sways, lean: 0, facade: layers.over && layers.over.facade, anim: layers.anim || (sways ? SWAY : 1), k: 0 };
   // The shadows on the floor: every point of a block above the ground, carried
   // down along the light (SUN art pixels across per pixel of height, toward +x
   // and +y) to where it meets the floor. A car's shadow is its own shape, and a
@@ -145,7 +148,9 @@ function frameOf(s, m) {
     for (let i = 0; i < m; i++) [x, y] = [-y, x];
     return [x + W2 / 2, y + H2 / 2];
   };
-  return { m, W2, H2, toBase, fromBase, U0, U1, V0, V1 };
+  // the side of the drawing each wall the camera sees faces: left (+V) and right (+U)
+  const sideOf = (du, dv) => { const [a, b] = toBase(W2 / 2, H2 / 2), [c, d] = toBase(W2 / 2 + du, H2 / 2 + dv), x = c - a, y = d - b; return Math.abs(x) > Math.abs(y) ? (x > 0 ? 'E' : 'W') : (y > 0 ? 'S' : 'N'); };
+  return { m, W2, H2, toBase, fromBase, U0, U1, V0, V1, sides: { [LEFT]: sideOf(0, CELL), [RIGHT]: sideOf(CELL, 0) } };
 }
 
 const at = (s, arr, u, v) => { const i = u + s.ox, j = v + s.oy; return arr && i >= 0 && j >= 0 && i < s.IW && j < s.IH ? arr[j * s.IW + i] : null; };
@@ -184,6 +189,19 @@ function swayAt(s, f, b, Y) {
   const [U, V] = f.fromBase(b.cx - s.ox, b.cy - s.oy), r = 0.7 * Math.max(b.w, b.h) / 2, y0 = (U + V) / 2;
   const top = y0 - b.hi - r, foot = y0 - b.lo + r;
   return Math.round(s.lean * Math.max(0, Math.min(1, (foot - Y - 0.5) / (foot - top))));
+}
+// A wall pixel's art: the tile's facade function asked for the side the wall
+// faces (in the drawing), the pixel along it as someone outside facing it sees
+// it (0 at their left), its height in screen pixels (0 at the foot) and the
+// frame. A colour with a leading '+' glows: it is not shaded by the face it is on.
+const facadePx = new Map();
+function wallArt(s, side, u, v, h) {
+  const a = side === 'S' ? u : side === 'N' ? s.W - 1 - u : side === 'E' ? s.H - 1 - v : v;
+  const c = s.facade({ side, u, v, a, h: Math.floor(h), k: s.k });
+  if (!c) return null;
+  const glow = c[0] === '+', hex = glow ? c.slice(1) : c;
+  if (!facadePx.has(hex)) facadePx.set(hex, rgba(hex));
+  return { p: facadePx.get(hex), glow };
 }
 // What a ray through frame pixel (X, Y) sees in one layer, front to back.
 // Returns { c: [r, g, b], a, face, cell } or null. Contributions under alpha 1
@@ -262,8 +280,11 @@ function cast(s, f, X, Y, layer) {
           let p;
           if (top) p = at(s, s.over, u, v) || [...t, 1];
           else {
-            // a building's wall: a lit top course, a dark footing, a seam per cell
+            // a building's wall: its wall art where it has some, else a lit top
+            // course, a dark footing and a seam per cell
             const fc = faceOf((a, c) => s.inside(a, c)), along = fc === LEFT ? U : V;
+            const art = s.facade && fc !== MID ? wallArt(s, f.sides[fc], u, v, h) : null;
+            if (art) { if (add(art.p, art.glow ? 0 : fc, U, V)) return hit(); continue; }
             const k = h > s.hz - 2 ? 1.14 : h < 2 ? 0.78 : Math.floor(along) % CELL === 0 ? 0.88 : 1;
             p = [...scale(t, k).slice(0, 3), 1];
             if (add(p, fc, U, V)) return hit();
@@ -328,8 +349,8 @@ for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
   const tint = colorForDef(sa.def), T = hex(tint);
   const frames = [];
-  // the sheet's columns: floor, over, and the over layer's other sway frames
-  const cols = ['floor', 'over', ...(sa.sways ? Array.from({ length: SWAY - 1 }, (_, k) => 'sway' + (k + 1)) : [])];
+  // the sheet's columns: floor, over, and the over layer's other animation frames
+  const cols = ['floor', 'over', ...Array.from({ length: sa.anim - 1 }, (_, k) => 'anim' + (k + 1))];
   // the band's sides: where the drawing is padded past the bounding box
   const padded = [sa.oy > 0, sa.IW - sa.ox > sa.W, sa.IH - sa.oy > sa.H, sa.ox > 0];
   for (let m = 0; m < 4; m++) {
@@ -347,9 +368,11 @@ for (const key of Object.keys(A)) {
     };
     for (const layer of cols) {
       if (layer === 'floor' ? !sa.floor : !(sa.over || (!sa.flush && !sa.lane))) continue;
-      // sway k is the over layer again, its tree tops leant over to frame k of the loop
-      const k = layer.startsWith('sway') ? +layer.slice(4) : 0, pass = layer === 'floor' ? 'floor' : 'over';
-      sa.lean = sb.lean = leanAt(k);
+      // anim k is the over layer again at frame k of the loop: the wall art's
+      // frame k, and any tree tops leant over to it
+      const k = layer.startsWith('anim') ? +layer.slice(4) : 0, pass = layer === 'floor' ? 'floor' : 'over';
+      sa.k = sb.k = k;
+      sa.lean = sb.lean = sa.sways ? leanAt(k) : 0;
       const ha = castFrame(sa, f, pass), hb = castFrame(sb, f, pass), list = [];
       for (const [xy, r] of ha) {
         // base + weight x colour; the weight is the same in every channel
@@ -364,7 +387,7 @@ for (const key of Object.keys(A)) {
     }
     frames.push(fr);
   }
-  // lay the frames out: a row per turn, floor then over, then any sway frames
+  // lay the frames out: a row per turn, floor then over, then any animation frames
   const colW = cols.map(l => Math.max(0, ...frames.map(fr => fr[l] ? fr[l].w : 0)));
   for (const fr of frames) if (fr.cells.length > 254) throw new Error(key + ': too many cells for the map');
   let y = 0;
@@ -382,7 +405,7 @@ for (const key of Object.keys(A)) {
   }
   const rect = g => [g.sx, g.sy, g.w, g.h, g.x0, g.y0];
   manifest[key] = { tint, frames: frames.map(fr => ({ cells: fr.cells, ...(fr.floor ? { floor: rect(fr.floor) } : {}), ...(fr.over ? { over: rect(fr.over) } : {}),
-    ...(sa.sways ? { sway: cols.slice(1).map(l => rect(fr[l])) } : {}) })) };
+    ...(sa.anim > 1 ? { anim: cols.slice(1).map(l => rect(fr[l])) } : {}) })), ...(sa.sways ? { sway: true } : {}) };
   if (!want.length || want.includes(key)) {
     writeFileSync(resolve(dir, key + '.png'), png({ IW: SW, IH: SH, px: pic }));
     writeFileSync(resolve(dir, key + '_map.png'), png({ IW: SW, IH: SH, px: map }));
@@ -511,8 +534,9 @@ export const ISO_MAPS = {
 ${keys.map(k => `  ${k}: 'assets/iso/${k}_map.png',`).join('\n')}
 };
 // key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
-// floor, over: [sheet x, sheet y, w, h, frame x, frame y], and for a tile whose tree tops
-// sway, sway: [the over layer at each frame of the loop, the first the over layer itself] } }.
+// floor, over: [sheet x, sheet y, w, h, frame x, frame y], and for an animated tile,
+// anim: [the over layer at each frame of the loop, the first the over layer itself] },
+// sway: true where the animation is tree tops swaying }.
 // Frame coordinates are screen pixels from the ground point of the turned bounding box's top corner.
 // The ground textures: 128 x 64, tiling the plane from the grid's origin (see the ground section).
 export const GROUND_TEX = {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Measures a music file's tempo and the time of its first beat, for its entry
-// in TRACKS (src/ui/audio.js), which the park trees sway in time with.
+// in TRACKS (src/ui/audio.js), which the animated tiles step in time with.
 //   node harness/tempo.mjs [file.mp3 ...]   (default: every file in assets/music/)
 // The browser decodes the audio (Playwright, like ui-smoke.mjs). From it: an
 // onset curve (rises in loudness, the low end counted double for the kick),
