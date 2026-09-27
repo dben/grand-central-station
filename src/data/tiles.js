@@ -28,6 +28,10 @@ export const TRANSPORTS = {
   car_rental:      { name: 'Car Rental',       shape: 'O4', terrain: 'road',     tier: 2, arr: 3,  batch: 2,  dep: 3,  dwell: 2, mult: 1.07, flat: 18,  cost: 140,  minWeek: 2 },
   limo:            { name: 'Limo Service',     shape: 'I3', terrain: 'road',     tier: 4, arr: 5,  batch: 2,  dep: 5,  dwell: 1, mult: 1.21, flat: 12,  cost: 240, minWeek: 4 },
   tram_stop:       { name: 'Tram Stop',        shape: 'I3', terrain: 'corridor', tier: 2, arr: 4,  batch: 4 , dep: 4,  dwell: 1, mult: 1.09, flat: 15,  cost: 130,  minWeek: 2 },
+  // Two people on a seesaw lever, and the only rail tile a week-1 budget runs
+  // to. It locks the edge to rail like any berth, so it's also a cheap way to
+  // claim the line early for the station that comes later.
+  handcar:         { name: 'Handcar',          shape: 'I1', terrain: 'rail',     attach: 'edgewise', tier: 1, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.05, flat: 10,  cost: 55,  minWeek: 1 },
   train_station:   { name: 'Train Station',    shape: 'I4', terrain: 'rail',     attach: 'edgewise', tier: 2, arr: 6,  batch: 6 , dep: 6,  dwell: 2, mult: 1.1 , flat: 18,  cost: 180,  minWeek: 2 },
   express_train:   { name: 'Express Train',    shape: 'I5', terrain: 'rail',     attach: 'edgewise', tier: 3, arr: 8,  batch: 9 , dep: 8,  dwell: 3, mult: 1.16, flat: 24,  cost: 320, minWeek: 5 },
   monorail:        { name: 'Monorail',         shape: 'I4', terrain: 'corridor', tier: 3, arr: 5,  batch: 5 , dep: 5,  dwell: 2, mult: 1.14, flat: 21,  cost: 280, minWeek: 5 },
@@ -117,6 +121,7 @@ export const TILE_UPGRADES = {
   coffee:        { name: 'Espresso Bar',       levels: 2, radiusBonus: 1 },
   bus_stop:      { name: 'Shelter & Timetable' },
   train_station: { name: 'Platform Extension' },
+  handcar:       { name: 'Stronger Arms' },
   ferry:         { name: 'Deeper Dock' },
   newsstand:     { name: 'Corner Franchise' },
   restroom:      { name: 'Attendant Service' },

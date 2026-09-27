@@ -305,7 +305,7 @@ try {
   results.push(`info: cheat-money auto-play reached week ${ff.week || ff.died}`);
   // Week 16 is an event week: force the Double Week onto it, which is the one
   // event that changes the shape of a result (two weeks stitched end to end),
-  // so the playback, the chart and the summary all run over 48 ticks below.
+  // so the playback, the chart and the summary all run over two weeks of ticks below.
   await page.evaluate(() => { const s = window.gcs.state; s.eventPlan[3] = 'double_week'; s.phase = 'shop'; s.week = 16; s.ap = 3; s.pendingOrdinance = null; s.board.tiles.forEach(t => t.level = 5); window.gcs.refresh(); });
   await page.waitForTimeout(200);
   const dbl = await page.evaluate(() => ({ ev: window.gcs.G.currentEvent(window.gcs.state).key, ap: window.gcs.G.apForRun(window.gcs.state) }));
@@ -316,9 +316,11 @@ try {
   const starText = (await page.locator('#quota-stars').textContent()).trim();
   const starNodes = await page.locator('#quota-stars .star').count();
   check('quota shown as stars', starNodes > 0 || /\d+\s*★/.test(starText), `"${starText}" / ${starNodes} glyphs`);
+  // one week's length, read before the run: Night Service makes it 30 ticks, not 24
+  const oneWeek = await page.evaluate(async () => { const { CONFIG } = await import('/src/config.js'); return window.gcs.G.computeMods(window.gcs.state).ticks || CONFIG.sim.ticks; });
   await runWeekUI(page);
   const dblTicks = await page.evaluate(() => window.gcs.state.lastResult.ticks);
-  check('the Double Week plays back as both weeks', dblTicks === 48, String(dblTicks));
+  check('the Double Week plays back as both weeks', dblTicks === 2 * oneWeek, `${dblTicks} vs 2 x ${oneWeek}`);
   if (!(await page.locator('#modal:not(.hidden)').count())) await page.locator('#playback button[data-speed="skip"]').click(); await page.waitForTimeout(500);
   await page.screenshot({ path: SP + '/shot10_week16_summary.png' });
   await page.locator('#modal button.primary').click(); await page.waitForTimeout(300);
