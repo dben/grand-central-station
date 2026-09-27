@@ -1029,6 +1029,19 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     shown only where it lies past the board's edge, so only when the tile sits on that edge) or 2
     (anything else a vehicle reaches, such as a wing over the next square, always shown and
     painted at that square's depth).
+  - *Swaying trees:* a park's tree tops (`.sway` on their block in `tileart.mjs`: the green space
+    and the pocket park) bend in the breeze. The bake adds eight more columns to the sheet, the
+    over layer at each frame of one loop: upright, a lean to the right, upright, a lean to the
+    left. Each screen row of a canopy slides across by up to 3 px at its top and none at its
+    foot, in whole pixels, so every row is the still one moved over and the edge steps cleanly
+    (a shear by height instead leaves teeth down the canopy's side). The shadows and the floor
+    stay still. The renderer steps a frame every half beat of the music, so a loop takes a bar
+    and the tree tops lean out on beats 2 and 4. Each music file in `TRACKS` carries its tempo
+    and first beat, measured by `harness/tempo.mjs` (GCS1 98.39 BPM, GCS2 116.99), and
+    `musicBeat()` reads the beat off the playing file's clock; with the music muted or not yet
+    started the trees keep 100 BPM on the wall clock. Every park sways in step. A mirrored
+    frame would run half a loop behind, since mirroring turns a lean to the right into one to
+    the left, but square tiles never mirror. The start screen's thumbnails hold them upright.
   Sheet pixels are crisp once one covers a screen pixel, and blend below that. The cost is the
   look at in-between zooms: nearest-neighbour at a scale that is not a whole number doubles some
   pixel columns and not others, so fine detail (a 1 px stripe in an icon) can zigzag. The 69
@@ -1063,7 +1076,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   no header and keeps its label.
   `harness/cardart.mjs` draws them in code and writes the PNGs; edit a scene there and rerun it. They
   show at 2x, cropped from the top on phone cards and scaled to fit on the smallest.
-- **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`.
+- **Music:** `src/ui/audio.js` plays the run soundtrack, fading in and out. The `main` track is a list of files (`assets/music/GCS1.mp3`, `GCS2.mp3`): it is shuffled when the run's music starts and then played in that order, looping back to the top after the last one. The mute choice is remembered in `localStorage`. Each file's entry carries its tempo and first beat for the swaying trees (§13.3, *Swaying trees*); a new file needs them measured with `node harness/tempo.mjs`.
 
 ---
 

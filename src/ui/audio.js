@@ -6,13 +6,19 @@
 // succeeds; if the browser refuses, the game simply stays silent.
 // The bundler (harness/build.js) inlines these as data URIs in dist/, and
 // nulls out any file it cannot find - hence the filter in list().
+// Each file carries its tempo and the time of its first beat, in seconds, so
+// the board can move in time with it (musicBeat). They were measured from the
+// files' onsets with harness/tempo.mjs; a new file needs its own.
 export const TRACKS = {
-  main: ['assets/music/GCS1.mp3', 'assets/music/GCS2.mp3'],
+  main: [
+    { src: 'assets/music/GCS1.mp3', bpm: 98.39, beat0: 0.467 },
+    { src: 'assets/music/GCS2.mp3', bpm: 116.99, beat0: 0.016 },
+  ],
 };
 const VOLUME = 0.5, FADE_MS = 800;
 
 const players = {};   // url -> Audio
-const lists = {};     // TRACKS key -> { urls, i }
+const lists = {};     // TRACKS key -> { files, i }
 let current = null;
 let muted = (() => { try { return localStorage.getItem('gcs.muted') === '1'; } catch { return false; } })();
 
@@ -24,26 +30,26 @@ function shuffled(urls) {
 function list(name) {
   if (!TRACKS[name]) return null;
   if (!lists[name]) {
-    const urls = [].concat(TRACKS[name]).filter(Boolean);
-    if (!urls.length) return null;
-    lists[name] = { urls, i: 0 };
+    const files = [].concat(TRACKS[name]).filter(f => f.src);
+    if (!files.length) return null;
+    lists[name] = { files, i: 0 };
   }
   return lists[name];
 }
 function player(l) {
-  const url = l.urls[l.i];
+  const url = l.files[l.i].src;
   if (!players[url]) {
     const a = new Audio(url);
     a.preload = 'auto'; a.volume = 0;
     players[url] = a;
   }
   const a = players[url];
-  a.loop = l.urls.length === 1;   // a lone file loops itself; a playlist advances on 'ended'
+  a.loop = l.files.length === 1;   // a lone file loops itself; a playlist advances on 'ended'
   a.onended = () => advance(l);
   return a;
 }
 function advance(l) {
-  l.i = (l.i + 1) % l.urls.length;
+  l.i = (l.i + 1) % l.files.length;
   const a = player(l);
   a.currentTime = 0;
   if (!muted) start(a);
@@ -81,7 +87,7 @@ export function playTrack(name) {
   current = name;
   const l = list(name);
   if (!l) return;
-  l.urls = shuffled(l.urls); l.i = 0;   // a fresh start reshuffles, so runs don't always open the same way
+  l.files = shuffled(l.files); l.i = 0;   // a fresh start reshuffles, so runs don't always open the same way
   if (!muted) { const a = player(l); a.currentTime = 0; start(a); }
 }
 
@@ -92,4 +98,11 @@ export function setMuted(m) {
   const a = currentPlayer();
   if (!a) return;
   if (muted) stop(a, false); else start(a);
+}
+
+// How many beats into the playing file the music is (fractional; negative
+// before its first beat), or null when nothing is audible.
+export function musicBeat() {
+  const l = !muted && current && list(current), f = l && l.files[l.i], a = f && players[f.src];
+  return a && !a.paused ? (a.currentTime - f.beat0) * f.bpm / 60 : null;
 }

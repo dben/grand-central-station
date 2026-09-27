@@ -14,7 +14,7 @@ import { effTransport, effAmenity, scaleMult } from '../sim/sim.js';
 import { BoardRenderer, boardStill, colorForDef } from './render.js';
 import { cardArt } from './sprites.js';
 import { attachBoardInput } from './boardinput.js';
-import { playTrack, isMuted, setMuted } from './audio.js';
+import { playTrack, isMuted, setMuted, musicBeat } from './audio.js';
 import { loadMeta, saveMeta, recordRun, saveRun, loadRun, clearRun } from './meta.js';
 
 const $ = id => document.getElementById(id);
@@ -850,7 +850,7 @@ function frame(now) {
       edgeHover: ui.edgeHover,
       starBadge: starBadge(),
       result: (ui.mode === 'playback' || ui.heat) ? (ui.pb.result || state.lastResult) : null,
-      T: ui.mode === 'playback' ? ui.pb.T : null, heat: ui.heat, closedTiles: closed,
+      T: ui.mode === 'playback' ? ui.pb.T : null, heat: ui.heat, closedTiles: closed, beat: musicBeat(),
       targetMode: ui.mode === 'target' && ui.card && ui.card.target !== 'edge' ? targetFilter : null,
       // pointing at an underground tile lifts the tunnel layer into view
       showUnderground: ui.mode !== 'playback' && !!((selected && selected.tunnel) || (hover && hover.tunnel)),

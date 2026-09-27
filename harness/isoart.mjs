@@ -30,6 +30,12 @@ const GLASS_A = 0.2;                   // a glass box's panes: a faint wash of t
 // A flush tile's over layer (the tree tops in a park) hangs this high above the
 // crowd, in units of tile height, with no walls under it.
 const CANOPY_Z = 0.32;
+// A swaying block (a tree top) gets SWAY frames of its over layer, one loop of
+// a lean to the right and back through upright to the left: each screen row of
+// it slides across by up to SWAY_PX at the top, less the lower it is, so the
+// canopy bends from its foot. The game steps through them in time with the music.
+const SWAY = 8, SWAY_PX = 3;
+const leanAt = k => SWAY_PX * Math.sin(2 * Math.PI * k / SWAY);
 
 // Hex strings to [r, g, b, a] once, so the ray loop does no parsing.
 const rgba = v => v ? [...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) / 255 : 1] : null;
@@ -45,7 +51,7 @@ function scene(key, layers, grey) {
   const floor = px(layers.floor), over = px(layers.over);
   const blocks = (layers.over ? layers.over.blocks : []).map(b => {
     const [x, y, w, h, z0, z1, round] = b;
-    return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack };
+    return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack, sway: !!b.sway };
   });
   // the flat part of the over layer: what no block stands up. A stack's cut
   // takes in the ink outline its top-down drawing has round it.
@@ -74,7 +80,8 @@ function scene(key, layers, grey) {
     ext[0] = Math.min(ext[0], b.x - ox); ext[1] = Math.min(ext[1], b.y - oy); ext[2] = Math.max(ext[2], b.x + b.w - ox); ext[3] = Math.max(ext[3], b.y + b.h - oy);
   }
   const s = { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
-    glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
+    glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length,
+    sways: blocks.some(b => b.sway), lean: 0 };
   // The shadows on the floor: every point of a block above the ground, carried
   // down along the light (SUN art pixels across per pixel of height, toward +x
   // and +y) to where it meets the floor. A car's shadow is its own shape, and a
@@ -132,7 +139,13 @@ function frameOf(s, m) {
   });
   const U0 = Math.min(...pts.map(p => p[0])), U1 = Math.max(...pts.map(p => p[0]));
   const V0 = Math.min(...pts.map(p => p[1])), V1 = Math.max(...pts.map(p => p[1]));
-  return { m, W2, H2, toBase, U0, U1, V0, V1 };
+  // and the other way: an art pixel of the drawing to the frame
+  const fromBase = (u, v) => {
+    let x = u - s.W / 2, y = v - s.H / 2;
+    for (let i = 0; i < m; i++) [x, y] = [-y, x];
+    return [x + W2 / 2, y + H2 / 2];
+  };
+  return { m, W2, H2, toBase, fromBase, U0, U1, V0, V1 };
 }
 
 const at = (s, arr, u, v) => { const i = u + s.ox, j = v + s.oy; return arr && i >= 0 && j >= 0 && i < s.IW && j < s.IH ? arr[j * s.IW + i] : null; };
@@ -163,6 +176,15 @@ function blockAt(s, b, u, v, h, top = false) {
 const scale = (p, f) => [p[0] * f, p[1] * f, p[2] * f, p[3]];
 const LEFT = 1, RIGHT = 2, MID = 3;
 
+// How far screen row Y of a swaying block has moved across: nothing at the
+// foot of its drawing, s.lean at the top, in whole pixels so each row is the
+// still one moved over. A round block of radius r reaches about 0.7r above
+// and below its centre on the screen.
+function swayAt(s, f, b, Y) {
+  const [U, V] = f.fromBase(b.cx - s.ox, b.cy - s.oy), r = 0.7 * Math.max(b.w, b.h) / 2, y0 = (U + V) / 2;
+  const top = y0 - b.hi - r, foot = y0 - b.lo + r;
+  return Math.round(s.lean * Math.max(0, Math.min(1, (foot - Y - 0.5) / (foot - top))));
+}
 // What a ray through frame pixel (X, Y) sees in one layer, front to back.
 // Returns { c: [r, g, b], a, face, cell } or null. Contributions under alpha 1
 // (glass panes, washes) are composited and the ray carries on behind them.
@@ -188,9 +210,9 @@ function cast(s, f, X, Y, layer) {
     // shape ends in front of it along V, right (an east face) where it ends along
     // U, and the middle shade where a curve runs between the two. Looking a few
     // pixels out keeps a round bow from striping light and dark pixel by pixel.
-    const faceOf = test => {
+    const faceOf = (test, U0 = U, V0 = V) => {
       let l = 0, r = 0;
-      for (let k = 1; k <= 3; k++) { if (!test(...f.toBase(U, V + k))) l += 4 - k; if (!test(...f.toBase(U + k, V))) r += 4 - k; }
+      for (let k = 1; k <= 3; k++) { if (!test(...f.toBase(U0, V0 + k))) l += 4 - k; if (!test(...f.toBase(U0 + k, V0))) r += 4 - k; }
       return l > r ? LEFT : r > l ? RIGHT : MID;
     };
     // past the drawing: open air above the ground, the ground itself at it,
@@ -210,13 +232,17 @@ function cast(s, f, X, Y, layer) {
     const foot = s.inside(u, v);
     if (layer === 'over') {
       for (const b of s.blocks) {
-        let p = blockAt(s, b, u, v, h);
+        // a swaying block's screen row sits dx pixels across, so the ray meets
+        // it that far back along the screen's x (U - V)
+        const dx = b.sway ? swayAt(s, f, b, Y) : 0, Ub = U - dx / 2, Vb = V + dx / 2;
+        const [bu, bv] = dx ? f.toBase(Ub, Vb) : [u, v];
+        let p = blockAt(s, b, bu, bv, h);
         if (!p) continue;
         // a top face: the top of the block, or in a stack, any slice with
         // nothing over it (a car's bonnet in front of its cabin)
-        const top = h + 1 > b.hi || (b.stack && !blockAt(s, b, u, v, h + 1));
-        if (top && !b.stack) p = blockAt(s, b, u, v, h, true);
-        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null), U, V)) return hit();
+        const top = h + 1 > b.hi || (b.stack && !blockAt(s, b, bu, bv, h + 1));
+        if (top && !b.stack) p = blockAt(s, b, bu, bv, h, true);
+        if (add(p, top ? 0 : faceOf((a, c) => blockAt(s, b, a, c, h) != null, Ub, Vb), U, V)) return hit();
       }
       if (!s.flush && foot && h >= 0 && h <= s.hz) {
         const top = h + 1 > s.hz;
@@ -271,7 +297,7 @@ function cast(s, f, X, Y, layer) {
 
 // Cast one frame of one layer: a map of screen pixel -> hit, and its bounds.
 function castFrame(s, f, layer) {
-  const X0 = Math.floor(f.U0 - f.V1) - 1, X1 = Math.ceil(f.U1 - f.V0) + 1;
+  const lean = Math.ceil(Math.abs(s.lean)), X0 = Math.floor(f.U0 - f.V1) - 1 - lean, X1 = Math.ceil(f.U1 - f.V0) + 1 + lean;
   const top = layer === 'over' ? Math.ceil(Math.max(s.hz, CANOPY_Z * HZ, ...s.blocks.map(b => b.hi))) : 0;
   const Y0 = Math.floor((f.U0 + f.V0) / 2) - top - 1, Y1 = Math.ceil((f.U1 + f.V1) / 2) + 1;
   const out = new Map();
@@ -302,6 +328,8 @@ for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
   const tint = colorForDef(sa.def), T = hex(tint);
   const frames = [];
+  // the sheet's columns: floor, over, and the over layer's other sway frames
+  const cols = ['floor', 'over', ...(sa.sways ? Array.from({ length: SWAY - 1 }, (_, k) => 'sway' + (k + 1)) : [])];
   // the band's sides: where the drawing is padded past the bounding box
   const padded = [sa.oy > 0, sa.IW - sa.ox > sa.W, sa.IH - sa.oy > sa.H, sa.ox > 0];
   for (let m = 0; m < 4; m++) {
@@ -317,9 +345,12 @@ for (const key of Object.keys(A)) {
       }
       return cellIx.get(k);
     };
-    for (const layer of ['floor', 'over']) {
+    for (const layer of cols) {
       if (layer === 'floor' ? !sa.floor : !(sa.over || (!sa.flush && !sa.lane))) continue;
-      const ha = castFrame(sa, f, layer), hb = castFrame(sb, f, layer), list = [];
+      // sway k is the over layer again, its tree tops leant over to frame k of the loop
+      const k = layer.startsWith('sway') ? +layer.slice(4) : 0, pass = layer === 'floor' ? 'floor' : 'over';
+      sa.lean = sb.lean = leanAt(k);
+      const ha = castFrame(sa, f, pass), hb = castFrame(sb, f, pass), list = [];
       for (const [xy, r] of ha) {
         // base + weight x colour; the weight is the same in every channel
         const rb = hb.get(xy), w = rb ? (r.c.reduce((a, v, i) => a + v - rb.c[i], 0) / 3) / (TA - TB) : 0;
@@ -333,23 +364,25 @@ for (const key of Object.keys(A)) {
     }
     frames.push(fr);
   }
-  // lay the frames out: a row per turn, floor then over
-  const colW = ['floor', 'over'].map(l => Math.max(0, ...frames.map(fr => fr[l] ? fr[l].w : 0)));
+  // lay the frames out: a row per turn, floor then over, then any sway frames
+  const colW = cols.map(l => Math.max(0, ...frames.map(fr => fr[l] ? fr[l].w : 0)));
   for (const fr of frames) if (fr.cells.length > 254) throw new Error(key + ': too many cells for the map');
   let y = 0;
   for (const fr of frames) {
     let x = 0;
-    ['floor', 'over'].forEach((l, i) => { if (fr[l]) { fr[l].sx = x; fr[l].sy = y; } x += colW[i] + (colW[i] ? 2 : 0); });
-    y += Math.max(0, ...['floor', 'over'].map(l => fr[l] ? fr[l].h : 0)) + 2;
+    cols.forEach((l, i) => { if (fr[l]) { fr[l].sx = x; fr[l].sy = y; } x += colW[i] + (colW[i] ? 2 : 0); });
+    y += Math.max(0, ...cols.map(l => fr[l] ? fr[l].h : 0)) + 2;
   }
-  const SW = colW[0] + colW[1] + 4, SH = y;
+  const SW = colW.reduce((a, w) => a + w + 2, 0), SH = y;
   const pic = new Array(SW * SH).fill(null), map = new Array(SW * SH).fill(null);
-  for (const fr of frames) for (const l of ['floor', 'over']) if (fr[l]) for (const q of fr[l].list) {
+  for (const fr of frames) for (const l of cols) if (fr[l]) for (const q of fr[l].list) {
     const i = (fr[l].sy + q.Y - fr[l].y0) * SW + fr[l].sx + q.X - fr[l].x0;
     pic[i] = '#' + q.c.map(toHex2).join('') + toHex2(q.a * 255);
     map[i] = '#' + toHex2(q.face * 60) + toHex2(q.cell + 1) + toHex2(q.w * 100);
   }
-  manifest[key] = { tint, frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
+  const rect = g => [g.sx, g.sy, g.w, g.h, g.x0, g.y0];
+  manifest[key] = { tint, frames: frames.map(fr => ({ cells: fr.cells, ...(fr.floor ? { floor: rect(fr.floor) } : {}), ...(fr.over ? { over: rect(fr.over) } : {}),
+    ...(sa.sways ? { sway: cols.slice(1).map(l => rect(fr[l])) } : {}) })) };
   if (!want.length || want.includes(key)) {
     writeFileSync(resolve(dir, key + '.png'), png({ IW: SW, IH: SH, px: pic }));
     writeFileSync(resolve(dir, key + '_map.png'), png({ IW: SW, IH: SH, px: map }));
@@ -478,8 +511,9 @@ export const ISO_MAPS = {
 ${keys.map(k => `  ${k}: 'assets/iso/${k}_map.png',`).join('\n')}
 };
 // key -> { tint: the colour it was drawn in, frames: [turn 0..3] -> { cells: [[u, v, kind]],
-// floor, over: [sheet x, sheet y, w, h, frame x, frame y] } }. Frame coordinates are
-// screen pixels from the ground point of the turned bounding box's top corner.
+// floor, over: [sheet x, sheet y, w, h, frame x, frame y], and for a tile whose tree tops
+// sway, sway: [the over layer at each frame of the loop, the first the over layer itself] } }.
+// Frame coordinates are screen pixels from the ground point of the turned bounding box's top corner.
 // The ground textures: 128 x 64, tiling the plane from the grid's origin (see the ground section).
 export const GROUND_TEX = {
 ${groundKeys.map(k => `  ${k}: 'assets/ground/${k}.png',`).join('\n')}

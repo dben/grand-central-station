@@ -20,6 +20,7 @@ node harness/build.js                              # rebuild dist/grand-central-
 node harness/cardart.mjs                           # redraw the transport card headers in assets/cards/
 node harness/isoart.mjs                            # bake the tile drawings (harness/tileart.mjs) into assets/iso/ and assets/ground/
 node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --blocks for plain blocks)
+node harness/tempo.mjs                             # a music file's BPM and first beat, for its TRACKS entry (needs playwright)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
 node harness/week1.mjs --runs 16                  # week 1 on every level x difficulty: cash, quota, tiles placed

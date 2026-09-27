@@ -86,8 +86,9 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   const box = (x, y, w, h, col, ink = INK) => blot(x, y, w, h, () => true, col, ink);
   const cellOn = (cx, cy) => set.has(cx + ',' + cy);
   // a raised part: it stands from z0 to z1, in units of tile height; a round one
-  // bulges and narrows as it rises (a tree top, a balloon) instead of a drum
-  const block = (x, y, w, h, z1, z0 = 0, round = false) => blocks.push([x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]);
+  // bulges and narrows as it rises (a tree top, a balloon) instead of a drum.
+  // Returns the block, so a caller can mark it (`.sway`: it bends in the breeze).
+  const block = (x, y, w, h, z1, z0 = 0, round = false) => { const b = [x + ox, y + oy, w, h, z0, z1, ...(round ? [1] : [])]; blocks.push(b); return b; };
   // A sprite stack: a vehicle drawn as slices from its wheels to its roof, so
   // its sides carry their own detail. `fn(along, across, t)` gives the colour
   // at a point of the vehicle's plan (`L` long, `D` wide, nose at along = L - 1,
@@ -165,12 +166,12 @@ function shop(c, t, icon, { awn = RED, alt = WHITE, at = null, plant = true } = 
   const [ix, iy] = at || [c.cells[0][0] * CELL + 16, c.cells[0][1] * CELL + 15];
   if (icon) icon(c, ix, iy);
 }
-// A trunk on the floor, and a canopy over it: a park's trees.
+// A trunk on the floor, and a canopy over it that sways in the breeze: a park's trees.
 function trunk(c, x, y) { c.R(x, y, 2, 2, WOOD_D); }
 function tree(c, x, y, r) {
   c.disc(x, y, r + 1, INK); c.disc(x, y, r, GRASS[0]);
   c.disc(x - 1, y - 1, r - 2, GRASS[1]); c.disc(x - 2, y - 2, Math.max(1, r - 5), GRASS[3]);
-  c.block(x - r - 1, y - r - 1, 2 * r + 3, 2 * r + 3, 0.4, 0.16, true);
+  c.block(x - r - 1, y - r - 1, 2 * r + 3, 2 * r + 3, 0.4, 0.16, true).sway = true;
 }
 function bench(c, x, y, v = false) { v ? c.box(x, y, 3, 10, WOOD_L) : c.box(x, y, 10, 3, WOOD_L); }
 // A parasol seen from above: a disc of alternating gores.
