@@ -5092,7 +5092,8 @@ class BoardRenderer {
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
-    return lane.concat([out]).map(([x, y]) => ({ bx0: x, by0: y, iso: { flip: false, cells: (x + y) % 2 ? alt : main } }));
+    const d = key => isoDensity(key), dm = d(t.key + '_lane'), da = hasIso(t.key + '_lane_alt') ? d(t.key + '_lane_alt') : dm;
+    return lane.concat([out]).map(([x, y]) => ({ bx0: x, by0: y, iso: (x + y) % 2 ? { flip: false, cells: alt, d: da } : { flip: false, cells: main, d: dm } }));
   }
 
 
@@ -5142,7 +5143,7 @@ class BoardRenderer {
     const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
     const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), piece = here && here[layer];
     if (!piece) return;
-    const ctx = this.ctx, s = this.k / ISO_CELL_PX / iso.d, [ax, ay] = this.project(info.bx0, info.by0);
+    const ctx = this.ctx, s = this.k / ISO_CELL_PX / (iso.d || 1), [ax, ay] = this.project(info.bx0, info.by0);
     ctx.save();
     ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
     // crisp pixels once a sheet pixel covers a screen pixel; blend below that
