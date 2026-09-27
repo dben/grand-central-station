@@ -22,7 +22,7 @@ import { deflateSync } from 'node:zlib';
 import { drawAll, CELL, hex } from './tileart.mjs';
 import { tileDef } from '../src/data/tiles.js';
 import { tileHeight, H_UNIT, colorForDef, EDGE_MARGIN, TURN_R } from '../src/ui/render.js';
-import { SHOPS, DENSITY, KEEP_ROOM, shopViews, turnCells, wallHeight, viewBox, rayHit } from './shopart.mjs';
+import { SHOPS, FLOORS, DENSITY, KEEP_ROOM, shopViews, turnCells, wallHeight, viewBox, floorBox, rayHit } from './shopart.mjs';
 import { decodePng, encodePng, quantize } from './png.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -327,10 +327,38 @@ function shopFrames(key) {
   });
 }
 
+// A walk-through tile painted by floorgen.mjs: each turn's floor and over layers
+// from its view's two pictures, mirrored for a flipped turn. A floor pixel goes
+// to the cell under it; an over pixel (a tree top, a glass rim) to the cell
+// whose column it meets at the canopy's height, so a tree draws with its trunk.
+function floorFrames(key) {
+  const { views, turns } = shopViews(key), f = (v, l) => resolve(root, `assets/floors/${key}_${v}_${l}.png`);
+  if (!views.every((_, v) => existsSync(f(v, 'floor')))) return null;
+  const imgs = views.map((_, v) => ({ floor: decodePng(readFileSync(f(v, 'floor'))), over: decodePng(readFileSync(f(v, 'over'))) }));
+  return turns.map(({ view, flip }, m) => {
+    const cells = turnCells(key, m), [X0, Y0] = floorBox(views[view]), fr = { cells: cells.map(([u, v]) => [u, v, 0]) };
+    for (const l of ['floor', 'over']) {
+      const img = imgs[view][l], list = [];
+      for (let j = 0; j < img.h; j++) for (let i = 0; i < img.w; i++) {
+        const o = (j * img.w + i) * 4;
+        if (!img.data[o + 3]) continue;
+        const X = flip ? -(X0 * DENSITY + i) - 1 : X0 * DENSITY + i, Y = Y0 * DENSITY + j;
+        const r = rayHit(cells, l === 'floor' ? 0.01 : CANOPY_Z * HZ, (X + 0.5) / DENSITY, (Y + 0.5) / DENSITY, l === 'floor' ? 4 : 60);
+        const cell = r ? cells.findIndex(c => c[0] === r.cell[0] && c[1] === r.cell[1]) : 0;
+        list.push({ X, Y, c: [0, 1, 2].map(k => img.data[o + k]), a: img.data[o + 3] / 255, w: 0, face: 0, cell });
+      }
+      if (!list.length) continue;
+      const x0 = Math.min(...list.map(p => p.X)), y0 = Math.min(...list.map(p => p.Y));
+      fr[l] = { x0, y0, w: Math.max(...list.map(p => p.X)) - x0 + 1, h: Math.max(...list.map(p => p.Y)) - y0 + 1, list };
+    }
+    return fr;
+  });
+}
+
 for (const key of Object.keys(A)) {
   const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
   const tint = colorForDef(sa.def), T = hex(tint);
-  const shop = SHOPS[key] ? shopFrames(key) : null;
+  const shop = SHOPS[key] ? shopFrames(key) : FLOORS[key] ? floorFrames(key) : null;
   const frames = shop || [];
   // the band's sides: where the drawing is padded past the bounding box
   const padded = [sa.oy > 0, sa.IW - sa.ox > sa.W, sa.IH - sa.oy > sa.H, sa.ox > 0];

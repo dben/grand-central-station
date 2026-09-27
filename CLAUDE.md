@@ -20,6 +20,7 @@ node harness/build.js                              # rebuild dist/grand-central-
 node harness/cardart.mjs                           # redraw the transport card headers in assets/cards/
 node harness/isoart.mjs                            # bake the tile drawings (harness/tileart.mjs) into assets/iso/ and assets/ground/
 node harness/shopgen.mjs burger --tries 2           # paint a shop's art with an image model (OpenRouter), fit it to the footprint -> assets/shops/
+node harness/floorgen.mjs waiting_area               # repaint a walk-through tile's art in more detail, guided by its code art -> assets/floors/
 node harness/tileshow.mjs --nolabels               # screenshot every tile on one board (needs playwright; --blocks for plain blocks)
 node harness/ui-smoke.mjs                          # Playwright drive of the real page (needs `npm i playwright`)
 node harness/autoplay.js --runs 8 --weeks 16       # greedy bot vs the quota curve (--difficulty hard, --no-prune: never deletes)
@@ -54,7 +55,7 @@ src/ui/render.js     isometric Canvas 2D renderer (cell-by-cell depth sort)
 src/ui/sprites.js    loads the card art, tile sheets and ground textures; lights and cuts the sheets
 harness/             selftest, balance tools, bundler, Playwright smoke test
 harness/bot.mjs      the greedy bot as a module (playRun); autoplay and sensitivity build boards with it
-harness/shopart.mjs  the painted shops: which ones, their views, and the ray that ties a picture's pixels to cells
+harness/shopart.mjs  the painted shops and floors: which ones, their views, and the ray that ties a picture's pixels to cells
 ```
 
 ## Rules of the codebase

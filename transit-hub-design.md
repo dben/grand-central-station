@@ -1129,7 +1129,24 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     far more often. It ignores the requested ratio and letterboxes the block-outs, which the fit
     allows for. Judged as above, Muse's painting was kept for 11 shops (art gallery, burger, clothing, coffee, currency, designer, drone swarm, lounge, nanofab, pizza, vending) and Flash's for
     7 (atm, cafeteria, food stand, kiosk, newsstand, restroom, security); the sports bar is a Flash bar and a Muse
-    patio, and both carts are Flash's. The whole set cost about $7, trials included.
+    patio, and both carts are Flash's. The shops cost about $7, trials included.
+- **Painted floors (`harness/floorgen.mjs`):** the walk-through tiles (`FLOORS` in
+  `shopart.mjs`: the waiting area, flier club, chrono lounge, WiFi, pocket park, green space,
+  walkway, guard post and the checkpoint's floor) are the crowd's floor, so they can't be solid
+  paintings; they are painted again from their own code art instead. Each view's code art (cut
+  from the sheet the first time and kept as `assets/floors/<key>_<view>_code_*.png`, so a
+  painting never guides the next) is sent upscaled on magenta, cropped close round it at the
+  ratio nearest its shape, and the prompt asks for the same outline, proportions, layout and
+  colours in far more detail, paper-thin, nothing taller than a bench but the trees there
+  already. Left small on a big square canvas, the model zoomed in and painted past the edges
+  every other time; a painting that still reaches the canvas edge is skipped. The painting is
+  fitted to the code art's outline (a scale and a shift, by overlap, started from the outlines'
+  bounding boxes), resampled at twice the density and split: in the parks, what lies over the
+  code art's tree tops is the over layer and the rest floor; elsewhere the code over layer (a
+  lounge's glass rim, the checkpoint's arches) stays as drawn and only the floor is painted. The
+  floor is cut to the tile's diamond. `isoart.mjs` bakes them as `d: 2` sheets, a floor pixel
+  to the cell under it and an over pixel to the cell under it at the canopy's height. All nine
+  are Gemini 3.1 Flash Image, overlap 0.8 to 1.0, about $1.30 with the trials.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.

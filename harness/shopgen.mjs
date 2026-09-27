@@ -28,9 +28,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { decodePng, encodePng, quantize } from './png.mjs';
-import { SHOPS, PARTS, CELL, DENSITY, COLOURS, KEEP_ROOM, shopViews, shopViewsOf, baseOf, partBase, composeViews, wallHeight, viewBox, rayHit, cutStats, carveBackNotches, squashWalls } from './shopart.mjs';
+import { SHOPS, PARTS, CELL, DENSITY, COLOURS, KEEP_ROOM, shopViews, shopViewsOf, baseOf, partBase, composeViews, wallHeight, viewBox, rayHit, cutStats, carveBackNotches, squashWalls, paintImage, floodKey } from './shopart.mjs';
 import { tileDef } from '../src/data/tiles.js';
 import { colorForDef } from '../src/ui/render.js';
 
@@ -114,34 +113,10 @@ function prompt(job, n) {
 }
 
 // OpenRouter's image API: the block-out goes in as a reference image.
-function callModel(images, text, ratio, big) {
-  const body = { model, prompt: text, aspect_ratio: ratio, resolution: big ? '2K' : '1K', output_format: 'png',
-    input_references: images.map(b => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b.toString('base64') } })) };
-  const auth = process.env.OPENROUTER_API_KEY ? ['-H', 'Authorization: Bearer ' + process.env.OPENROUTER_API_KEY] : [];
-  const out = execFileSync('curl', ['-sS', 'https://openrouter.ai/api/v1/images', '-H', 'Content-Type: application/json', ...auth, '--data-binary', '@-'],
-    { input: JSON.stringify(body), maxBuffer: 1 << 28 });
-  const d = JSON.parse(out), im = d.data?.[0];
-  if (d.error) throw new Error(JSON.stringify(d.error).slice(0, 400));
-  if (!im || (im.media_type && im.media_type !== 'image/png')) throw new Error('no PNG in the reply: ' + (im ? im.media_type : JSON.stringify(d).slice(0, 200)));
-  return { png: Buffer.from(im.b64_json, 'base64'), cost: d.usage?.cost || 0 };
-}
-
+const callModel = (images, text, ratio, big) => paintImage(model, images, text, ratio, big ? '2K' : '1K');
 // The model's white background, flooded in from the border so white inside the
 // building (an awning's stripes) stays.
-function keyOut(img) {
-  const { w, h, data } = img, fg = new Uint8Array(w * h).fill(1), stack = [];
-  const bgLike = i => { const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2]; return Math.min(r, g, b) >= 222 && Math.max(r, g, b) - Math.min(r, g, b) <= 26; };
-  for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
-  for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
-  while (stack.length) {
-    const i = stack.pop();
-    if (!fg[i] || !bgLike(i)) continue;
-    fg[i] = 0;
-    const x = i % w;
-    if (x > 0) stack.push(i - 1); if (x < w - 1) stack.push(i + 1); if (i >= w) stack.push(i - w); if (i < w * (h - 1)) stack.push(i + w);
-  }
-  return fg;
-}
+const keyOut = img => floodKey(img, (r, g, b) => Math.min(r, g, b) >= 222 && Math.max(r, g, b) - Math.min(r, g, b) <= 26);
 
 // Split the painting's foreground into its buildings (connected pieces) and
 // give each to the block-out nearest it across the image, so one view's fit

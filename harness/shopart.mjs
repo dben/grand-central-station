@@ -8,6 +8,7 @@
 // ground point of the footprint's top corner, a cell 64 wide) at DENSITY picture
 // pixels to a frame pixel. It covers viewBox(): the footprint, WALL_ROOM above
 // the walls for signs, and a margin. It is a plain picture: touch it up freely.
+import { execFileSync } from 'node:child_process';
 import { tileDef } from '../src/data/tiles.js';
 import { SHAPES } from '../src/sim/shapes.js';
 import { tileHeight, H_UNIT } from '../src/ui/render.js';
@@ -372,4 +373,55 @@ export function squashWalls(pic, cells, wall) {
     for (let from = h - 1; from >= 0 && r >= 0; from--) { if (gone.has(G[i] - from)) continue; out.set(px(i, from), (r * w + i) * 4); r--; }
   }
   return { pic: { w, h, data: out }, cut: k / D };
+}
+
+// One picture from OpenRouter's image API, the given PNGs as reference images.
+// The key comes from OPENROUTER_API_KEY, or from a proxy that adds it.
+export function paintImage(model, images, text, ratio, size) {
+  const body = { model, prompt: text, aspect_ratio: ratio, resolution: size, output_format: 'png',
+    input_references: images.map(b => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b.toString('base64') } })) };
+  const auth = process.env.OPENROUTER_API_KEY ? ['-H', 'Authorization: Bearer ' + process.env.OPENROUTER_API_KEY] : [];
+  const out = execFileSync('curl', ['-sS', 'https://openrouter.ai/api/v1/images', '-H', 'Content-Type: application/json', ...auth, '--data-binary', '@-'],
+    { input: JSON.stringify(body), maxBuffer: 1 << 28 });
+  const d = JSON.parse(out), im = d.data?.[0];
+  if (d.error) throw new Error(JSON.stringify(d.error).slice(0, 400));
+  if (!im || (im.media_type && im.media_type !== 'image/png')) throw new Error('no PNG in the reply: ' + (im ? im.media_type : JSON.stringify(d).slice(0, 200)));
+  return { png: Buffer.from(im.b64_json, 'base64'), cost: d.usage?.cost || 0 };
+}
+
+// A painting's background, flooded in from the border (so the same colour
+// inside the subject stays): 1 where the subject is, 0 where the background is.
+export function floodKey({ w, h, data }, bgLike) {
+  const fg = new Uint8Array(w * h).fill(1), stack = [];
+  for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
+  while (stack.length) {
+    const i = stack.pop();
+    if (!fg[i] || !bgLike(data[i * 4], data[i * 4 + 1], data[i * 4 + 2])) continue;
+    fg[i] = 0;
+    const x = i % w;
+    if (x > 0) stack.push(i - 1); if (x < w - 1) stack.push(i + 1); if (i >= w) stack.push(i - w); if (i < w * (h - 1)) stack.push(i + w);
+  }
+  return fg;
+}
+
+// The walk-through tiles, painted again from their own code art: what each is,
+// for the prompt, and whether its trees (the only thing over the crowd worth
+// painting) come from the painting too. The rest keep their glass rims.
+export const FLOORS = {
+  waiting_area: { text: 'a WAITING AREA: rows of padded seats, side tables with lamps and a big planter on a patterned carpet' },
+  flier_club: { text: 'a FREQUENT FLIER CLUB lounge floor: plush armchairs, low tables, a bar counter and plants on rich carpet' },
+  chrono_lounge: { text: 'a sci-fi CHRONO LOUNGE floor: a glowing clock dial inlaid in dark purple tiles, with light pads and sleek pods' },
+  wifi: { text: 'a WIFI HOTSPOT: a pale floor pad with a glowing router pillar and charging points' },
+  pocket_park: { text: 'a POCKET PARK: a square of grass with a leafy tree, a bench and flowers', trees: true },
+  green_space: { text: 'a GREEN SPACE: lawns crossed by paths, four leafy trees, benches and flower beds', trees: true },
+  walkway: { text: 'a MOVING WALKWAY: a long rubber belt between brushed steel rails, with yellow safety markings at the ends' },
+  guard: { text: "the FLOOR of a security guard post: a floor pad with a guard's small low desk and monitor, and hazard marks at the corners" },
+  gate: { text: 'the FLOOR of a security checkpoint lane: red floor tiles, a lane marked in yellow, and the flat top of a bag belt with a tray on it (the scanner arches are drawn separately, leave them out)' },
+};
+// The box a walk-through tile's pictures cover: its floor, with room above for trees.
+export function floorBox(cells) {
+  const pts = cells.flatMap(([u, v]) => [[u, v], [u + 1, v], [u, v + 1], [u + 1, v + 1]]).map(([u, v]) => [(u - v) * CELL, (u + v) * CELL / 2]);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  return [Math.min(...xs) - 4, Math.min(...ys) - 40, Math.max(...xs) + 4, Math.max(...ys) + 4];
 }

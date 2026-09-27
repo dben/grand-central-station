@@ -1,0 +1,83 @@
+{
+ "waiting_area": {
+  "views": [
+   {
+    "raw": "floor_waiting_area_v0_1790541835882_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 1
+   }
+  ]
+ },
+ "pocket_park": {
+  "views": [
+   {
+    "raw": "floor_pocket_park_v0_1790541678188_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.984
+   }
+  ]
+ },
+ "gate": {
+  "views": [
+   {
+    "raw": "floor_gate_v0_1790541604880_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 1
+   }
+  ]
+ },
+ "flier_club": {
+  "views": [
+   {
+    "raw": "floor_flier_club_v0_1790541689558_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.995
+   }
+  ]
+ },
+ "chrono_lounge": {
+  "views": [
+   {
+    "raw": "floor_chrono_lounge_v0_1790541616973_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.985
+   }
+  ]
+ },
+ "wifi": {
+  "views": [
+   {
+    "raw": "floor_wifi_v0_1790541628382_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.988
+   }
+  ]
+ },
+ "green_space": {
+  "views": [
+   {
+    "raw": "floor_green_space_v0_1790541701184_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.98
+   }
+  ]
+ },
+ "walkway": {
+  "views": [
+   {
+    "raw": "floor_walkway_v0_1790541712338_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.969
+   }
+  ]
+ },
+ "guard": {
+  "views": [
+   {
+    "raw": "floor_guard_v0_1790541639111_gemini-3.1-flash-image.png",
+    "model": "gemini-3.1-flash-image",
+    "overlap": 0.805
+   }
+  ]
+ }
+}
