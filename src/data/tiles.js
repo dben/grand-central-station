@@ -36,8 +36,8 @@ export const TRANSPORTS = {
   // Waterfront's own small craft. A dinghy needs no berth on the shore, so it
   // sits inland on a jetty the way a bus stop sits inland on a driveway: cheap,
   // tier 1, and the thing you actually open a water map with.
-  water_bus:       { name: 'Water Bus Stop',   shape: 'I2', terrain: 'water',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['waterfront'] },
-  pontoon:         { name: 'Pontoon Moorings', shape: 'O4', terrain: 'water',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['waterfront'], walkable: true, ground: true },
+  water_bus:       { name: 'Water Bus Stop',   shape: 'I2', terrain: 'water',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['waterfront', 'gateway'] },
+  pontoon:         { name: 'Pontoon Moorings', shape: 'O4', terrain: 'water',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['waterfront', 'gateway'], walkable: true, ground: true },
   marina:          { name: 'Marina',           shape: 'S4', terrain: 'water',    tier: 4, arr: 8,  batch: 2,  dep: 8,  dwell: 4, mult: 1.23, flat: 18,  cost: 350, minWeek: 6 },
   cruise_dock:     { name: 'Cruise Ship Dock', shape: 'I6', terrain: 'water',    attach: 'edgewise', tier: 3, arr: 16, batch: 28, dep: 16, dwell: 6, mult: 1.18, flat: 45 , cost: 520, minWeek: 7 },
   helipad:         { name: 'Helipad',          shape: 'O4', terrain: 'free',     tier: 4, arr: 6,  batch: 2,  dep: 6,  dwell: 2, mult: 1.24, flat: 15,  cost: 380, minWeek: 5, tags: ['air'] },
@@ -46,8 +46,8 @@ export const TRANSPORTS = {
   jumbo_jetway:    { name: 'Jumbo Jetway',     shape: 'L4', terrain: 'apron',    attach: 'tip',    tier: 3, arr: 12, batch: 21, dep: 12, dwell: 6, mult: 1.21, flat: 42 , cost: 680, minWeek: 9, tags: ['air'] },
   // Sky Harbour's own light aircraft, the airside mirror of the bus stop and
   // the car park. Both taxi in from the apron rather than parking on it.
-  prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'] },
-  hardstand:       { name: 'Hardstand',        shape: 'O4', terrain: 'apron',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['sky_harbour'], tags: ['air'], walkable: true, ground: true },
+  prop_stand:      { name: 'Prop Plane Stand', shape: 'I2', terrain: 'apron',    reach: 3, tier: 1, arr: 4,  batch: 5,  dep: 4,  dwell: 1, mult: 1.04, flat: 12,  cost: 60,  minWeek: 1, modes: ['sky_harbour', 'gateway'], tags: ['air'] },
+  hardstand:       { name: 'Hardstand',        shape: 'O4', terrain: 'apron',    reach: 2, tier: 1, arr: 1,  batch: 2,  dep: 1,  dwell: 0, mult: 1.02, flat: 30,  cost: 50,  minWeek: 1, modes: ['sky_harbour', 'gateway'], tags: ['air'], walkable: true, ground: true },
   private_terminal:{ name: 'Private Terminal', shape: 'T4', terrain: 'apron',    tier: 5, arr: 10, batch: 2,  dep: 10, dwell: 4, mult: 1.35, flat: 24,  cost: 760, minWeek: 10, rare: true, tags: ['air'] },
   ski_lift:        { name: 'Ski Lift',         shape: 'I4', terrain: 'corridor', tier: 2, arr: 3,  batch: 2,  dep: 3,  dwell: 1, mult: 1.09, flat: 12,  cost: 120,  minWeek: 2 },
   alpine_lift:     { name: 'Alpine Lift',      shape: 'I5', terrain: 'corridor', tier: 3, arr: 4,  batch: 3,  dep: 4,  dwell: 2, mult: 1.14, flat: 17,  cost: 220, minWeek: 5 },

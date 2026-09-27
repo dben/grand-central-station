@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 // (or PW_CHROME=/path/to/chrome to use one that is already installed)
 // Usage: node harness/ui-smoke.mjs [screenshot-dir]
 import { mkdirSync } from 'node:fs';
+import { MODE_KEYS } from '../src/data/modes.js';
 const SP = process.argv[2] || 'harness/screenshots';
 mkdirSync(SP, { recursive: true });
 const server = spawn('python3', ['-m', 'http.server', '8791'], { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' });
@@ -82,13 +83,13 @@ try {
   await page.locator('.diff', { hasText: 'Standard' }).first().click();
   await page.waitForTimeout(100);
   // every level is in the ring, locked ones greyed out rather than dropped
-  check('the carousel lists every level', await page.locator('.mode-track > .mode').count() === 6, String(await page.locator('.mode-track > .mode').count()));
+  check('the carousel lists every level', await page.locator('.mode-track > .mode').count() === MODE_KEYS.length, String(await page.locator('.mode-track > .mode').count()));
   const onStage = () => page.evaluate(() => {
     const s = document.querySelector('.mode-stage').getBoundingClientRect();
     return [...document.querySelectorAll('.mode-track > .mode')].filter(c => { const r = c.getBoundingClientRect(); return r.right > s.left + 4 && r.left < s.right - 4; }).length;
   });
   check('and shows one of them at a time', await onStage() === 1, `${await onStage()} on the stage`);
-  check('with a board still on each', await page.locator('.mode-shot').count() === 6);
+  check('with a board still on each', await page.locator('.mode-shot').count() === MODE_KEYS.length);
   await page.locator('.car-dot[aria-label="Junction"]').click(); await page.waitForTimeout(320);
   check('a dot turns the carousel', (await page.locator('.car-dot.on').getAttribute('aria-label')) === 'Junction');
   check('and a level not yet earned stays in it, greyed', await page.locator('.mode-track > .mode.locked', { hasText: 'Junction' }).count() === 1);
@@ -419,6 +420,14 @@ try {
   });
   check('Sky Harbour starts airside, roadside and gated', sky.mode === 'sky_harbour' && sky.edges.N === 'apron' && sky.edges.S === 'road' && sky.tiles === 1 && !!sky.gate, JSON.stringify(sky));
   await page.screenshot({ path: SP + '/shot15_sky_harbour.png' });
+  // Gateway: no roads, the sea and the airfield laid, both heavy hitters in hand
+  await page.evaluate(() => window.gcs.showStart());
+  await page.waitForTimeout(300);
+  await pickMode('Gateway');
+  await page.waitForTimeout(400);
+  const gw = await page.evaluate(() => { const s = window.gcs.state; return { mode: s.modeKey, edges: s.board.edges, hand: s.shop.cards.map(c => c.key) }; });
+  check('Gateway starts at sea and airside with both heavy hitters dealt', gw.mode === 'gateway' && gw.edges.N === 'water' && gw.edges.E === 'apron' && gw.hand.includes('cruise_dock') && gw.hand.includes('jumbo_jetway'), JSON.stringify(gw));
+  await page.screenshot({ path: SP + '/shot15b_gateway.png' });
   // A phone, held both ways up. A finger's tap only aims: the card bar then
   // builds, upgrades or plays the card, or drops the aim.
   for (const dev of ['iPhone 13', 'iPhone 13 landscape']) {

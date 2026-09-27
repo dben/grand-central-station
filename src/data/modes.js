@@ -21,6 +21,10 @@
 //              illegal one throws at run start rather than half-building.
 //   week1      the opening hand, overriding CONFIG.shop.week1 field by field,
 //              so a level can deal the transport its own terrain needs.
+//   skipEvents event keys this level never draws: a Weather Front grounds a
+//              board with no roads outright, and Heavy Rain has nothing to flood.
+//   shopCostMult scales the price the shop leans toward (CONFIG.shop.targetCost*),
+//              so a level with a fat till is dealt dear tiles, not only cheap ones.
 // A tile with a `modes` list is sold on those levels only (see soldOnLevel).
 export const MODES = {
   terminal:   { name: 'Terminal',    w: 12, h: 12, desc: 'The standard game.', unlockWeek: 0 },
@@ -66,6 +70,26 @@ export const MODES = {
                 run: { pickpocketsFromWeek: 3, pickpocketRamp: 6 },
                 week1: { fixed: ['prop_stand', 'parking_lot', 'burger'], transport: 1, amenity: 1 },
                 minWeek: { jetway: 2, jumbo_jetway: 6, helipad: 3, balloon: 2, jetpack: 4, private_terminal: 8, security: 3, guard: 3, gate: 1 } },
+  // No roads at all: every traveller comes by rail, water or air. The two edges
+  // the big tiles need are laid before week 1 - the sea along the north for the
+  // cruise ship, the apron along the east for the jumbo jet - and both are on
+  // sale from the first shop, with the till to buy one.
+  gateway:    { name: 'Gateway',     w: 14, h: 14, desc: 'No roads. The sea and the airfield are already laid, cruise ships and jumbo jets are sold from week 1, and the till and the target both start big.', unlockWeek: 8,
+                banTerrains: ['road'], preLock: { N: 'water', E: 'apron' }, quotaMult: 1.9, quotaGrowth: 1.07, skipEvents: ['weather_front', 'heavy_rain'],
+                // Week 1's heavy hitter is a head start the rest of the run
+                // does not repeat, so the target starts high and climbs slower
+                // than Terminal's, the way Junction's does (§15).
+                // The shop leans three times dearer than elsewhere, so the big
+                // tiles keep turning up after week 1 rather than once a run.
+                shopCostMult: 3,
+                run: { startMoney: 1100, rareTilesFromWeek: 5 },
+                // Both heavy hitters in the opening hand, with a pontoon and a
+                // hardstand standing in for the car park, one on each laid edge.
+                // $1,100 buys one heavy hitter and a shop, not both big ones -
+                // on Extreme too, where the jumbo costs $918 against $990.
+                week1: { fixed: ['cruise_dock', 'jumbo_jetway', 'pontoon', 'hardstand', 'burger'], transport: 0, amenity: 0 },
+                minWeek: { ferry: 1, water_taxi: 1, cruise_dock: 1, jetway: 1, jumbo_jetway: 1, train_station: 1, tram_stop: 1, ski_lift: 1, balloon: 1,
+                           express_train: 2, monorail: 2, helipad: 2, subway: 2, marina: 2, alpine_lift: 3, sub_dock: 3, jetpack: 3, express_subway: 3, private_terminal: 5 } },
   terminus:   { name: 'Terminus',    w: 12, h: 12, desc: 'One action point a week, but eight cards in the shop and Extra Shift comes early.', unlockWeek: 16, startAP: 1, fixedAP: 1, shopSlots: 8, quotaMult: 0.46, quotaGrowth: 1.145,
                 // One move a week, so the week clock is slower and the things
                 // that buy you more moves arrive sooner.

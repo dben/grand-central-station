@@ -446,9 +446,20 @@ ok(guard.counts.removed > 0, 'a one-cell security guard removes pickpockets too'
   const tm2 = createRun({ modeKey: 'terminal', seed: 3 });
   const keysOf = r => { r.week = 4; return shopPool(r).map(d => d.key); };
   ok(keysOf(wf).includes('water_bus') && !keysOf(tm2).includes('water_bus'), 'Waterfront sells the water bus and Terminal never does');
-  ok(!keysOf(wf).includes('prop_stand') && keysOf(createRun({ modeKey: 'sky_harbour', seed: 3 })).includes('prop_stand'), 'and the prop stand belongs to Sky Harbour alone');
+  ok(!keysOf(wf).includes('prop_stand') && keysOf(createRun({ modeKey: 'sky_harbour', seed: 3 })).includes('prop_stand'), 'and the prop stand is not Waterfront stock');
   ok(createRun({ modeKey: 'waterfront', seed: 3 }).shop.cards.some(c => c.key === 'pontoon'), 'the level deals its own opening hand');
   ok(keysOf(tm2).includes('pocket_park') && keysOf(wf).includes('pocket_park'), 'a tile with no level list is sold everywhere');
+}
+
+// Gateway: no roads, the sea and the airfield laid, the heavy hitters in hand
+{
+  const gw = createRun({ modeKey: 'gateway', seed: 3 });
+  ok(gw.board.edges.N === 'water' && gw.board.edges.E === 'apron', 'Gateway starts with the sea to the north and the airfield to the east');
+  ok(['cruise_dock', 'jumbo_jetway'].every(k => gw.shop.cards.some(c => c.key === k)), 'and deals the cruise dock and the jumbo jetway in week 1');
+  ok(gw.money > CONFIG.run.startMoney * 4, 'with a till that can buy one of them');
+  const pool = r => { r.week = 3; return shopPool(r); };
+  ok(!pool(gw).some(d => d.terrain === 'road') && pool(gw).some(d => d.key === 'pontoon') && pool(gw).some(d => d.key === 'hardstand'), 'it sells no road tile, and the pontoon and hardstand stand in');
+  ok(!checkPlacement(gw.board, 'parking_lot', 5, 11, 0, MODES.gateway).ok, 'and refuses a road tile on placement');
 }
 
 // event weeks: the gate on an event that leans on a rule, the walkout the

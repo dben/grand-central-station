@@ -32,9 +32,10 @@ export function createRun({ modeKey = 'terminal', diffKey = 'standard', seed = n
   const rules = { ...CONFIG.run, ...(mode.run || {}) };
   seed = seed ?? Math.floor(Math.random() * 1e9);
   const rng = new Rng(hashString(seed + ':events'));
-  // event plan: shuffled cycles of all events
+  // event plan: shuffled cycles of every event the level has not left out
+  const keys = EVENT_KEYS.filter(k => !(mode.skipEvents || []).includes(k));
   const plan = [];
-  while (plan.length < 12) plan.push(...rng.shuffle(EVENT_KEYS));
+  while (plan.length < 12) plan.push(...rng.shuffle(keys));
   const state = {
     version: SAVE_VERSION, seed, modeKey, diffKey, week: 1, phase: 'shop', ap: 0, apPermanentBonus: 0, apThisWeek: 0, hoursBought: 0,
     money: Math.round(rules.startMoney * (diff.startMoneyMult || 1)),
@@ -265,8 +266,8 @@ function applyWeekCash(s) {
 }
 
 // ----------------------------------------------------------------------- shop
-function tileWeight(def, week) {
-  const target = CONFIG.shop.targetCostBase * Math.pow(CONFIG.shop.targetCostGrowth, week - 1);
+function tileWeight(def, week, mult = 1) {
+  const target = CONFIG.shop.targetCostBase * Math.pow(CONFIG.shop.targetCostGrowth, week - 1) * mult;
   const d = Math.log(def.cost / target);
   return Math.exp(-(d * d) / (2 * CONFIG.shop.targetCostSigma * CONFIG.shop.targetCostSigma)) + 0.02;
 }
@@ -301,7 +302,7 @@ export function generateShop(s) {
   const pickTile = (pool) => {
     const filtered = pool.filter(d => !used.has(d.key));
     const use = filtered.length ? filtered : pool;
-    return rng.weighted(use, d => tileWeight(d, s.week));
+    return rng.weighted(use, d => tileWeight(d, s.week, m.shopCostMult || 1));
   };
   const addTile = (pool, slot) => { if (!pool.length) return false; const d = pickTile(pool); used.add(d.key); cards.push(tileCard(d, slot)); return true; };
   const addTransport = slot => addTile(transportPool(s), slot);
