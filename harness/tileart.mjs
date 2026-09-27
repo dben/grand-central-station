@@ -94,15 +94,19 @@ function sheet(shape, pad = [0, 0, 0, 0]) {
   // lying along y if `vertical`) and height t (0 at z0, 1 at z1): a colour,
   // 'top' for the top-down art under it, or nothing. Its plan may reach past
   // the drawing (an airliner's wings over the next squares).
+  // Each stack is a vehicle of its own, baked into its own sheet so it can move
+  // apart from its tile; `vehicle(fn)` makes the stacks fn draws one vehicle (a train).
+  let group = -1, groups = 0;
   const stack = (x, y, L, D, vertical, fn, z0, z1) => {
     const b = [x + ox, y + oy, vertical ? D : L, vertical ? L : D, z0, z1];
-    b.stack = { L, D, vertical, fn };
+    b.stack = { L, D, vertical, fn, group: group >= 0 ? group : groups++ };
     blocks.push(b);
   };
+  const vehicle = fn => { group = groups++; fn(); group = -1; };
   // a part of the floor that steps down into the ground: `n` steps along `dir`
   // (the way down) from depth d0 to d1
   const sinks = [], sink = (x, y, w, h, d0, d1, dir, n) => sinks.push([x + ox, y + oy, w, h, d0, d1, dir, n]);
-  return { W, H, IW, IH, ox, oy, cells, px, inside, P, R, fill, rim, each, disc, ring, blot, box, cellOn, block, blocks, stack, sink, sinks };
+  return { W, H, IW, IH, ox, oy, cells, px, inside, P, R, fill, rim, each, disc, ring, blot, box, cellOn, block, blocks, stack, vehicle, sink, sinks };
 }
 
 // ---- ground ---------------------------------------------------------------------
@@ -289,7 +293,7 @@ function carriageSlice(a, k, t, len, w, body, stripe, nose, tail) {
 }
 function train(c, x, y, len, cars, w, body, stripe, { both = false, z, z0 } = {}) {
   const each = Math.floor((len - (cars - 1)) / cars);
-  for (let k = 0; k < cars; k++) carriage(c, x + k * (each + 1), y, k === cars - 1 ? len - k * (each + 1) : each, w, body, stripe, { nose: k === cars - 1, tail: both && k === 0, z, z0 });
+  c.vehicle(() => { for (let k = 0; k < cars; k++) carriage(c, x + k * (each + 1), y, k === cars - 1 ? len - k * (each + 1) : each, w, body, stripe, { nose: k === cars - 1, tail: both && k === 0, z, z0 }); });
 }
 // A hull pointed at the bow, with a deck inset and a cabin that stands above it.
 function boat(c, x, y, len, w, hull, deck, cabin = null, z = 0.1) {

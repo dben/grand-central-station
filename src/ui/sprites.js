@@ -1,5 +1,5 @@
 import { tileDef } from '../data/tiles.js';
-import { ISO_SHEETS, ISO_MAPS, ISO_FRAMES, GROUND_TEX, GROUND_BENDS } from './isosprites.js';
+import { ISO_SHEETS, ISO_MAPS, ISO_FRAMES, ISO_VEHICLES, GROUND_TEX, GROUND_BENDS } from './isosprites.js';
 
 // The game's pictures: card headers (harness/cardart.mjs), and the board's
 // isometric tile sheets and ground textures (harness/isoart.mjs, which writes
@@ -95,6 +95,8 @@ export const ISO_CELL_PX = 64;
 export const hasIso = key => !!ISO_FRAMES[key];
 // sheet pixels to a frame pixel: 2 for the painted shops, whose sheets carry twice the detail
 export const isoDensity = key => (ISO_FRAMES[key] && ISO_FRAMES[key].d) || 1;
+// a tile's vehicles: sheets of their own, drawn over the tile turned the same way
+export const isoVehicles = key => ISO_VEHICLES[key] || [];
 const FACE_SHADE = [1, 0.52, 0.70, 0.61];
 const DIM = [70, 74, 84];
 // The quarter turn m and flip that show a tile turned by `tf` (mirror first,

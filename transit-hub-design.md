@@ -1156,6 +1156,16 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     map: each face's shade divided out and the other side's put in.
   - *Palette swaps:* a full or closed tile is the same frame in a grey palette, and a tile shown
     in another colour than it was drawn in shifts each pixel by its weight.
+  - *Vehicles:* every sprite stack in `tileart.mjs` is a vehicle (a car, a bus, a train, a boat,
+    an aircraft, a gondola, a pod), and each is baked into a sheet of its own, `<key>_veh<n>`, with
+    the tile's turns and cells; the tile's own sheet leaves it out (and its shadow). A train's
+    carriages are one vehicle (`c.vehicle` in `train()`); any other stack is one by itself. A
+    vehicle sheet's floor layer is its shadow alone, a see-through wash over whatever is under it.
+    `ISO_VEHICLES` in the manifest lists a tile's vehicles, and the renderer draws them with the
+    tile, cell by cell, each piece over the tile's, turned as the tile is (`isoVehicles`, and the
+    lanes' gondolas the same way), so a vehicle can later be moved or animated without touching
+    its tile. The one change in look: a vehicle no longer sits behind its stop's glass pane, so it
+    is a shade brighter.
   - *Reach:* each turn's cells are tagged 0 (under the tile), 1 (past a padded side: the band,
     shown only where it lies past the board's edge, so only when the tile sits on that edge) or 2
     (anything else a vehicle reaches, such as a wing over the next square, always shown and

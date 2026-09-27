@@ -38,7 +38,9 @@ const rgba = v => v ? [...hex(v), v.length > 7 ? parseInt(v.slice(7, 9), 16) / 2
 const isInk = p => p && p[0] < 24 && p[1] < 16 && p[2] < 48;
 
 // One drawn tile (floor and over sheets from tileart) in one grey, ready to cast.
-function scene(key, layers, grey) {
+// `only`: undefined for the tile itself, which leaves its vehicles out, or a
+// vehicle's group, for that vehicle alone (and its shadow) with no tile under it.
+function scene(key, layers, grey, only) {
   const any = layers.floor || layers.over;
   const { W, H, IW, IH, ox, oy, inside } = any;
   const def = tileDef(key.replace(/_lane(_alt)?$/, '')), lane = /_lane(_alt)?$/.test(key);
@@ -49,6 +51,7 @@ function scene(key, layers, grey) {
     const [x, y, w, h, z0, z1, round] = b;
     return { x, y, w, h, lo: z0 * HZ, hi: z1 * HZ, round: !!round, cx: x + w / 2, cy: y + h / 2, stack: b.stack };
   });
+  const vehicle = only !== undefined, cast = blocks.filter(b => vehicle ? b.stack && b.stack.group === only : !b.stack);
   // the flat part of the over layer: what no block stands up. A stack's cut
   // takes in the ink outline its top-down drawing has round it.
   const cut = blocks.map(b => b.stack ? { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 2 } : b);
@@ -72,17 +75,19 @@ function scene(key, layers, grey) {
   // what the frame must cover: the drawing and its band, and any vehicle that
   // reaches past them (an airliner's wings over the next squares)
   const ext = [-ox, -oy, IW - ox, IH - oy];
-  for (const b of blocks) if (b.stack) {
+  for (const b of cast) if (b.stack) {
     ext[0] = Math.min(ext[0], b.x - ox); ext[1] = Math.min(ext[1], b.y - oy); ext[2] = Math.max(ext[2], b.x + b.w - ox); ext[3] = Math.max(ext[3], b.y + b.h - oy);
   }
-  const s = { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks, sinks, tint: [grey, grey, grey],
-    glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
+  const s = vehicle
+    ? { key, def, lane, z: 0, hz: 0, W, H, IW, IH, ox, oy, inside, ext, floor: [], over, flat: null, side, blocks: cast, sinks, tint: [grey, grey, grey], vehicle, glass: false, flush: true, canopy: false }
+    : { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks: cast, sinks, tint: [grey, grey, grey],
+      glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
   // The shadows on the floor: every point of a block above the ground, carried
   // down along the light (SUN art pixels across per pixel of height, toward +x
   // and +y) to where it meets the floor. A car's shadow is its own shape, and a
   // tree top's or an airliner's falls clear of it by its height.
   s.shadow = new Set();
-  for (const b of blocks) for (let h = Math.max(1, Math.ceil(b.lo)); h <= b.hi; h++) {
+  for (const b of cast) for (let h = Math.max(1, Math.ceil(b.lo)); h <= b.hi; h++) {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) {
       const u = x - ox, v = y - oy;
       if (blockAt(s, b, u, v, h)) s.shadow.add(Math.floor(u + SUN * h) + ',' + Math.floor(v + SUN * h));
@@ -258,6 +263,8 @@ function cast(s, f, X, Y, layer) {
       // the ground, or a step's tread: the floor art, lowered to its depth
       const depth = (p, q) => { const k = sinkAt(s, p, q); return k ? k.d : 0; }, d = depth(u, v);
       if (h > -d) continue;
+      // a vehicle's own sheet has no floor: only its shadow, washed over the tile's
+      if (s.vehicle) { if (h === 0 && s.shadow.has(u + ',' + v)) add(SHADOW, 0, U, V); break; }
       if (h > -d - 1) {
         // on the ground, a shadow darkens the floor, or where there is none, is a wash
         const p = at(s, s.floor, u, v), dark = h === 0 && s.shadow.has(u + ',' + v), band = u < 0 || v < 0 || u >= s.W || v >= s.H;
@@ -355,8 +362,46 @@ function floorFrames(key) {
   });
 }
 
+// A tile upscaled by upscale.mjs: each code pixel becomes DENSITY x DENSITY, with
+// its layer, cell, face and weight, coloured from the painting where the painting
+// covers it. A pixel under a translucent pane, or a pane itself, keeps the code
+// colour for the pane (the painting shows the two mixed), and so does floor under
+// something opaque, which the painting can't show.
+function upscaled(key, frames) {
+  const logf = resolve(root, 'assets/paint/log.json'), log = existsSync(logf) ? JSON.parse(readFileSync(logf, 'utf8'))[key] : null;
+  const pic = m => resolve(root, `assets/paint/${key}_${m}.png`);
+  if (!log || !log.code || ![0, 1, 2, 3].every(m => existsSync(pic(m)) && log.code[m])) return false;
+  frames.forEach((fr, m) => {
+    const img = decodePng(readFileSync(pic(m))), [cx, cy] = log.code[m];
+    const over = new Map((fr.over ? fr.over.list : []).map(q => [q.X + ',' + q.Y, q]));
+    for (const l of ['floor', 'over']) {
+      if (!fr[l]) continue;
+      const list = [];
+      for (const q of fr[l].list) {
+        const o = over.get(q.X + ',' + q.Y), keep = l === 'over' ? q.a < 0.9 : !!o && o.a >= 0.9;
+        for (let dy = 0; dy < DENSITY; dy++) for (let dx = 0; dx < DENSITY; dx++) {
+          const X = q.X * DENSITY + dx, Y = q.Y * DENSITY + dy, i = X - cx * DENSITY, j = Y - cy * DENSITY;
+          const k = (j * img.w + i) * 4, has = !keep && i >= 0 && j >= 0 && i < img.w && j < img.h && img.data[k + 3];
+          list.push({ ...q, X, Y, c: has ? [img.data[k], img.data[k + 1], img.data[k + 2]] : q.c });
+        }
+      }
+      fr[l] = { x0: fr[l].x0 * DENSITY, y0: fr[l].y0 * DENSITY, w: fr[l].w * DENSITY, h: fr[l].h * DENSITY, list };
+    }
+  });
+  return true;
+}
+
+// The bake: each tile without its vehicles, then each vehicle as a sheet of its
+// own, `<key>_veh<n>`, with the same turns and cells, so the game can draw it
+// over the tile, or somewhere else.
+const jobs = [], vehicles = {};
 for (const key of Object.keys(A)) {
-  const sa = scene(key, A[key], TA), sb = scene(key, B[key], TB);
+  jobs.push({ key, base: key, only: undefined });
+  const groups = [...new Set((A[key].over ? A[key].over.blocks : []).filter(b => b.stack).map(b => b.stack.group))];
+  groups.forEach((g, n) => { jobs.push({ key: `${key}_veh${n}`, base: key, only: g }); (vehicles[key] = vehicles[key] || []).push(`${key}_veh${n}`); });
+}
+for (const { key, base, only } of jobs) {
+  const sa = scene(base, A[base], TA, only), sb = scene(base, B[base], TB, only);
   const tint = colorForDef(sa.def), T = hex(tint);
   const shop = SHOPS[key] ? shopFrames(key) : FLOORS[key] ? floorFrames(key) : null;
   const frames = shop || [];
@@ -391,6 +436,9 @@ for (const key of Object.keys(A)) {
     }
     frames.push(fr);
   }
+  // Upscaled by upscale.mjs: the same pixels at twice the density, each coloured
+  // from its turn's painting, where the painting has it.
+  const painted = !shop && upscaled(key, frames);
   // lay the frames out: a row per turn, floor then over
   const colW = ['floor', 'over'].map(l => Math.max(0, ...frames.map(fr => fr[l] ? fr[l].w : 0)));
   for (const fr of frames) if (fr.cells.length > 254) throw new Error(key + ': too many cells for the map');
@@ -407,10 +455,10 @@ for (const key of Object.keys(A)) {
     pic[i] = '#' + q.c.map(toHex2).join('') + toHex2(q.a * 255);
     map[i] = '#' + toHex2(q.face * 60) + toHex2(q.cell + 1) + toHex2(q.w * 100);
   }
-  manifest[key] = { tint, ...(shop ? { d: DENSITY } : {}), frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
-  if (!want.length || want.includes(key)) {
+  manifest[key] = { tint, ...(shop || painted ? { d: DENSITY } : {}), frames: frames.map(fr => Object.fromEntries(Object.entries(fr).map(([l, g]) => [l, l === 'cells' ? g : [g.sx, g.sy, g.w, g.h, g.x0, g.y0]]))) };
+  if (!want.length || want.includes(key) || want.includes(base)) {
     // a painted shop's sheet goes through png.mjs, which writes a palette where it can
-    const write = (name, px, q) => writeFileSync(resolve(dir, name), shop ? encodePng(q ? quantize(rgbaOf(SW, SH, px), 255) : rgbaOf(SW, SH, px)) : png({ IW: SW, IH: SH, px }));
+    const write = (name, px, q) => writeFileSync(resolve(dir, name), shop || painted ? encodePng(q ? quantize(rgbaOf(SW, SH, px), 255) : rgbaOf(SW, SH, px)) : png({ IW: SW, IH: SH, px }));
     write(key + '.png', pic, true); write(key + '_map.png', map);
     written++;
   }
@@ -546,6 +594,8 @@ ${groundKeys.map(k => `  ${k}: 'assets/ground/${k}.png',`).join('\n')}
 // a rail bend's anchor: [x, y] squares from the corner it turns at, and its
 // height in squares (the picture's left edge is that many half-cells left of the anchor)
 export const GROUND_BENDS = ${JSON.stringify(bends)};
+// a tile's vehicles, each a sheet of its own drawn over the tile (so it can move)
+export const ISO_VEHICLES = ${JSON.stringify(vehicles)};
 export const ISO_FRAMES = {
 ${keys.map(k => `  ${k}: ${JSON.stringify(manifest[k])},`).join('\n')}
 };

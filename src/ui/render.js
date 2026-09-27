@@ -7,7 +7,7 @@ import { tileDef } from '../data/tiles.js';
 import { CONFIG } from '../config.js';
 import { EDGES, fenceSegments, checkpointLine } from '../sim/board.js';
 import { shapeTransform } from '../sim/shapes.js';
-import { loadSprites, isoFrame, isoArt, hasIso, isoDensity, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
+import { loadSprites, isoFrame, isoArt, hasIso, isoDensity, isoVehicles, groundImg, groundBend, ISO_CELL_PX } from './sprites.js';
 
 // 90s arcade palette: saturated and high-contrast, so tiles pop off the grass.
 const TERRAIN_COLORS = { green: '#4aa244', road: '#555a6e', rail: '#6b55b0', water: '#1ea0ea', apron: '#8d96ad' };
@@ -846,8 +846,10 @@ export class BoardRenderer {
     // A sheet's pieces beyond the tile's own cells: the band past a padded side
     // shows only where it lies past the board's edge (so only when the tile sits
     // on that edge), and anything else a vehicle reaches always shows.
-    if (info.iso) for (const e of info.iso.cells.values()) {
-      if (e.kind === 0) continue;
+    const seen = new Set();
+    if (info.iso) for (const e of [info.iso, ...info.iso.vehicles].flatMap(p => [...p.cells.values()])) {
+      if (e.kind === 0 || seen.has(e.u + ',' + e.v)) continue;
+      seen.add(e.u + ',' + e.v);
       const [x, y] = info.iso.flip ? [bx0 + e.v, by0 + e.u] : [bx0 + e.u, by0 + e.v];
       if (e.kind === 1 && x >= 0 && y >= 0 && x < this.w && y < this.h) continue;
       info.reach.push([x, y]);
@@ -866,7 +868,12 @@ export class BoardRenderer {
     }
     const f = isoFrame(t.key, shapeTransform(d.shape, t.rot, tipAt, (t.edges || []).map(e => FACE_TURN[e])));
     const cells = f && isoArt(t.key, f.m, colorForDef(d), dim, f.flip);
-    return cells ? { flip: f.flip, cells, d: isoDensity(t.key) } : null;
+    return cells ? { flip: f.flip, cells, d: isoDensity(t.key), vehicles: this.isoVehicles(t.key, f, colorForDef(d), dim) } : null;
+  }
+  // The vehicles of a sheet, each its own sheet turned as the tile is: kept apart
+  // from the tile's art so they can one day move. One not loaded yet is left out.
+  isoVehicles(key, f, tint, dim) {
+    return isoVehicles(key).map(k => { const cells = isoArt(k, f.m, tint, dim, f.flip); return cells && { cells, d: isoDensity(k) }; }).filter(Boolean);
   }
 
   // The squares a corridor tile's track is drawn over: its lane out to the
@@ -879,11 +886,13 @@ export class BoardRenderer {
     const art = key => isoArt(key, m, colorForDef(info.def), false, false);
     const main = art(t.key + '_lane'), alt = art(t.key + '_lane_alt') || main;
     if (!main) return [];
+    const veh = key => this.isoVehicles(key, { m, flip: false }, colorForDef(info.def), false);
+    const vm = veh(t.key + '_lane'), va = hasIso(t.key + '_lane_alt') ? veh(t.key + '_lane_alt') : vm;
     const ys = t.cells.map(c => c[1]), xs = t.cells.map(c => c[0]);
     const toLow = lane.length ? (vertical ? lane[0][1] < Math.min(...ys) : lane[0][0] < Math.min(...xs)) : (vertical ? Math.min(...ys) === 0 : Math.min(...xs) === 0);
     const out = vertical ? [xs[0], toLow ? -1 : this.h] : [toLow ? -1 : this.w, ys[0]];
     const d = key => isoDensity(key), dm = d(t.key + '_lane'), da = hasIso(t.key + '_lane_alt') ? d(t.key + '_lane_alt') : dm;
-    return lane.concat([out]).map(([x, y]) => ({ bx0: x, by0: y, iso: (x + y) % 2 ? { flip: false, cells: alt, d: da } : { flip: false, cells: main, d: dm } }));
+    return lane.concat([out]).map(([x, y]) => ({ bx0: x, by0: y, iso: (x + y) % 2 ? { flip: false, cells: alt, d: da, vehicles: va } : { flip: false, cells: main, d: dm, vehicles: vm } }));
   }
 
 
@@ -930,16 +939,20 @@ export class BoardRenderer {
   // and scaled to the zoom; a flipped frame swaps the grid's x and y, which on
   // screen is a mirror about that corner, and its cells swap with them.
   drawIsoCell(x, y, info, layer) {
-    const iso = info.iso, lx = x - info.bx0, ly = y - info.by0;
-    const here = iso.cells.get(iso.flip ? ly + ',' + lx : lx + ',' + ly), piece = here && here[layer];
-    if (!piece) return;
-    const ctx = this.ctx, s = this.k / ISO_CELL_PX / (iso.d || 1), [ax, ay] = this.project(info.bx0, info.by0);
-    ctx.save();
-    ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
-    // crisp pixels once a sheet pixel covers a screen pixel; blend below that
-    ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
-    ctx.drawImage(piece.canvas, piece.x, piece.y);
-    ctx.restore();
+    const iso = info.iso, lx = x - info.bx0, ly = y - info.by0, ck = iso.flip ? ly + ',' + lx : lx + ',' + ly;
+    const [ax, ay] = this.project(info.bx0, info.by0);
+    // the tile's piece of this cell, then each of its vehicles' over it
+    for (const part of [iso, ...(iso.vehicles || [])]) {
+      const here = part.cells.get(ck), piece = here && here[layer];
+      if (!piece) continue;
+      const ctx = this.ctx, s = this.k / ISO_CELL_PX / (part.d || 1);
+      ctx.save();
+      ctx.translate(ax, ay); ctx.scale(iso.flip ? -s : s, s);
+      // crisp pixels once a sheet pixel covers a screen pixel; blend below that
+      ctx.imageSmoothingEnabled = s * (this.dpr || 1) < 1;
+      ctx.drawImage(piece.canvas, piece.x, piece.y);
+      ctx.restore();
+    }
   }
 
 
