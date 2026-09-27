@@ -7,9 +7,11 @@
 // asks the model to paint the shop over every one of them at once, so all its
 // sides match. It keys out the white background and fits each painting back
 // onto its footprint: a search over scale and offset for the placement that
-// covers the block best while spilling least past its columns. The best of
-// --tries is kept as assets/shops/<key>_<view>.png; `node harness/isoart.mjs
-// <key>` then bakes the sheet from them.
+// covers the block best while the bake cuts least. A painting of the wrong shape
+// is then either cut (a chopped wall) or shrunk (bare floor on its tile), so the
+// one kept of --tries is the one whose worst view does least of either; it goes
+// to assets/shops/<key>_<view>.png, and the script names any view still over a
+// limit. `node harness/isoart.mjs <key>` then bakes the sheet from them.
 //
 // The model's own pictures are kept in harness/.shopraw/ (not committed);
 // --reuse fits those again instead of paying for new ones (with --model, only
@@ -20,7 +22,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { decodePng, encodePng, quantize } from './png.mjs';
-import { SHOPS, DENSITY, COLOURS, shopViews, wallHeight, viewBox, rayHit } from './shopart.mjs';
+import { SHOPS, DENSITY, COLOURS, KEEP_ROOM, shopViews, wallHeight, viewBox, rayHit, cutStats } from './shopart.mjs';
 import { tileDef } from '../src/data/tiles.js';
 import { colorForDef } from '../src/ui/render.js';
 
@@ -34,10 +36,13 @@ const rawDir = resolve(root, 'harness/.shopraw'), outDir = resolve(root, 'assets
 mkdirSync(rawDir, { recursive: true }); mkdirSync(outDir, { recursive: true });
 const GUIDE = 1536;                        // the block-out image's long side, in pixels
 const GAP = 0.45;                          // white space between block-outs, as a share of the widest
-const FIT_PAD = 14;                        // frame pixels round a view's box that the fit still looks at
+const FIT_PAD = 40;                        // frame pixels round a view's box that the fit still looks at
+const CHOP = 0.015;                        // a cut piece bigger than this share of a view's paint shows as a chopped wall
+const BARE = 0.15;                         // bare floor over more than this share of the block: a shop too small for its tile
 const SHADE = [1, 0.52, 0.70];             // top, left and right faces, as the sheets light them
 const RATIOS = { '1:1': 1, '4:3': 4 / 3, '3:2': 1.5, '16:9': 16 / 9, '21:9': 21 / 9 };
 const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+const pct = v => (100 * v).toFixed(1) + '%';
 const SHAPE_WORDS = { I1: 'a single square', I2: 'a 1 x 2 rectangle', I5: 'a long 1 x 5 rectangle', O4: 'a 2 x 2 square',
   L3: 'an L of three squares', L4: 'an L of four squares', S4: 'a zig-zag of four squares', S5: 'a zig-zag of five squares', T4: 'a T of four squares' };
 const NUM = ['', 'one', 'two', 'three', 'four'];
@@ -143,15 +148,21 @@ function splitViews(img, fg, L) {
 // Fit one view's painting back onto its footprint. A placement is a scale s
 // about the block's centre and a shift, applied to where the painting would sit
 // if the model kept the block-out's framing. Its score is the share of the block
-// it covers, less what it spills past the footprint's columns (cut away later)
-// and, an eighth as much, what it paints above the block, so a sign on the roof
-// is allowed but blowing the whole picture up to fill the room over it is not.
-const OVER = 0.12;
+// it covers, less CUT times what the bake will cut away (paint over no column
+// of the footprint, or past the picture's box), and OVER times what it paints
+// above the block. A cut shows as a wall chopped off with floor behind it, far
+// worse than a strip of bare floor round the shop, so it costs four times what
+// covering earns; paint above the roof is signs, fine in moderation, but
+// blowing the whole picture up to fill the room over the roof is not.
+const CUT = 4, OVER = 0.12;
+const flawOf = f => Math.max(f.big / CHOP, f.bare / BARE);
 function register(img, fg, L, slot, cells, wall) {
   const [X0, Y0, X1, Y1] = slot.box, pts = [];
   let cx = 0, cy = 0, n = 0;
   for (let Y = Math.floor(Y0 - FIT_PAD); Y < Y1 + FIT_PAD; Y++) for (let X = Math.floor(X0 - FIT_PAD); X < X1 + FIT_PAD; X++) {
-    const block = rayHit(cells, wall, X + 0.5, Y + 0.5, 0), kind = block ? 1 : rayHit(cells, wall, X + 0.5, Y + 0.5) ? 0 : -1;
+    // 1 the block, 0 room over it the bake keeps, -1 cut away (past the columns, or past the picture's box)
+    const inBox = X >= X0 && X < X1 && Y >= Y0 && Y < Y1;
+    const kind = !inBox ? -1 : rayHit(cells, wall, X + 0.5, Y + 0.5, 0) ? 1 : rayHit(cells, wall, X + 0.5, Y + 0.5, KEEP_ROOM) ? 0 : -1;
     pts.push([X + 0.5, Y + 0.5, kind]);
     if (kind === 1) { cx += X + 0.5; cy += Y + 0.5; n++; }
   }
@@ -166,7 +177,7 @@ function register(img, fg, L, slot, cells, wall) {
       if (!fgAt(...back(p, X, Y))) continue;
       if (kind === 1) cover++; else if (kind === 0) over++; else spill++;
     }
-    return cover / (n / step + spill + OVER * over);
+    return (cover - CUT * spill - OVER * over) / (n / step);
   };
   // Start from where the model left it, and from placements that stand the
   // whole building's outline on the block: its bottom on the block's front
@@ -218,7 +229,8 @@ function register(img, fg, L, slot, cells, wall) {
     if (a * 2 < all) continue;
     out.set([r / a, g / a, b / a, 255], (j * W + i) * 4);
   }
-  return { pic: { w: W, h: H, data: out }, fit: best };
+  const pic = { w: W, h: H, data: out };
+  return { pic, fit: best, ...cutStats(pic, cells, wall) };
 }
 
 const logPath = resolve(outDir, 'log.json');
@@ -239,7 +251,8 @@ for (const key of keys.length ? keys : Object.keys(SHOPS)) {
       console.log(`  ${key}: painted ${name} (${model}, $${cost.toFixed(3)})`);
     } catch (e) { console.log(`  ${key}: ${e.message}`); }
   }
-  // the painting whose worst view fits best; its views are kept together, so all sides match
+  // The painting whose worst view is chopped least, then whose worst view fits
+  // best; its views are kept together, so all sides match.
   let best = null;
   for (const name of raws) {
     const img = decodePng(readFileSync(resolve(rawDir, name))), fg = keyOut(img);
@@ -249,15 +262,23 @@ for (const key of keys.length ? keys : Object.keys(SHOPS)) {
     for (let y = 0; y < img.h; y += 4) { edge += fg[y * img.w] + fg[y * img.w + img.w - 1]; n += 2; }
     if (edge > 0.2 * n) { console.log(`  ${key}: ${name} has no white background, skipped`); continue; }
     const masks = splitViews(img, fg, L);
-    const fits = L.slots.map((s, v) => register(img, masks[v], L, s, views[v], wall)), worst = Math.min(...fits.map(f => f.fit.v));
-    console.log(`  ${key}: ${name} fits ${fits.map(f => f.fit.v.toFixed(3)).join(', ')}`);
-    if (!best || worst > best.worst) best = { fits, worst, name };
+    const fits = L.slots.map((s, v) => register(img, masks[v], L, s, views[v], wall));
+    // A view's flaw is its chop or its bare floor against their limits, whichever is
+    // worse: a painting of the wrong shape shows as one or the other, since the fit
+    // either cuts it or shrinks it until it stops cutting. Flaws under 1 all count
+    // as sound, and among sound paintings the fit decides.
+    const worst = Math.min(...fits.map(f => f.fit.v)), flaw = Math.max(...fits.map(flawOf));
+    console.log(`  ${key}: ${name} chops ${fits.map(f => pct(f.big)).join(', ')}; bare ${fits.map(f => pct(f.bare)).join(', ')}`);
+    const rank = [Math.max(flaw, 1), -worst];
+    if (!best || rank[0] < best.rank[0] || (rank[0] === best.rank[0] && rank[1] < best.rank[1])) best = { fits, rank, name };
   }
   if (!best) continue;
   // one palette for all of a shop's pictures, so its sheet still packs into one
   quantize(best.fits.map(f => f.pic), COLOURS).forEach((pic, v) => writeFileSync(resolve(outDir, `${key}_${v}.png`), encodePng(pic)));
-  log[key] = { raw: best.name, model: best.name.replace(/^.*_\d{6,}_|\.png$/g, ''), fit: best.fits.map(f => +f.fit.v.toFixed(3)) };
-  console.log(`${key}: kept ${best.name}, fit ${log[key].fit.join(', ')}`);
+  const r3 = v => +v.toFixed(3);
+  log[key] = { raw: best.name, model: best.name.replace(/^.*_\d{6,}_|\.png$/g, ''), chop: best.fits.map(f => r3(f.big)), bare: best.fits.map(f => r3(f.bare)) };
+  const bad = best.fits.map((f, v) => flawOf(f) > 1 ? v : -1).filter(v => v >= 0);
+  console.log(`${key}: kept ${best.name}, chops ${best.fits.map(f => pct(f.big)).join(', ')}; bare ${best.fits.map(f => pct(f.bare)).join(', ')}${bad.length ? `  <- view ${bad.join(', ')} the wrong shape: paint again` : ''}`);
 }
 writeFileSync(logPath, JSON.stringify(log, null, 1) + '\n');
 if (spent) console.log(`spent $${spent.toFixed(3)}`);

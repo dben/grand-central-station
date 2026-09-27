@@ -124,3 +124,27 @@ export function rayHit(cells, wall, X, Y, room = WALL_ROOM) {
   }
   return null;
 }
+
+// What the bake will do to a view's picture: the share of its paint cut away
+// (over no column of the footprint), the biggest single cut piece as a share of
+// the paint, and the share of the block left bare. A cut piece is the model
+// having painted a wall where the footprint has none (a box on an L, a stem the
+// wrong length), and it shows as a wall chopped off with floor behind it, so
+// the biggest piece is what a painting is judged by; a bare strip of the block
+// only shows as floor round the shop, which reads fine.
+export function cutStats(pic, cells, wall) {
+  const [X0, Y0] = viewBox(cells, wall), { w, h, data } = pic, cut = new Uint8Array(w * h);
+  let paint = 0, ncut = 0, block = 0, bare = 0;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const X = X0 + (i + 0.5) / DENSITY, Y = Y0 + (j + 0.5) / DENSITY, on = data[(j * w + i) * 4 + 3] > 0;
+    if (rayHit(cells, wall, X, Y, 0)) { block++; if (!on) bare++; }
+    if (on) { paint++; if (!rayHit(cells, wall, X, Y, KEEP_ROOM)) { cut[j * w + i] = 1; ncut++; } }
+  }
+  let big = 0;
+  for (let s = 0; s < w * h; s++) if (cut[s] === 1) {
+    let n = 0; const st = [s]; cut[s] = 2;
+    while (st.length) { const p = st.pop(), x = p % w; n++; for (const q of [x ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) if (q >= 0 && q < w * h && cut[q] === 1) { cut[q] = 2; st.push(q); } }
+    big = Math.max(big, n);
+  }
+  return { cut: ncut / Math.max(1, paint), big: big / Math.max(1, paint), bare: bare / Math.max(1, block) };
+}

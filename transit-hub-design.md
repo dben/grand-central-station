@@ -1047,15 +1047,25 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     whose border is not mostly white (a whole station drawn behind the shop) is skipped.
   - *Fitting:* the white is flooded out from the border, the painting split into its buildings
     and each given to the nearest block-out. Each is then placed (a scale and a shift) to cover
-    its block while spilling least past the footprint's columns, and an eighth as much for paint
-    above the roof, so a sign is allowed but blowing the picture up to fill the room over the roof
-    is not. The search starts from where the model left it and from the building's outline stood
-    on the block's front corner at a spread of scales, then refines. The best of `--tries` (by its
-    worst view) is resampled into `assets/shops/<key>_<view>.png` at 2 pixels to a frame pixel
-    and cut down to one palette of 80 colours per shop, which reads as pixel art and packs small.
-    `assets/shops/log.json` keeps which painting and model each shop came from and its fits
-    (0.74 to 0.94; the models' walls come out a little narrower than the block, so a strip of
-    floor shows round most shops).
+    its block, less four times what the bake will cut away (paint over no column of the footprint,
+    or past the picture's box) and an eighth as much for paint above the roof, so a sign is
+    allowed but blowing the picture up to fill the room over the roof is not. The search starts
+    from where the model left it and from the building's outline stood on the block's front
+    corner at a spread of scales, then refines, looking 40 frame pixels past the view's box. The
+    placement is resampled into `assets/shops/<key>_<view>.png` at 2 pixels to a frame pixel and
+    cut down to one palette of 80 colours per shop, which reads as pixel art and packs small.
+  - *Judging (`cutStats`):* a painting of the wrong shape (a box on an L, a T's stem the wrong
+    length) shows one of two ways once placed: the bake cuts a piece off it, which reads as a wall
+    chopped off with floor behind it, or the fit shrinks it until nothing is cut and it leaves
+    floor bare on its own tile. So each view is judged by its biggest cut piece (as a share of its
+    paint, against 1.5%) and its bare block (against 15%), whichever is worse; a painting is sound
+    when every view is under both, and among sound paintings the fit decides. `--reuse` judges
+    every painting a shop has had, from both models, and the script names any view still over
+    a limit, to paint again. The first set was chosen on fit alone, with a cut costing no more
+    than a covered pixel earned: 20 of its 33 views had a cut piece over 1.5% (up to 8.5%), and
+    they showed in play as chopped walls. Judged this way, the 19 shops kept have no cut piece
+    over 1.1% and no block more than 12.7% bare. `assets/shops/log.json` keeps which painting and
+    model each shop came from, and each view's chop and bare share.
   - *Baking:* `isoart.mjs` makes each turn from its view's picture, mirrored for a flipped turn.
     Every pixel is cast down its ray (`rayHit`, which steps from cell line to cell line): what
     meets no column of the footprint is cut away (paint on the floor beside the walls); the rest
@@ -1067,14 +1077,14 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     scales them by half again (`drawIsoCell`). They are drawn smoothed below 1:1 over a wider
     range of zooms, where each piece's soft edge left a hairline down a cell line, so each cell's
     piece of such a sheet also carries the pixels one step past its edge (`isoArt`).
-  - *Models:* Gemini 3.1 Flash Image paints the most detail and follows an L's notch best, at
-    about $0.07 a shop ($0.10 at 2K, which a shop with several views gets); Meta Muse Image is a
-    cent a shop and sits closer on the block, but paints coarser pixels, squares off notches and
-    stretches long shapes badly (a squat cafeteria). It ignores the requested ratio and letterboxes
-    the block-outs, which the fit allows for. Both were run on every shop and the better painting
-    kept by eye: Muse for the vending machines, the food stand, the coffee shop, the currency
-    exchange and the drone swarm, Flash for the other 14. The whole set cost about $4, trials
-    included.
+  - *Models:* Gemini 3.1 Flash Image paints the most detail, at about $0.07 a shop ($0.10 at
+    2K, which a shop with several views gets), but often paints a box where the footprint is an
+    L, S or T; Meta Muse Image is a cent a shop, paints coarser pixels, and follows the footprint
+    far more often. It ignores the requested ratio and letterboxes the block-outs, which the fit
+    allows for. Judged as above, Muse's painting was kept for 11 shops (burger, pizza, clothing,
+    sports bar, lounge, designer, nanofab, vending, coffee, currency, drone swarm) and Flash's for
+    8 (restroom, kiosk, cash machine, newsstand, food stand, cafeteria, art gallery, security
+    station). The whole set cost about $4.30, trials included.
 - **Drawing the board:** `src/ui/sprites.js` loads the sheets and cuts each turn into one canvas
   per cell; the renderer paints them cell by cell, back to front along x + y, floor pieces under
   the crowd and the rest over it, so a long building still interleaves with its neighbours.
