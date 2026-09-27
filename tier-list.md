@@ -79,15 +79,16 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 | Underground Parking | transport | 143 | 13.2 | 18.3 | 9.2 | 110 | The Parking Lot that goes anywhere. Worth roughly double for the freedom. |
 | Souvenir Cart | amenity | 40 | 3.3 | 5.1 | 8.2 | 47 | One cell, ×2.30, and $47 a week. |
 | Restroom | amenity | 31 | 2.4 | 3.5 | 7.9 | -3 | The highest pull in the game at 0.81, and it pays nothing. It is a chain link, not a shop. |
+| Sports Bar | amenity | 95 | 7.0 | 9.1 | 7.3 | 79 | The dearest shop that still pays its way on the numbers alone. Up from B when the Handcar joined the list and moved the cut. |
 
 ## B — situational, or fine but not exciting
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
-| Sports Bar | amenity | amenity | 95 | 7.0 | 9.3 | 7.4 | 82 |
 | Taxi Stand | transport | transport | 117 | 8.3 | 10.5 | 7.1 | 70 |
 | Clothing Store | amenity | amenity | 92 | 6.3 | 8.3 | 6.9 | 96 |
 | Cash Machine | amenity | premium | 42 | 2.6 | 4.5 | 6.2 | 43 |
+| Handcar | transport | transport | 72 | 4.4 | 6.8 | 6.1 | 45 |
 | Art Gallery | amenity | premium | 143 | 8.6 | 12.2 | 6.0 | 100 |
 | Subway Station | transport | transport | 195 | 10.9 | 15.7 | 5.6 | 98 |
 | Tram Stop | transport | transport | 169 | 8.9 | 12.3 | 5.3 | 72 |
@@ -101,7 +102,6 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 | Ski Lift | transport | transport | 156 | 5.8 | 8.5 | 3.7 | 52 |
 | Monorail | transport | transport | 364 | 12.1 | 14.7 | 3.3 | 118 |
 | Express Subway | transport | transport | 429 | 14.1 | 16.9 | 3.3 | 140 |
-| Security Guard | utility | amenity | 40 | 1.3 | 1.9 | 3.3 | 0 |
 | Car Rental | transport | transport | 182 | 5.9 | 8.0 | 3.2 | 53 |
 | Drone Vending Swarm ★ | amenity | premium | 226 | 6.9 | 8.7 | 3.1 | 58 |
 | Cruise Ship Dock | transport | transport | 676 | 20.5 | 22.5 | 3.0 | 179 |
@@ -122,6 +122,7 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 | Grand Opening | card | amenity | 70 | 1.7 | 1.7 | 2.5 | — |
 | Double Shift | named upgrade | amenity | 220 | 5.2 | 5.2 | 2.4 | — |
 | Designer Shop | amenity | premium | 208 | 4.9 | 10.0 | 2.3 | 82 |
+| Security Guard | utility | amenity | 40 | 0.8 | 1.3 | 2.0 | 0 |
 | Security Station | utility | amenity | 87 | 1.7 | 2.0 | 1.9 | 0 |
 | Beam-Em-Up Pad ★ | transport | transport | 1092 | 20.7 | 22.7 | 1.9 | 285 |
 | Waiting Area | amenity | premium | 61 | 1.1 | 3.8 | 1.8 | 0 |
@@ -129,12 +130,12 @@ on sale. `median` and `best` are in stars (1,000 points); `cash` is the week's e
 | Helipad | transport | transport | 494 | 5.7 | 6.6 | 1.2 | 68 |
 | Loop Terminal ★ | transport | transport | 780 | 9.0 | 11.4 | 1.2 | 83 |
 | Renovation | named upgrade | amenity | 240 | 2.5 | 2.5 | 1.1 | — |
-| WiFi Hotspot | utility | amenity | 48 | 0.5 | 0.7 | 1.0 | 0 |
 
 ## D — hard to justify on the numbers
 
 | Entry | Kind | Bench | Cost | Median | Best | Per $100 | Cash |
 |---|---|---|---|---|---|---|---|
+| WiFi Hotspot | utility | amenity | 48 | 0.5 | 0.8 | 1.0 | 0 |
 | Hot Air Balloon | transport | transport | 338 | 2.9 | 4.4 | 0.9 | 25 |
 | Marina | transport | transport | 455 | 4.0 | 4.9 | 0.9 | 47 |
 | Chrono Lounge ★ | amenity | premium | 243 | 1.9 | 5.9 | 0.8 | 56 |
