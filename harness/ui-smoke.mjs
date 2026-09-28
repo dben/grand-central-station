@@ -156,6 +156,28 @@ try {
   });
   check('zoom + pan change the camera', cam.z1 > cam.z0 * 1.5, JSON.stringify(cam));
   check('iso hit-testing round-trips while zoomed and panned', (await roundTrip()).length === 0, (await roundTrip()).slice(0, 4).join(' '));
+  const zmax = await page.evaluate(() => { const r = window.gcs.renderer; r.zoomAt(50, r.viewW / 2, r.viewH / 2); return { k: r.k, zoom: r.zoom }; });
+  check('zoom reaches the closer stop', zmax.k > 190 && zmax.k <= 256.01, JSON.stringify(zmax));
+  // the labels button hides every tile label and comes back on a second press;
+  // each label paints one rounded box, so count those over a full draw
+  const labelBoxes = () => page.evaluate(() => {
+    const r = window.gcs.renderer, ctx = r.ctx, f = ctx.roundRect; let n = 0;
+    ctx.roundRect = function (...a) { n++; return f.apply(this, a); };
+    r.draw({ board: window.gcs.state.board });
+    ctx.roundRect = f;
+    return { boxes: n, tiles: window.gcs.state.board.tiles.length, on: r.showLabels };
+  });
+  const pressed = () => page.$eval('#btn-labels', b => b.getAttribute('aria-pressed'));
+  await buyOne();
+  await page.evaluate(() => window.gcs.renderer.fit());
+  const on0 = await labelBoxes();
+  await page.click('#btn-labels');
+  const off = await labelBoxes();
+  check('a tile on the board draws a label', on0.tiles > 0 && on0.boxes > 0, JSON.stringify(on0));
+  check('labels button hides the tile labels', !off.on && off.boxes === 0 && await pressed() === 'false' && await page.evaluate(() => JSON.parse(localStorage.getItem('gcs.layout')).hideLabels === true), JSON.stringify({ on0, off }));
+  await page.keyboard.press('l');
+  const on1 = await labelBoxes();
+  check('L shows the tile labels again', on1.on && on1.boxes === on0.boxes && await pressed() === 'true', JSON.stringify(on1));
   await page.evaluate(() => window.gcs.renderer.fit());
   await page.waitForTimeout(100);
   // fast forward to week 5 (ordinance week)

@@ -855,6 +855,9 @@ and drops the phrase:
 ### 12.6 Controls
 
 - **Camera:** drag to pan, scroll or pinch to zoom; **+ / − / Fit** buttons or the **+**, **−** and **0** keys.
+  Zoom tops out at `k` 256 (ZOOM_MAX 9.5x the fit), one +/− step (1.35x) past the old 190 (7x).
+- **Tile labels:** the **Aa** button or **L** hides the name, tier and crowd count over each tile, so
+  the art shows at close range. The choice is remembered in the saved layout (`hideLabels`).
 - **Picking a card spends nothing.** It goes into the card bar over the shop tray, which shows its
   name, its price in money and AP, and its full text — on a touch screen that bar is the only way
   to read a card at all. The bar's own button is what spends: **Build here** for a tile, **Play it**
@@ -920,7 +923,7 @@ and drops the phrase:
 `src/ui/render.js` draws the board through a 2:1 isometric camera on a Canvas 2D context.
 
 - **Grid space stays plain.** The board model is x right, y down. The renderer projects grid points to screen and un-projects screen points back, so `cellAt`/`edgeAt` picking is exact at any zoom, and nothing else in the codebase knows the view is isometric.
-- **Zoom:** `k` is the on-screen width of one cell's diamond. `fit()` picks the `k` that frames the board and its edge strips above the shop tray, and zoom scales from there.
+- **Zoom:** `k` is the on-screen width of one cell's diamond. `fit()` picks the `k` that frames the board and its edge strips above the shop tray, and zoom scales from there, up to `k` 256 or 9.5x the fit, whichever comes first.
 - **The world beyond the board:** a side claimed by water turns everything beyond it to sea, and road and rail edges carry on past the corners into the distance. A railway that meets the sea at a corner turns 90° and follows the shore out of the view, because track cannot run into water: the strip gives up its last two widths (`TURN_R`) to a quarter-ring bend of the same width, so the rails and sleepers carry round the curve at the radius the straight track sits at instead of mitring into a notch. A subway line does the same where it leaves the board: the portal sits in the edge strip and the cut carries on to the horizon, while a garage ramp or a submarine channel stops at the edge it tunnels to.
 - **An airfield edge is three deep.** Beyond the apron strip an `apron` edge lays two more squares of runway — dark tarmac inside a painted kerb, with a stripe down each side, a dashed centre line and piano keys at both ends. It runs the length of the board's own side and stops at the corners, the way a real runway ends in a threshold, rather than crossing whatever the next side claimed.
 - **The underground layer** is painted in `drawGround`, under every building, as a dark cut with rail ties along each tunnel's axis. `drawUnderground` repaints the whole layer above the buildings, over a dimmed board, whenever the view asks for it (an underground ghost, or an underground tile hovered or selected).

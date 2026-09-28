@@ -24,7 +24,8 @@ move you make.
 
 ## Controls
 
-- **Drag** to pan, **scroll** or **pinch** to zoom, **Fit** (or **0**) to reframe.
+- **Drag** to pan, **scroll** or **pinch** to zoom, **Fit** (or **0**) to reframe, **Aa** (or **L**) to hide the
+  tile labels.
 - **Click a card**, then the board, to place it. **R** rotates, **E** switches which side a
   transport attaches by, **Esc** cancels.
 - On touch, a tap aims and the bar under the board builds, rotates, switches side or cancels.

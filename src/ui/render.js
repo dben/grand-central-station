@@ -29,7 +29,7 @@ const RUNS = new Set(['road', 'rail']);
 const RUNWAY = { depth: 2, fill: '#3b404d', paint: 'rgba(255,255,255,0.85)' };
 
 // Camera limits. `k` is the screen width of one cell's diamond in CSS pixels.
-const ZOOM_MIN = 0.55, ZOOM_MAX = 7, K_MIN = 9, K_MAX = 190;
+const ZOOM_MIN = 0.55, ZOOM_MAX = 9.5, K_MIN = 9, K_MAX = 256;
 // Screen pixels per unit of tile height, as a fraction of k.
 export const H_UNIT = 0.62;
 // Edge strips, in grid units, laid outside the board.
@@ -98,6 +98,8 @@ export class BoardRenderer {
     // plain prism in its colour, the look before the art. A tile whose sheet has
     // not loaded yet draws as a block meanwhile.
     this.artMode = 'iso';
+    // the name, tier and crowd count over each tile; the player can hide them
+    this.showLabels = true;
     loadSprites();
   }
 
@@ -976,7 +978,7 @@ export class BoardRenderer {
   // an L- or S-shaped footprint never labels empty ground beside itself.
   drawTileLabel(info) {
     const ctx = this.ctx;
-    if (this.k < 15) return;
+    if (!this.showLabels || this.k < 15) return;
     const t = info.tile, d = info.def, z = info.z, s = info.stats;
     const mx = t.cells.reduce((a, c) => a + c[0], 0) / t.cells.length + 0.5;
     const my = t.cells.reduce((a, c) => a + c[1], 0) / t.cells.length + 0.5;
