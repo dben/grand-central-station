@@ -2,7 +2,8 @@
 // Upscales the rest of the board art (the transports and their lanes) with an
 // image model, keeping everything but the colours:
 //   node harness/upscale.mjs [key ...] [--tries 1] [--model meta/muse-image] [--reuse] [--weak]
-// --weak paints again only the families with a turn still in its code colours.
+// --weak paints again only the families with a turn still in its code colours; --tiles
+// only the tiles' own sheets, leaving their lanes and vehicles as they are.
 // Each turn of a tile's code art (the sheet isoart.mjs draws from tileart.mjs,
 // floor and over layers composited; kept the first time as
 // assets/paint/<key>_<turn>_code.png so a painting is never the guide for the
@@ -116,6 +117,8 @@ const weakOnly = args.includes('--weak'), logNow = () => JSON.parse(readFileSync
 for (const [fam, members] of families) {
   // --weak: only the families with a turn still in its code colours
   if (weakOnly && members.every(k => [0, 1, 2, 3].every(m => logNow()[k]?.turns?.[m]?.raw))) continue;
+  // --tiles: only the tiles' own sheets, not their lanes' or vehicles'
+  if (args.includes('--tiles') && / (veh|lane)/.test(fam)) continue;
   const veh = / veh$/.test(fam), items = members.flatMap(key => [0, 1, 2, 3].map(m => ({ key, m, code: codeArt(key, m) }))).filter(it => it.code.pic.w > 0);
   // the key colour furthest from every colour in the family
   const cols = items.flatMap(({ code: c }) => { const o = []; for (let i = 0; i < c.pic.w * c.pic.h; i += 3) if (c.pic.data[i * 4 + 3] > 20) o.push(c.pic.data.subarray(i * 4, i * 4 + 3)); return o; });

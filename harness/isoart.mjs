@@ -81,7 +81,10 @@ function scene(key, layers, grey, only) {
   const s = vehicle
     ? { key, def, lane, z: 0, hz: 0, W, H, IW, IH, ox, oy, inside, ext, floor: [], over, flat: null, side, blocks: cast, sinks, tint: [grey, grey, grey], vehicle, glass: false, flush: true, canopy: false }
     : { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks: cast, sinks, tint: [grey, grey, grey],
-      glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length };
+      glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length,
+      // A transport is open: no panes or rim round it, only its floor and what stands on
+      // it. The glass box stays on the walk-in rooms (the lounges, the checkpoint).
+      open: def.kind === 'transport' };
   // The shadows on the floor: every point of a block above the ground, carried
   // down along the light (SUN art pixels across per pixel of height, toward +x
   // and +y) to where it meets the floor. A car's shadow is its own shape, and a
@@ -92,6 +95,10 @@ function scene(key, layers, grey, only) {
       const u = x - ox, v = y - oy;
       if (blockAt(s, b, u, v, h)) s.shadow.add(Math.floor(u + SUN * h) + ',' + Math.floor(v + SUN * h));
     }
+  }
+  if (s.open && flat) for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+    if (!flat[y * IW + x]) continue;
+    for (let h = 1; h <= s.hz; h++) s.shadow.add(Math.floor(x - ox + SUN * h) + ',' + Math.floor(y - oy + SUN * h));
   }
   return s;
 }
@@ -229,13 +236,21 @@ function cast(s, f, X, Y, layer) {
       }
       if (!s.flush && foot && h >= 0 && h <= s.hz) {
         const top = h + 1 > s.hz;
-        if (s.glass) {
+        if (s.open) {
+          // an open transport: what stood on its box's top (a shelter, a sign, a canopy)
+          // stands up from the floor as a solid piece instead of floating
+          const p = at(s, s.flat, u, v);
+          if (p) {
+            const flatAt = (a, c) => !!at(s, s.flat, a, c);
+            if (top ? add(p, 0, U, V) : add(at(s, s.side, u, v) || p, faceOf(flatAt), U, V)) return hit();
+          }
+        } else if (s.glass) {
           if (top) {
             // the rim round the open top, then anything standing on it (a shelter, a sign)
-            const rim = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([du, dv]) => !s.inside(u + du, v + dv));
+            const rim = !s.open && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([du, dv]) => !s.inside(u + du, v + dv));
             if (add(at(s, s.flat, u, v) || (rim ? [...scale(t, 1.35).slice(0, 3), 0.9] : null), 0, U, V)) return hit();
           }
-          else if (!wasIn) {
+          else if (!wasIn && !s.open) {
             // a pane: its frame round the top edge and down the corners
             const fc = faceOf((a, c) => s.inside(a, c)), [p, q] = f.toBase(U + (fc === LEFT ? 1 : 0), V + (fc === LEFT ? 0 : 1)), [p2, q2] = f.toBase(U - (fc === LEFT ? 1 : 0), V - (fc === LEFT ? 0 : 1));
             const edge = h + 2.5 > s.hz || h < 1 || !s.inside(p, q) || !s.inside(p2, q2);

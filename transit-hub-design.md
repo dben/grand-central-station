@@ -1002,9 +1002,13 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   - a shop is a solid prism, walls lit and shaded with a lit top course, a dark footing and a
     seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it
     (the solid shops are painted instead, and baked from the paintings: see *Painted shops*);
-  - a transport, a cart or a low walk-through tile with floor art is a glass box: its floor with
-    the crowd on it, panes that are a faint wash of the tile's colour in a frame, an open top with
-    only what stands over the floor on it, so the crowd shows through;
+  - a low walk-through tile with floor art (a lounge, the checkpoint, the guard post) is a glass
+    box: its floor with the crowd on it, panes that are a faint wash of the tile's colour in a
+    frame, an open top with only what stands over the floor on it, so the crowd shows through;
+  - a transport is open: its floor with the crowd on it and no panes or rim (a frame floating at
+    the tile's height round every stop read as a fence), and what its drawing has over the floor
+    that isn't a block (a shelter, a kiosk, a sign) stands up from the floor to the tile's height as
+    a solid piece, with sides and a shadow, rather than floating at that height;
   - a flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) is its
     floor under the crowd, with a kerb in the tile's colour, and anything in its over layer that
     is not a block hanging at a canopy height (the tree tops);
@@ -1162,7 +1166,8 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   and so does floor under something opaque, which the painting can't show. A turn whose painting
   overlaps its outline less than 0.6 gets none and keeps its code colours (`--weak` paints those
   families again; a retry replaces a turn only where it fits better). Meta Muse Image, a cent a
-  call: 102 sheets for about $1.05 with one round of retries. Most turns fit at 0.75 to 0.95; what
+  call: 102 sheets for about $1.05 with one round of retries, and $0.34 more to paint the 34
+  transport tiles again once they lost their glass boxes (fits 0.8 to 0.97 without the panes). Most turns fit at 0.75 to 0.95; what
   kept its code colours is tiny or thin (the gondolas, the lanes' cables and rails, a few small
   boats and parked cars), where a model returns nothing usable. The upscaled sheets bring all the
   sheets to about 3.8 MB, the paintings they are baked from are stored in 255 colours.
