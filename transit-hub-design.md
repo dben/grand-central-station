@@ -1002,11 +1002,12 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   - a shop is a solid prism, walls lit and shaded with a lit top course, a dark footing and a
     seam per cell, and its over layer for a roof, so a traveller who steps inside vanishes into it
     (the solid shops are painted instead, and baked from the paintings: see *Painted shops*);
-  - a low walk-through tile with floor art (a lounge, the checkpoint, the guard post) is a glass
+  - a low walk-through tile with floor art (the lounges) is a glass
     box: its floor with the crowd on it, panes that are a faint wash of the tile's colour in a
     frame, an open top with only what stands over the floor on it, so the crowd shows through;
-  - a transport is open: its floor with the crowd on it and no panes or rim (a frame floating at
-    the tile's height round every stop read as a fence), and what its drawing has over the floor
+  - a transport, the guard post and the checkpoint are open: the floor with the crowd on it and
+    no panes or rim (a frame floating at the tile's height round a stop read as a fence, and the
+    two security tiles stand in the open concourse), and what the drawing has over the floor
     that isn't a block (a shelter, a kiosk, a sign) stands up from the floor to the tile's height as
     a solid piece, with sides and a shadow, rather than floating at that height;
   - a flush tile (`ground: true`: parks, car parks, the waiting area, the walkway, WiFi) is its
@@ -1076,6 +1077,11 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     than that view now; a model follows one block-out best. The pizza's north-south view came this
     way. A shop chosen by eye (`--pick`) or given a view this way is pinned, and `--reuse` leaves
     its pictures alone.
+  - *Signs put back by hand:* carving the back notch takes whatever stands over it, and a
+    rooftop sign on the notch's corner went with it: the burger's third view and the pizza's
+    first kept only the post. Each sign was cut from a view that has it (by an outline round
+    it) and pasted onto the post; anything inside the footprint's columns survives the bake,
+    so it stays. The two views are marked `edited` in the log and both shops pinned.
   - *Fitting:* the white is flooded out from the border, the painting split into its buildings
     and each given to the nearest block-out. Each is then placed (a scale and a shift) to cover
     its block, less four times what the bake will cut away (paint over no column of the footprint,
@@ -1147,7 +1153,7 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   fitted to the code art's outline (a scale and a shift, by overlap, started from the outlines'
   bounding boxes), resampled at twice the density and split: in the parks, what lies over the
   code art's tree tops is the over layer and the rest floor; elsewhere the code over layer (a
-  lounge's glass rim, the checkpoint's arches) stays as drawn and only the floor is painted. The
+  lounge's glass rim, the checkpoint's arch and scanner, the guard's counter) stays as drawn and only the floor is painted. The
   floor is cut to the tile's diamond. `isoart.mjs` bakes them as `d: 2` sheets, a floor pixel
   to the cell under it and an over pixel to the cell under it at the canopy's height. All nine
   are Gemini 3.1 Flash Image, overlap 0.8 to 1.0, about $1.30 with the trials.

@@ -19,7 +19,7 @@ sheets in `../iso/`; the game never loads these files itself.
 - `<key>.<part>_<view>.png` is one part of a shop painted in parts (the sports
   bar's `bar` and `patio`); its `<key>_<view>.png` pictures are composed from
   them. `pinned` in the log marks a shop chosen by eye, which `--reuse` leaves
-  as it is.
+  as it is, and `edited` a view touched up by hand (a sign pasted back on).
 - Walls painted much taller than the block have been brought down (the
   plainest rows of wall taken out), and a notch at the back of a footprint has
   been carved out (the models nearly always roof it over), so what is there is

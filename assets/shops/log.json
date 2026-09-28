@@ -23,9 +23,11 @@
     "chop": 0.002,
     "bare": 0.036,
     "roof": 0,
-    "hang": 0
+    "hang": 0,
+    "edited": "sign pasted in from view 1"
    }
-  ]
+  ],
+  "pinned": true
  },
  "vending": {
   "views": [
@@ -120,7 +122,8 @@
     "chop": 0.004,
     "bare": 0.09,
     "roof": 0,
-    "hang": 0
+    "hang": 0,
+    "edited": "sign pasted in from view 1"
    },
    {
     "raw": "pizza_v1_1790540239075_muse-image.png",

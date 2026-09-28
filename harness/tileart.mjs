@@ -824,7 +824,9 @@ const TILES = {
     platform(c, t); c.box(10, 12, 12, 8, '#2e374d'); c.R(11, 13, 10, 2, '#35d4ff'); c.disc(16, 24, 3, INK); c.disc(16, 24, 2, '#2f6bff');
     for (const [x, y] of [[3, 3], [27, 3], [3, 27], [27, 27]]) c.box(x, y, 2, 2, YELLOW);
     frame(c, t);
-  } },
+  },
+  // the desk stands up as a podium, so the post reads as more than a mat
+  over(c) { c.box(11, 13, 10, 6, STEEL_D); c.R(12, 14, 8, 4, STEEL); c.R(13, 15, 6, 2, '#35d4ff'); c.block(11, 13, 10, 6, 0.16); } },
   gate: {
     // The fence runs across the booth between its two cells, so the lane runs
     // the length of it: in one end, through the arch on the fence line, out the
@@ -839,11 +841,13 @@ const TILES = {
       frame(c, t);
     },
     over(c) {
-      // the arch: a hollow frame, raised, so it stands as two posts and a bar
-      c.box(28, 10, 8, 16, null); c.R(28, 10, 8, 2, STEEL_D); c.R(28, 24, 8, 2, STEEL_D); c.R(30, 12, 1, 12, '#5fc23a'); c.R(33, 12, 1, 12, '#5fc23a');
-      c.block(27, 9, 10, 18, 0.42);
+      // the arch: two posts either side of the lane and a bar across their tops, each its
+      // own block, so the lane shows through under the bar (one block was a solid lump)
+      for (const y of [9, 24]) { c.box(29, y, 6, 3, STEEL_D); c.R(31, y + 1, 2, 1, '#5fc23a'); c.block(29, y, 6, 3, 0.42); }
+      c.R(29, 12, 6, 12, STEEL); c.R(29, 12, 6, 1, STEEL_D); c.R(29, 23, 6, 1, STEEL_D); c.R(31, 13, 2, 10, '#5fc23a');
+      c.block(29, 12, 6, 12, 0.42, 0.34);
       // the bag scanner over the belt
-      c.box(24, 1, 16, 8, STEEL_D); c.R(26, 3, 12, 4, '#1a1033'); c.block(23, 0, 18, 10, 0.3);
+      c.box(24, 1, 16, 8, STEEL_D); c.R(25, 2, 14, 6, STEEL); c.R(27, 3, 6, 3, '#35d4ff'); c.R(36, 3, 2, 2, RED); c.block(23, 0, 18, 10, 0.3);
     },
   },
   flier_club: { floor(c, t) {

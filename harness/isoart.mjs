@@ -83,8 +83,9 @@ function scene(key, layers, grey, only) {
     : { key, def, lane, z, hz: z * HZ, W, H, IW, IH, ox, oy, inside, ext, floor, over, flat, side, blocks: cast, sinks, tint: [grey, grey, grey],
       glass: z > 0 && !!floor, flush: z <= 0, canopy: z <= 0 && !lane && !!over && !sinks.length,
       // A transport is open: no panes or rim round it, only its floor and what stands on
-      // it. The glass box stays on the walk-in rooms (the lounges, the checkpoint).
-      open: def.kind === 'transport' };
+      // it, and so are the guard post and the checkpoint, which stand in the open
+      // concourse (a rim round them read as a fence). The glass box stays on the lounges.
+      open: def.kind === 'transport' || (!!def.walkable && (def.special === 'gate' || def.special === 'security')) };
   // The shadows on the floor: every point of a block above the ground, carried
   // down along the light (SUN art pixels across per pixel of height, toward +x
   // and +y) to where it meets the floor. A car's shadow is its own shape, and a
