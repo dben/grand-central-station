@@ -453,7 +453,7 @@ try {
   check('Gateway starts open with a train, a burger and a big transport dealt', gw.mode === 'gateway' && Object.values(gw.edges).every(e => e === 'green') && gw.hand[0] === 'train_station' && gw.hand[1] === 'burger' && MODES.gateway.bigSlot.includes(gw.hand[2]), JSON.stringify(gw));
   await page.screenshot({ path: SP + '/shot15b_gateway.png' });
   // A mouse has to leave the board to reach the card bar's buttons. The aim
-  // must survive the trip, or the side row and Build here go dead under the cursor,
+  // must survive the trip, or ⇄ and Build here go dead under the cursor,
   // and it must be the cell the cursor rested on, not one it crossed on the way.
   {
     const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -473,34 +473,34 @@ try {
     const corner = await at([0, 0]);
     await dk.mouse.move(corner[0] - 20, corner[1] - 20); await dk.mouse.move(...corner, { steps: 4 }); await dk.waitForTimeout(350);
     const d0 = await aim();
-    await to('#card-bar-side button[data-side="N"]');
+    await to('#btn-side');
     const d1 = await aim();
-    check('desktop: reaching for the side row keeps the aim, on the cell the cursor rested on', d1.ghost && d1.ghost.x === d0.ghost.x && d1.ghost.y === d0.ghost.y && !d1.buildOff, JSON.stringify([d0, d1]));
-    const sideBtn = e => dk.locator(`#card-bar-side button[data-side="${e}"]`);
-    // the corner offers N and W, and the row prefers whichever is pressed
+    check('desktop: reaching for ⇄ keeps the aim, on the cell the cursor rested on', d1.ghost && d1.ghost.x === d0.ghost.x && d1.ghost.y === d0.ghost.y && !d1.buildOff, JSON.stringify([d0, d1]));
+    const label = () => dk.locator('#btn-side').textContent();
+    // ⇄ steps Auto, N, E, S, W and round again; press until the preference is the one wanted
+    const prefer = async e => { for (let i = 0; i < 5 && (await dk.evaluate(() => window.gcs.ui.side)) !== e; i++) { await dk.locator('#btn-side').click(); await dk.waitForTimeout(100); } };
+    // the corner offers two sides; ⇄ reaches the one the ghost is not on
     const other = d0.ghost.sides.find(e => e !== d0.ghost.side);
-    await sideBtn(other).click(); await dk.waitForTimeout(150);
+    await prefer(other);
     const d2 = await aim();
-    check('desktop: a side button switches the side a road tile attaches by', d0.ghost.sides.length === 2 && d2.ghost && d2.ghost.side === other && d2.ghost.x === d0.ghost.x && !d2.buildOff, JSON.stringify([d0, d2]));
+    check('desktop: ⇄ steps on to the other side a road tile can attach by', d0.ghost.sides.length === 2 && d2.ghost && d2.ghost.side === other && d2.ghost.x === d0.ghost.x && !d2.buildOff && (await label()).includes(other === 'N' ? 'North' : 'West'), JSON.stringify([d0, d2, await label()]));
     await dk.mouse.move(700, 20, { steps: 15 }); await dk.waitForTimeout(150);
     const d3 = await aim();
     check('desktop: leaving the bar for anywhere but the board drops the aim', !d3.ghost && d3.buildOff, JSON.stringify(d3));
     // the preference holds from spot to spot: honoured where the spot offers it, rolled where not
     const h = await dk.evaluate(() => window.gcs.state.board.h - 1), w = await dk.evaluate(() => window.gcs.state.board.w - 1);
     const rest = async xy => { const p = await at(xy); await dk.mouse.move(p[0] - 15, p[1] - 15); await dk.mouse.move(...p, { steps: 4 }); await dk.waitForTimeout(300); return aim(); };
-    const cls = e => dk.locator(`#card-bar-side button[data-side="${e}"]`).getAttribute('class');
-    const prefer = async e => { if (await dk.evaluate(() => window.gcs.ui.side) !== e) await sideBtn(e).click(); await dk.waitForTimeout(100); };
     await prefer('W');
     const p0 = await rest([0, h]);
     check('desktop: a preferred side is used where the spot offers it', p0.ghost && p0.ghost.sides.includes('W') && p0.ghost.side === 'W', JSON.stringify(p0));
     await prefer('S');
     const p1 = await rest([0, h]);
-    check('desktop: a new preference wins on the same spot', p1.ghost && p1.ghost.sides.includes('S') && p1.ghost.side === 'S', JSON.stringify(p1));
+    check('desktop: a new preference wins on the same spot', p1.ghost && p1.ghost.sides.includes('S') && p1.ghost.side === 'S' && !(await dk.locator('#btn-side').getAttribute('class')).includes('rolled'), JSON.stringify(p1));
     const p2 = await rest([w - 1, 0]);
-    check('desktop: a side the spot lacks rolls to one it has', p2.ghost && !p2.ghost.sides.includes('S') && p2.ghost.side !== 'S' && p2.ghost.sides.includes(p2.ghost.side), JSON.stringify(p2));
-    check('desktop: the row rings the ask, fills the side used and dims the rest', (await cls('S')).includes('pref') && (await cls('S')).includes('shut') && (await cls(p2.ghost.side)).includes('used') && !(await cls(p2.ghost.side)).includes('shut'), JSON.stringify([await cls('S'), await cls(p2.ghost.side)]));
-    await sideBtn('S').click(); await dk.waitForTimeout(100);
-    check('desktop: pressing the preferred side again lets the board choose', await dk.evaluate(() => window.gcs.ui.side) === null && !(await cls('S')).includes('pref'));
+    const rolledCls = await dk.locator('#btn-side').getAttribute('class'), rolledTxt = await label();
+    check('desktop: a side the spot lacks rolls to one it has, and ⇄ says so', p2.ghost && !p2.ghost.sides.includes('S') && p2.ghost.side !== 'S' && p2.ghost.sides.includes(p2.ghost.side) && rolledCls.includes('rolled') && rolledTxt.includes('South') && rolledTxt.includes(`(${p2.ghost.side})`), JSON.stringify([p2, rolledTxt, rolledCls]));
+    await prefer(null);
+    check('desktop: the cycle closes on Auto, which leaves the choice to the board', (await label()).includes('Auto') && !(await dk.locator('#btn-side').getAttribute('class')).includes('rolled'), await label());
     await prefer('W');
     await dk.mouse.move(...corner, { steps: 6 }); await dk.waitForTimeout(350);
     await to('#btn-place');
@@ -531,20 +531,22 @@ try {
     await ph.locator('#btn-place-cancel').tap(); await ph.waitForTimeout(150);
     const c = await st();
     check(`${dev}: ✕ drops the aim and keeps the card`, !c.pending && c.mode === 'place' && !await popped(), JSON.stringify(c));
-    // a corner gives a road tile two sides to attach by, and the row picks between them
+    // a corner gives a road tile two sides to attach by, and ⇄ steps on to the other
     await tap(await px(0, 0));
-    const side = () => ph.evaluate(() => ({ sides: (window.gcs.ui.ghost || {}).sides, side: (window.gcs.ui.ghost || {}).side }));
+    const side = () => ph.evaluate(() => ({ sides: (window.gcs.ui.ghost || {}).sides, side: (window.gcs.ui.ghost || {}).side, ask: window.gcs.ui.side }));
+    const prefer = async e => { for (let i = 0; i < 5 && (await ph.evaluate(() => window.gcs.ui.side)) !== e; i++) { await ph.locator('#btn-side').tap(); await ph.waitForTimeout(150); } };
     const s0 = await side();
     const other = (s0.sides || []).find(e => e !== s0.side);
-    await ph.locator(`#card-bar-side button[data-side="${other}"]`).tap(); await ph.waitForTimeout(200);
+    await prefer(other);
     const s1 = await side();
-    check(`${dev}: in a corner the side row swaps the side a road tile attaches by`, s0.sides && s0.sides.length === 2 && s1.side === other && (await ph.locator(`#card-bar-side button[data-side="${other}"]`).getAttribute('class')).includes('used'), JSON.stringify([s0, s1]));
+    check(`${dev}: in a corner ⇄ swaps the side a road tile attaches by`, s0.sides && s0.sides.length === 2 && s1.side === other && (await ph.locator('#btn-side').textContent()).includes(other === 'N' ? 'North' : 'West'), JSON.stringify([s0, s1]));
     // a side the corner lacks is still a preference, and the ghost rolls to one it has
     const lacks = ['N', 'E', 'S', 'W'].find(e => !s0.sides.includes(e));
-    await ph.locator(`#card-bar-side button[data-side="${lacks}"]`).tap(); await ph.waitForTimeout(200);
+    await prefer(lacks);
     const s2 = await side();
-    check(`${dev}: a side the corner lacks rolls to one it has`, s2.side && s0.sides.includes(s2.side) && (await ph.locator(`#card-bar-side button[data-side="${lacks}"]`).getAttribute('class')).includes('shut'), JSON.stringify([s0, s2]));
-    await ph.locator(`#card-bar-side button[data-side="${lacks}"]`).tap(); await ph.waitForTimeout(100);
+    const btn2 = { txt: await ph.locator('#btn-side').textContent(), cls: await ph.locator('#btn-side').getAttribute('class') };
+    check(`${dev}: a side the corner lacks rolls to one it has, and ⇄ says so`, s2.side && s0.sides.includes(s2.side) && btn2.cls.includes('rolled') && btn2.txt.includes(`(${s2.side})`), JSON.stringify([s0, s2, btn2]));
+    await prefer(null);
     await ph.locator('#btn-place-cancel').tap(); await ph.waitForTimeout(150);
     await tap(await px(6, 4));
     check(`${dev}: aiming again builds nothing yet`, (await st()).tiles === 0 && await popped());
