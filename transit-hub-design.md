@@ -1162,8 +1162,13 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   overlap), two pixels are peeled off the painting's outline and anything near the key colour
   dropped (the key bleeds into soft edges), and it is resampled to twice the density. `isoart.mjs`
   then bakes the sheet from the code art, every pixel becoming 2 x 2 with its layer, cell, face and
-  weight, coloured from the painting where it covers it; a translucent pane keeps its code colour,
-  and so does floor under something opaque, which the painting can't show. A turn whose painting
+  weight, coloured from the painting where it covers it and agrees with it; a translucent pane keeps its code colour,
+  and so does floor under something opaque, which the painting can't show. The model doesn't keep
+  every shape: it gave the helipad a slab's thickness and turned the helicopter, and a scale and a
+  shift can't undo that, so its colours landed on the wrong shapes (the pad's painted sides on the
+  flat floor read as a sunken tray). So a painted colour is taken in full only within 40 a channel
+  of the code colour under it, fading to the code colour by 80 (`--gate`): shading, texture and
+  small detail get through, a moved or invented shape does not. A turn whose painting
   overlaps its outline less than 0.6 gets none and keeps its code colours (`--weak` paints those
   families again; a retry replaces a turn only where it fits better). Meta Muse Image, a cent a
   call: 102 sheets for about $1.05 with one round of retries, and $0.34 more to paint the 34

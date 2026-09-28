@@ -26,13 +26,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const flag = (n, d) => { const i = args.indexOf('--' + n); return i < 0 ? d : args[i + 1]; };
 const model = flag('model', 'meta/muse-image'), tries = +flag('tries', 1), reuse = args.includes('--reuse');
-const keys = args.filter((a, i) => !a.startsWith('--') && !['--model', '--tries'].includes(args[i - 1]));
+const keys = args.filter((a, i) => !a.startsWith('--') && !['--model', '--tries', '--gate'].includes(args[i - 1]));
 const rawDir = resolve(root, 'harness/.shopraw'), outDir = resolve(root, 'assets/paint');
 mkdirSync(rawDir, { recursive: true }); mkdirSync(outDir, { recursive: true });
 const D = DENSITY, tag = model.split('/').pop();
 const GROUP_W = 520;                      // frame pixels of code art per call: the model paints each at ~3.5x
 const GAP = 24;                           // frame pixels of key colour between turns
 const MIN_FIT = 0.6;                      // overlap below which a turn keeps its code colours
+const GATE = +flag('gate', 40);           // mean change per channel past which a painted pixel fades to its code colour
 // Background colours to key out; each tile gets the one furthest from its own colours.
 const KEYS = { magenta: [255, 0, 255], green: [0, 255, 0], cyan: [0, 255, 255], yellow: [255, 255, 0] };
 const RATIOS = { '1:1': 1, '4:3': 4 / 3, '3:2': 1.5, '16:9': 16 / 9, '21:9': 21 / 9, '3:4': 3 / 4, '2:3': 2 / 3 };
@@ -67,6 +68,7 @@ function codeArt(key, m) {
 const prompt = (n, bg, veh) => [
   `This image shows ${n} small pixel-art sprites, side by side, from an isometric (2:1) pixel-art game about running a busy transit hub: ${veh ? 'vehicles (cars, buses, trains, boats, aircraft, cable cars), each seen from its own angle' : 'a transport stop, platform or dock, turned different ways'}.`,
   `Redraw each one at this larger size as crisp, finished pixel art with much more detail: texture, shading, highlights, panel lines, windows, small props. Change nothing else: every shape exactly where it is, the same outline, the same size, the same colours. Do not add, remove or move anything.`,
+  veh ? 'Each vehicle keeps exactly its pose, angle and proportions.' : 'The tiles are flat: no raised base, no thickness, no side faces below their outlines; only what already stands up on them stands up.',
   `Keep the plain flat ${bg} background exactly as it is, with no shadows, ground or frame outside the sprites. No people, no letters or numbers.`,
 ].join('\n\n');
 
@@ -96,9 +98,16 @@ function fitTurn(img, fg, slot, code, map) {
       const o = (y * img.w + x) * 4; r += img.data[o]; g += img.data[o + 1]; b += img.data[o + 2]; a++;
     }
     if (!a || a * 2 < all) continue;
-    out.data.set([r / a, g / a, b / a, 255], (j * out.w + i) * 4);
-    const c = px(code, Math.floor(i / D), Math.floor(j / D));
-    diff += (Math.abs(r / a - c[0]) + Math.abs(g / a - c[1]) + Math.abs(b / a - c[2])) / 3; cnt++;
+    const c = px(code, Math.floor(i / D), Math.floor(j / D)), d = (Math.abs(r / a - c[0]) + Math.abs(g / a - c[1]) + Math.abs(b / a - c[2])) / 3;
+    diff += d; cnt++;
+    // Only a colour near the code art's is taken: the model's shading, texture and small
+    // detail get through, but not a shape it moved or added (a slab's side painted over
+    // the floor, a rotor over a body), which would show as the shape in the wrong place.
+    // a soft edge, so pixels either side of the line don't speckle: the painting in full
+    // up to GATE, fading to the code colour by twice that
+    const k = Math.max(0, Math.min(1, (2 * GATE - d) / GATE));
+    if (!k) continue;
+    out.data.set([c[0] + (r / a - c[0]) * k, c[1] + (g / a - c[1]) * k, c[2] + (b / a - c[2]) * k, 255], (j * out.w + i) * 4);
   }
   // how far the painting's colours stray from the code art's, and how much of it they cover
   return { pic: out, v: best.v, drift: cnt ? diff / cnt : 999, cover: cnt / Math.max(1, mask.reduce((s, x) => s + x, 0) * D * D) };
@@ -183,7 +192,7 @@ for (const [fam, members] of families) {
         continue;
       }
       // a retry replaces a turn only where it fits better
-      if (old && old.raw && old.overlap >= best.v && old.raw !== best.name && existsSync(file)) continue;
+      if (!reuse && old && old.raw && old.overlap >= best.v && old.raw !== best.name && existsSync(file)) continue;
       // 255 colours, as the sheet it bakes into has, so it packs into a palette
       writeFileSync(file, encodePng(quantize(best.pic, 255)));
       log[s.key].turns[s.m] = { raw: best.name, overlap: +best.v.toFixed(3), drift: +best.drift.toFixed(1), cover: +best.cover.toFixed(3) };
