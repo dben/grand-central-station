@@ -72,7 +72,7 @@ Some tiles also have attachment rules:
 - **Tip** (Jetway, Jumbo Jetway): only the tip of the L (the top of its stem) may touch the apron edge, with the foot pointing inland. Both mirror images are legal.
 - **Broadside** (Ferry Terminal): the mirror of tip. The L's long arm — its three-cell side — has to lie along the water edge, with the short foot pointing inland, so a hull ties up side-on. Two of the L4's eight orientations reach any one edge, both mirror images.
 
-**Choosing the side.** A transport often has more than one way to attach: a road tile in reach of two edges, any berth in a corner, a garage with two road edges to tunnel to, a lift with a clear lane both ways along its axis. The check lists them (`res.sides`, best first) and takes the one the player asks for (`side`), or the first. The default is the nearest edge for a driveway, lane or tunnel, and for a berth an edge that is already its terrain before one it would have to claim. **⇄** in the card bar, or **E**, cycles through them the way **R** cycles rotations, and the choice carries over as the cursor moves, falling back to the default wherever it isn't open. A berth in a corner touches two edges but attaches by one: it claims and depends on that side only, and the other stays as it was, so a corner is no longer a way to lock two edges at once. Its attachment rule (edgewise, tip, broadside) is checked against the side it attaches by.
+**Choosing the side.** A transport often has more than one way to attach: a road tile in reach of two edges, any berth in a corner, a garage with two road edges to tunnel to, a lift with a clear lane both ways along its axis. The check lists them (`res.sides`, best first) and takes the one the player asks for (`side`), or the first. The default is the nearest edge for a driveway, lane or tunnel, and for a berth an edge that is already its terrain before one it would have to claim. The four side buttons in the card bar set the side asked for, and **E** cycles through the ones the spot offers the way **R** cycles rotations. The choice is a preference that carries over as the cursor moves and from card to card, falling back to the default wherever that side isn't open (§12.6). A berth in a corner touches two edges but attaches by one: it claims and depends on that side only, and the other stays as it was, so a corner is no longer a way to lock two edges at once. Its attachment rule (edgewise, tip, broadside) is checked against the side it attaches by.
 
 A Rezoning Permit card (§10.4) turns a claimed edge back into open ground, and **demolishes every transport attached to that edge**: lock-terrain tiles touching it, and road tiles whose driveway runs to it. Leaving a train station standing on open ground, or a bus stop with no road, is a state the rules can't hold. Each transport records the edges it depends on when placed (`tile.edges`).
 
@@ -865,14 +865,24 @@ and drops the phrase:
   when it covers too much board, and the choice is remembered. On a narrow screen the bar takes the
   cards' own place instead of stacking above them — the tray keeps its height, so the board does not
   move — and **✕** hands the space back to the cards.
-- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates, and
-  **E** or the bar's **⇄** switches the side a transport attaches by (§3.2). The button names the
-  side, and is greyed where there is only one.
+- **Placing:** click a card, then the board. **R** (or shift+scroll, or right-click) rotates.
+  - **Side:** a transport that can attach by more than one edge (§3.2) gets a row of four buttons in
+    the card bar, **↗ N · ↘ E · ↙ S · ↖ W**, the arrows pointing at each edge as the board draws it.
+    The row sets a *preferred* side. Where the spot offers that side the transport attaches by it;
+    where it does not, the board's first choice is used instead (`pickSide`, board.js). The
+    preference holds from spot to spot and from card to card until it is cleared, and pressing the
+    preferred side again clears it. Ringed is the side asked for, filled is the side the ghost is
+    attaching by now, and dimmed is a side this spot does not offer. **E** steps through the sides
+    the spot offers and prefers the one it lands on.
+  - The aim survives a mouse leaving the board for the card bar, so the row and **Build here** never
+    go dead under the cursor. It returns to the last cell the cursor rested on for 200 ms (`REST_MS`)
+    rather than the one it crossed on the way, and drops if the cursor goes anywhere but back to the
+    board.
 - **Touch** has no hover, and a finger misses, so a tap only aims — a tile, an upgrade, a bonus
   card on a tile or an edge alike. The card bar then becomes the confirmation: its title names the
   target (`Burger Joint L1 → L2`, `Rezoning Permit: north edge`), the line under it gives the
   reason a spot is refused or what a Rezoning Permit would tear down, and its buttons are **⟳**,
-  **⇄**, **✓ Build** (**Upgrade**, **Play**, **Rezone**) and **✕**. While aimed, the card's text
+  the side row, **✓ Build** (**Upgrade**, **Play**, **Rezone**) and **✕**. While aimed, the card's text
   folds away so the bar covers as little board as it can; **⌃** opens it again. **✕** steps back
   one thing at a time, like Esc: the aim first, then the card. Tapping elsewhere re-aims. The star
   badge stays over the target, kept on screen at the board's edges. A mouse click still commits at
@@ -1375,7 +1385,9 @@ Changes from the original design, with the reason for each. Original values are 
 
   Autoplay, Terminal, `--runs 8 --weeks 16`, before → after as survived / band / over 3× / median: `--seed0 1000` 6/8 · 39% · 10% · 2.19× → 4/8 · 46% · 13% · 1.97×; `--seed0 2000` 8/8 · 41% · 13% · 2.23× → 8/8 · 46% · 17% · 2.11×. None of the four new deaths is a weather week: four more events reshuffle every run's plan, and the deaths landed on a Strike, a Crime Spree and quiet weeks after a Double Week and a budget week. All ten weather weeks the sixteen runs met passed, at 1.31× to 3.43× of quota.
 
-- **The touch confirmation moved into the card bar** (§12.6). On a phone the popup by the target and the card bar under the board both showed the card's name and price, and between them covered most of the board. The bar now carries the aim itself (the target, the refusal or warning, ⟳, ⇄, ✓ and ✕), and folds the card's text away while aimed.
+- **A preferred side for transports, and a placement aim that survives the trip to the card bar** (§12.6). On a desktop the **⇄ Side** button greyed out as the mouse reached it: it was enabled only while the ghost was valid, and the ghost is cleared the moment the cursor leaves the board, which it has to do to reach the button. **Build here** went dead the same way, and reproduced in Chromium before the fix. Leaving the board for the card bar now keeps the aim, restored to the last cell the cursor rested on for 200 ms, because the ghost otherwise ends on whichever cell the cursor crossed last. The single ⇄ button also only stepped through the sides the current spot offered, so it could not hold a choice from spot to spot. It became a row of four buttons that set a preferred side, kept across spots and cards, and a spot that lacks it rolls to another side as before. `ui-smoke.mjs` covers both the mouse trip and the preference on desktop, and the preference on both phone orientations. No rule or number changed.
+
+- **The touch confirmation moved into the card bar** (§12.6). On a phone the popup by the target and the card bar under the board both showed the card's name and price, and between them covered most of the board. The bar now carries the aim itself (the target, the refusal or warning, ⟳, the side row, ✓ and ✕), and folds the card's text away while aimed.
 
 - **The Cafeteria and the Jumbo Jetway are one square shorter** (§8). Both read as too long on the board. The Cafeteria went from I6 to I5 and the Jumbo Jetway from L5 to L4, the Jetway's shape one cell longer in the stem. Prices and numbers stayed where they were. Both sheets were redrawn: the Cafeteria keeps its two trays at the ends with two skylights between, and the Jumbo Jetway's twin bridges run one cell shorter into the same terminal at the foot. It barely moves the balance. `autoplay.js --runs 8 --weeks 16` reads 4/8 on `--seed0 1000` (median 1.97× → 1.98×) and 8/8 on `--seed0 2000` (band 46% → 45%, median 2.11× → 2.15×), deaths in the same weeks. `marginal.mjs --week 9 --seeds 12`: Cafeteria 0.89 → 1.09 stars/$100, Jumbo Jetway 2.61 → 2.53. `tierboard.mjs --weeks 4,9,13 --seeds 10`: Cafeteria 2.47 → 2.76 per $100, Jumbo Jetway 2.95 → 2.67, both still C. `sensitivity.mjs --bot 1002 --week 12 --seeds 12`: the Cafeteria fits 93 spots rather than 71 (best 2.8★ either way, negative 18% → 22%) and the Jumbo Jetway 38 rather than 36 (median 8.6★ either way). `SAVE_VERSION` went to 12, since a saved board holds each tile's cells.
 

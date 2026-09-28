@@ -82,9 +82,15 @@ const ui = {
   // whether the last press anywhere was a finger, and `aimInfo` whether the
   // card's text stays open while aimed
   pending: null, touch: false, aimInfo: false,
-  // the edge the player asked a transport to attach by (null: the default)
+  // the edge the player prefers a transport to attach by, kept from card to
+  // card (null: whichever the board offers first)
   side: null,
+  // mouse only: the last cell the cursor rested on while placing, so a cursor
+  // heading for the card bar's buttons builds where it aimed and not where it
+  // happened to cross the board
+  rest: null, restTimer: null,
 };
+const REST_MS = 200;
 const renderer = new BoardRenderer($('board'));
 let boardInput = null;
 // Panel preferences that survive a reload. First visit on a phone, held either
@@ -516,26 +522,37 @@ function renderCardBar() {
   const aimPlace = ui.pending && ui.pending.kind === 'place';
   $('btn-rotate').classList.toggle('hidden', !place || (ui.pending && !aimPlace));
   if (place) $('btn-rotate').disabled = orientationCount(tileDef(card.key).shape) < 2;
-  // the side a transport attaches by, for a tile that can have more than one
-  const sideBtn = $('btn-side'), sides = place && ui.ghost && ui.ghost.ok ? ui.ghost.sides || [] : [];
-  sideBtn.classList.toggle('hidden', !place || !canPickSide(tileDef(card.key)) || (ui.pending && !aimPlace));
-  sideBtn.disabled = sides.length < 2;
-  sideBtn.textContent = '⇄ ' + (sides.length ? cap(EDGE_NAMES[ui.ghost.side]) : 'Side');
+  // the side a transport prefers to attach by: ringed is the ask, filled is where the ghost attaches
+  const sideRow = $('card-bar-side'), g = place && ui.ghost && ui.ghost.ok ? ui.ghost : null;
+  sideRow.classList.toggle('hidden', !place || !canPickSide(tileDef(card.key)) || (ui.pending && !aimPlace));
+  for (const b of sideRow.querySelectorAll('button')) {
+    const e = b.dataset.side, shut = !!g && !!g.sides && g.sides.length > 0 && !g.sides.includes(e);
+    b.classList.toggle('pref', ui.side === e); b.classList.toggle('used', !!g && g.side === e); b.classList.toggle('shut', shut);
+    b.setAttribute('aria-pressed', ui.side === e);
+    b.title = ui.side === e ? `Back to any side` : shut ? `No ${EDGE_NAMES[e]} edge here: it would attach by the ${EDGE_NAMES[g.side]}` : `Prefer the ${EDGE_NAMES[e]} edge`;
+  }
   const go = $('btn-place');
   go.classList.toggle('hidden', !place && !confirm && !ui.pending);
   go.textContent = txt ? `✓ ${txt.verb}` : place ? 'Build here' : 'Play it';
   go.disabled = txt ? !!txt.bad : place && !(ui.ghost && ui.ghost.ok);
   $('btn-place-cancel').title = ui.pending ? 'Drop the aim (Esc)' : 'Put the card back (Esc)';
 }
-const cap = w => w[0].toUpperCase() + w.slice(1);
 // Transports that attach to an edge by a driveway, a berth, a lane or a tunnel
-// can have more than one edge to choose from; a subway runs to both ends.
+// can have more than one edge to choose from; a subway runs to both ends. The
+// choice is a preference: a spot that lacks the side asked for rolls to another
+// (`pickSide` in board.js), so it holds from spot to spot and card to card.
 const canPickSide = def => def.kind === 'transport' && def.terrain !== 'free' && !(def.terrain === 'underground' && def.line === 'through');
+const SIDES = ['N', 'E', 'S', 'W'];
+// A second press on the side already preferred hands the choice back to the board.
+function setSide(e) { ui.side = ui.side === e ? null : e; updateGhost(); renderInfo(); }
+// E steps through what this spot offers, and prefers the one it lands on; with
+// nothing to step through it walks all four.
 function cycleSide() {
-  const g = ui.ghost;
-  if (ui.mode !== 'place' || !g || !g.ok || !g.sides || g.sides.length < 2) return;
-  ui.side = g.sides[(g.sides.indexOf(g.side) + 1) % g.sides.length];
-  updateGhost();
+  if (ui.mode !== 'place' || !ui.card || !canPickSide(tileDef(ui.card.key))) return;
+  const g = ui.ghost && ui.ghost.ok && ui.ghost.sides && ui.ghost.sides.length > 1 ? ui.ghost : null;
+  const pool = g ? g.sides : SIDES, from = g ? g.side : ui.side;
+  ui.side = pool[(pool.indexOf(from) + 1) % pool.length];
+  updateGhost(); renderInfo();
 }
 
 function renderInfo() {
@@ -591,7 +608,7 @@ function selectCard(card) {
   if (state.phase !== 'shop' || ui.mode === 'playback') return;
   hint(''); // whatever the last card was told to do no longer applies
   if (ui.card && ui.card.id === card.id) { cancelMode(); return; }
-  ui.card = card; ui.rot = 0; ui.side = null; ui.aimInfo = false; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; ui.pending = null; hidePopup(true);
+  ui.card = card; ui.rot = 0; ui.aimInfo = false; ui.selectedTileId = null; ui.estimate = null; ui.estimateKey = null; ui.pending = null; hidePopup(true);
   if (card.type === 'tile' || card.type === 'bridge') ui.mode = 'place';
   else if (card.type === 'upgrade' || card.type === 'named_upgrade') {
     // an "every lounge" upgrade has nothing to aim at, so it confirms instead
@@ -612,7 +629,7 @@ function playSelected() {
   if (!r.ok) hint(r.reason);
   cancelMode(); renderAll();
 }
-function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.estimate = null; ui.pending = null; hidePopup(true); renderShop(); renderInfo(); }
+function cancelMode() { ui.mode = state.phase === 'shop' ? 'idle' : ui.mode; ui.card = null; ui.ghost = null; ui.hover = null; ui.rest = null; clearTimeout(ui.restTimer); ui.estimate = null; ui.pending = null; hidePopup(true); renderShop(); renderInfo(); }
 
 function targetFilter(t) {
   const c = ui.card; if (!c) return false;
@@ -645,7 +662,10 @@ function onBoardHover(cell, edge, e) {
   if (!changed) return;
   const t = cell ? tileAtCell(cell.x, cell.y) : null;
   ui.hoverTileId = t ? t.id : null;
-  if (ui.mode === 'place') updateGhost();
+  if (ui.mode === 'place') {
+    clearTimeout(ui.restTimer); ui.restTimer = cell ? setTimeout(() => { ui.rest = ui.hover; }, REST_MS) : null;
+    updateGhost();
+  }
   else if (ui.mode === 'target') {
     // the star badge over the tile is the answer here, so keep the detail
     // popup out of its way
@@ -656,7 +676,17 @@ function onBoardHover(cell, edge, e) {
     else if (!t) hidePopup(false);
   }
 }
-function onBoardLeave() { ui.hover = null; ui.edgeHover = null; ui.hoverTileId = null; ui.ghost = null; hidePopup(false); renderInfo(); }
+// The bar's side row and Build here act on the aim, and Build here greys out
+// the moment it clears, so a mouse heading for them keeps it. The bar drops it
+// again when the pointer goes anywhere but back to the board.
+function onBoardLeave(e) {
+  clearTimeout(ui.restTimer);
+  if (ui.mode === 'place' && ui.ghost && e?.relatedTarget?.closest?.('#card-bar')) {
+    if (ui.rest) { ui.hover = ui.rest; updateGhost(); }
+    return;
+  }
+  ui.hover = null; ui.rest = null; ui.edgeHover = null; ui.hoverTileId = null; ui.ghost = null; hidePopup(false); renderInfo();
+}
 
 // Commit the tile currently under the ghost. Shared by click, the on-screen
 // Build button and the second tap of a touch placement.
@@ -1211,7 +1241,8 @@ function boot() {
   $('btn-zoom-out').addEventListener('click', () => boardInput.zoomBy(1 / 1.35));
   $('btn-zoom-fit').addEventListener('click', () => boardInput.fit());
   $('btn-rotate').addEventListener('click', () => rotate(1));
-  $('btn-side').addEventListener('click', cycleSide);
+  $('card-bar-side').addEventListener('click', e => { const b = e.target.closest('button[data-side]'); if (b) setSide(b.dataset.side); });
+  $('card-bar').addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && !ui.pending && e.relatedTarget !== c) onBoardLeave(); });
   $('btn-place').addEventListener('click', () => { if (ui.pending) commitPending(); else if (ui.mode === 'confirm') playSelected(); else commitPlacement(); });
   // ✕ steps back one thing at a time, like Esc: the aim first, then the card
   $('btn-place-cancel').addEventListener('click', () => { if (ui.pending) clearPending(); else cancelMode(); });

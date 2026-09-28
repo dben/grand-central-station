@@ -78,7 +78,8 @@ export function attachBoardInput(canvas, renderer, handlers) {
   canvas.addEventListener('pointercancel', release);
   // Touch pointers "leave" the canvas the moment they lift, which would wipe
   // the aim a two-stage tap placement depends on. Only hovering devices clear.
-  canvas.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && pointers.size === 0) fire('leave'); });
+  // The event goes along so the UI can tell where the pointer went (relatedTarget).
+  canvas.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && pointers.size === 0 && handlers.leave) handlers.leave(e); });
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
