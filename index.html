@@ -61,17 +61,9 @@ if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded',
         </div>
         <div id="card-bar-prompt"></div>
         <div id="card-bar-desc"></div>
-        <!-- the side a transport prefers to attach by; the arrows point at each
-             edge as the board draws it. A side this spot lacks rolls to another -->
-        <div id="card-bar-side" class="hidden" role="group" aria-label="Preferred side to attach by">
-          <span class="lbl">Side</span>
-          <button data-side="N" title="Prefer the north edge">↗ N</button>
-          <button data-side="E" title="Prefer the east edge">↘ E</button>
-          <button data-side="S" title="Prefer the south edge">↙ S</button>
-          <button data-side="W" title="Prefer the west edge">↖ W</button>
-        </div>
         <div id="card-bar-tools">
           <button id="btn-rotate" title="Rotate (R)">⟳<span class="btn-lbl"> Rotate</span></button>
+          <button id="btn-side" title="Side to attach by (E)">⇄ Side</button>
           <button id="btn-place" class="primary">Build here</button>
           <button id="btn-place-cancel" title="Cancel (Esc)">✕</button>
         </div>
