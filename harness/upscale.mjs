@@ -3,7 +3,8 @@
 // image model, keeping everything but the colours:
 //   node harness/upscale.mjs [key ...] [--tries 1] [--model meta/muse-image] [--reuse] [--weak]
 // --weak paints again only the families with a turn still in its code colours; --tiles
-// only the tiles' own sheets, leaving their lanes and vehicles as they are.
+// only the tiles' own sheets, leaving their lanes and vehicles as they are; --no-lanes
+// leaves out the lanes; --fresh lets new paintings replace old ones even where less gets through.
 // Each turn of a tile's code art (the sheet isoart.mjs draws from tileart.mjs,
 // floor and over layers composited; kept the first time as
 // assets/paint/<key>_<turn>_code.png so a painting is never the guide for the
@@ -33,7 +34,8 @@ const D = DENSITY, tag = model.split('/').pop();
 const GROUP_W = 520;                      // frame pixels of code art per call: the model paints each at ~3.5x
 const GAP = 24;                           // frame pixels of key colour between turns
 const MIN_FIT = 0.6;                      // overlap below which a turn keeps its code colours
-const GATE = +flag('gate', 40);           // mean change per channel past which a painted pixel fades to its code colour
+const GATE = +flag('gate', 40);           // mean change per channel, blurred, past which a painted pixel fades to its code colour
+const BLUR = 3;                           // frame pixels round a point the gate averages over
 // Background colours to key out; each tile gets the one furthest from its own colours.
 const KEYS = { magenta: [255, 0, 255], green: [0, 255, 0], cyan: [0, 255, 255], yellow: [255, 255, 0] };
 const RATIOS = { '1:1': 1, '4:3': 4 / 3, '3:2': 1.5, '16:9': 16 / 9, '21:9': 21 / 9, '3:4': 3 / 4, '2:3': 2 / 3 };
@@ -76,20 +78,56 @@ const prompt = (n, bg, veh) => [
 // turn's slot) with the code art's outline, over a scale and a shift.
 function fitTurn(img, fg, slot, code, map) {
   const W = code.w, H = code.h, mask = Uint8Array.from({ length: W * H }, (_, i) => code.data[i * 4 + 3] > 20 ? 1 : 0);
-  const back = (p, X, Y) => map((X - p.dx - W / 2) / p.s + W / 2 + slot.x, (Y - p.dy - H / 2) / p.s + H / 2 + slot.y);
+  // A placement is an affine map: scale s, a vertical stretch a (a model drawing true
+  // isometric rather than 2:1 is squashed or stretched against the code art), a shear k
+  // (a view leaning one way) and a shift. `back` takes a code-art point to the painting.
+  const back = (p, X, Y) => { const y = (Y - p.dy - H / 2) / (p.s * p.a), x = (X - p.dx - W / 2 - p.k * y * p.s) / p.s; return map(x + W / 2 + slot.x, y + H / 2 + slot.y); };
   const fgAt = ([x, y]) => { x = Math.floor(x); y = Math.floor(y); return x >= 0 && y >= 0 && x < img.w && y < img.h ? fg[y * img.w + x] : 0; };
   const iou = (p, st = 1) => { let both = 0, either = 0; for (let Y = -6; Y < H + 6; Y += st) for (let X = -6; X < W + 6; X += st) { const a = X >= 0 && Y >= 0 && X < W && Y < H && mask[Y * W + X], b = fgAt(back(p, X + 0.5, Y + 0.5)); if (a && b) both++; if (a || b) either++; } return either ? both / either : 0; };
-  let best = { s: 1, dx: 0, dy: 0 }; best.v = iou(best, 2);
-  for (const [ds, dd] of [[0.03, 3], [0.015, 1.5], [0.008, 0.75], [0.004, 0.35]]) for (let moved = true, n = 0; moved && n < 30; n++) {
-    moved = false;
-    for (const [a, b, c] of [[ds, 0, 0], [-ds, 0, 0], [0, dd, 0], [0, -dd, 0], [0, 0, dd], [0, 0, -dd]]) { const q = { s: best.s + a, dx: best.dx + b, dy: best.dy + c }; q.v = iou(q, dd > 1 ? 2 : 1); if (q.v > best.v) { best = q; moved = true; } }
+  // Colour agreement, for the last steps: the outline alone can't place what is inside it
+  // (a window row, a ring on a pad). The code art and the painting, each blurred a little
+  // (a 3 x 3 box at the code art's scale), compared over the code art's pixels.
+  const cb = new Float32Array(W * H * 3);
+  for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) { let n = 0; const acc = [0, 0, 0]; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = px(code, X + dx, Y + dy); if (q[3] > 20) { acc[0] += q[0]; acc[1] += q[1]; acc[2] += q[2]; n++; } } if (n) cb.set(acc.map(v => v / n), (Y * W + X) * 3); }
+  const at = (x, y) => { x = Math.floor(x); y = Math.floor(y); return x >= 0 && y >= 0 && x < img.w && y < img.h && fg[y * img.w + x] ? img.data.subarray((y * img.w + x) * 4, (y * img.w + x) * 4 + 3) : null; };
+  const colour = (p, st) => {
+    let d = 0, n = 0;
+    const [ax0] = back(p, 0, 0), [ax1] = back(p, 1, 0), r = Math.max(1, Math.abs(ax1 - ax0));
+    for (let Y = 0; Y < H; Y += st) for (let X = 0; X < W; X += st) {
+      if (!mask[Y * W + X]) continue;
+      const [x, y] = back(p, X + 0.5, Y + 0.5), acc = [0, 0, 0]; let m = 0;
+      for (const [ox, oy] of [[-r, -r], [0, -r], [r, -r], [-r, 0], [0, 0], [r, 0], [-r, r], [0, r], [r, r]]) { const q = at(x + ox, y + oy); if (q) { acc[0] += q[0]; acc[1] += q[1]; acc[2] += q[2]; m++; } }
+      n++;
+      d += m ? (Math.abs(acc[0] / m - cb[(Y * W + X) * 3]) + Math.abs(acc[1] / m - cb[(Y * W + X) * 3 + 1]) + Math.abs(acc[2] / m - cb[(Y * W + X) * 3 + 2])) / 3 : 128;
+    }
+    return n ? d / n : 128;
+  };
+  const score = (p, st, withColour) => iou(p, st) - (withColour ? colour(p, st) / 400 : 0);
+  let best = { s: 1, a: 1, k: 0, dx: 0, dy: 0 }; best.v = score(best, 2, false);
+  // coarse to fine; the stretch and the shear join once the scale and shift are close,
+  // and the colours in the last two rounds
+  for (const [ds, dd, da, dk, withColour] of [[0.03, 3, 0, 0, false], [0.015, 1.5, 0.02, 0.03, false], [0.008, 0.75, 0.01, 0.015, true], [0.004, 0.35, 0.005, 0.008, true]]) {
+    best.v = score(best, dd > 1 ? 2 : 1, withColour);
+    for (let moved = true, n = 0; moved && n < 30; n++) {
+      moved = false;
+      const steps = [['s', ds], ['s', -ds], ['dx', dd], ['dx', -dd], ['dy', dd], ['dy', -dd]];
+      if (da) steps.push(['a', da], ['a', -da], ['k', dk], ['k', -dk]);
+      for (const [key, step] of steps) {
+        const q = { ...best, [key]: best[key] + step };
+        if (q.a < 0.8 || q.a > 1.25 || Math.abs(q.k) > 0.25) continue;
+        q.v = score(q, dd > 1 ? 2 : 1, withColour);
+        if (q.v > best.v) { best = q; moved = true; }
+      }
+    }
   }
   best.v = iou(best);
   // resample: each sub-pixel of the code art at D, the painting under it, where most of it is painting
-  const out = blank(W * D, H * D), [ax] = map(0, 0), [bx] = map(1, 0), per = (bx - ax) / best.s / D;
-  let diff = 0, cnt = 0;
-  for (let j = 0; j < H * D; j++) for (let i = 0; i < W * D; i++) {
+  const Wd = W * D, Hd = H * D, paint = new Float32Array(Wd * Hd * 3), has = new Uint8Array(Wd * Hd), codeD = new Float32Array(Wd * Hd * 3);
+  const [ax] = map(0, 0), [bx] = map(1, 0), per = (bx - ax) / best.s / D;
+  for (let j = 0; j < Hd; j++) for (let i = 0; i < Wd; i++) {
     if (!mask[Math.floor(j / D) * W + Math.floor(i / D)]) continue;
+    const c = px(code, Math.floor(i / D), Math.floor(j / D)), q = j * Wd + i;
+    codeD.set([c[0], c[1], c[2]], q * 3);
     const [gx, gy] = back(best, (i + 0.5) / D, (j + 0.5) / D), x0 = gx - per / 2, y0 = gy - per / 2;
     let r = 0, g = 0, b = 0, a = 0, all = 0;
     for (let y = Math.floor(y0); y < Math.ceil(y0 + per); y++) for (let x = Math.floor(x0); x < Math.ceil(x0 + per); x++) {
@@ -98,19 +136,42 @@ function fitTurn(img, fg, slot, code, map) {
       const o = (y * img.w + x) * 4; r += img.data[o]; g += img.data[o + 1]; b += img.data[o + 2]; a++;
     }
     if (!a || a * 2 < all) continue;
-    const c = px(code, Math.floor(i / D), Math.floor(j / D)), d = (Math.abs(r / a - c[0]) + Math.abs(g / a - c[1]) + Math.abs(b / a - c[2])) / 3;
+    paint.set([r / a, g / a, b / a], q * 3); has[q] = 1;
+  }
+  // The gate compares the two blurred (BLUR frame pixels round each point, over the turn's
+  // own pixels): a window or a panel line painted on a plain wall hardly moves the wall's
+  // average, so the detail gets through; a shape moved or invented (a slab's side over the
+  // floor, a ring drawn off-centre, a rotor over a body) moves it over a whole patch, and
+  // there the code colour stays.
+  const blur = (src, ok) => {
+    const R = BLUR * D, sum = new Float64Array((Wd + 1) * (Hd + 1) * 4), at = (x, y) => (y * (Wd + 1) + x) * 4, out = new Float32Array(Wd * Hd * 3);
+    for (let y = 0; y < Hd; y++) for (let x = 0; x < Wd; x++) { const q = y * Wd + x, w = ok(q) ? 1 : 0; for (let k = 0; k < 4; k++) sum[at(x + 1, y + 1) + k] = (k < 3 ? src[q * 3 + k] * w : w) + sum[at(x, y + 1) + k] + sum[at(x + 1, y) + k] - sum[at(x, y) + k]; }
+    for (let y = 0; y < Hd; y++) for (let x = 0; x < Wd; x++) {
+      const x0 = Math.max(0, x - R), x1 = Math.min(Wd, x + R + 1), y0 = Math.max(0, y - R), y1 = Math.min(Hd, y + R + 1);
+      const box = k => sum[at(x1, y1) + k] - sum[at(x0, y1) + k] - sum[at(x1, y0) + k] + sum[at(x0, y0) + k], n = box(3);
+      if (n) for (let k = 0; k < 3; k++) out[(y * Wd + x) * 3 + k] = box(k) / n;
+    }
+    return out;
+  };
+  const bothOk = q => has[q] === 1, bp = blur(paint, bothOk), bc = blur(codeD, bothOk);
+  const out = blank(Wd, Hd);
+  let diff = 0, cnt = 0, kept = 0;
+  for (let q = 0; q < Wd * Hd; q++) {
+    if (!has[q]) continue;
+    const d = (Math.abs(bp[q * 3] - bc[q * 3]) + Math.abs(bp[q * 3 + 1] - bc[q * 3 + 1]) + Math.abs(bp[q * 3 + 2] - bc[q * 3 + 2])) / 3;
     diff += d; cnt++;
-    // Only a colour near the code art's is taken: the model's shading, texture and small
-    // detail get through, but not a shape it moved or added (a slab's side painted over
-    // the floor, a rotor over a body), which would show as the shape in the wrong place.
     // a soft edge, so pixels either side of the line don't speckle: the painting in full
     // up to GATE, fading to the code colour by twice that
     const k = Math.max(0, Math.min(1, (2 * GATE - d) / GATE));
+    kept += k;
     if (!k) continue;
-    out.data.set([c[0] + (r / a - c[0]) * k, c[1] + (g / a - c[1]) * k, c[2] + (b / a - c[2]) * k, 255], (j * out.w + i) * 4);
+    out.data.set([0, 1, 2].map(c => codeD[q * 3 + c] + (paint[q * 3 + c] - codeD[q * 3 + c]) * k).concat(255), q * 4);
   }
   // how far the painting's colours stray from the code art's, and how much of it they cover
-  return { pic: out, v: best.v, drift: cnt ? diff / cnt : 999, cover: cnt / Math.max(1, mask.reduce((s, x) => s + x, 0) * D * D) };
+  const area = Math.max(1, mask.reduce((s, x) => s + x, 0) * D * D);
+  // `pass`: the share of the turn whose painted colour gets through the gate, which is
+  // what a painting adds; a painting that drifted adds little
+  return { pic: out, v: best.v, drift: cnt ? diff / cnt : 999, cover: cnt / area, pass: kept / area };
 }
 
 const logPath = resolve(outDir, 'log.json');
@@ -128,6 +189,7 @@ for (const [fam, members] of families) {
   if (weakOnly && members.every(k => [0, 1, 2, 3].every(m => logNow()[k]?.turns?.[m]?.raw))) continue;
   // --tiles: only the tiles' own sheets, not their lanes' or vehicles'
   if (args.includes('--tiles') && / (veh|lane)/.test(fam)) continue;
+  if (args.includes('--no-lanes') && / lane/.test(fam)) continue;
   const veh = / veh$/.test(fam), items = members.flatMap(key => [0, 1, 2, 3].map(m => ({ key, m, code: codeArt(key, m) }))).filter(it => it.code.pic.w > 0);
   // the key colour furthest from every colour in the family
   const cols = items.flatMap(({ code: c }) => { const o = []; for (let i = 0; i < c.pic.w * c.pic.h; i += 3) if (c.pic.data[i * 4 + 3] > 20) o.push(c.pic.data.subarray(i * 4, i * 4 + 3)); return o; });
@@ -180,7 +242,7 @@ for (const [fam, members] of families) {
         // a model that paints at another ratio is taken to have fitted the guide in, centred
         const k = Math.min(img.w / GW, img.h / GH), mx = (img.w - GW * k) / 2, my = (img.h - GH * k) / 2;
         const map = (X, Y) => [mx + (ox + X * G) * k, my + (oy + Y * G) * k];
-        const r = fitTurn(img, fg, s, s.code.pic, map), score = r.v - r.drift / 200;
+        const r = fitTurn(img, fg, s, s.code.pic, map), score = r.pass + r.v / 4;
         if (!best || score > best.score) best = { ...r, score, name };
       }
       if (!best) continue;
@@ -191,15 +253,15 @@ for (const [fam, members] of families) {
         if (!old || old.overlap < MIN_FIT) { if (existsSync(file)) unlinkSync(file); log[s.key].turns[s.m] = { raw: null, overlap: +best.v.toFixed(3), kept: 'code' }; }
         continue;
       }
-      // a retry replaces a turn only where it fits better
-      if (!reuse && old && old.raw && old.overlap >= best.v && old.raw !== best.name && existsSync(file)) continue;
+      // a retry replaces a turn only where more of it gets through
+      if (!reuse && !args.includes('--fresh') && old && old.raw && (old.pass ?? 0) + old.overlap / 4 >= best.score && old.raw !== best.name && existsSync(file)) continue;
       // 255 colours, as the sheet it bakes into has, so it packs into a palette
       writeFileSync(file, encodePng(quantize(best.pic, 255)));
-      log[s.key].turns[s.m] = { raw: best.name, overlap: +best.v.toFixed(3), drift: +best.drift.toFixed(1), cover: +best.cover.toFixed(3) };
+      log[s.key].turns[s.m] = { raw: best.name, overlap: +best.v.toFixed(3), drift: +best.drift.toFixed(1), cover: +best.cover.toFixed(3), pass: +best.pass.toFixed(3) };
     }
   }
   writeFileSync(logPath, JSON.stringify(log, null, 1) + '\n');
   const ts = members.flatMap(k => (log[k].turns || []).filter(t => t && t.raw));
-  console.log(`${fam}: ${members.length} sheet(s), ${groups.length} call(s), overlap ${Math.min(...ts.map(t => t.overlap)).toFixed(2)}-${Math.max(...ts.map(t => t.overlap)).toFixed(2)}, drift ${Math.min(...ts.map(t => t.drift))}-${Math.max(...ts.map(t => t.drift))}`);
+  console.log(`${fam}: ${members.length} sheet(s), ${groups.length} call(s), overlap ${Math.min(...ts.map(t => t.overlap)).toFixed(2)}-${Math.max(...ts.map(t => t.overlap)).toFixed(2)}, painted colour kept ${Math.min(...ts.map(t => t.pass ?? 0)).toFixed(2)}-${Math.max(...ts.map(t => t.pass ?? 0)).toFixed(2)}`);
 }
 if (spent) console.log(`spent $${spent.toFixed(3)}`);

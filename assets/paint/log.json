@@ -20,28 +20,32 @@
   ],
   "turns": [
    {
-    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
-    "overlap": 0.775,
-    "drift": 49.5,
-    "cover": 0.904
+    "raw": "up_bus_stop_veh_g0_1790577105654_muse-image.png",
+    "overlap": 0.868,
+    "drift": 16.6,
+    "cover": 0.961,
+    "pass": 0.952
    },
    {
-    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
-    "overlap": 0.783,
-    "drift": 52.1,
-    "cover": 0.897
+    "raw": "up_bus_stop_veh_g0_1790577105654_muse-image.png",
+    "overlap": 0.893,
+    "drift": 16.9,
+    "cover": 0.975,
+    "pass": 0.948
    },
    {
-    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
-    "overlap": 0.912,
-    "drift": 35,
-    "cover": 0.982
+    "raw": "up_bus_stop_veh_g0_1790577105654_muse-image.png",
+    "overlap": 0.911,
+    "drift": 11.1,
+    "cover": 0.989,
+    "pass": 0.989
    },
    {
-    "raw": "up_bus_stop_veh_g0_1790543845959_muse-image.png",
-    "overlap": 0.855,
-    "drift": 39.5,
-    "cover": 0.975
+    "raw": "up_bus_stop_veh_g0_1790577105654_muse-image.png",
+    "overlap": 0.906,
+    "drift": 19.9,
+    "cover": 0.978,
+    "pass": 0.969
    }
   ]
  },
@@ -67,27 +71,31 @@
   "turns": [
    {
     "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
-    "overlap": 0.835,
-    "drift": 62.8,
-    "cover": 0.928
+    "overlap": 0.846,
+    "drift": 19.2,
+    "cover": 0.923,
+    "pass": 0.915
    },
    {
     "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
-    "overlap": 0.847,
-    "drift": 56.3,
-    "cover": 0.969
+    "overlap": 0.881,
+    "drift": 22,
+    "cover": 0.974,
+    "pass": 0.94
    },
    {
-    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
-    "overlap": 0.664,
-    "drift": 70,
-    "cover": 0.974
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.736,
+    "drift": 24.6,
+    "cover": 0.996,
+    "pass": 0.975
    },
    {
-    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
-    "overlap": 0.735,
-    "drift": 65.8,
-    "cover": 0.986
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.878,
+    "drift": 23.1,
+    "cover": 0.941,
+    "pass": 0.922
    }
   ]
  },
@@ -112,25 +120,32 @@
   ],
   "turns": [
    {
-    "raw": "up_taxi_stand_veh_g0_1790549926310_muse-image.png",
-    "overlap": 0.671,
-    "drift": 85.5,
-    "cover": 0.991
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.86,
+    "drift": 24.6,
+    "cover": 0.973,
+    "pass": 0.889
    },
    {
-    "raw": null,
-    "overlap": 0.581,
-    "kept": "code"
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.862,
+    "drift": 17.9,
+    "cover": 0.966,
+    "pass": 0.941
    },
    {
-    "raw": null,
-    "overlap": 0.475,
-    "kept": "code"
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.735,
+    "drift": 24.1,
+    "cover": 0.993,
+    "pass": 0.964
    },
    {
-    "raw": null,
-    "overlap": 0.528,
-    "kept": "code"
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.888,
+    "drift": 25.2,
+    "cover": 0.947,
+    "pass": 0.911
    }
   ]
  },
@@ -155,26 +170,32 @@
   ],
   "turns": [
    {
-    "raw": "up_taxi_stand_veh_g0_1790549926310_muse-image.png",
-    "overlap": 0.784,
-    "drift": 73.9,
-    "cover": 0.971
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.856,
+    "drift": 23.4,
+    "cover": 0.955,
+    "pass": 0.904
    },
    {
-    "raw": null,
-    "overlap": 0.587,
-    "kept": "code"
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.796,
+    "drift": 22.7,
+    "cover": 0.987,
+    "pass": 0.935
    },
    {
-    "raw": null,
-    "overlap": 0.558,
-    "kept": "code"
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.884,
+    "drift": 20.3,
+    "cover": 0.961,
+    "pass": 0.954
    },
    {
-    "raw": "up_taxi_stand_veh_g0_1790547860873_muse-image.png",
-    "overlap": 0.743,
-    "drift": 66.4,
-    "cover": 0.982
+    "raw": "up_taxi_stand_veh_g0_1790577180953_muse-image.png",
+    "overlap": 0.861,
+    "drift": 25.9,
+    "cover": 0.976,
+    "pass": 0.939
    }
   ]
  },
@@ -200,27 +221,31 @@
   "turns": [
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.77,
-    "drift": 32.2,
-    "cover": 0.981
+    "overlap": 0.826,
+    "drift": 10,
+    "cover": 0.973,
+    "pass": 0.973
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.837,
-    "drift": 35,
-    "cover": 0.953
+    "overlap": 0.871,
+    "drift": 8.7,
+    "cover": 0.961,
+    "pass": 0.95
    },
    {
-    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.631,
-    "drift": 34.9,
-    "cover": 0.992
+    "raw": "up_rideshare_veh_g0_1790577236205_muse-image.png",
+    "overlap": 0.814,
+    "drift": 10.5,
+    "cover": 0.988,
+    "pass": 0.988
    },
    {
-    "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.859,
-    "drift": 31.2,
-    "cover": 0.945
+    "raw": "up_rideshare_veh_g0_1790577236205_muse-image.png",
+    "overlap": 0.741,
+    "drift": 13.6,
+    "cover": 0.982,
+    "pass": 0.981
    }
   ]
  },
@@ -246,27 +271,31 @@
   "turns": [
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.803,
-    "drift": 73.4,
-    "cover": 0.979
+    "overlap": 0.834,
+    "drift": 33.1,
+    "cover": 0.968,
+    "pass": 0.769
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.69,
-    "drift": 84.8,
-    "cover": 0.993
+    "overlap": 0.849,
+    "drift": 23,
+    "cover": 0.979,
+    "pass": 0.908
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.728,
-    "drift": 58.1,
-    "cover": 0.996
+    "overlap": 0.945,
+    "drift": 14.7,
+    "cover": 0.975,
+    "pass": 0.968
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
     "overlap": 0.83,
-    "drift": 60.4,
-    "cover": 0.976
+    "drift": 26.4,
+    "cover": 0.976,
+    "pass": 0.905
    }
   ]
  },
@@ -292,27 +321,31 @@
   "turns": [
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.682,
-    "drift": 50.2,
-    "cover": 0.899
+    "overlap": 0.825,
+    "drift": 21,
+    "cover": 0.962,
+    "pass": 0.92
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.861,
-    "drift": 41.9,
-    "cover": 0.932
+    "overlap": 0.879,
+    "drift": 11.8,
+    "cover": 0.93,
+    "pass": 0.923
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.757,
-    "drift": 43.9,
-    "cover": 0.987
+    "overlap": 0.838,
+    "drift": 16.2,
+    "cover": 0.981,
+    "pass": 0.974
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.829,
-    "drift": 45.8,
-    "cover": 0.972
+    "overlap": 0.831,
+    "drift": 17.9,
+    "cover": 0.975,
+    "pass": 0.971
    }
   ]
  },
@@ -338,27 +371,31 @@
   "turns": [
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.841,
-    "drift": 53.7,
-    "cover": 0.966
+    "overlap": 0.82,
+    "drift": 22.1,
+    "cover": 0.974,
+    "pass": 0.899
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.81,
-    "drift": 49.6,
-    "cover": 0.972
+    "overlap": 0.814,
+    "drift": 17.5,
+    "cover": 0.963,
+    "pass": 0.927
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.773,
-    "drift": 45.6,
-    "cover": 0.91
+    "overlap": 0.91,
+    "drift": 14.8,
+    "cover": 0.948,
+    "pass": 0.942
    },
    {
     "raw": "up_rideshare_veh_g0_1790547914060_muse-image.png",
-    "overlap": 0.736,
-    "drift": 51.9,
-    "cover": 0.991
+    "overlap": 0.776,
+    "drift": 22.3,
+    "cover": 0.984,
+    "pass": 0.965
    }
   ]
  },
@@ -383,28 +420,32 @@
   ],
   "turns": [
    {
-    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.697,
-    "drift": 69.7,
-    "cover": 0.967
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.744,
+    "drift": 19.1,
+    "cover": 0.987,
+    "pass": 0.963
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.733,
-    "drift": 51,
-    "cover": 0.976
+    "overlap": 0.818,
+    "drift": 24.4,
+    "cover": 0.971,
+    "pass": 0.961
    },
    {
-    "raw": "up_car_rental_veh_g0_1790549948901_muse-image.png",
-    "overlap": 0.669,
-    "drift": 55.7,
-    "cover": 0.985
+    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
+    "overlap": 0.661,
+    "drift": 25.6,
+    "cover": 0.996,
+    "pass": 0.943
    },
    {
     "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.874,
-    "drift": 40.3,
-    "cover": 0.977
+    "overlap": 0.828,
+    "drift": 15.8,
+    "cover": 0.986,
+    "pass": 0.982
    }
   ]
  },
@@ -430,27 +471,31 @@
   "turns": [
    {
     "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.608,
-    "drift": 71.9,
-    "cover": 0.981
+    "overlap": 0.653,
+    "drift": 35.6,
+    "cover": 0.973,
+    "pass": 0.847
    },
    {
     "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.776,
-    "drift": 62.6,
-    "cover": 0.948
-   },
-   {
-    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
     "overlap": 0.831,
-    "drift": 58,
-    "cover": 0.927
+    "drift": 29.7,
+    "cover": 0.961,
+    "pass": 0.844
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.669,
-    "drift": 88.7,
-    "cover": 0.997
+    "overlap": 0.869,
+    "drift": 25.5,
+    "cover": 0.943,
+    "pass": 0.892
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.653,
+    "drift": 27.9,
+    "cover": 0.979,
+    "pass": 0.933
    }
   ]
  },
@@ -475,28 +520,32 @@
   ],
   "turns": [
    {
-    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.601,
-    "drift": 56.8,
-    "cover": 0.971
-   },
-   {
-    "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.755,
-    "drift": 61.4,
-    "cover": 0.99
+    "raw": "up_car_rental_veh_g0_1790549948901_muse-image.png",
+    "overlap": 0.631,
+    "drift": 23.8,
+    "cover": 0.972,
+    "pass": 0.905
    },
    {
     "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
-    "overlap": 0.892,
-    "drift": 44.4,
-    "cover": 0.952
+    "overlap": 0.679,
+    "drift": 29.8,
+    "cover": 0.974,
+    "pass": 0.875
+   },
+   {
+    "raw": "up_car_rental_veh_g0_1790547958200_muse-image.png",
+    "overlap": 0.899,
+    "drift": 15.3,
+    "cover": 0.943,
+    "pass": 0.941
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.85,
-    "drift": 54,
-    "cover": 0.954
+    "overlap": 0.883,
+    "drift": 16.6,
+    "cover": 0.939,
+    "pass": 0.911
    }
   ]
  },
@@ -522,27 +571,31 @@
   "turns": [
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.809,
-    "drift": 28.4,
-    "cover": 0.986
+    "overlap": 0.816,
+    "drift": 10.9,
+    "cover": 0.983,
+    "pass": 0.983
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.818,
-    "drift": 32.3,
-    "cover": 0.941
+    "overlap": 0.82,
+    "drift": 14.5,
+    "cover": 0.956,
+    "pass": 0.956
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.76,
-    "drift": 31.2,
-    "cover": 0.961
+    "overlap": 0.831,
+    "drift": 15,
+    "cover": 0.973,
+    "pass": 0.961
    },
    {
     "raw": "up_car_rental_veh_g0_1790549974474_muse-image.png",
-    "overlap": 0.69,
-    "drift": 31.2,
-    "cover": 0.976
+    "overlap": 0.717,
+    "drift": 10.2,
+    "cover": 0.992,
+    "pass": 0.992
    }
   ]
  },
@@ -567,28 +620,32 @@
   ],
   "turns": [
    {
-    "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
-    "overlap": 0.789,
-    "drift": 23.7,
-    "cover": 0.88
+    "raw": "up_limo_veh_g0_1790577337327_muse-image.png",
+    "overlap": 0.816,
+    "drift": 16.4,
+    "cover": 0.956,
+    "pass": 0.956
    },
    {
     "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
-    "overlap": 0.745,
-    "drift": 25.8,
-    "cover": 0.92
+    "overlap": 0.795,
+    "drift": 13.6,
+    "cover": 0.949,
+    "pass": 0.949
    },
    {
     "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
-    "overlap": 0.77,
-    "drift": 24.9,
-    "cover": 0.928
+    "overlap": 0.793,
+    "drift": 14.4,
+    "cover": 0.931,
+    "pass": 0.931
    },
    {
     "raw": "up_limo_veh_g0_1790548006306_muse-image.png",
-    "overlap": 0.768,
-    "drift": 24.7,
-    "cover": 0.947
+    "overlap": 0.821,
+    "drift": 13.6,
+    "cover": 0.933,
+    "pass": 0.933
    }
   ]
  },
@@ -613,28 +670,32 @@
   ],
   "turns": [
    {
-    "raw": "up_parking_lot_veh_g0_1790550029253_muse-image.png",
-    "overlap": 0.709,
-    "drift": 48.2,
-    "cover": 0.986
-   },
-   {
-    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.791,
-    "drift": 49.4,
-    "cover": 0.974
-   },
-   {
-    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.753,
-    "drift": 45.7,
-    "cover": 0.979
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.844,
+    "drift": 17.7,
+    "cover": 0.972,
+    "pass": 0.964
    },
    {
     "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.805,
-    "drift": 44.3,
-    "cover": 0.913
+    "overlap": 0.806,
+    "drift": 25.3,
+    "cover": 0.961,
+    "pass": 0.937
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.815,
+    "drift": 22.9,
+    "cover": 0.99,
+    "pass": 0.96
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
+    "overlap": 0.633,
+    "drift": 19,
+    "cover": 0.994,
+    "pass": 0.985
    }
   ]
  },
@@ -659,28 +720,32 @@
   ],
   "turns": [
    {
-    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.713,
-    "drift": 58.1,
-    "cover": 0.982
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.809,
+    "drift": 24.4,
+    "cover": 0.978,
+    "pass": 0.9
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.778,
+    "drift": 22.8,
+    "cover": 0.962,
+    "pass": 0.926
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
+    "overlap": 0.739,
+    "drift": 22.9,
+    "cover": 0.986,
+    "pass": 0.956
    },
    {
     "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.704,
-    "drift": 49.9,
-    "cover": 0.987
-   },
-   {
-    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.718,
-    "drift": 49.7,
-    "cover": 0.995
-   },
-   {
-    "raw": "up_parking_lot_veh_g0_1790550029253_muse-image.png",
-    "overlap": 0.746,
-    "drift": 55.4,
-    "cover": 0.874
+    "overlap": 0.763,
+    "drift": 15.8,
+    "cover": 0.992,
+    "pass": 0.978
    }
   ]
  },
@@ -705,27 +770,32 @@
   ],
   "turns": [
    {
-    "raw": null,
-    "overlap": 0.561,
-    "kept": "code"
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.764,
+    "drift": 42,
+    "cover": 0.975,
+    "pass": 0.734
    },
    {
     "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
-    "overlap": 0.622,
-    "drift": 66.6,
-    "cover": 0.992
+    "overlap": 0.654,
+    "drift": 31.3,
+    "cover": 0.995,
+    "pass": 0.871
    },
    {
     "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.713,
-    "drift": 69.6,
-    "cover": 0.965
+    "overlap": 0.775,
+    "drift": 24.6,
+    "cover": 0.959,
+    "pass": 0.932
    },
    {
-    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.761,
-    "drift": 70.3,
-    "cover": 0.935
+    "raw": "up_parking_lot_veh_g0_1790550007383_muse-image.png",
+    "overlap": 0.769,
+    "drift": 24.6,
+    "cover": 0.99,
+    "pass": 0.931
    }
   ]
  },
@@ -751,27 +821,31 @@
   "turns": [
    {
     "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.747,
-    "drift": 65.1,
-    "cover": 0.958
+    "overlap": 0.8,
+    "drift": 33.5,
+    "cover": 0.971,
+    "pass": 0.801
    },
    {
-    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.752,
-    "drift": 61.3,
-    "cover": 0.932
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.793,
+    "drift": 23.9,
+    "cover": 0.978,
+    "pass": 0.94
    },
    {
-    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.634,
-    "drift": 53.8,
-    "cover": 0.922
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.758,
+    "drift": 19.1,
+    "cover": 0.993,
+    "pass": 0.983
    },
    {
-    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.677,
-    "drift": 53.6,
-    "cover": 0.963
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.884,
+    "drift": 19.5,
+    "cover": 0.951,
+    "pass": 0.922
    }
   ]
  },
@@ -797,26 +871,31 @@
   "turns": [
    {
     "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.818,
-    "drift": 51.5,
-    "cover": 0.96
+    "overlap": 0.833,
+    "drift": 22.1,
+    "cover": 0.939,
+    "pass": 0.881
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.717,
+    "drift": 23.9,
+    "cover": 0.974,
+    "pass": 0.937
+   },
+   {
+    "raw": "up_parking_lot_veh_g0_1790577400651_muse-image.png",
+    "overlap": 0.824,
+    "drift": 18.1,
+    "cover": 0.971,
+    "pass": 0.957
    },
    {
     "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.757,
-    "drift": 51.3,
-    "cover": 0.921
-   },
-   {
-    "raw": null,
-    "overlap": 0,
-    "kept": "code"
-   },
-   {
-    "raw": "up_parking_lot_veh_g0_1790548047241_muse-image.png",
-    "overlap": 0.652,
-    "drift": 47.1,
-    "cover": 0.946
+    "overlap": 0.695,
+    "drift": 23.8,
+    "cover": 0.976,
+    "pass": 0.905
    }
   ]
  },
@@ -842,27 +921,31 @@
   "turns": [
    {
     "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
-    "overlap": 0.735,
-    "drift": 65.2,
-    "cover": 0.913
+    "overlap": 0.862,
+    "drift": 39.1,
+    "cover": 0.954,
+    "pass": 0.738
    },
    {
     "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
-    "overlap": 0.652,
-    "drift": 58.8,
-    "cover": 0.909
+    "overlap": 0.843,
+    "drift": 21.3,
+    "cover": 0.975,
+    "pass": 0.929
    },
    {
     "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
-    "overlap": 0.728,
-    "drift": 54.5,
-    "cover": 0.893
+    "overlap": 0.928,
+    "drift": 14.9,
+    "cover": 0.957,
+    "pass": 0.955
    },
    {
     "raw": "up_train_station_veh_g0_1790548154464_muse-image.png",
-    "overlap": 0.709,
-    "drift": 64.8,
-    "cover": 0.842
+    "overlap": 0.835,
+    "drift": 32.3,
+    "cover": 0.921,
+    "pass": 0.752
    }
   ]
  },
@@ -887,28 +970,32 @@
   ],
   "turns": [
    {
-    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
-    "overlap": 0.862,
-    "drift": 69.3,
-    "cover": 0.975
+    "raw": "up_express_train_veh_g0_1790577493755_muse-image.png",
+    "overlap": 0.82,
+    "drift": 41.1,
+    "cover": 0.889,
+    "pass": 0.686
+   },
+   {
+    "raw": "up_express_train_veh_g0_1790577493755_muse-image.png",
+    "overlap": 0.93,
+    "drift": 18.4,
+    "cover": 0.961,
+    "pass": 0.959
    },
    {
     "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
-    "overlap": 0.917,
-    "drift": 41,
-    "cover": 0.939
+    "overlap": 0.919,
+    "drift": 22.5,
+    "cover": 0.962,
+    "pass": 0.952
    },
    {
     "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
-    "overlap": 0.917,
-    "drift": 40,
-    "cover": 0.929
-   },
-   {
-    "raw": "up_express_train_veh_g0_1790548202201_muse-image.png",
-    "overlap": 0.765,
-    "drift": 63.9,
-    "cover": 0.791
+    "overlap": 0.787,
+    "drift": 22.9,
+    "cover": 0.812,
+    "pass": 0.788
    }
   ]
  },
@@ -933,28 +1020,32 @@
   ],
   "turns": [
    {
-    "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
-    "overlap": 0.862,
-    "drift": 48.5,
-    "cover": 0.919
+    "raw": "up_tram_stop_veh_g0_1790577534250_muse-image.png",
+    "overlap": 0.917,
+    "drift": 19.1,
+    "cover": 0.939,
+    "pass": 0.924
    },
    {
     "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
-    "overlap": 0.921,
-    "drift": 32.5,
-    "cover": 0.977
+    "overlap": 0.94,
+    "drift": 10.1,
+    "cover": 0.985,
+    "pass": 0.981
    },
    {
     "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
-    "overlap": 0.913,
-    "drift": 30.5,
-    "cover": 0.957
+    "overlap": 0.948,
+    "drift": 10,
+    "cover": 0.973,
+    "pass": 0.973
    },
    {
     "raw": "up_tram_stop_veh_g0_1790548253521_muse-image.png",
-    "overlap": 0.847,
-    "drift": 34.3,
-    "cover": 0.9
+    "overlap": 0.886,
+    "drift": 15.7,
+    "cover": 0.917,
+    "pass": 0.916
    }
   ]
  },
@@ -980,22 +1071,22 @@
   "turns": [
    {
     "raw": null,
-    "overlap": 0.417,
+    "overlap": 0.454,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.388,
+    "overlap": 0.262,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.33,
+    "overlap": 0.483,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.399,
+    "overlap": 0.363,
     "kept": "code"
    }
   ]
@@ -1022,27 +1113,31 @@
   "turns": [
    {
     "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
-    "overlap": 0.799,
-    "drift": 68.9,
-    "cover": 0.919
+    "overlap": 0.947,
+    "drift": 46.7,
+    "cover": 0.978,
+    "pass": 0.634
+   },
+   {
+    "raw": "up_monorail_veh_g0_1790577580085_muse-image.png",
+    "overlap": 0.881,
+    "drift": 30.9,
+    "cover": 0.945,
+    "pass": 0.786
+   },
+   {
+    "raw": "up_monorail_veh_g0_1790577580085_muse-image.png",
+    "overlap": 0.912,
+    "drift": 33.9,
+    "cover": 0.975,
+    "pass": 0.755
    },
    {
     "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
-    "overlap": 0.683,
-    "drift": 67,
-    "cover": 0.91
-   },
-   {
-    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
-    "overlap": 0.698,
-    "drift": 66.5,
-    "cover": 0.898
-   },
-   {
-    "raw": "up_monorail_veh_g0_1790548323310_muse-image.png",
-    "overlap": 0.798,
-    "drift": 66.9,
-    "cover": 0.904
+    "overlap": 0.926,
+    "drift": 43.6,
+    "cover": 0.962,
+    "pass": 0.655
    }
   ]
  },
@@ -1370,22 +1465,22 @@
   "turns": [
    {
     "raw": null,
-    "overlap": 0.426,
+    "overlap": 0.42,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.405,
+    "overlap": 0.411,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.435,
+    "overlap": 0.433,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.406,
+    "overlap": 0.414,
     "kept": "code"
    }
   ]
@@ -1412,22 +1507,22 @@
   "turns": [
    {
     "raw": null,
-    "overlap": 0.454,
+    "overlap": 0.54,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.309,
+    "overlap": 0.384,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.402,
+    "overlap": 0.395,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.482,
+    "overlap": 0.435,
     "kept": "code"
    }
   ]
@@ -1454,18 +1549,19 @@
   "turns": [
    {
     "raw": "up_alpine_lift_veh_g0_1790548525924_muse-image.png",
-    "overlap": 0.696,
-    "drift": 60.7,
-    "cover": 0.982
+    "overlap": 0.717,
+    "drift": 44.2,
+    "cover": 0.988,
+    "pass": 0.716
    },
    {
     "raw": null,
-    "overlap": 0.383,
+    "overlap": 0.396,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.424,
+    "overlap": 0.421,
     "kept": "code"
    },
    {
@@ -1715,27 +1811,31 @@
   "turns": [
    {
     "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
-    "overlap": 0.881,
-    "drift": 63.2,
-    "cover": 0.966
+    "overlap": 0.941,
+    "drift": 25.6,
+    "cover": 0.949,
+    "pass": 0.815
    },
    {
     "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
-    "overlap": 0.906,
-    "drift": 46.5,
-    "cover": 0.942
+    "overlap": 0.907,
+    "drift": 18.8,
+    "cover": 0.937,
+    "pass": 0.891
    },
    {
     "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
-    "overlap": 0.927,
-    "drift": 35.3,
-    "cover": 0.979
+    "overlap": 0.952,
+    "drift": 13.8,
+    "cover": 0.976,
+    "pass": 0.973
    },
    {
     "raw": "up_ferry_veh_g0_1790548693629_muse-image.png",
-    "overlap": 0.897,
-    "drift": 42.8,
-    "cover": 0.975
+    "overlap": 0.961,
+    "drift": 12,
+    "cover": 0.965,
+    "pass": 0.964
    }
   ]
  },
@@ -1760,28 +1860,32 @@
   ],
   "turns": [
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.865,
-    "drift": 71.5,
-    "cover": 0.956
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.925,
+    "drift": 34.1,
+    "cover": 0.957,
+    "pass": 0.826
    },
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.778,
-    "drift": 77,
-    "cover": 0.934
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.894,
+    "drift": 38.7,
+    "cover": 0.926,
+    "pass": 0.777
    },
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.85,
-    "drift": 67.3,
-    "cover": 0.941
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.902,
+    "drift": 34.5,
+    "cover": 0.976,
+    "pass": 0.797
    },
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.778,
-    "drift": 73.8,
-    "cover": 0.969
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.848,
+    "drift": 37.9,
+    "cover": 0.976,
+    "pass": 0.756
    }
   ]
  },
@@ -1806,28 +1910,32 @@
   ],
   "turns": [
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.827,
-    "drift": 68,
-    "cover": 0.987
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.823,
+    "drift": 48,
+    "cover": 0.999,
+    "pass": 0.684
    },
    {
     "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.813,
-    "drift": 66.9,
-    "cover": 0.916
+    "overlap": 0.816,
+    "drift": 53.7,
+    "cover": 0.919,
+    "pass": 0.532
    },
    {
     "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
     "overlap": 0.776,
     "drift": 72.4,
-    "cover": 0.929
+    "cover": 0.929,
+    "pass": 0.473
    },
    {
-    "raw": "up_water_taxi_veh_g0_1790548732121_muse-image.png",
-    "overlap": 0.688,
-    "drift": 68.6,
-    "cover": 0.944
+    "raw": "up_water_taxi_veh_g0_1790577816761_muse-image.png",
+    "overlap": 0.85,
+    "drift": 47.8,
+    "cover": 0.949,
+    "pass": 0.629
    }
   ]
  },
@@ -1852,28 +1960,32 @@
   ],
   "turns": [
    {
-    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
-    "overlap": 0.911,
-    "drift": 59.8,
-    "cover": 0.966
+    "raw": "up_water_bus_veh_g0_1790577856704_muse-image.png",
+    "overlap": 0.878,
+    "drift": 26.9,
+    "cover": 0.934,
+    "pass": 0.851
    },
    {
-    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
-    "overlap": 0.875,
-    "drift": 58.1,
-    "cover": 0.947
+    "raw": "up_water_bus_veh_g0_1790577856704_muse-image.png",
+    "overlap": 0.946,
+    "drift": 16.6,
+    "cover": 0.968,
+    "pass": 0.962
    },
    {
-    "raw": "up_water_bus_veh_g0_1790550604718_muse-image.png",
-    "overlap": 0.892,
-    "drift": 53.2,
-    "cover": 0.948
+    "raw": "up_water_bus_veh_g0_1790577856704_muse-image.png",
+    "overlap": 0.97,
+    "drift": 15.2,
+    "cover": 0.975,
+    "pass": 0.97
    },
    {
-    "raw": "up_water_bus_veh_g0_1790548778609_muse-image.png",
-    "overlap": 0.847,
-    "drift": 58.2,
-    "cover": 0.925
+    "raw": "up_water_bus_veh_g0_1790577856704_muse-image.png",
+    "overlap": 0.869,
+    "drift": 22.2,
+    "cover": 0.897,
+    "pass": 0.864
    }
   ]
  },
@@ -1899,26 +2011,29 @@
   "turns": [
    {
     "raw": null,
-    "overlap": 0.449,
+    "overlap": 0.246,
     "kept": "code"
    },
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
     "overlap": 0.614,
     "drift": 87.2,
-    "cover": 0.884
+    "cover": 0.884,
+    "pass": 0.307
    },
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
-    "overlap": 0.615,
-    "drift": 87.3,
-    "cover": 0.878
+    "overlap": 0.674,
+    "drift": 63,
+    "cover": 0.889,
+    "pass": 0.425
    },
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
-    "overlap": 0.633,
-    "drift": 84.3,
-    "cover": 0.98
+    "overlap": 0.671,
+    "drift": 58.6,
+    "cover": 0.976,
+    "pass": 0.544
    }
   ]
  },
@@ -1944,24 +2059,25 @@
   "turns": [
    {
     "raw": null,
-    "overlap": 0.571,
+    "overlap": 0.599,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.405,
+    "overlap": 0.392,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.5,
+    "overlap": 0.362,
     "kept": "code"
    },
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
     "overlap": 0.633,
     "drift": 79,
-    "cover": 0.921
+    "cover": 0.921,
+    "pass": 0.382
    }
   ]
  },
@@ -1987,23 +2103,24 @@
   "turns": [
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
-    "overlap": 0.671,
-    "drift": 71.1,
-    "cover": 0.882
+    "overlap": 0.773,
+    "drift": 52.5,
+    "cover": 0.93,
+    "pass": 0.587
    },
    {
     "raw": null,
-    "overlap": 0.588,
+    "overlap": 0.583,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.494,
+    "overlap": 0.36,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0,
+    "overlap": 0.497,
     "kept": "code"
    }
   ]
@@ -2030,9 +2147,10 @@
   "turns": [
    {
     "raw": "up_pontoon_veh_g0_1790550704213_muse-image.png",
-    "overlap": 0.667,
-    "drift": 85.3,
-    "cover": 0.954
+    "overlap": 0.68,
+    "drift": 58,
+    "cover": 0.946,
+    "pass": 0.476
    },
    {
     "raw": null,
@@ -2041,12 +2159,12 @@
    },
    {
     "raw": null,
-    "overlap": 0.571,
+    "overlap": 0.561,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.592,
+    "overlap": 0.59,
     "kept": "code"
    }
   ]
@@ -2072,28 +2190,32 @@
   ],
   "turns": [
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.779,
-    "drift": 45.8,
-    "cover": 0.808
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.827,
+    "drift": 33.8,
+    "cover": 0.89,
+    "pass": 0.828
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.781,
-    "drift": 63.3,
-    "cover": 0.923
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.798,
+    "drift": 35.1,
+    "cover": 0.948,
+    "pass": 0.834
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.744,
-    "drift": 38.6,
-    "cover": 0.805
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.865,
+    "drift": 31.7,
+    "cover": 0.937,
+    "pass": 0.876
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.782,
-    "drift": 57.3,
-    "cover": 0.879
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.862,
+    "drift": 35.3,
+    "cover": 0.958,
+    "pass": 0.841
    }
   ]
  },
@@ -2118,26 +2240,32 @@
   ],
   "turns": [
    {
+    "raw": "up_marina_veh_g0_1790548883038_muse-image.png",
+    "overlap": 0.694,
+    "drift": 39,
+    "cover": 0.985,
+    "pass": 0.757
+   },
+   {
     "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
-    "overlap": 0.712,
-    "drift": 65.5,
-    "cover": 0.876
+    "overlap": 0.622,
+    "drift": 29.8,
+    "cover": 0.919,
+    "pass": 0.834
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.636,
-    "drift": 62.9,
-    "cover": 0.82
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.829,
+    "drift": 18.1,
+    "cover": 0.908,
+    "pass": 0.9
    },
    {
-    "raw": null,
-    "overlap": 0.571,
-    "kept": "code"
-   },
-   {
-    "raw": null,
-    "overlap": 0.57,
-    "kept": "code"
+    "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
+    "overlap": 0.629,
+    "drift": 29.8,
+    "cover": 0.864,
+    "pass": 0.777
    }
   ]
  },
@@ -2162,28 +2290,32 @@
   ],
   "turns": [
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.777,
-    "drift": 74.9,
-    "cover": 0.861
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.767,
+    "drift": 40.4,
+    "cover": 0.859,
+    "pass": 0.664
    },
    {
     "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
-    "overlap": 0.673,
-    "drift": 76.6,
-    "cover": 0.929
+    "overlap": 0.724,
+    "drift": 44.2,
+    "cover": 0.91,
+    "pass": 0.628
    },
    {
     "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.672,
-    "drift": 79.7,
-    "cover": 0.903
+    "overlap": 0.793,
+    "drift": 44.6,
+    "cover": 0.904,
+    "pass": 0.627
    },
    {
     "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.714,
-    "drift": 82.9,
-    "cover": 0.8
+    "overlap": 0.762,
+    "drift": 51.7,
+    "cover": 0.801,
+    "pass": 0.49
    }
   ]
  },
@@ -2208,28 +2340,32 @@
   ],
   "turns": [
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.753,
-    "drift": 74.8,
-    "cover": 0.912
+    "raw": "up_marina_veh_g0_1790548883038_muse-image.png",
+    "overlap": 0.795,
+    "drift": 33.2,
+    "cover": 0.89,
+    "pass": 0.801
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.722,
-    "drift": 67.6,
-    "cover": 0.916
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.754,
+    "drift": 39.2,
+    "cover": 0.947,
+    "pass": 0.764
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.712,
-    "drift": 70.7,
-    "cover": 0.896
+    "raw": "up_marina_veh_g0_1790550782120_muse-image.png",
+    "overlap": 0.67,
+    "drift": 20,
+    "cover": 0.941,
+    "pass": 0.923
    },
    {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.724,
-    "drift": 79.1,
-    "cover": 0.826
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.739,
+    "drift": 42.3,
+    "cover": 0.91,
+    "pass": 0.754
    }
   ]
  },
@@ -2255,26 +2391,31 @@
   "turns": [
    {
     "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.755,
-    "drift": 77.6,
-    "cover": 0.928
+    "overlap": 0.752,
+    "drift": 68.3,
+    "cover": 0.925,
+    "pass": 0.488
    },
    {
-    "raw": null,
-    "overlap": 0.512,
-    "kept": "code"
-   },
-   {
-    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.634,
-    "drift": 86.3,
-    "cover": 0.874
+    "raw": "up_marina_veh_g0_1790577961745_muse-image.png",
+    "overlap": 0.768,
+    "drift": 68.3,
+    "cover": 0.962,
+    "pass": 0.478
    },
    {
     "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
-    "overlap": 0.625,
-    "drift": 81.8,
-    "cover": 0.786
+    "overlap": 0.715,
+    "drift": 75.4,
+    "cover": 0.902,
+    "pass": 0.415
+   },
+   {
+    "raw": "up_marina_veh_g0_1790550806912_muse-image.png",
+    "overlap": 0.74,
+    "drift": 70.6,
+    "cover": 0.857,
+    "pass": 0.415
    }
   ]
  },
@@ -2300,9 +2441,10 @@
   "turns": [
    {
     "raw": "up_marina_veh_g0_1790548883038_muse-image.png",
-    "overlap": 0.686,
-    "drift": 86.8,
-    "cover": 0.838
+    "overlap": 0.723,
+    "drift": 55.5,
+    "cover": 0.815,
+    "pass": 0.508
    },
    {
     "raw": null,
@@ -2311,12 +2453,12 @@
    },
    {
     "raw": null,
-    "overlap": 0.515,
+    "overlap": 0.522,
     "kept": "code"
    },
    {
     "raw": null,
-    "overlap": 0.506,
+    "overlap": 0.544,
     "kept": "code"
    }
   ]
@@ -2344,26 +2486,30 @@
    {
     "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
     "overlap": 0.865,
-    "drift": 63.3,
-    "cover": 0.931
+    "drift": 33.1,
+    "cover": 0.932,
+    "pass": 0.801
    },
    {
     "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
-    "overlap": 0.94,
-    "drift": 48,
-    "cover": 0.972
+    "overlap": 0.941,
+    "drift": 18.3,
+    "cover": 0.975,
+    "pass": 0.938
    },
    {
     "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
-    "overlap": 0.918,
-    "drift": 50.1,
-    "cover": 0.95
+    "overlap": 0.921,
+    "drift": 25.5,
+    "cover": 0.95,
+    "pass": 0.914
    },
    {
-    "raw": "up_cruise_dock_veh_g0_1790548938516_muse-image.png",
-    "overlap": 0.87,
-    "drift": 74.6,
-    "cover": 0.962
+    "raw": "up_cruise_dock_veh_g0_1790578012326_muse-image.png",
+    "overlap": 0.872,
+    "drift": 37.3,
+    "cover": 0.906,
+    "pass": 0.71
    }
   ]
  },
@@ -2388,26 +2534,32 @@
   ],
   "turns": [
    {
-    "raw": null,
-    "overlap": 0.576,
-    "kept": "code"
+    "raw": "up_helipad_veh_g0_1790578060777_muse-image.png",
+    "overlap": 0.611,
+    "drift": 21.8,
+    "cover": 0.671,
+    "pass": 0.649
    },
    {
-    "raw": "up_helipad_veh_g0_1790548987179_muse-image.png",
-    "overlap": 0.663,
-    "drift": 54.2,
-    "cover": 0.814
+    "raw": "up_helipad_veh_g0_1790550851480_muse-image.png",
+    "overlap": 0.66,
+    "drift": 32,
+    "cover": 0.859,
+    "pass": 0.748
    },
    {
-    "raw": "up_helipad_veh_g0_1790548987179_muse-image.png",
-    "overlap": 0.637,
-    "drift": 56.3,
-    "cover": 0.844
+    "raw": "up_helipad_veh_g0_1790550851480_muse-image.png",
+    "overlap": 0.711,
+    "drift": 24.4,
+    "cover": 0.85,
+    "pass": 0.835
    },
    {
-    "raw": null,
-    "overlap": 0.546,
-    "kept": "code"
+    "raw": "up_helipad_veh_g0_1790578060777_muse-image.png",
+    "overlap": 0.612,
+    "drift": 29.8,
+    "cover": 0.736,
+    "pass": 0.687
    }
   ]
  },
@@ -2433,27 +2585,31 @@
   "turns": [
    {
     "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
-    "overlap": 0.646,
-    "drift": 51.7,
-    "cover": 0.758
+    "overlap": 0.657,
+    "drift": 34.6,
+    "cover": 0.757,
+    "pass": 0.693
    },
    {
     "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
-    "overlap": 0.655,
-    "drift": 68.4,
-    "cover": 0.813
+    "overlap": 0.747,
+    "drift": 52.1,
+    "cover": 0.856,
+    "pass": 0.553
    },
    {
     "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
-    "overlap": 0.911,
-    "drift": 53.2,
-    "cover": 0.956
+    "overlap": 0.91,
+    "drift": 33.5,
+    "cover": 0.957,
+    "pass": 0.853
    },
    {
     "raw": "up_balloon_veh_g0_1790549049798_muse-image.png",
-    "overlap": 0.646,
-    "drift": 68.6,
-    "cover": 0.787
+    "overlap": 0.752,
+    "drift": 55.1,
+    "cover": 0.873,
+    "pass": 0.557
    }
   ]
  },
@@ -2478,27 +2634,32 @@
   ],
   "turns": [
    {
-    "raw": null,
-    "overlap": 0.594,
-    "kept": "code"
+    "raw": "up_jetway_veh_g0_1790549091693_muse-image.png",
+    "overlap": 0.601,
+    "drift": 26.6,
+    "cover": 0.709,
+    "pass": 0.632
    },
    {
-    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
-    "overlap": 0.696,
-    "drift": 82.3,
-    "cover": 0.781
+    "raw": "up_jetway_veh_g0_1790549091693_muse-image.png",
+    "overlap": 0.691,
+    "drift": 41.8,
+    "cover": 0.742,
+    "pass": 0.574
    },
    {
-    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
-    "overlap": 0.805,
-    "drift": 66.3,
-    "cover": 0.892
+    "raw": "up_jetway_veh_g0_1790578126823_muse-image.png",
+    "overlap": 0.789,
+    "drift": 27.2,
+    "cover": 0.866,
+    "pass": 0.796
    },
    {
-    "raw": "up_jetway_veh_g0_1790550972278_muse-image.png",
-    "overlap": 0.711,
-    "drift": 69.2,
-    "cover": 0.806
+    "raw": "up_jetway_veh_g0_1790578126823_muse-image.png",
+    "overlap": 0.699,
+    "drift": 35.3,
+    "cover": 0.816,
+    "pass": 0.674
    }
   ]
  },
@@ -2523,28 +2684,32 @@
   ],
   "turns": [
    {
-    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
-    "overlap": 0.634,
-    "drift": 69.2,
-    "cover": 0.739
+    "raw": "up_jumbo_jetway_veh_g0_1790578164951_muse-image.png",
+    "overlap": 0.649,
+    "drift": 33.9,
+    "cover": 0.742,
+    "pass": 0.614
+   },
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790578164951_muse-image.png",
+    "overlap": 0.724,
+    "drift": 50.7,
+    "cover": 0.844,
+    "pass": 0.591
+   },
+   {
+    "raw": "up_jumbo_jetway_veh_g0_1790578164951_muse-image.png",
+    "overlap": 0.807,
+    "drift": 18.7,
+    "cover": 0.857,
+    "pass": 0.835
    },
    {
     "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
-    "overlap": 0.734,
-    "drift": 76.7,
-    "cover": 0.828
-   },
-   {
-    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
-    "overlap": 0.809,
-    "drift": 63.8,
-    "cover": 0.922
-   },
-   {
-    "raw": "up_jumbo_jetway_veh_g0_1790549131985_muse-image.png",
-    "overlap": 0.747,
-    "drift": 54.3,
-    "cover": 0.801
+    "overlap": 0.754,
+    "drift": 17.7,
+    "cover": 0.789,
+    "pass": 0.77
    }
   ]
  },
@@ -2570,27 +2735,31 @@
   "turns": [
    {
     "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
-    "overlap": 0.626,
-    "drift": 89.7,
-    "cover": 0.824
+    "overlap": 0.624,
+    "drift": 46.5,
+    "cover": 0.83,
+    "pass": 0.53
+   },
+   {
+    "raw": "up_prop_stand_veh_g0_1790578201943_muse-image.png",
+    "overlap": 0.735,
+    "drift": 29.8,
+    "cover": 0.852,
+    "pass": 0.785
    },
    {
     "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
-    "overlap": 0.719,
-    "drift": 84.2,
-    "cover": 0.842
+    "overlap": 0.824,
+    "drift": 33.5,
+    "cover": 0.915,
+    "pass": 0.785
    },
    {
     "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
-    "overlap": 0.809,
-    "drift": 78.8,
-    "cover": 0.912
-   },
-   {
-    "raw": "up_prop_stand_veh_g0_1790549201157_muse-image.png",
-    "overlap": 0.731,
-    "drift": 75.5,
-    "cover": 0.811
+    "overlap": 0.726,
+    "drift": 26.9,
+    "cover": 0.813,
+    "pass": 0.766
    }
   ]
  },
@@ -2615,28 +2784,32 @@
   ],
   "turns": [
    {
+    "raw": "up_hardstand_veh_g0_1790549249500_muse-image.png",
+    "overlap": 0.656,
+    "drift": 37.2,
+    "cover": 0.727,
+    "pass": 0.568
+   },
+   {
     "raw": "up_hardstand_veh_g0_1790551005234_muse-image.png",
-    "overlap": 0.623,
-    "drift": 89.9,
-    "cover": 0.722
+    "overlap": 0.718,
+    "drift": 28.4,
+    "cover": 0.813,
+    "pass": 0.696
    },
    {
     "raw": "up_hardstand_veh_g0_1790549249500_muse-image.png",
-    "overlap": 0.703,
-    "drift": 68,
-    "cover": 0.778
+    "overlap": 0.821,
+    "drift": 34.5,
+    "cover": 0.885,
+    "pass": 0.761
    },
    {
     "raw": "up_hardstand_veh_g0_1790549249500_muse-image.png",
-    "overlap": 0.803,
-    "drift": 67.8,
-    "cover": 0.89
-   },
-   {
-    "raw": "up_hardstand_veh_g0_1790549249500_muse-image.png",
-    "overlap": 0.705,
-    "drift": 62.8,
-    "cover": 0.789
+    "overlap": 0.735,
+    "drift": 39.9,
+    "cover": 0.835,
+    "pass": 0.657
    }
   ]
  },
@@ -2662,27 +2835,31 @@
   "turns": [
    {
     "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
-    "overlap": 0.65,
-    "drift": 54.2,
-    "cover": 0.686
+    "overlap": 0.664,
+    "drift": 24.4,
+    "cover": 0.691,
+    "pass": 0.655
    },
    {
     "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
-    "overlap": 0.751,
-    "drift": 58.4,
-    "cover": 0.815
+    "overlap": 0.756,
+    "drift": 28.4,
+    "cover": 0.819,
+    "pass": 0.716
    },
    {
-    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
-    "overlap": 0.799,
-    "drift": 60.2,
-    "cover": 0.902
+    "raw": "up_private_terminal_veh_g0_1790578302879_muse-image.png",
+    "overlap": 0.819,
+    "drift": 23.5,
+    "cover": 0.861,
+    "pass": 0.829
    },
    {
-    "raw": "up_private_terminal_veh_g0_1790549290890_muse-image.png",
-    "overlap": 0.683,
-    "drift": 76.1,
-    "cover": 0.771
+    "raw": "up_private_terminal_veh_g0_1790578302879_muse-image.png",
+    "overlap": 0.753,
+    "drift": 48.4,
+    "cover": 0.807,
+    "pass": 0.581
    }
   ]
  },
@@ -2708,27 +2885,31 @@
   "turns": [
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.81,
-    "drift": 57.1,
-    "cover": 0.974
+    "overlap": 0.905,
+    "drift": 33.7,
+    "cover": 0.988,
+    "pass": 0.793
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.657,
-    "drift": 67.6,
-    "cover": 0.747
+    "overlap": 0.909,
+    "drift": 19.4,
+    "cover": 0.899,
+    "pass": 0.86
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.819,
-    "drift": 49.3,
-    "cover": 0.986
+    "overlap": 0.906,
+    "drift": 18.8,
+    "cover": 0.994,
+    "pass": 0.969
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.776,
-    "drift": 49.6,
-    "cover": 0.955
+    "overlap": 0.836,
+    "drift": 24.4,
+    "cover": 0.978,
+    "pass": 0.877
    }
   ]
  },
@@ -2754,27 +2935,31 @@
   "turns": [
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.824,
-    "drift": 55.9,
-    "cover": 0.993
+    "overlap": 0.875,
+    "drift": 31.1,
+    "cover": 0.992,
+    "pass": 0.811
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.658,
-    "drift": 66.5,
-    "cover": 0.75
+    "overlap": 0.926,
+    "drift": 19.1,
+    "cover": 0.915,
+    "pass": 0.873
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.959,
-    "drift": 47.9,
-    "cover": 0.985
+    "overlap": 0.948,
+    "drift": 19,
+    "cover": 0.989,
+    "pass": 0.961
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.901,
-    "drift": 50.1,
-    "cover": 0.904
+    "overlap": 0.897,
+    "drift": 24,
+    "cover": 0.917,
+    "pass": 0.833
    }
   ]
  },
@@ -2800,27 +2985,31 @@
   "turns": [
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.967,
-    "drift": 56.9,
-    "cover": 0.962
+    "overlap": 0.978,
+    "drift": 32.7,
+    "cover": 0.966,
+    "pass": 0.794
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.643,
-    "drift": 66.3,
-    "cover": 0.773
+    "overlap": 0.928,
+    "drift": 22.4,
+    "cover": 0.948,
+    "pass": 0.879
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.947,
-    "drift": 47,
-    "cover": 0.986
+    "overlap": 0.937,
+    "drift": 18.5,
+    "cover": 0.988,
+    "pass": 0.963
    },
    {
     "raw": "up_loop_terminal_veh_g0_1790549377776_muse-image.png",
-    "overlap": 0.773,
-    "drift": 50,
-    "cover": 0.963
+    "overlap": 0.82,
+    "drift": 20.9,
+    "cover": 0.974,
+    "pass": 0.903
    }
   ]
  },
@@ -2845,28 +3034,32 @@
   ],
   "turns": [
    {
-    "raw": "up_under_parking_veh_g0_1790549471556_muse-image.png",
-    "overlap": 0.723,
-    "drift": 49.1,
-    "cover": 0.99
+    "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
+    "overlap": 0.911,
+    "drift": 16.4,
+    "cover": 0.978,
+    "pass": 0.975
    },
    {
     "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
-    "overlap": 0.832,
-    "drift": 43.1,
-    "cover": 0.966
+    "overlap": 0.915,
+    "drift": 12,
+    "cover": 0.986,
+    "pass": 0.986
    },
    {
     "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
-    "overlap": 0.805,
-    "drift": 40.3,
-    "cover": 0.993
+    "overlap": 0.86,
+    "drift": 23.5,
+    "cover": 0.983,
+    "pass": 0.981
    },
    {
     "raw": "up_under_parking_veh_g0_1790549471556_muse-image.png",
-    "overlap": 0.803,
-    "drift": 49.4,
-    "cover": 0.971
+    "overlap": 0.862,
+    "drift": 13.2,
+    "cover": 1,
+    "pass": 0.998
    }
   ]
  },
@@ -2892,27 +3085,31 @@
   "turns": [
    {
     "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
-    "overlap": 0.79,
-    "drift": 46.6,
-    "cover": 0.973
+    "overlap": 0.838,
+    "drift": 8.3,
+    "cover": 0.982,
+    "pass": 0.982
    },
    {
     "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
-    "overlap": 0.759,
-    "drift": 41.3,
-    "cover": 0.985
+    "overlap": 0.872,
+    "drift": 13.3,
+    "cover": 0.966,
+    "pass": 0.966
    },
    {
     "raw": "up_under_parking_veh_g0_1790549471556_muse-image.png",
-    "overlap": 0.753,
-    "drift": 45.8,
-    "cover": 0.95
+    "overlap": 0.819,
+    "drift": 13.1,
+    "cover": 0.971,
+    "pass": 0.971
    },
    {
     "raw": "up_under_parking_veh_g0_1790551102279_muse-image.png",
-    "overlap": 0.733,
-    "drift": 51.3,
-    "cover": 0.965
+    "overlap": 0.831,
+    "drift": 7.8,
+    "cover": 0.992,
+    "pass": 0.992
    }
   ]
  },
@@ -2937,28 +3134,32 @@
   ],
   "turns": [
    {
-    "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
-    "overlap": 0.616,
-    "drift": 32.1,
-    "cover": 0.977
+    "raw": "up_sub_dock_veh_g0_1790578569803_muse-image.png",
+    "overlap": 0.755,
+    "drift": 8.8,
+    "cover": 0.957,
+    "pass": 0.957
    },
    {
     "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
-    "overlap": 0.669,
-    "drift": 32.1,
-    "cover": 0.894
+    "overlap": 0.697,
+    "drift": 11.9,
+    "cover": 0.946,
+    "pass": 0.946
    },
    {
     "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
-    "overlap": 0.601,
-    "drift": 31.7,
-    "cover": 0.992
+    "overlap": 0.68,
+    "drift": 11.7,
+    "cover": 0.986,
+    "pass": 0.986
    },
    {
     "raw": "up_sub_dock_veh_g0_1790549519150_muse-image.png",
-    "overlap": 0.704,
-    "drift": 28.5,
-    "cover": 0.97
+    "overlap": 0.652,
+    "drift": 10.2,
+    "cover": 0.987,
+    "pass": 0.987
    }
   ]
  },
@@ -2983,28 +3184,32 @@
   ],
   "turns": [
    {
-    "raw": "up_bus_stop_g0_1790556062875_muse-image.png",
-    "overlap": 0.877,
-    "drift": 36.8,
-    "cover": 0.942
+    "raw": "up_bus_stop_g0_1790577081326_muse-image.png",
+    "overlap": 0.888,
+    "drift": 14.2,
+    "cover": 0.967,
+    "pass": 0.965
    },
    {
     "raw": "up_bus_stop_g0_1790556062875_muse-image.png",
-    "overlap": 0.859,
-    "drift": 47.6,
-    "cover": 0.932
+    "overlap": 0.915,
+    "drift": 19.6,
+    "cover": 0.963,
+    "pass": 0.955
    },
    {
     "raw": "up_bus_stop_g0_1790556062875_muse-image.png",
-    "overlap": 0.935,
-    "drift": 45.7,
-    "cover": 0.971
+    "overlap": 0.962,
+    "drift": 19.3,
+    "cover": 0.977,
+    "pass": 0.96
    },
    {
-    "raw": "up_bus_stop_g0_1790556062875_muse-image.png",
-    "overlap": 0.872,
-    "drift": 41.3,
-    "cover": 0.913
+    "raw": "up_bus_stop_g0_1790577081326_muse-image.png",
+    "overlap": 0.874,
+    "drift": 16.3,
+    "cover": 0.966,
+    "pass": 0.964
    }
   ]
  },
@@ -3029,28 +3234,32 @@
   ],
   "turns": [
    {
-    "raw": "up_bike_rental_g0_1790556078832_muse-image.png",
-    "overlap": 0.919,
-    "drift": 50.7,
-    "cover": 0.944
+    "raw": "up_bike_rental_g0_1790577126874_muse-image.png",
+    "overlap": 0.97,
+    "drift": 13.2,
+    "cover": 0.972,
+    "pass": 0.971
    },
    {
-    "raw": "up_bike_rental_g0_1790556078832_muse-image.png",
-    "overlap": 0.897,
-    "drift": 51.9,
-    "cover": 0.963
+    "raw": "up_bike_rental_g0_1790577126874_muse-image.png",
+    "overlap": 0.997,
+    "drift": 11.3,
+    "cover": 0.988,
+    "pass": 0.988
    },
    {
-    "raw": "up_bike_rental_g0_1790556078832_muse-image.png",
-    "overlap": 0.891,
-    "drift": 48,
-    "cover": 0.962
+    "raw": "up_bike_rental_g0_1790577126874_muse-image.png",
+    "overlap": 0.994,
+    "drift": 11.7,
+    "cover": 0.987,
+    "pass": 0.987
    },
    {
-    "raw": "up_bike_rental_g0_1790556078832_muse-image.png",
-    "overlap": 0.923,
-    "drift": 56.4,
-    "cover": 0.945
+    "raw": "up_bike_rental_g0_1790577126874_muse-image.png",
+    "overlap": 0.985,
+    "drift": 15.3,
+    "cover": 0.987,
+    "pass": 0.987
    }
   ]
  },
@@ -3075,28 +3284,32 @@
   ],
   "turns": [
    {
-    "raw": "up_taxi_stand_g0_1790556105066_muse-image.png",
-    "overlap": 0.96,
-    "drift": 39,
-    "cover": 0.98
+    "raw": "up_taxi_stand_g0_1790577157023_muse-image.png",
+    "overlap": 0.968,
+    "drift": 16,
+    "cover": 0.981,
+    "pass": 0.98
    },
    {
     "raw": "up_taxi_stand_g0_1790556105066_muse-image.png",
-    "overlap": 0.956,
-    "drift": 37.4,
-    "cover": 0.983
+    "overlap": 0.968,
+    "drift": 18.4,
+    "cover": 0.985,
+    "pass": 0.977
    },
    {
     "raw": "up_taxi_stand_g0_1790556105066_muse-image.png",
+    "overlap": 0.969,
+    "drift": 18.7,
+    "cover": 0.977,
+    "pass": 0.967
+   },
+   {
+    "raw": "up_taxi_stand_g0_1790577157023_muse-image.png",
     "overlap": 0.962,
-    "drift": 38.8,
-    "cover": 0.983
-   },
-   {
-    "raw": "up_taxi_stand_g0_1790556105066_muse-image.png",
-    "overlap": 0.932,
-    "drift": 41.1,
-    "cover": 0.964
+    "drift": 15.6,
+    "cover": 0.985,
+    "pass": 0.984
    }
   ]
  },
@@ -3121,28 +3334,32 @@
   ],
   "turns": [
    {
-    "raw": "up_rideshare_g0_1790556126724_muse-image.png",
-    "overlap": 0.923,
-    "drift": 28.8,
-    "cover": 0.965
+    "raw": "up_rideshare_g0_1790577208859_muse-image.png",
+    "overlap": 0.959,
+    "drift": 8.6,
+    "cover": 0.975,
+    "pass": 0.975
    },
    {
-    "raw": "up_rideshare_g0_1790556126724_muse-image.png",
-    "overlap": 0.905,
-    "drift": 30,
-    "cover": 0.968
+    "raw": "up_rideshare_g0_1790577208859_muse-image.png",
+    "overlap": 0.958,
+    "drift": 9.8,
+    "cover": 0.988,
+    "pass": 0.988
    },
    {
-    "raw": "up_rideshare_g0_1790556126724_muse-image.png",
-    "overlap": 0.919,
-    "drift": 30.1,
-    "cover": 0.964
+    "raw": "up_rideshare_g0_1790577208859_muse-image.png",
+    "overlap": 0.966,
+    "drift": 9.4,
+    "cover": 0.984,
+    "pass": 0.984
    },
    {
-    "raw": "up_rideshare_g0_1790556126724_muse-image.png",
-    "overlap": 0.907,
-    "drift": 29.6,
-    "cover": 0.976
+    "raw": "up_rideshare_g0_1790577208859_muse-image.png",
+    "overlap": 0.956,
+    "drift": 8.8,
+    "cover": 0.982,
+    "pass": 0.982
    }
   ]
  },
@@ -3167,28 +3384,32 @@
   ],
   "turns": [
    {
-    "raw": "up_car_rental_g0_1790556150339_muse-image.png",
-    "overlap": 0.908,
-    "drift": 32.6,
-    "cover": 0.943
+    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
+    "overlap": 0.992,
+    "drift": 12.7,
+    "cover": 0.987,
+    "pass": 0.982
    },
    {
-    "raw": "up_car_rental_g0_1790556150339_muse-image.png",
-    "overlap": 0.909,
-    "drift": 35.5,
-    "cover": 0.952
+    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
+    "overlap": 0.978,
+    "drift": 11,
+    "cover": 0.983,
+    "pass": 0.981
    },
    {
-    "raw": "up_car_rental_g0_1790556150339_muse-image.png",
-    "overlap": 0.904,
-    "drift": 32.9,
-    "cover": 0.937
+    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
+    "overlap": 0.978,
+    "drift": 11.2,
+    "cover": 0.982,
+    "pass": 0.979
    },
    {
-    "raw": "up_car_rental_g0_1790556150339_muse-image.png",
-    "overlap": 0.909,
-    "drift": 32.6,
-    "cover": 0.942
+    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
+    "overlap": 0.976,
+    "drift": 13.3,
+    "cover": 0.988,
+    "pass": 0.985
    }
   ]
  },
@@ -3214,27 +3435,31 @@
   "turns": [
    {
     "raw": "up_limo_g0_1790556165247_muse-image.png",
-    "overlap": 0.784,
-    "drift": 42.1,
-    "cover": 0.875
+    "overlap": 0.947,
+    "drift": 10,
+    "cover": 0.97,
+    "pass": 0.97
+   },
+   {
+    "raw": "up_limo_g0_1790577312689_muse-image.png",
+    "overlap": 0.932,
+    "drift": 13.1,
+    "cover": 0.978,
+    "pass": 0.975
    },
    {
     "raw": "up_limo_g0_1790556165247_muse-image.png",
-    "overlap": 0.778,
-    "drift": 40.4,
-    "cover": 0.903
+    "overlap": 0.933,
+    "drift": 15.8,
+    "cover": 0.983,
+    "pass": 0.98
    },
    {
-    "raw": "up_limo_g0_1790547977313_muse-image.png",
-    "overlap": 0.764,
-    "drift": 45.2,
-    "cover": 0.89
-   },
-   {
-    "raw": "up_limo_g0_1790556165247_muse-image.png",
-    "overlap": 0.805,
-    "drift": 40.3,
-    "cover": 0.9
+    "raw": "up_limo_g0_1790577312689_muse-image.png",
+    "overlap": 0.959,
+    "drift": 10.7,
+    "cover": 0.976,
+    "pass": 0.976
    }
   ]
  },
@@ -3259,28 +3484,32 @@
   ],
   "turns": [
    {
-    "raw": "up_parking_lot_g0_1790548020572_muse-image.png",
-    "overlap": 0.883,
-    "drift": 25.5,
-    "cover": 0.95
+    "raw": "up_parking_lot_g0_1790556189175_muse-image.png",
+    "overlap": 0.967,
+    "drift": 6.8,
+    "cover": 0.979,
+    "pass": 0.978
    },
    {
-    "raw": "up_parking_lot_g0_1790556189175_muse-image.png",
-    "overlap": 0.869,
-    "drift": 26,
-    "cover": 0.934
+    "raw": "up_parking_lot_g0_1790577358620_muse-image.png",
+    "overlap": 0.961,
+    "drift": 6.5,
+    "cover": 0.972,
+    "pass": 0.972
    },
    {
-    "raw": "up_parking_lot_g0_1790556189175_muse-image.png",
-    "overlap": 0.879,
-    "drift": 24.9,
-    "cover": 0.932
+    "raw": "up_parking_lot_g0_1790577358620_muse-image.png",
+    "overlap": 0.948,
+    "drift": 6.6,
+    "cover": 0.974,
+    "pass": 0.974
    },
    {
-    "raw": "up_parking_lot_g0_1790556189175_muse-image.png",
-    "overlap": 0.884,
-    "drift": 24.4,
-    "cover": 0.948
+    "raw": "up_parking_lot_g0_1790577358620_muse-image.png",
+    "overlap": 0.922,
+    "drift": 8.3,
+    "cover": 0.973,
+    "pass": 0.973
    }
   ]
  },
@@ -3305,28 +3534,32 @@
   ],
   "turns": [
    {
-    "raw": "up_handcar_g0_1790556212166_muse-image.png",
-    "overlap": 0.86,
-    "drift": 43.1,
-    "cover": 0.94
+    "raw": "up_handcar_g0_1790577422536_muse-image.png",
+    "overlap": 0.891,
+    "drift": 14.1,
+    "cover": 0.962,
+    "pass": 0.938
    },
    {
     "raw": "up_handcar_g0_1790556212166_muse-image.png",
-    "overlap": 0.836,
-    "drift": 40.8,
-    "cover": 0.909
+    "overlap": 0.895,
+    "drift": 19.1,
+    "cover": 0.929,
+    "pass": 0.928
    },
    {
-    "raw": "up_handcar_g0_1790556212166_muse-image.png",
-    "overlap": 0.881,
-    "drift": 45.7,
-    "cover": 0.935
+    "raw": "up_handcar_g0_1790577422536_muse-image.png",
+    "overlap": 0.897,
+    "drift": 12.6,
+    "cover": 0.941,
+    "pass": 0.934
    },
    {
-    "raw": "up_handcar_g0_1790556212166_muse-image.png",
-    "overlap": 0.879,
-    "drift": 41.1,
-    "cover": 0.935
+    "raw": "up_handcar_g0_1790577422536_muse-image.png",
+    "overlap": 0.901,
+    "drift": 14.1,
+    "cover": 0.96,
+    "pass": 0.941
    }
   ]
  },
@@ -3352,27 +3585,31 @@
   "turns": [
    {
     "raw": "up_train_station_g0_1790556264965_muse-image.png",
-    "overlap": 0.957,
-    "drift": 35.6,
-    "cover": 0.974
+    "overlap": 0.975,
+    "drift": 15.8,
+    "cover": 0.987,
+    "pass": 0.985
    },
    {
-    "raw": "up_train_station_g0_1790556264965_muse-image.png",
-    "overlap": 0.919,
-    "drift": 45.5,
-    "cover": 0.967
+    "raw": "up_train_station_g0_1790577437955_muse-image.png",
+    "overlap": 0.944,
+    "drift": 14.8,
+    "cover": 0.979,
+    "pass": 0.978
    },
    {
-    "raw": "up_train_station_g0_1790556264965_muse-image.png",
-    "overlap": 0.978,
-    "drift": 41.6,
-    "cover": 0.989
+    "raw": "up_train_station_g0_1790577437955_muse-image.png",
+    "overlap": 0.946,
+    "drift": 19,
+    "cover": 0.994,
+    "pass": 0.986
    },
    {
-    "raw": "up_train_station_g0_1790556264965_muse-image.png",
-    "overlap": 0.965,
-    "drift": 38.6,
-    "cover": 0.986
+    "raw": "up_train_station_g0_1790577437955_muse-image.png",
+    "overlap": 0.989,
+    "drift": 16.4,
+    "cover": 0.994,
+    "pass": 0.993
    }
   ]
  },
@@ -3397,28 +3634,32 @@
   ],
   "turns": [
    {
-    "raw": "up_express_train_g0_1790556289246_muse-image.png",
-    "overlap": 0.879,
-    "drift": 46.8,
-    "cover": 0.943
+    "raw": "up_express_train_g0_1790577469797_muse-image.png",
+    "overlap": 0.989,
+    "drift": 10.5,
+    "cover": 0.989,
+    "pass": 0.985
    },
    {
-    "raw": "up_express_train_g0_1790556289246_muse-image.png",
-    "overlap": 0.822,
-    "drift": 51.2,
-    "cover": 0.956
+    "raw": "up_express_train_g0_1790577469797_muse-image.png",
+    "overlap": 0.974,
+    "drift": 12.3,
+    "cover": 0.981,
+    "pass": 0.976
    },
    {
-    "raw": "up_express_train_g0_1790556289246_muse-image.png",
-    "overlap": 0.872,
-    "drift": 48.1,
-    "cover": 0.93
+    "raw": "up_express_train_g0_1790577469797_muse-image.png",
+    "overlap": 0.971,
+    "drift": 9.8,
+    "cover": 0.974,
+    "pass": 0.969
    },
    {
-    "raw": "up_express_train_g0_1790548185456_muse-image.png",
-    "overlap": 0.964,
-    "drift": 52.4,
-    "cover": 0.99
+    "raw": "up_express_train_g0_1790577469797_muse-image.png",
+    "overlap": 0.972,
+    "drift": 13.2,
+    "cover": 0.99,
+    "pass": 0.987
    }
   ]
  },
@@ -3443,28 +3684,32 @@
   ],
   "turns": [
    {
-    "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.794,
-    "drift": 37.5,
-    "cover": 0.944
+    "raw": "up_tram_stop_g0_1790577519772_muse-image.png",
+    "overlap": 0.91,
+    "drift": 15.5,
+    "cover": 0.948,
+    "pass": 0.939
    },
    {
     "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.832,
-    "drift": 41.8,
-    "cover": 0.934
+    "overlap": 0.825,
+    "drift": 18.4,
+    "cover": 0.992,
+    "pass": 0.983
+   },
+   {
+    "raw": "up_tram_stop_g0_1790577519772_muse-image.png",
+    "overlap": 0.943,
+    "drift": 21.9,
+    "cover": 0.977,
+    "pass": 0.955
    },
    {
     "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.836,
-    "drift": 42.3,
-    "cover": 0.918
-   },
-   {
-    "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.799,
-    "drift": 34.8,
-    "cover": 0.958
+    "overlap": 0.86,
+    "drift": 11.2,
+    "cover": 0.989,
+    "pass": 0.987
    }
   ]
  },
@@ -3489,28 +3734,32 @@
   ],
   "turns": [
    {
-    "raw": "up_monorail_g0_1790556321551_muse-image.png",
-    "overlap": 0.968,
-    "drift": 33.8,
-    "cover": 0.982
+    "raw": "up_monorail_g0_1790577556406_muse-image.png",
+    "overlap": 0.99,
+    "drift": 10.5,
+    "cover": 0.99,
+    "pass": 0.99
+   },
+   {
+    "raw": "up_monorail_g0_1790577556406_muse-image.png",
+    "overlap": 0.993,
+    "drift": 9.3,
+    "cover": 0.989,
+    "pass": 0.988
    },
    {
     "raw": "up_monorail_g0_1790556321551_muse-image.png",
-    "overlap": 0.926,
-    "drift": 38.5,
-    "cover": 0.952
+    "overlap": 0.985,
+    "drift": 12.5,
+    "cover": 0.983,
+    "pass": 0.98
    },
    {
-    "raw": "up_monorail_g0_1790556321551_muse-image.png",
-    "overlap": 0.966,
-    "drift": 31.4,
-    "cover": 0.971
-   },
-   {
-    "raw": "up_monorail_g0_1790556321551_muse-image.png",
-    "overlap": 0.964,
-    "drift": 34.1,
-    "cover": 0.969
+    "raw": "up_monorail_g0_1790577556406_muse-image.png",
+    "overlap": 0.971,
+    "drift": 12.4,
+    "cover": 0.979,
+    "pass": 0.979
    }
   ]
  },
@@ -3536,27 +3785,31 @@
   "turns": [
    {
     "raw": "up_ski_lift_g0_1790556349196_muse-image.png",
-    "overlap": 0.962,
-    "drift": 43.2,
-    "cover": 0.984
+    "overlap": 0.984,
+    "drift": 23.3,
+    "cover": 0.994,
+    "pass": 0.944
    },
    {
-    "raw": "up_ski_lift_g0_1790556349196_muse-image.png",
-    "overlap": 0.977,
-    "drift": 43.1,
-    "cover": 0.985
+    "raw": "up_ski_lift_g0_1790577597494_muse-image.png",
+    "overlap": 0.947,
+    "drift": 14.1,
+    "cover": 0.99,
+    "pass": 0.985
    },
    {
-    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
-    "overlap": 0.924,
-    "drift": 41,
-    "cover": 0.977
+    "raw": "up_ski_lift_g0_1790577597494_muse-image.png",
+    "overlap": 0.958,
+    "drift": 18.9,
+    "cover": 0.988,
+    "pass": 0.934
    },
    {
-    "raw": "up_ski_lift_g0_1790548370438_muse-image.png",
-    "overlap": 0.911,
-    "drift": 41.1,
-    "cover": 0.973
+    "raw": "up_ski_lift_g0_1790577597494_muse-image.png",
+    "overlap": 0.951,
+    "drift": 17.1,
+    "cover": 0.992,
+    "pass": 0.963
    }
   ]
  },
@@ -3581,28 +3834,32 @@
   ],
   "turns": [
    {
-    "raw": "up_alpine_lift_g0_1790556373503_muse-image.png",
-    "overlap": 0.947,
-    "drift": 42.2,
-    "cover": 0.974
+    "raw": "up_alpine_lift_g0_1790577674741_muse-image.png",
+    "overlap": 0.969,
+    "drift": 19.7,
+    "cover": 0.984,
+    "pass": 0.971
    },
    {
-    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
-    "overlap": 0.883,
-    "drift": 47.9,
-    "cover": 0.949
+    "raw": "up_alpine_lift_g0_1790577674741_muse-image.png",
+    "overlap": 0.953,
+    "drift": 21.2,
+    "cover": 0.982,
+    "pass": 0.95
    },
    {
-    "raw": "up_alpine_lift_g0_1790548512079_muse-image.png",
-    "overlap": 0.927,
-    "drift": 45.4,
-    "cover": 0.986
+    "raw": "up_alpine_lift_g0_1790577674741_muse-image.png",
+    "overlap": 0.963,
+    "drift": 20.5,
+    "cover": 0.987,
+    "pass": 0.956
    },
    {
-    "raw": "up_alpine_lift_g0_1790556373503_muse-image.png",
-    "overlap": 0.936,
-    "drift": 47.5,
-    "cover": 0.965
+    "raw": "up_alpine_lift_g0_1790577674741_muse-image.png",
+    "overlap": 0.959,
+    "drift": 21.6,
+    "cover": 0.988,
+    "pass": 0.953
    }
   ]
  },
@@ -3628,27 +3885,31 @@
   "turns": [
    {
     "raw": "up_ferry_g0_1790556399382_muse-image.png",
-    "overlap": 0.841,
-    "drift": 30.5,
-    "cover": 0.895
+    "overlap": 0.965,
+    "drift": 12,
+    "cover": 0.982,
+    "pass": 0.982
    },
    {
     "raw": "up_ferry_g0_1790556399382_muse-image.png",
-    "overlap": 0.792,
-    "drift": 34.4,
-    "cover": 0.911
+    "overlap": 0.942,
+    "drift": 13,
+    "cover": 0.988,
+    "pass": 0.987
    },
    {
-    "raw": "up_ferry_g0_1790548676070_muse-image.png",
-    "overlap": 0.818,
-    "drift": 34.2,
-    "cover": 0.888
+    "raw": "up_ferry_g0_1790577758279_muse-image.png",
+    "overlap": 0.969,
+    "drift": 10.4,
+    "cover": 0.976,
+    "pass": 0.976
    },
    {
     "raw": "up_ferry_g0_1790556399382_muse-image.png",
-    "overlap": 0.826,
-    "drift": 34.8,
-    "cover": 0.932
+    "overlap": 0.97,
+    "drift": 14.1,
+    "cover": 0.984,
+    "pass": 0.984
    }
   ]
  },
@@ -3673,28 +3934,32 @@
   ],
   "turns": [
    {
-    "raw": "up_water_taxi_g0_1790556416932_muse-image.png",
-    "overlap": 0.943,
-    "drift": 57.1,
-    "cover": 0.982
+    "raw": "up_water_taxi_g0_1790577800234_muse-image.png",
+    "overlap": 0.939,
+    "drift": 20.4,
+    "cover": 0.972,
+    "pass": 0.955
    },
    {
-    "raw": "up_water_taxi_g0_1790556416932_muse-image.png",
-    "overlap": 0.953,
-    "drift": 56.8,
-    "cover": 0.973
+    "raw": "up_water_taxi_g0_1790577800234_muse-image.png",
+    "overlap": 0.938,
+    "drift": 22.5,
+    "cover": 0.943,
+    "pass": 0.909
    },
    {
-    "raw": "up_water_taxi_g0_1790556416932_muse-image.png",
-    "overlap": 0.911,
-    "drift": 61.9,
-    "cover": 0.968
+    "raw": "up_water_taxi_g0_1790577800234_muse-image.png",
+    "overlap": 0.975,
+    "drift": 27,
+    "cover": 0.977,
+    "pass": 0.922
    },
    {
-    "raw": "up_water_taxi_g0_1790556416932_muse-image.png",
-    "overlap": 0.937,
-    "drift": 59.2,
-    "cover": 0.959
+    "raw": "up_water_taxi_g0_1790577800234_muse-image.png",
+    "overlap": 0.916,
+    "drift": 19.5,
+    "cover": 0.962,
+    "pass": 0.944
    }
   ]
  },
@@ -3719,28 +3984,32 @@
   ],
   "turns": [
    {
-    "raw": "up_water_bus_g0_1790556447952_muse-image.png",
-    "overlap": 0.936,
-    "drift": 39.8,
-    "cover": 0.967
+    "raw": "up_water_bus_g0_1790577835737_muse-image.png",
+    "overlap": 0.962,
+    "drift": 14.1,
+    "cover": 0.983,
+    "pass": 0.983
    },
    {
     "raw": "up_water_bus_g0_1790556447952_muse-image.png",
-    "overlap": 0.923,
-    "drift": 45.6,
-    "cover": 0.96
+    "overlap": 0.979,
+    "drift": 17.8,
+    "cover": 0.977,
+    "pass": 0.96
    },
    {
     "raw": "up_water_bus_g0_1790556447952_muse-image.png",
-    "overlap": 0.935,
-    "drift": 38.2,
-    "cover": 0.962
+    "overlap": 0.961,
+    "drift": 20.1,
+    "cover": 0.987,
+    "pass": 0.96
    },
    {
     "raw": "up_water_bus_g0_1790556447952_muse-image.png",
-    "overlap": 0.932,
-    "drift": 40.7,
-    "cover": 0.971
+    "overlap": 0.978,
+    "drift": 20,
+    "cover": 0.981,
+    "pass": 0.966
    }
   ]
  },
@@ -3765,28 +4034,32 @@
   ],
   "turns": [
    {
-    "raw": "up_pontoon_g0_1790556462056_muse-image.png",
-    "overlap": 0.861,
-    "drift": 45,
-    "cover": 0.938
+    "raw": "up_pontoon_g0_1790577883765_muse-image.png",
+    "overlap": 0.984,
+    "drift": 19.3,
+    "cover": 0.992,
+    "pass": 0.983
    },
    {
-    "raw": "up_pontoon_g0_1790556462056_muse-image.png",
-    "overlap": 0.847,
-    "drift": 48.5,
-    "cover": 0.961
+    "raw": "up_pontoon_g0_1790577883765_muse-image.png",
+    "overlap": 0.982,
+    "drift": 18.3,
+    "cover": 0.989,
+    "pass": 0.987
    },
    {
-    "raw": "up_pontoon_g0_1790556462056_muse-image.png",
-    "overlap": 0.87,
-    "drift": 49,
-    "cover": 0.944
+    "raw": "up_pontoon_g0_1790577883765_muse-image.png",
+    "overlap": 0.97,
+    "drift": 18.3,
+    "cover": 0.985,
+    "pass": 0.979
    },
    {
-    "raw": "up_pontoon_g0_1790556462056_muse-image.png",
-    "overlap": 0.894,
-    "drift": 50.7,
-    "cover": 0.936
+    "raw": "up_pontoon_g0_1790577883765_muse-image.png",
+    "overlap": 0.943,
+    "drift": 20.3,
+    "cover": 0.978,
+    "pass": 0.947
    }
   ]
  },
@@ -3811,21 +4084,25 @@
   ],
   "turns": [
    {
-    "raw": "up_marina_g0_1790548855304_muse-image.png",
-    "overlap": 0.763,
-    "drift": 50.9,
-    "cover": 0.958
+    "raw": "up_marina_g0_1790577936899_muse-image.png",
+    "overlap": 0.905,
+    "drift": 20.9,
+    "cover": 0.975,
+    "pass": 0.963
    },
    {
-    "raw": null,
-    "overlap": 0.578,
-    "kept": "code"
+    "raw": "up_marina_g0_1790550743515_muse-image.png",
+    "overlap": 0.822,
+    "drift": 21.9,
+    "cover": 0.978,
+    "pass": 0.957
    },
    {
-    "raw": "up_marina_g0_1790548855304_muse-image.png",
-    "overlap": 0.766,
-    "drift": 49.5,
-    "cover": 0.945
+    "raw": "up_marina_g0_1790577936899_muse-image.png",
+    "overlap": 0.905,
+    "drift": 20.1,
+    "cover": 0.975,
+    "pass": 0.966
    },
    {
     "raw": null,
@@ -3856,27 +4133,31 @@
   "turns": [
    {
     "raw": "up_cruise_dock_g0_1790548913481_muse-image.png",
-    "overlap": 0.812,
-    "drift": 50.3,
-    "cover": 0.941
+    "overlap": 0.918,
+    "drift": 22.3,
+    "cover": 0.976,
+    "pass": 0.952
    },
    {
     "raw": "up_cruise_dock_g0_1790556509573_muse-image.png",
-    "overlap": 0.829,
-    "drift": 43.9,
-    "cover": 0.898
+    "overlap": 0.967,
+    "drift": 11.4,
+    "cover": 0.969,
+    "pass": 0.968
    },
    {
     "raw": "up_cruise_dock_g0_1790556509573_muse-image.png",
-    "overlap": 0.833,
-    "drift": 46.7,
-    "cover": 0.917
+    "overlap": 0.982,
+    "drift": 13.6,
+    "cover": 0.985,
+    "pass": 0.978
    },
    {
     "raw": "up_cruise_dock_g0_1790556509573_muse-image.png",
-    "overlap": 0.856,
-    "drift": 42.8,
-    "cover": 0.922
+    "overlap": 0.954,
+    "drift": 14,
+    "cover": 0.968,
+    "pass": 0.962
    }
   ]
  },
@@ -3902,27 +4183,31 @@
   "turns": [
    {
     "raw": "up_helipad_g0_1790548963790_muse-image.png",
-    "overlap": 0.881,
-    "drift": 48.8,
-    "cover": 0.955
+    "overlap": 0.925,
+    "drift": 17.8,
+    "cover": 0.987,
+    "pass": 0.969
    },
    {
     "raw": "up_helipad_g0_1790548963790_muse-image.png",
-    "overlap": 0.867,
-    "drift": 44.6,
-    "cover": 0.97
+    "overlap": 0.918,
+    "drift": 17.7,
+    "cover": 0.972,
+    "pass": 0.958
    },
    {
     "raw": "up_helipad_g0_1790548963790_muse-image.png",
-    "overlap": 0.865,
-    "drift": 46.4,
-    "cover": 0.968
+    "overlap": 0.925,
+    "drift": 18.5,
+    "cover": 0.981,
+    "pass": 0.963
    },
    {
     "raw": "up_helipad_g0_1790548963790_muse-image.png",
-    "overlap": 0.881,
-    "drift": 50.9,
-    "cover": 0.963
+    "overlap": 0.918,
+    "drift": 18.5,
+    "cover": 0.974,
+    "pass": 0.955
    }
   ]
  },
@@ -3947,28 +4232,32 @@
   ],
   "turns": [
    {
-    "raw": "up_balloon_g0_1790550901448_muse-image.png",
-    "overlap": 0.817,
-    "drift": 51.8,
-    "cover": 0.914
+    "raw": "up_balloon_g0_1790578077780_muse-image.png",
+    "overlap": 0.949,
+    "drift": 13.2,
+    "cover": 0.976,
+    "pass": 0.975
    },
    {
-    "raw": "up_balloon_g0_1790550901448_muse-image.png",
-    "overlap": 0.822,
-    "drift": 50,
-    "cover": 0.931
+    "raw": "up_balloon_g0_1790578077780_muse-image.png",
+    "overlap": 0.931,
+    "drift": 13.5,
+    "cover": 0.968,
+    "pass": 0.966
    },
    {
-    "raw": "up_balloon_g0_1790550901448_muse-image.png",
-    "overlap": 0.822,
-    "drift": 49.9,
-    "cover": 0.93
+    "raw": "up_balloon_g0_1790578077780_muse-image.png",
+    "overlap": 0.927,
+    "drift": 12.2,
+    "cover": 0.956,
+    "pass": 0.956
    },
    {
     "raw": "up_balloon_g0_1790549034076_muse-image.png",
-    "overlap": 0.806,
-    "drift": 49.8,
-    "cover": 0.933
+    "overlap": 0.867,
+    "drift": 19.7,
+    "cover": 0.961,
+    "pass": 0.951
    }
   ]
  },
@@ -3994,27 +4283,31 @@
   "turns": [
    {
     "raw": "up_jetway_g0_1790556586003_muse-image.png",
-    "overlap": 0.927,
-    "drift": 42.3,
-    "cover": 0.955
+    "overlap": 0.962,
+    "drift": 17.5,
+    "cover": 0.979,
+    "pass": 0.971
    },
    {
     "raw": "up_jetway_g0_1790556586003_muse-image.png",
-    "overlap": 0.931,
-    "drift": 44.6,
-    "cover": 0.975
+    "overlap": 0.967,
+    "drift": 17.1,
+    "cover": 0.983,
+    "pass": 0.97
    },
    {
     "raw": "up_jetway_g0_1790556586003_muse-image.png",
-    "overlap": 0.935,
-    "drift": 41.6,
-    "cover": 0.961
+    "overlap": 0.964,
+    "drift": 15.4,
+    "cover": 0.977,
+    "pass": 0.969
    },
    {
     "raw": "up_jetway_g0_1790556586003_muse-image.png",
-    "overlap": 0.922,
-    "drift": 38.1,
-    "cover": 0.971
+    "overlap": 0.974,
+    "drift": 14.6,
+    "cover": 0.983,
+    "pass": 0.98
    }
   ]
  },
@@ -4040,27 +4333,31 @@
   "turns": [
    {
     "raw": "up_jumbo_jetway_g0_1790556608640_muse-image.png",
-    "overlap": 0.87,
-    "drift": 37.7,
-    "cover": 0.918
+    "overlap": 0.987,
+    "drift": 11.9,
+    "cover": 0.985,
+    "pass": 0.984
    },
    {
     "raw": "up_jumbo_jetway_g0_1790556608640_muse-image.png",
-    "overlap": 0.846,
-    "drift": 42.3,
-    "cover": 0.953
+    "overlap": 0.986,
+    "drift": 11.1,
+    "cover": 0.983,
+    "pass": 0.983
    },
    {
     "raw": "up_jumbo_jetway_g0_1790556608640_muse-image.png",
-    "overlap": 0.849,
-    "drift": 45.2,
-    "cover": 0.904
+    "overlap": 0.983,
+    "drift": 11.8,
+    "cover": 0.981,
+    "pass": 0.981
    },
    {
     "raw": "up_jumbo_jetway_g0_1790556608640_muse-image.png",
-    "overlap": 0.893,
-    "drift": 35.5,
-    "cover": 0.961
+    "overlap": 0.986,
+    "drift": 11.6,
+    "cover": 0.989,
+    "pass": 0.989
    }
   ]
  },
@@ -4085,28 +4382,32 @@
   ],
   "turns": [
    {
-    "raw": "up_prop_stand_g0_1790556636768_muse-image.png",
-    "overlap": 0.882,
-    "drift": 55.8,
-    "cover": 0.954
+    "raw": "up_prop_stand_g0_1790578180143_muse-image.png",
+    "overlap": 0.968,
+    "drift": 19.8,
+    "cover": 0.969,
+    "pass": 0.901
    },
    {
-    "raw": "up_prop_stand_g0_1790549146473_muse-image.png",
-    "overlap": 0.798,
-    "drift": 41.8,
-    "cover": 0.954
+    "raw": "up_prop_stand_g0_1790578180143_muse-image.png",
+    "overlap": 0.866,
+    "drift": 13.6,
+    "cover": 0.97,
+    "pass": 0.954
    },
    {
-    "raw": "up_prop_stand_g0_1790556636768_muse-image.png",
-    "overlap": 0.946,
-    "drift": 38.4,
-    "cover": 0.974
+    "raw": "up_prop_stand_g0_1790578180143_muse-image.png",
+    "overlap": 0.905,
+    "drift": 13.5,
+    "cover": 0.981,
+    "pass": 0.967
    },
    {
-    "raw": "up_prop_stand_g0_1790556636768_muse-image.png",
-    "overlap": 0.831,
-    "drift": 53.6,
-    "cover": 0.947
+    "raw": "up_prop_stand_g0_1790578180143_muse-image.png",
+    "overlap": 0.858,
+    "drift": 13.9,
+    "cover": 0.964,
+    "pass": 0.943
    }
   ]
  },
@@ -4131,28 +4432,32 @@
   ],
   "turns": [
    {
-    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
-    "overlap": 0.903,
-    "drift": 22.7,
-    "cover": 0.952
+    "raw": "up_hardstand_g0_1790556666009_muse-image.png",
+    "overlap": 0.991,
+    "drift": 17.8,
+    "cover": 0.991,
+    "pass": 0.991
    },
    {
-    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
-    "overlap": 0.897,
-    "drift": 23.4,
-    "cover": 0.952
+    "raw": "up_hardstand_g0_1790556666009_muse-image.png",
+    "overlap": 0.98,
+    "drift": 18.3,
+    "cover": 0.991,
+    "pass": 0.991
    },
    {
-    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
-    "overlap": 0.9,
-    "drift": 22.6,
-    "cover": 0.95
+    "raw": "up_hardstand_g0_1790556666009_muse-image.png",
+    "overlap": 0.981,
+    "drift": 18,
+    "cover": 0.989,
+    "pass": 0.989
    },
    {
-    "raw": "up_hardstand_g0_1790549225185_muse-image.png",
-    "overlap": 0.903,
-    "drift": 23.5,
-    "cover": 0.948
+    "raw": "up_hardstand_g0_1790556666009_muse-image.png",
+    "overlap": 0.973,
+    "drift": 18.5,
+    "cover": 0.991,
+    "pass": 0.991
    }
   ]
  },
@@ -4178,27 +4483,31 @@
   "turns": [
    {
     "raw": "up_private_terminal_g0_1790556688910_muse-image.png",
-    "overlap": 0.827,
-    "drift": 32.8,
-    "cover": 0.918
-   },
-   {
-    "raw": "up_private_terminal_g0_1790549274528_muse-image.png",
-    "overlap": 0.816,
-    "drift": 31.7,
-    "cover": 0.885
+    "overlap": 0.973,
+    "drift": 6.8,
+    "cover": 0.983,
+    "pass": 0.982
    },
    {
     "raw": "up_private_terminal_g0_1790556688910_muse-image.png",
-    "overlap": 0.812,
-    "drift": 29.3,
-    "cover": 0.886
+    "overlap": 0.964,
+    "drift": 7.7,
+    "cover": 0.975,
+    "pass": 0.975
+   },
+   {
+    "raw": "up_private_terminal_g0_1790556688910_muse-image.png",
+    "overlap": 0.957,
+    "drift": 7.9,
+    "cover": 0.972,
+    "pass": 0.971
    },
    {
     "raw": "up_private_terminal_g0_1790549274528_muse-image.png",
-    "overlap": 0.822,
-    "drift": 37.4,
-    "cover": 0.961
+    "overlap": 0.889,
+    "drift": 11.4,
+    "cover": 0.977,
+    "pass": 0.971
    }
   ]
  },
@@ -4223,28 +4532,32 @@
   ],
   "turns": [
    {
-    "raw": "up_jetpack_g0_1790556711944_muse-image.png",
-    "overlap": 0.928,
-    "drift": 74.7,
-    "cover": 0.96
+    "raw": "up_jetpack_g0_1790578327089_muse-image.png",
+    "overlap": 0.964,
+    "drift": 19.9,
+    "cover": 0.972,
+    "pass": 0.958
    },
    {
-    "raw": "up_jetpack_g0_1790556711944_muse-image.png",
-    "overlap": 0.946,
-    "drift": 74.6,
-    "cover": 0.975
+    "raw": "up_jetpack_g0_1790578327089_muse-image.png",
+    "overlap": 0.953,
+    "drift": 18.8,
+    "cover": 0.966,
+    "pass": 0.954
    },
    {
-    "raw": "up_jetpack_g0_1790556711944_muse-image.png",
-    "overlap": 0.908,
-    "drift": 75.3,
-    "cover": 0.97
+    "raw": "up_jetpack_g0_1790578327089_muse-image.png",
+    "overlap": 0.972,
+    "drift": 18.1,
+    "cover": 0.981,
+    "pass": 0.968
    },
    {
-    "raw": "up_jetpack_g0_1790556711944_muse-image.png",
-    "overlap": 0.942,
-    "drift": 75.4,
-    "cover": 0.976
+    "raw": "up_jetpack_g0_1790578327089_muse-image.png",
+    "overlap": 0.977,
+    "drift": 18.7,
+    "cover": 0.983,
+    "pass": 0.974
    }
   ]
  },
@@ -4269,28 +4582,32 @@
   ],
   "turns": [
    {
-    "raw": "up_beam_pad_g0_1790551084089_muse-image.png",
-    "overlap": 0.802,
-    "drift": 79.7,
-    "cover": 0.915
+    "raw": "up_beam_pad_g0_1790556734770_muse-image.png",
+    "overlap": 0.811,
+    "drift": 17.1,
+    "cover": 0.97,
+    "pass": 0.958
+   },
+   {
+    "raw": "up_beam_pad_g0_1790578351939_muse-image.png",
+    "overlap": 0.85,
+    "drift": 24.7,
+    "cover": 0.968,
+    "pass": 0.918
    },
    {
     "raw": "up_beam_pad_g0_1790556734770_muse-image.png",
-    "overlap": 0.799,
-    "drift": 79.6,
-    "cover": 0.936
+    "overlap": 0.803,
+    "drift": 23,
+    "cover": 0.953,
+    "pass": 0.91
    },
    {
     "raw": "up_beam_pad_g0_1790556734770_muse-image.png",
-    "overlap": 0.801,
-    "drift": 79.5,
-    "cover": 0.94
-   },
-   {
-    "raw": "up_beam_pad_g0_1790551084089_muse-image.png",
-    "overlap": 0.852,
-    "drift": 81.9,
-    "cover": 0.914
+    "overlap": 0.793,
+    "drift": 24.1,
+    "cover": 0.97,
+    "pass": 0.914
    }
   ]
  },
@@ -4315,28 +4632,32 @@
   ],
   "turns": [
    {
-    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
-    "overlap": 0.836,
-    "drift": 48.8,
-    "cover": 0.951
+    "raw": "up_loop_terminal_g0_1790578377700_muse-image.png",
+    "overlap": 0.991,
+    "drift": 19.6,
+    "cover": 0.988,
+    "pass": 0.971
    },
    {
-    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
-    "overlap": 0.822,
-    "drift": 43.4,
-    "cover": 0.963
+    "raw": "up_loop_terminal_g0_1790578377700_muse-image.png",
+    "overlap": 0.992,
+    "drift": 14.6,
+    "cover": 0.989,
+    "pass": 0.972
    },
    {
-    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
-    "overlap": 0.833,
-    "drift": 44.9,
-    "cover": 0.944
+    "raw": "up_loop_terminal_g0_1790578377700_muse-image.png",
+    "overlap": 0.984,
+    "drift": 14.5,
+    "cover": 0.986,
+    "pass": 0.972
    },
    {
-    "raw": "up_loop_terminal_g0_1790549362639_muse-image.png",
-    "overlap": 0.855,
-    "drift": 44.3,
-    "cover": 0.961
+    "raw": "up_loop_terminal_g0_1790578377700_muse-image.png",
+    "overlap": 0.963,
+    "drift": 15.7,
+    "cover": 0.975,
+    "pass": 0.956
    }
   ]
  },
@@ -4361,28 +4682,32 @@
   ],
   "turns": [
    {
-    "raw": "up_subway_g0_1790549393154_muse-image.png",
-    "overlap": 0.9,
-    "drift": 48.2,
-    "cover": 0.959
+    "raw": "up_subway_g0_1790578425306_muse-image.png",
+    "overlap": 0.926,
+    "drift": 20.5,
+    "cover": 0.974,
+    "pass": 0.967
+   },
+   {
+    "raw": "up_subway_g0_1790578425306_muse-image.png",
+    "overlap": 0.928,
+    "drift": 19.9,
+    "cover": 0.964,
+    "pass": 0.955
+   },
+   {
+    "raw": "up_subway_g0_1790578425306_muse-image.png",
+    "overlap": 0.901,
+    "drift": 22.6,
+    "cover": 0.974,
+    "pass": 0.961
    },
    {
     "raw": "up_subway_g0_1790549393154_muse-image.png",
-    "overlap": 0.875,
-    "drift": 50.4,
-    "cover": 0.928
-   },
-   {
-    "raw": "up_subway_g0_1790556792608_muse-image.png",
-    "overlap": 0.902,
-    "drift": 57.7,
-    "cover": 0.975
-   },
-   {
-    "raw": "up_subway_g0_1790549393154_muse-image.png",
-    "overlap": 0.886,
-    "drift": 44.8,
-    "cover": 0.981
+    "overlap": 0.927,
+    "drift": 21.2,
+    "cover": 0.989,
+    "pass": 0.966
    }
   ]
  },
@@ -4407,28 +4732,32 @@
   ],
   "turns": [
    {
-    "raw": "up_express_subway_g0_1790556817536_muse-image.png",
-    "overlap": 0.802,
-    "drift": 67.9,
-    "cover": 0.925
+    "raw": "up_express_subway_g0_1790578440592_muse-image.png",
+    "overlap": 0.952,
+    "drift": 16.7,
+    "cover": 0.98,
+    "pass": 0.978
    },
    {
-    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
-    "overlap": 0.777,
-    "drift": 60.6,
-    "cover": 0.923
+    "raw": "up_express_subway_g0_1790578440592_muse-image.png",
+    "overlap": 0.954,
+    "drift": 17.1,
+    "cover": 0.972,
+    "pass": 0.972
    },
    {
-    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
-    "overlap": 0.78,
-    "drift": 63.3,
-    "cover": 0.913
+    "raw": "up_express_subway_g0_1790578440592_muse-image.png",
+    "overlap": 0.948,
+    "drift": 19.2,
+    "cover": 0.963,
+    "pass": 0.96
    },
    {
-    "raw": "up_express_subway_g0_1790549419555_muse-image.png",
-    "overlap": 0.788,
-    "drift": 61.3,
-    "cover": 0.914
+    "raw": "up_express_subway_g0_1790578440592_muse-image.png",
+    "overlap": 0.945,
+    "drift": 19.6,
+    "cover": 0.982,
+    "pass": 0.982
    }
   ]
  },
@@ -4454,27 +4783,31 @@
   "turns": [
    {
     "raw": "up_under_parking_g0_1790549445708_muse-image.png",
-    "overlap": 0.938,
-    "drift": 45.6,
-    "cover": 0.966
+    "overlap": 0.963,
+    "drift": 16.9,
+    "cover": 0.978,
+    "pass": 0.969
    },
    {
     "raw": "up_under_parking_g0_1790549445708_muse-image.png",
-    "overlap": 0.895,
-    "drift": 41,
-    "cover": 0.976
+    "overlap": 0.94,
+    "drift": 14.4,
+    "cover": 0.983,
+    "pass": 0.983
    },
    {
     "raw": "up_under_parking_g0_1790549445708_muse-image.png",
-    "overlap": 0.919,
-    "drift": 40.9,
-    "cover": 0.961
+    "overlap": 0.926,
+    "drift": 13.9,
+    "cover": 0.979,
+    "pass": 0.978
    },
    {
     "raw": "up_under_parking_g0_1790549445708_muse-image.png",
-    "overlap": 0.918,
-    "drift": 43.8,
-    "cover": 0.974
+    "overlap": 0.962,
+    "drift": 16.3,
+    "cover": 0.972,
+    "pass": 0.964
    }
   ]
  },
@@ -4500,27 +4833,31 @@
   "turns": [
    {
     "raw": "up_sub_dock_g0_1790556858990_muse-image.png",
-    "overlap": 0.899,
-    "drift": 44.8,
-    "cover": 0.965
+    "overlap": 0.965,
+    "drift": 26.6,
+    "cover": 0.976,
+    "pass": 0.899
    },
    {
     "raw": "up_sub_dock_g0_1790556858990_muse-image.png",
-    "overlap": 0.916,
-    "drift": 53.4,
-    "cover": 0.956
+    "overlap": 0.961,
+    "drift": 25,
+    "cover": 0.968,
+    "pass": 0.942
    },
    {
     "raw": "up_sub_dock_g0_1790556858990_muse-image.png",
-    "overlap": 0.921,
-    "drift": 55.7,
-    "cover": 0.976
+    "overlap": 0.962,
+    "drift": 24.5,
+    "cover": 0.972,
+    "pass": 0.944
    },
    {
     "raw": "up_sub_dock_g0_1790556858990_muse-image.png",
-    "overlap": 0.916,
-    "drift": 55,
-    "cover": 0.958
+    "overlap": 0.963,
+    "drift": 28.5,
+    "cover": 0.97,
+    "pass": 0.887
    }
   ]
  }

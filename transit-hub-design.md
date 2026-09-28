@@ -1158,17 +1158,28 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   `assets/paint/<key>_<turn>_code.png`) is sent upscaled on a key colour (whichever of magenta,
   green, cyan and yellow lies furthest from the sheet's own colours), a family to a call: a tile's
   turns, its lane pieces', or all its vehicles'. The model is asked to redraw them with more detail
-  and nothing moved; each turn is fitted back onto its code art's outline (a scale and a shift, by
-  overlap), two pixels are peeled off the painting's outline and anything near the key colour
+  and nothing moved; each turn is fitted back onto its code art by an affine map: a scale and a
+  shift, then a vertical stretch and a shear (a model drawing true isometric rather than 2:1, or a
+  view leaning, left every edge drifting off the further it lay from the middle, which read as the
+  tiles tilting), found by the outlines' overlap and, in the last rounds, by how well the blurred
+  colours agree, so what lies inside the outline (a ring on a pad, a row of windows) lines up too.
+  With it, and the tiles painted again under a prompt asking for flat tiles and unchanged poses
+  ($0.61), the tiles' median overlap is 0.96 and 97% of their painted colour gets through the gate
+  below (vehicles, whose poses the model changes more: 0.82 and 90%); two pixels are peeled off the painting's outline and anything near the key colour
   dropped (the key bleeds into soft edges), and it is resampled to twice the density. `isoart.mjs`
   then bakes the sheet from the code art, every pixel becoming 2 x 2 with its layer, cell, face and
   weight, coloured from the painting where it covers it and agrees with it; a translucent pane keeps its code colour,
   and so does floor under something opaque, which the painting can't show. The model doesn't keep
   every shape: it gave the helipad a slab's thickness and turned the helicopter, and a scale and a
   shift can't undo that, so its colours landed on the wrong shapes (the pad's painted sides on the
-  flat floor read as a sunken tray). So a painted colour is taken in full only within 40 a channel
-  of the code colour under it, fading to the code colour by 80 (`--gate`): shading, texture and
-  small detail get through, a moved or invented shape does not. A turn whose painting
+  flat floor read as a sunken tray). So a painted colour is taken in full only where the painting,
+  blurred over 3 frame pixels, is within 40 a channel of the code art blurred the same way, fading
+  to the code colour by 80 (`--gate`). Comparing pixel by pixel threw away the very detail the
+  upscale is for (a window on a plain wall differs sharply from the wall), so the tiles looked
+  like their code art again; blurred, a window hardly moves a wall's average and gets through,
+  while a moved or invented shape moves it over a whole patch and does not. The prompt also asks
+  for flat tiles and unchanged vehicle poses, and each turn keeps the painting of which the most
+  gets through the gate (`pass` in the log). A turn whose painting
   overlaps its outline less than 0.6 gets none and keeps its code colours (`--weak` paints those
   families again; a retry replaces a turn only where it fits better). Meta Muse Image, a cent a
   call: 102 sheets for about $1.05 with one round of retries, and $0.34 more to paint the 34
