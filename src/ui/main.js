@@ -762,6 +762,7 @@ function onKey(e) {
   if (e.target.closest && e.target.closest('input, select, textarea')) return; // typing a seed is not a shortcut
   if (startPager && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); startPager(e.key === 'ArrowRight' ? 1 : -1); return; }
   if (e.key === 'm' || e.key === 'M') toggleMusic();
+  if (e.key === 'l' || e.key === 'L') toggleLabels();
   if (e.key === 'Escape') { hidePopup(true); if (ui.pending) clearPending(); else if (holdingCard()) cancelMode(); else { ui.selectedTileId = null; renderInfo(); } }
   if ((e.key === 'r' || e.key === 'R') && ui.mode === 'place') { rotate(1); }
   if ((e.key === 'e' || e.key === 'E') && ui.mode === 'place') { cycleSide(); }
@@ -986,6 +987,16 @@ function syncMusicButton() {
   b.setAttribute('aria-pressed', String(!isMuted()));
 }
 function toggleMusic() { setMuted(!isMuted()); syncMusicButton(); }
+
+// Tile labels can cover the art at close range, so they switch off; the choice is remembered.
+function syncLabelsButton() {
+  const on = layout.hideLabels !== true, b = $('btn-labels');
+  renderer.showLabels = on;
+  b.classList.toggle('off', !on);
+  b.title = on ? 'Tile labels on (L)' : 'Tile labels off (L)';
+  b.setAttribute('aria-pressed', String(on));
+}
+function toggleLabels() { layout.hideLabels = layout.hideLabels !== true; saveLayout(); syncLabelsButton(); }
 
 function afterWeekStart() {
   renderer.resize(state.board);
@@ -1235,6 +1246,8 @@ function boot() {
   }).observe(tray);
   $('btn-music').addEventListener('click', toggleMusic);
   syncMusicButton();
+  $('btn-labels').addEventListener('click', toggleLabels);
+  syncLabelsButton();
   document.querySelectorAll('#playback .speed').forEach(b => b.addEventListener('click', () => setSpeed(b.dataset.speed === 'skip' ? 'skip' : Number(b.dataset.speed))));
   state = G.createRun({ modeKey: 'terminal', seed: 1 }); // placeholder board behind the start modal
   renderer.resize(state.board);

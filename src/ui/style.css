@@ -115,11 +115,12 @@ button.toggle { padding: 0 6px; font-size: 14px; line-height: 20px; border-color
    their text or raise the phone's copy menu. */
 .card, .mode, .diff, #shop, #card-bar-head, #card-bar-tools, #board-tools, #topbar { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #board:active { cursor: grabbing; }
-#board-hint { position: absolute; left: 12px; top: 12px; right: 230px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
+#board-hint { position: absolute; left: 12px; top: 12px; right: 276px; font-size: 18px; color: #fff; pointer-events: none; text-shadow: 2px 2px 0 var(--ink); z-index: 5; }
 #board-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; z-index: 5; }
 #board-tools button { width: 40px; height: 40px; padding: 0; font-size: 20px; font-weight: 600; line-height: 1; background: rgba(37,23,77,0.92); }
 #board-tools #btn-zoom-fit { width: auto; padding: 0 10px; font-size: 18px; }
-#btn-music.off { color: var(--muted); text-decoration: line-through; }
+#board-tools #btn-labels { font-size: 16px; }
+#btn-music.off, #btn-labels.off { color: var(--muted); text-decoration: line-through; }
 /* The card in hand. A touch screen has no hover, so this bar is where the
    card's own text lives; ⌄ folds it away when it covers too much board. */
 #card-bar { position: absolute; left: 50%; bottom: calc(var(--tray-h, 0px) + 10px); transform: translateX(-50%); width: min(360px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 6px; z-index: 5; background: rgba(26,16,51,0.94); border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; box-shadow: var(--hard); }
@@ -333,7 +334,7 @@ select { font: inherit; background: var(--panel2); color: var(--text); border: 2
   #side-tab::after { content: '◀'; }
   #board-tools { top: 8px; right: 8px; }
   #board-tools button { width: 40px; height: 40px; }
-  #board-hint { top: 8px; left: 12px; right: 190px; font-size: 16px; }
+  #board-hint { top: 8px; left: 12px; right: 236px; font-size: 16px; }
   #shop { gap: 6px; padding: 0 6px 6px; }
   #shop-actions { padding: 5px; gap: 4px; flex-direction: row; flex-wrap: wrap; width: 176px; justify-content: center; }
   #wallet { flex-direction: row; width: 100%; justify-content: center; }
