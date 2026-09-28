@@ -1179,7 +1179,12 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
   like their code art again; blurred, a window hardly moves a wall's average and gets through,
   while a moved or invented shape moves it over a whole patch and does not. The prompt also asks
   for flat tiles and unchanged vehicle poses, and each turn keeps the painting of which the most
-  gets through the gate (`pass` in the log). A turn whose painting
+  gets through the gate (`pass` in the log). Where a model reads a tile wrong, `HINTS` adds a line to that tile's
+  call: the tram stop's low shelters came back as tall buildings, and the gate let their walls of
+  windows through onto the shelter roofs (the notch and the odd overlaps with the tram), and the
+  car rental's bay lines came back as a black grid. Told what the shapes are (shelters with glass
+  fronts, filling the box as drawn; tarmac with yellow bay lines, which the code art now draws in
+  yellow as well), both fit at 0.94 to 0.98 for $0.05 in all. A turn whose painting
   overlaps its outline less than 0.6 gets none and keeps its code colours (`--weak` paints those
   families again; a retry replaces a turn only where it fits better). Meta Muse Image, a cent a
   call: 102 sheets for about $1.05 with one round of retries, and $0.34 more to paint the 34
@@ -1205,7 +1210,11 @@ scene that way); a tile whose sheet has not loaded yet draws as a block meanwhil
     tile, cell by cell, each piece over the tile's, turned as the tile is (`isoVehicles`, and the
     lanes' gondolas the same way), so a vehicle can later be moved or animated without touching
     its tile. The one change in look: a vehicle no longer sits behind its stop's glass pane, so it
-    is a shade brighter.
+    is a shade brighter. A vehicle still sits in front of or behind its tile's own solids as it
+    would in one picture: where the tile's first hit is nearer the camera, the vehicle's pixel is
+    left out, and where the vehicle is nearer but the tile's piece there belongs to a cell drawn
+    later, the vehicle's pixel moves to that cell. Both are worked out for where the vehicle
+    stands in the bake, so a vehicle that moves will need them again.
   - *Reach:* each turn's cells are tagged 0 (under the tile), 1 (past a padded side: the band,
     shown only where it lies past the board's edge, so only when the tile sits on that edge) or 2
     (anything else a vehicle reaches, such as a wing over the next square, always shown and

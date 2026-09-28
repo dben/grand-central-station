@@ -67,11 +67,17 @@ function codeArt(key, m) {
   return { pic: decodePng(readFileSync(f)), at: JSON.parse(readFileSync(logf, 'utf8'))[key].code[m] };
 }
 
-const prompt = (n, bg, veh) => [
+// What a model gets wrong about a tile unless told: said once, in that tile's call only.
+const HINTS = {
+  tram_stop: 'The two long low boxes on each platform are waiting shelters: solid low cabins with glass fronts and a flat roof, filling each box exactly as drawn and no taller. Not buildings: no stacked floors of windows, no rooftop plant; not open canopies on posts either.',
+  car_rental: 'The dark ground is a car park: plain tarmac with a yellow line between each parking bay, as drawn. No grid, no cross-hatching, no paving slabs.',
+};
+const prompt = (n, bg, veh, hint) => [
   `This image shows ${n} small pixel-art sprites, side by side, from an isometric (2:1) pixel-art game about running a busy transit hub: ${veh ? 'vehicles (cars, buses, trains, boats, aircraft, cable cars), each seen from its own angle' : 'a transport stop, platform or dock, turned different ways'}.`,
   `Redraw each one at this larger size as crisp, finished pixel art with much more detail: texture, shading, highlights, panel lines, windows, small props. Change nothing else: every shape exactly where it is, the same outline, the same size, the same colours. Do not add, remove or move anything.`,
   veh ? 'Each vehicle keeps exactly its pose, angle and proportions.' : 'The tiles are flat: no raised base, no thickness, no side faces below their outlines; only what already stands up on them stands up.',
   `Keep the plain flat ${bg} background exactly as it is, with no shadows, ground or frame outside the sprites. No people, no letters or numbers.`,
+  ...(hint ? [hint] : []),
 ].join('\n\n');
 
 // Fit one turn's painting onto its code art: overlap of the painting (inside the
@@ -226,7 +232,7 @@ for (const [fam, members] of families) {
     for (let t = 0; !reuse && t < tries; t++) {
       const name = `${id}_${Date.now()}_${tag}.png`;
       for (let attempt = 0; attempt < 2; attempt++) {
-        try { const { png, cost } = paintImage(model, [encodePng(guide)], prompt(slots.length, bgName, veh), ratio, '2K'); writeFileSync(resolve(rawDir, name), png); raws.push(name); spent += cost; break; }
+        try { const { png, cost } = paintImage(model, [encodePng(guide)], prompt(slots.length, bgName, veh, !veh && HINTS[members[0]]), ratio, '2K'); writeFileSync(resolve(rawDir, name), png); raws.push(name); spent += cost; break; }
         catch (e) { console.log(`  ${fam}: ${e.message.slice(0, 120)}`); }
       }
     }

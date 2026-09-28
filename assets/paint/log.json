@@ -3384,32 +3384,32 @@
   ],
   "turns": [
    {
-    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
-    "overlap": 0.992,
-    "drift": 12.7,
-    "cover": 0.987,
-    "pass": 0.982
+    "raw": "up_car_rental_g0_1790593088448_muse-image.png",
+    "overlap": 0.957,
+    "drift": 14.8,
+    "cover": 0.972,
+    "pass": 0.947
    },
    {
-    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
-    "overlap": 0.978,
-    "drift": 11,
-    "cover": 0.983,
-    "pass": 0.981
+    "raw": "up_car_rental_g0_1790593088448_muse-image.png",
+    "overlap": 0.95,
+    "drift": 13.6,
+    "cover": 0.964,
+    "pass": 0.941
    },
    {
-    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
-    "overlap": 0.978,
-    "drift": 11.2,
-    "cover": 0.982,
-    "pass": 0.979
+    "raw": "up_car_rental_g0_1790593088448_muse-image.png",
+    "overlap": 0.951,
+    "drift": 15.2,
+    "cover": 0.968,
+    "pass": 0.944
    },
    {
-    "raw": "up_car_rental_g0_1790577261472_muse-image.png",
-    "overlap": 0.976,
-    "drift": 13.3,
-    "cover": 0.988,
-    "pass": 0.985
+    "raw": "up_car_rental_g0_1790593088448_muse-image.png",
+    "overlap": 0.98,
+    "drift": 14.2,
+    "cover": 0.989,
+    "pass": 0.967
    }
   ]
  },
@@ -3684,32 +3684,32 @@
   ],
   "turns": [
    {
-    "raw": "up_tram_stop_g0_1790577519772_muse-image.png",
-    "overlap": 0.91,
-    "drift": 15.5,
-    "cover": 0.948,
-    "pass": 0.939
-   },
-   {
-    "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.825,
-    "drift": 18.4,
-    "cover": 0.992,
-    "pass": 0.983
-   },
-   {
-    "raw": "up_tram_stop_g0_1790577519772_muse-image.png",
+    "raw": "up_tram_stop_g0_1790593192027_muse-image.png",
     "overlap": 0.943,
-    "drift": 21.9,
-    "cover": 0.977,
-    "pass": 0.955
+    "drift": 13.5,
+    "cover": 0.973,
+    "pass": 0.972
    },
    {
-    "raw": "up_tram_stop_g0_1790556307157_muse-image.png",
-    "overlap": 0.86,
-    "drift": 11.2,
-    "cover": 0.989,
-    "pass": 0.987
+    "raw": "up_tram_stop_g0_1790593192027_muse-image.png",
+    "overlap": 0.968,
+    "drift": 11.9,
+    "cover": 0.976,
+    "pass": 0.976
+   },
+   {
+    "raw": "up_tram_stop_g0_1790593192027_muse-image.png",
+    "overlap": 0.943,
+    "drift": 14.2,
+    "cover": 0.975,
+    "pass": 0.974
+   },
+   {
+    "raw": "up_tram_stop_g0_1790593192027_muse-image.png",
+    "overlap": 0.943,
+    "drift": 13.2,
+    "cover": 0.977,
+    "pass": 0.976
    }
   ]
  },

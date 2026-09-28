@@ -524,7 +524,7 @@ const TILES = {
   car_rental: {
     floor(c, t) {
       platform(c, t); tarmac(c, t, 0, 30, 64, 34);
-      for (let x = 4; x < 64; x += 15) c.R(x, 32, 1, 28, PAINT);
+      for (let x = 4; x < 64; x += 15) c.R(x, 32, 1, 28, YELLOW);
       frame(c, t);
     },
     over(c, t) {

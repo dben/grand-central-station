@@ -183,15 +183,16 @@ const LEFT = 1, RIGHT = 2, MID = 3;
 // Returns { c: [r, g, b], a, face, cell } or null. Contributions under alpha 1
 // (glass panes, washes) are composited and the ray carries on behind them.
 function cast(s, f, X, Y, layer) {
-  let C = [0, 0, 0], A = 0, face = 0, best = 0, cell = null;
-  const hit = () => ({ c: C.map(v => v / A), a: A, face, cell });
+  let C = [0, 0, 0], A = 0, face = 0, best = 0, cell = null, near = 0;
+  const hit = () => ({ c: C.map(v => v / A), a: A, face, cell, near });
   const add = (p, fc, U, V) => {
     if (!p || p[3] <= 0) return false;
     const w = (1 - A) * p[3];
     for (let k = 0; k < 3; k++) C[k] += w * p[k];
     A += w;
     if (w > best) { best = w; face = fc; }
-    if (!cell) cell = [Math.floor(U / CELL), Math.floor(V / CELL)];
+    // how near the camera the first thing the ray meets is: U + V grows toward the viewer
+    if (!cell) { cell = [Math.floor(U / CELL), Math.floor(V / CELL)]; near = U + V; }
     return A > 0.99;
   };
   const t = s.tint, hTop = layer === 'over' ? Math.ceil(Math.max(s.hz, s.canopy ? CANOPY_Z * HZ : 0, ...s.blocks.map(b => b.hi))) : 0;
@@ -410,7 +411,7 @@ function upscaled(key, frames) {
 // The bake: each tile without its vehicles, then each vehicle as a sheet of its
 // own, `<key>_veh<n>`, with the same turns and cells, so the game can draw it
 // over the tile, or somewhere else.
-const jobs = [], vehicles = {};
+const jobs = [], vehicles = {}, tileOver = {};
 for (const key of Object.keys(A)) {
   jobs.push({ key, base: key, only: undefined });
   const groups = [...new Set((A[key].over ? A[key].over.blocks : []).filter(b => b.stack).map(b => b.stack.group))];
@@ -439,7 +440,21 @@ for (const { key, base, only } of jobs) {
     for (const layer of ['floor', 'over']) {
       if (layer === 'floor' ? !sa.floor : !(sa.over || (!sa.flush && !sa.lane))) continue;
       const ha = castFrame(sa, f, layer), hb = castFrame(sb, f, layer), list = [];
-      for (const [xy, r] of ha) {
+      if (only === undefined && layer === 'over') (tileOver[key] = tileOver[key] || [])[m] = ha;
+      // A vehicle drawn apart from its tile must still sit in front of or behind the tile's
+      // own solids (a shelter, a kiosk) as it would in one picture: where the tile is nearer,
+      // the vehicle leaves a hole (the tile's piece shows there); where the vehicle is nearer,
+      // its pixel goes to whichever cell the renderer draws later, so no later piece of the
+      // tile covers it. Worked out for where the vehicle stands now, so a vehicle that moves
+      // will need it again.
+      const under = only !== undefined && layer === 'over' && tileOver[base] ? tileOver[base][m] : null;
+      for (const [xy, r0] of ha) {
+        let r = r0;
+        const t = under && under.get(xy);
+        if (t && t.a > 0.5) {
+          if (t.near > r.near + 0.5) continue;
+          if (t.cell[0] + t.cell[1] > r.cell[0] + r.cell[1]) r = { ...r, cell: t.cell };
+        }
         // base + weight x colour; the weight is the same in every channel
         const rb = hb.get(xy), w = rb ? (r.c.reduce((a, v, i) => a + v - rb.c[i], 0) / 3) / (TA - TB) : 0;
         const [X, Y] = xy.split(',').map(Number);
