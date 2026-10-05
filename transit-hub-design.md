@@ -811,7 +811,7 @@ Quotas are shown as stars, one per 1,000 points. **Stars are the only score the 
 
 - Full amenities grey out during playback, with an occupancy counter.
 - Chain multipliers, boarding values, `cleared ×1.30`, `caught!` and robberies pop as floating text over the traveller.
-- Travellers are small dots coloured by tier; pickpockets are dark with a red ring.
+- Travellers are small upright cylinders coloured by tier; pickpockets are dark with a red lid and outline.
 - Skip is always available, and nothing requires watching the sim.
 
 **Wording.** Everything a player reads is written for someone who has never seen the design
@@ -954,7 +954,7 @@ The result is that someone who steps into a shop is covered by it. Most walk-thr
 
 **Ground tiles** (`ground: true` in `src/data/tiles.js`: Parking Lot, Pontoon Moorings, Hardstand, Green Space, Pocket Park, Waiting Area, WiFi Hotspot, Moving Walkway) have no height at all. They are paving, so they cast no shadow, have no walls, and their whole face is painted in the floor layer with the crowd walking over the top of it. Their labels can't ride on a roof that isn't there, and the crowd walks over where they sit, so they are drawn last of all, after every cell and every traveller.
 
-Travellers are small dots (radius `k × 0.062`, minimum 1.2 px), so the crowd reads as flow rather than as counters. Chain-value popups are drawn last and are never hidden.
+Travellers are small upright cylinders (radius `k × 0.034`, minimum 1.5 px; height `k × 0.12`, minimum 4 px), shaded on the right with a lighter lid. That puts them in scale with the shop and car art, so the crowd reads as people beside the buildings rather than as counters on top of them. Chain-value popups are drawn last and are never hidden.
 
 `src/ui/boardinput.js` owns the gestures. One pointer both pans and picks: a press that barely moves is a tap, anything further pans. Two pointers pinch and pan around their midpoint, and the wheel zooms about the cursor.
 

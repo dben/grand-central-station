@@ -5281,10 +5281,13 @@ class BoardRenderer {
     }
   }
 
-  // A traveller is a small dot, deliberately smaller than a tile: the crowd
-  // reads as flow rather than as a set of counters. Positions come out first
-  // so draw() can slot them into the building depth order.
-  get dotRadius() { return Math.max(1.2, this.k * 0.062); }
+  // A traveller is a small upright cylinder, sized against the shop and car
+  // art (a car is about half a tile long) so the crowd reads as people beside
+  // the buildings rather than as counters on top of them. The floors keep a
+  // two-pixel body visible when the board is zoomed right out. Positions come
+  // out first so draw() can slot them into the building depth order.
+  get dotRadius() { return Math.max(1.5, this.k * 0.034); }
+  get dotHeight() { return Math.max(4, this.k * 0.12); }
 
   agentDots(result, T) {
     const out = [];
@@ -5305,21 +5308,26 @@ class BoardRenderer {
   }
 
   drawAgentDot(d) {
-    const ctx = this.ctx, r = this.dotRadius, a = d.a;
+    const ctx = this.ctx, r = this.dotRadius, ry = r / 2, h = this.dotHeight, a = d.a;
+    const { x, y } = d, top = y - h, thief = a.kind === 'pickpocket';
     ctx.save(); ctx.globalAlpha = 0.35; ctx.beginPath();
-    ctx.ellipse(d.x, d.y, r * 1.15, r * 0.6, 0, 0, Math.PI * 2); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
-    ctx.beginPath(); ctx.arc(d.x, d.y - r * 0.7, r, 0, Math.PI * 2);
-    ctx.fillStyle = a.kind === 'pickpocket' ? '#222' : CONFIG.tiers[a.tier - 1].color;
-    ctx.fill();
-    // A hairline outline on a 2px dot is all outline, so only ring it once the
-    // dot is big enough to have an inside - and always for pickpockets.
-    if (a.kind === 'pickpocket') { ctx.strokeStyle = '#ff4f7a'; ctx.lineWidth = 1; ctx.stroke(); }
-    else if (r >= 3) { ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.ellipse(x + r * 0.3, y + ry * 0.2, r * 1.5, ry * 1.4, 0, 0, Math.PI * 2); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+    // body: the two sides and the near half of the base ellipse in one path
+    const body = () => { ctx.beginPath(); ctx.moveTo(x - r, top); ctx.lineTo(x - r, y); ctx.ellipse(x, y, r, ry, 0, Math.PI, 0, true); ctx.lineTo(x + r, top); ctx.closePath(); };
+    body(); ctx.fillStyle = thief ? '#222' : CONFIG.tiers[a.tier - 1].color; ctx.fill();
+    // light from the upper left: shade the right half of the body, brighten the lid
+    ctx.save(); ctx.clip(); ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(x + r * 0.15, top, r, h + ry + 1); ctx.restore();
+    if (thief) { ctx.strokeStyle = '#ff4f7a'; ctx.lineWidth = 1; body(); ctx.stroke(); }
+    else if (r >= 3) { ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1; body(); ctx.stroke(); }
+    ctx.beginPath(); ctx.ellipse(x, top, r, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = thief ? '#ff4f7a' : CONFIG.tiers[a.tier - 1].color; ctx.fill();
+    if (!thief) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill(); }
+    if (r >= 3 && !thief) { ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.stroke(); }
   }
 
   // Floating chain values sit above everything, buildings included.
   drawAgentPopups(dots, T) {
-    const ctx = this.ctx, r = this.dotRadius;
+    const ctx = this.ctx, lift = this.dotHeight + this.k * 0.06;
     const popups = [];
     for (const { a, x, y } of dots) {
       for (const ev of a.events) {
@@ -5334,7 +5342,7 @@ class BoardRenderer {
         else if (ev.type === 'stack') { txt = `+stack ${ev.stacks}`; col = '#c8c48a'; }
         else if (ev.type === 'removed') { txt = 'caught!'; col = '#ffd23f'; }
         else if (ev.type === 'cleared') { txt = `cleared ×${ev.mult.toFixed(2)}`; col = '#8fd3ff'; }
-        if (txt) popups.push({ x, y: y - r * 2.2 - age * this.k * 0.5, txt, col, alpha: 1 - age / 1.2 });
+        if (txt) popups.push({ x, y: y - lift - age * this.k * 0.5, txt, col, alpha: 1 - age / 1.2 });
       }
     }
     ctx.font = `600 ${Math.max(9, Math.min(16, this.k * 0.3))}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
